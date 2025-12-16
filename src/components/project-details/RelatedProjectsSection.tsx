@@ -24,7 +24,7 @@ export default function RelatedProjectsSection({
   useEffect(() => {
     const load = async () => {
       // Simple placeholder: fetch projects by city and filter client-side.
-      const all = await projectService.getProjectsByCitySlug?.(citySlug);
+      const all = await projectService.getProjectsByCity?.(citySlug);
       const filtered =
         all?.filter((p: any) => p.id !== currentProjectId).slice(0, 6) || [];
       setProjects(filtered);

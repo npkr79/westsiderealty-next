@@ -1,9 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 
-
 import type { 
-
-const supabase = await createClient();
   CityContext, 
   MicromarketContext, 
   DeveloperContext, 
@@ -16,6 +13,7 @@ export const contentContextService = {
    */
   async getCityContext(cityId: string): Promise<CityContext> {
     try {
+      const supabase = await createClient();
       console.log('Fetching city context for:', cityId);
 
       // Fetch city details
@@ -98,6 +96,7 @@ export const contentContextService = {
    */
   async getMicromarketContext(micromarketId: string): Promise<MicromarketContext> {
     try {
+      const supabase = await createClient();
       console.log('Fetching micromarket context for:', micromarketId);
 
       // Fetch micromarket details
@@ -150,6 +149,7 @@ export const contentContextService = {
    */
   async getDeveloperContext(developerId: string): Promise<DeveloperContext> {
     try {
+      const supabase = await createClient();
       console.log('Fetching developer context for:', developerId);
 
       // Fetch developer details
@@ -220,6 +220,7 @@ export const contentContextService = {
    */
   async getProjectContext(projectId: string): Promise<ProjectContext> {
     try {
+      const supabase = await createClient();
       console.log('Fetching project context for:', projectId);
 
       // Fetch project details with relationships

@@ -1,11 +1,8 @@
 import { createClient } from '@/lib/supabase/server';
 
-
 import { errorHandlingService } from "./errorHandlingService";
 import { retryService } from "./retryService";
 import { 
-
-const supabase = await createClient();
   validateInput, 
   formatValidationErrors,
   seedDataRequestSchema,
@@ -28,6 +25,7 @@ export const contentApiService = {
    */
   async getCities(): Promise<PageItem[]> {
     try {
+      const supabase = await createClient();
       const { data, error } = await supabase
         .from('cities')
         .select('id, city_name, url_slug, page_status, country')
@@ -53,6 +51,7 @@ export const contentApiService = {
    */
   async getMicromarkets(cityId?: string): Promise<PageItem[]> {
     try {
+      const supabase = await createClient();
       let query = supabase
         .from('micro_markets')
         .select(`
@@ -89,6 +88,7 @@ export const contentApiService = {
    */
   async getDevelopers(cityId?: string): Promise<PageItem[]> {
     try {
+      const supabase = await createClient();
       let query = supabase
         .from('developers')
         .select(`
@@ -125,6 +125,7 @@ export const contentApiService = {
    */
   async getProjects(filters?: { cityId?: string; micromarketId?: string; developerId?: string }): Promise<PageItem[]> {
     try {
+      const supabase = await createClient();
       let query = supabase
         .from('projects')
         .select(`
@@ -178,6 +179,7 @@ export const contentApiService = {
 
     return retryService.withRetry(async () => {
       try {
+        const supabase = await createClient();
         const { data, error } = await supabase.functions.invoke('seed-data', {
           body: { pageType, entityId },
         });
@@ -322,6 +324,7 @@ export const contentApiService = {
 
     return retryService.withRetry(async () => {
       try {
+        const supabase = await createClient();
         const { data, error } = await supabase.functions.invoke('publish-page', {
           body: { 
             pageType, 

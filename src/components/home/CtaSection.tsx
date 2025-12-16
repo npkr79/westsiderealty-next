@@ -2,7 +2,11 @@
 
 import { Button } from "@/components/ui/button";
 
-export default function CtaSection() {
+interface CtaSectionProps {
+  onContactClick?: () => void;
+}
+
+export default function CtaSection({ onContactClick }: CtaSectionProps = {}) {
   return (
     <section className="py-10 bg-primary text-primary-foreground">
       <div className="container mx-auto max-w-4xl px-4 flex flex-col items-center text-center gap-4">
@@ -14,10 +18,10 @@ export default function CtaSection() {
           on your budget, needs, and investment goals.
         </p>
         <div className="flex flex-wrap gap-3 justify-center">
-          <Button size="lg" variant="secondary">
+          <Button size="lg" variant="secondary" onClick={onContactClick}>
             Schedule a Call
           </Button>
-          <Button size="lg" variant="outline" className="border-primary-foreground text-primary-foreground">
+          <Button size="lg" variant="outline" className="border-primary-foreground text-primary-foreground" onClick={onContactClick}>
             WhatsApp Our Team
           </Button>
         </div>

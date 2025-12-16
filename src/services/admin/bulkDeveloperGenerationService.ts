@@ -332,10 +332,12 @@ export const bulkDeveloperGenerationService = {
         try {
           return JSON.parse(truncated);
         } catch (e2) {
-          throw new Error(`Could not extract valid JSON: ${e.message}`);
+          const errorMessage = e2 instanceof Error ? e2.message : String(e2);
+          throw new Error(`Could not extract valid JSON: ${errorMessage}`);
         }
       }
-      throw new Error(`Could not extract valid JSON: ${e.message}`);
+      const errorMessage = e instanceof Error ? e.message : String(e);
+      throw new Error(`Could not extract valid JSON: ${errorMessage}`);
     }
   },
 

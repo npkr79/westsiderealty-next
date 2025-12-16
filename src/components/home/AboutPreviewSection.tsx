@@ -2,7 +2,11 @@
 
 import { Card, CardContent } from "@/components/ui/card";
 
-export default function AboutPreviewSection() {
+interface AboutPreviewSectionProps {
+  aboutImage?: string | any;
+}
+
+export default function AboutPreviewSection({ aboutImage }: AboutPreviewSectionProps = {}) {
   return (
     <section className="py-10">
       <div className="container mx-auto max-w-4xl px-4">

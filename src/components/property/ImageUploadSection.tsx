@@ -100,7 +100,7 @@ export default function ImageUploadSection({
             <div className="absolute inset-0 flex items-center justify-between bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity px-2 py-1">
               <Button
                 type="button"
-                size="xs"
+                size="sm"
                 variant="outline"
                 onClick={() => onCoverImageChange?.(url)}
               >
@@ -109,7 +109,7 @@ export default function ImageUploadSection({
               {isEditMode && (
                 <Button
                   type="button"
-                  size="xs"
+                  size="sm"
                   variant="destructive"
                   onClick={() => handleRemoveExisting(url)}
                 >
@@ -132,7 +132,7 @@ export default function ImageUploadSection({
             <div className="absolute inset-0 flex items-center justify-end bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity px-2 py-1">
               <Button
                 type="button"
-                size="xs"
+                size="sm"
                 variant="destructive"
                 onClick={() => handleRemoveUploaded(img.url)}
               >

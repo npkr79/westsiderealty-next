@@ -11,29 +11,39 @@ interface Testimonial {
   message: string;
 }
 
-export default function TestimonialsSection() {
-  const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
+interface TestimonialsSectionProps {
+  testimonials?: any[];
+}
+
+export default function TestimonialsSection({ testimonials: propTestimonials }: TestimonialsSectionProps = {}) {
+  const [internalTestimonials, setInternalTestimonials] = useState<Testimonial[]>([]);
 
   useEffect(() => {
-    const load = async () => {
-      try {
-        const data = await supabaseTestimonialService.getTestimonials();
-        setTestimonials(data as any);
-      } catch {
-        // swallow errors for now
-      }
-    };
-    load();
-  }, []);
+    if (propTestimonials && propTestimonials.length > 0) {
+      setInternalTestimonials(propTestimonials as any);
+    } else {
+      const load = async () => {
+        try {
+          const data = await supabaseTestimonialService.getTestimonials();
+          setInternalTestimonials(data as any);
+        } catch {
+          // swallow errors for now
+        }
+      };
+      load();
+    }
+  }, [propTestimonials]);
 
-  if (!testimonials || testimonials.length === 0) return null;
+  const displayTestimonials = propTestimonials && propTestimonials.length > 0 ? propTestimonials : internalTestimonials;
+
+  if (!displayTestimonials || displayTestimonials.length === 0) return null;
 
   return (
     <section className="py-10 bg-background">
       <div className="container mx-auto max-w-5xl px-4">
         <h2 className="text-2xl md:text-3xl font-bold mb-6 text-center">What Our Clients Say</h2>
         <div className="grid gap-6 md:grid-cols-3">
-          {testimonials.slice(0, 3).map((t) => (
+          {displayTestimonials.slice(0, 3).map((t: any) => (
             <Card key={t.id}>
               <CardContent className="pt-6">
                 <p className="text-sm text-muted-foreground mb-3">"{t.message}"</p>
