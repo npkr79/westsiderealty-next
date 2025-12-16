@@ -28,7 +28,6 @@ import MarketPulseBanner from "@/components/city/MarketPulseBanner";
 import MarketUpdateBanner from "@/components/city/MarketUpdateBanner";
 import { buildMetadata } from "@/components/common/SEO";
 import { JsonLd } from "@/components/common/SEO";
-import hyderabadHero from "@/assets/hyderabad-hero.png";
 
 interface PageProps {
   params: Promise<{ citySlug: string }>;
@@ -168,7 +167,7 @@ export default async function CityPage({ params }: PageProps) {
         <div
           className="absolute inset-0 -z-20 bg-cover bg-center"
           style={{
-            backgroundImage: `url(${safeImageSrc(city.hero_image_url) || hyderabadHero.src})`,
+            backgroundImage: `url(${safeImageSrc(city.hero_image_url)})`,
           }}
         />
         {/* Dark Overlay for Text Readability */}

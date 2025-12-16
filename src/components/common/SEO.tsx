@@ -87,3 +87,39 @@ export const defaultSeo = {
   siteName: DEFAULT_SITE_NAME,
   baseUrl: BASE_URL,
 };
+
+// Simple default SEO component for client routes that expect a default export.
+// For App Router pages, prefer using the buildMetadata helper instead.
+export default function SEO(props: SEOProps) {
+  const {
+    title = DEFAULT_TITLE,
+    description = DEFAULT_DESCRIPTION,
+    canonicalUrl,
+    imageUrl = DEFAULT_IMAGE,
+    type = "website",
+    siteName = DEFAULT_SITE_NAME,
+    jsonLd,
+    keywords,
+  } = props;
+
+  const meta: Metadata = buildMetadata({
+    title,
+    description,
+    canonicalUrl,
+    imageUrl,
+    type,
+    siteName,
+    keywords,
+  });
+
+  return (
+    <>
+      {/* Basic meta tags for client-rendered pages – Next will also use metadata in app routes */}
+      <title>{meta.title as string}</title>
+      {meta.description && <meta name="description" content={meta.description} />}
+      {canonicalUrl && <link rel="canonical" href={canonicalUrl} />}
+      {imageUrl && <meta property="og:image" content={imageUrl} />}
+      {jsonLd && <JsonLd jsonLd={jsonLd} />}
+    </>
+  );
+}

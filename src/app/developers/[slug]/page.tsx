@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { Helmet } from "react-helmet";
 import { developerService, Developer } from "@/services/developerService";
 import { Building2, Award, MapPin, Globe, Calendar, TrendingUp, User, Clock, MessageSquare, Star } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -144,41 +143,7 @@ const DeveloperPage = () => {
   };
 
   return (
-    <>
-      <Helmet>
-        <title>{developer.seo_title}</title>
-        <meta name="description" content={developer.meta_description} />
-        <link rel="canonical" href={canonicalUrl} />
-        
-        {/* Open Graph */}
-        <meta property="og:title" content={developer.seo_title} />
-        <meta property="og:description" content={developer.meta_description} />
-        <meta property="og:image" content={ogImage} />
-        <meta property="og:url" content={canonicalUrl} />
-        <meta property="og:type" content="website" />
-        <meta property="og:site_name" content="RE/MAX Westside Realty" />
-        
-        {/* Twitter Card */}
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content={developer.seo_title} />
-        <meta name="twitter:description" content={developer.meta_description} />
-        <meta name="twitter:image" content={ogImage} />
-        
-        {/* JSON-LD Schemas */}
-        <script type="application/ld+json">
-          {JSON.stringify(organizationSchema)}
-        </script>
-        <script type="application/ld+json">
-          {JSON.stringify(breadcrumbSchema)}
-        </script>
-        {faqSchema && (
-          <script type="application/ld+json">
-            {JSON.stringify(faqSchema)}
-          </script>
-        )}
-      </Helmet>
-
-      <Layout>
+    <Layout>
         <div className="min-h-screen bg-background">
         {/* Hero Section */}
         <div className="relative h-[400px] bg-gradient-to-br from-heading-blue to-heading-blue-dark">

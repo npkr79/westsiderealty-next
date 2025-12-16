@@ -30,6 +30,7 @@ export default function ExpertReview({
             </p>
           </CardContent>
         </Card>
+      </div>
     </section>
   );
 }

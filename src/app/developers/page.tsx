@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Helmet } from "react-helmet";
 import { Search, Building2, MapPin, Award } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -50,12 +49,6 @@ const DevelopersHubPage = () => {
 
   return (
     <>
-      <Helmet>
-        <title>Top Real Estate Developers in India | Westside Realty</title>
-        <meta name="description" content="Explore India's leading real estate developers. Find trusted builders in Hyderabad, Goa, and Dubai with verified projects and track records." />
-        <link rel="canonical" href={`${window.location.origin}/developers`} />
-      </Helmet>
-
       <Header />
 
       <main className="min-h-screen bg-background">
