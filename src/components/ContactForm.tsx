@@ -12,7 +12,12 @@ import { createClient } from "@/lib/supabase/client";
 
 const supabase = createClient();
 
-export default function ContactForm() {
+interface ContactFormProps {
+  propertyId?: string;
+  agentId?: string;
+}
+
+export default function ContactForm({ propertyId, agentId }: ContactFormProps = {}) {
   const [contactInfo, setContactInfo] = useState<any>({});
   const [formData, setFormData] = useState({
     name: "",
@@ -50,7 +55,9 @@ export default function ContactForm() {
           phone: formData.phone,
           message: formData.message,
           interest: formData.interest,
-          form_type: "contact_form",
+          form_type: propertyId ? "property_inquiry" : "contact_form",
+          property_id: propertyId,
+          agent_id: agentId,
         },
       });
 
