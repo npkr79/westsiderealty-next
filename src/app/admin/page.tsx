@@ -1,6 +1,7 @@
+ "use client";
 
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
@@ -31,7 +32,6 @@ import ImagesManager from "@/components/admin/ImagesManager";
 import LandingPagesManager from "@/components/admin/LandingPagesManager";
 import CommercialPropertiesManager from "@/components/admin/CommercialPropertiesManager";
 import SiteContentManager from "@/components/admin/SiteContentManager";
-import LeadsManagement from "@/pages/admin/LeadsManagement";
 import { CitiesManager } from "@/components/admin/CitiesManager";
 import HyderabadProjectsManager from "@/components/admin/HyderabadProjectsManager";
 import { ProjectNameMigration } from "@/components/admin/ProjectNameMigration";
@@ -49,7 +49,6 @@ import { MicroMarketPagesManager } from "@/components/admin/MicroMarketPagesMana
 import { ProjectMigrationRunner } from "@/components/admin/ProjectMigrationRunner";
 import { GeneratePagesTab } from "@/components/admin/GeneratePagesTab";
 import { BulkDeveloperGeneration } from "@/components/admin/BulkDeveloperGeneration";
-import CreateProjectFromBrochure from "@/pages/admin/CreateProjectFromBrochure";
 import { BulkProjectSEOTool } from "@/components/admin/BulkProjectSEOTool";
 import { BulkFAQPopulationTool } from "@/components/admin/BulkFAQPopulationTool";
 
@@ -59,7 +58,7 @@ interface AdminDashboardProps {
 
 const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
   const [activeTab, setActiveTab] = useState("dashboard");
-  const navigate = useNavigate();
+  const router = useRouter();
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -124,15 +123,6 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
               >
                 <Building2 className="mr-2 h-4 w-4" />
                 Projects
-              </Button>
-              
-              <Button
-                variant={activeTab === "leads" ? "default" : "ghost"}
-                className="w-full justify-start"
-                onClick={() => setActiveTab("leads")}
-              >
-                <UserCheck className="mr-2 h-4 w-4" />
-                Leads Management
               </Button>
               
               <Button
@@ -318,7 +308,7 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
               <Button
                 variant="ghost"
                 className="w-full justify-start"
-                onClick={() => navigate("/admin/kollur-investment")}
+                onClick={() => router.push("/admin/kollur-investment")}
               >
                 <Target className="mr-2 h-4 w-4" />
                 Kollur Investment Page
@@ -372,10 +362,6 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
 
             <TabsContent value="re-projects">
               <ProjectsManager />
-            </TabsContent>
-            
-            <TabsContent value="leads">
-              <LeadsManagement />
             </TabsContent>
             
             <TabsContent value="commercial-properties">
@@ -453,10 +439,6 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
 
             <TabsContent value="bulk-developers">
               <BulkDeveloperGeneration />
-            </TabsContent>
-
-            <TabsContent value="create-from-brochure">
-              <CreateProjectFromBrochure />
             </TabsContent>
 
             <TabsContent value="bulk-seo">

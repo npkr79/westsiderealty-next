@@ -1,6 +1,9 @@
+ "use client";
+
 import { useState, useEffect } from "react";
-import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
-import { Helmet } from "react-helmet";
+ import Link from "next/link";
+ import { useParams, useRouter, usePathname } from "next/navigation";
+ import Head from "next/head";
 import { Button } from "@/components/ui/button";
 import { MapPin, ArrowLeft, Share2 } from "lucide-react";
 import { locationPropertyService, type HyderabadProperty, type GoaProperty, type DubaiProperty } from "@/services/locationPropertyService";
@@ -22,17 +25,18 @@ import CityHubBacklink from "@/components/seo/CityHubBacklink";
 type PropertyType = HyderabadProperty | GoaProperty | DubaiProperty;
 type LocationType = 'hyderabad' | 'goa' | 'dubai';
 
-const PropertyDetailsPage = () => {
-  const { slug } = useParams<{ slug: string }>();
-  const urlLocation = useLocation();
-  const navigate = useNavigate();
+ const PropertyDetailsPage = () => {
+   const params = useParams<{ slug: string }>();
+   const slug = params.slug;
+   const router = useRouter();
+   const pathname = usePathname();
   const [property, setProperty] = useState<PropertyType | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [projectDescription, setProjectDescription] = useState<string | null>(null);
   const [microMarketData, setMicroMarketData] = useState<MicroMarketInfo | null>(null);
 
-  // Extract location from pathname (/hyderabad/buy/slug, /goa/buy/slug, /dubai/buy/slug)
-  const location = urlLocation.pathname.split('/')[1] as LocationType;
+   // Extract location from pathname (/hyderabad/buy/slug, /goa/buy/slug, /dubai/buy/slug)
+   const location = pathname.split('/')[1] as LocationType;
 
   useEffect(() => {
     if (slug && location) {
@@ -84,11 +88,11 @@ const PropertyDetailsPage = () => {
         setMicroMarketData(mmData);
       }
       
-      // 301 Redirect: If property has seo_slug and current URL uses old slug, redirect
-      if (data && 'seo_slug' in data && data.seo_slug && data.seo_slug !== slug) {
-        console.log('Redirecting to:', `/${location}/buy/${data.seo_slug}`);
-        navigate(`/${location}/buy/${data.seo_slug}`, { replace: true });
-      }
+       // 301 Redirect: If property has seo_slug and current URL uses old slug, redirect
+       if (data && 'seo_slug' in data && data.seo_slug && data.seo_slug !== slug) {
+         console.log('Redirecting to:', `/${location}/buy/${data.seo_slug}`);
+         router.replace(`/${location}/buy/${data.seo_slug}`);
+       }
     } catch (error) {
       console.error('Error fetching property details:', error);
     } finally {
@@ -123,7 +127,7 @@ const PropertyDetailsPage = () => {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center">
         <h2 className="text-2xl font-bold mb-4">Property not found</h2>
-        <Link to="/properties">
+        <Link href="/properties">
           <Button>
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Properties
@@ -207,7 +211,7 @@ const PropertyDetailsPage = () => {
 
   return (
     <>
-      <Helmet>
+      <Head>
         <title>{(property as any).seo_title || property.title}</title>
         <meta name="description" content={(property as any).meta_description || property.description?.substring(0, 160)} />
         <link rel="canonical" href={canonicalUrl} />
@@ -222,13 +226,13 @@ const PropertyDetailsPage = () => {
         <script type="application/ld+json">
           {JSON.stringify(faqSchema)}
         </script>
-      </Helmet>
+      </Head>
 
       <Layout>
         <div className="container mx-auto px-4 py-8 max-w-7xl">
           {/* Back Button */}
           <div className="mb-6">
-            <Link to="/properties">
+            <Link href="/properties">
               <Button variant="ghost" className="gap-2">
                 <ArrowLeft className="h-4 w-4" />
                 <span>Back to Properties</span>

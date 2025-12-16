@@ -1,7 +1,10 @@
+ "use client";
+
 import { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
-import { Helmet } from "react-helmet";
-import { supabase } from "@/integrations/supabase/client";
+ import Link from "next/link";
+ import { useParams } from "next/navigation";
+ import Head from "next/head";
+ import { createClient } from "@/lib/supabase/client";
 import { cityService, CityInfo } from "@/services/cityService";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,6 +27,7 @@ interface Developer {
 
 export default function CityDevelopersPage() {
   const { citySlug } = useParams<{ citySlug: string }>();
+  const supabase = createClient();
   const [city, setCity] = useState<CityInfo | null>(null);
   const [developers, setDevelopers] = useState<Developer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -137,7 +141,7 @@ export default function CityDevelopersPage() {
 
   return (
     <>
-      <Helmet>
+      <Head>
         <title>{seoTitle}</title>
         <meta name="description" content={seoDescription} />
         <link rel="canonical" href={canonicalUrl} />
@@ -163,7 +167,7 @@ export default function CityDevelopersPage() {
         <script type="application/ld+json">
           {JSON.stringify(organizationListSchema)}
         </script>
-      </Helmet>
+      </Head>
 
       <div className="min-h-screen bg-background">
         {/* Header Section */}
@@ -187,7 +191,7 @@ export default function CityDevelopersPage() {
               <div className="text-center py-12">
                 <p className="text-muted-foreground mb-4">No developers found for this city.</p>
                 <Button asChild>
-                  <Link to={`/${citySlug}`}>Back to {city.city_name}</Link>
+                  <Link href={`/${citySlug}`}>Back to {city.city_name}</Link>
                 </Button>
               </div>
             ) : (
@@ -195,7 +199,7 @@ export default function CityDevelopersPage() {
                 {developers.map((developer) => (
                   <Link
                     key={developer.id}
-                    to={`/${citySlug}/developers/${developer.url_slug}`}
+                    href={`/${citySlug}/developers/${developer.url_slug}`}
                   >
                     <Card className="h-full hover:shadow-lg transition-shadow duration-300">
                       <CardContent className="p-6">

@@ -1,5 +1,7 @@
+ "use client";
+
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+ import { useParams } from "next/navigation";
 import { projectService, ProjectWithRelations } from "@/services/projectService";
 import { locationPropertyService, HyderabadProperty } from "@/services/locationPropertyService";
 import { findBrochureByProjectName } from "@/services/brochureService";
