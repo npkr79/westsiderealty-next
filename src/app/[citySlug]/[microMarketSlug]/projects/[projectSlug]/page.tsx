@@ -42,9 +42,27 @@ import BottomLeadFormSection from "@/components/project-details/BottomLeadFormSe
 
 export default function ProjectDetailPage() {
   const params = useParams();
-  const citySlug = Array.isArray(params.citySlug) ? params.citySlug[0] : params.citySlug;
-  const microMarketSlug = Array.isArray(params.microMarketSlug) ? params.microMarketSlug[0] : params.microMarketSlug;
-  const projectSlug = Array.isArray(params.projectSlug) ? params.projectSlug[0] : params.projectSlug;
+  const citySlugParam = params.citySlug;
+  const microMarketSlugParam = params.microMarketSlug;
+  const projectSlugParam = params.projectSlug;
+  const citySlug = Array.isArray(citySlugParam) ? citySlugParam[0] : citySlugParam;
+  const microMarketSlug = Array.isArray(microMarketSlugParam) ? microMarketSlugParam[0] : microMarketSlugParam;
+  const projectSlug = Array.isArray(projectSlugParam) ? projectSlugParam[0] : projectSlugParam;
+  
+  // Early return if required params are missing
+  if (!citySlug || !projectSlug) {
+    return (
+      <Layout>
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold mb-4">Invalid URL</h1>
+            <p className="text-muted-foreground">Required parameters are missing.</p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+  
   const [project, setProject] = useState<ProjectWithRelations | null>(null);
   const [listings, setListings] = useState<HyderabadProperty[]>([]);
   const [loading, setLoading] = useState(true);
@@ -54,7 +72,7 @@ export default function ProjectDetailPage() {
 
   useEffect(() => {
     const fetchData = async () => {
-      if (!citySlug || !projectSlug) return;
+      // citySlug and projectSlug are guaranteed to be strings at this point due to early return
       
       setLoading(true);
       try {
@@ -179,7 +197,7 @@ export default function ProjectDetailPage() {
         project={project}
         citySlug={citySlug}
         microMarketSlug={microMarketSlug}
-        projectSlug={projectSlug || ''}
+        projectSlug={projectSlug}
       />
 
       {/* Breadcrumbs */}
@@ -383,7 +401,7 @@ export default function ProjectDetailPage() {
                 </h2>
                 <AboutDeveloperSection
                   developerName={project.developer.developer_name}
-                  citySlug={citySlug || 'hyderabad'}
+                  citySlug={citySlug}
                   developerSlug={project.developer.url_slug}
                   logoUrl={project.developer.logo_url}
                   tagline={project.developer.tagline}
@@ -487,15 +505,13 @@ export default function ProjectDetailPage() {
         )}
 
         {/* Related Projects Section */}
-        {citySlug && (
-          <RelatedProjectsSection
-            currentProjectId={project.id}
-            microMarketId={project.micro_market_id || ''}
-            microMarketName={project.micro_market?.micro_market_name}
-            developerId={project.developer_id}
-            citySlug={citySlug}
-          />
-        )}
+        <RelatedProjectsSection
+          currentProjectId={project.id}
+          microMarketId={project.micro_market_id || ''}
+          microMarketName={project.micro_market?.micro_market_name}
+          developerId={project.developer_id}
+          citySlug={citySlug}
+        />
 
         {/* Bottom Lead Form Section - Third Placement */}
         <BottomLeadFormSection
