@@ -48,7 +48,7 @@ const AdminDashboard = () => {
                 <UserPlus className="h-4 w-4 mr-2" />
                 Add Agent
               </Button>
-              <Link to="/admin/settings">
+              <Link href="/admin/settings">
                 <Button variant="outline">
                   <Settings className="h-4 w-4 mr-2" />
                   Settings
@@ -119,25 +119,25 @@ const AdminDashboard = () => {
               <CardDescription>Manage your platform efficiently</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <Link to="/admin/agents">
+              <Link href="/admin/agents">
                 <Button className="w-full justify-start" variant="outline">
                   <Users className="h-4 w-4 mr-2" />
                   Manage Agents
                 </Button>
               </Link>
-              <Link to="/admin/properties">
+              <Link href="/admin/properties">
                 <Button className="w-full justify-start" variant="outline">
                   <Home className="h-4 w-4 mr-2" />
                   Review Properties
                 </Button>
               </Link>
-              <Link to="/admin/blog">
+              <Link href="/admin/blog">
                 <Button className="w-full justify-start" variant="outline">
                   <BookOpen className="h-4 w-4 mr-2" />
                   Manage Blog
                 </Button>
               </Link>
-              <Link to="/admin/reports">
+              <Link href="/admin/reports">
                 <Button className="w-full justify-start" variant="outline">
                   <BarChart3 className="h-4 w-4 mr-2" />
                   View Reports

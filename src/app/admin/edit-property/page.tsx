@@ -44,7 +44,7 @@ const EditProperty = () => {
       toast.info('Goa properties use the new editor. Redirecting...');
       router.push('/admin/properties');
     }
-  }, [propertyLocation, navigate]);
+  }, [propertyLocation, router]);
 
   const fetchProjects = async (location: 'hyderabad' | 'goa' | 'dubai') => {
     if (location === "hyderabad") {
@@ -276,7 +276,7 @@ const EditProperty = () => {
       <header className="bg-white shadow-sm border-b">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center space-x-4">
-            <Link to="/admin/properties">
+            <Link href="/admin/properties">
               <Button variant="outline" size="sm">
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back to Properties
