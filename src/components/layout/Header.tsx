@@ -85,7 +85,7 @@ const Header = () => {
           <NavigationMenuList className="space-x-1">
             {/* Home */}
             <NavigationMenuItem>
-              <Link to="/">
+              <Link href="/">
                 <NavigationMenuLink
                   className={cn(
                     "text-base font-semibold px-4 py-2 rounded-md transition-colors hover:text-remax-red",
@@ -99,7 +99,7 @@ const Header = () => {
 
             {/* About Us */}
             <NavigationMenuItem>
-              <Link to="/about">
+              <Link href="/about">
                 <NavigationMenuLink
                   className={cn(
                     "text-base font-semibold px-4 py-2 rounded-md transition-colors hover:text-remax-red",
@@ -113,7 +113,7 @@ const Header = () => {
 
             {/* What We Do */}
             <NavigationMenuItem>
-              <Link to="/services">
+              <Link href="/services">
                 <NavigationMenuLink
                   className={cn(
                     "text-base font-semibold px-4 py-2 rounded-md transition-colors hover:text-remax-red",
@@ -133,7 +133,7 @@ const Header = () => {
 
             {/* Market Insights */}
             <NavigationMenuItem>
-              <Link to="/blog">
+              <Link href="/blog">
                 <NavigationMenuLink
                   className={cn(
                     "text-base font-semibold px-4 py-2 rounded-md transition-colors hover:text-remax-red",
