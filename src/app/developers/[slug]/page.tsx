@@ -591,7 +591,6 @@ const DeveloperPage = () => {
       <CityHubBacklink />
       <FooterSection />
     </Layout>
-    </>
   );
 };
 
