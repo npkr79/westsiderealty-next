@@ -507,9 +507,9 @@ export default function ProjectDetailPage() {
         {/* Related Projects Section */}
         <RelatedProjectsSection
           currentProjectId={project.id}
-          microMarketId={project.micro_market_id || ''}
+          microMarketId={project.micro_market_id ?? undefined}
           microMarketName={project.micro_market?.micro_market_name}
-          developerId={project.developer_id}
+          developerId={project.developer_id ?? undefined}
           citySlug={citySlug}
         />
 
