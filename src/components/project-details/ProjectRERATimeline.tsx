@@ -11,6 +11,7 @@ export default function ProjectRERATimeline({
   reraId,
   reraLink,
   possessionDate,
+  constructionTimeline,
 }: ProjectRERATimelineProps) {
   if (!reraId && !possessionDate) return null;
 

@@ -7,21 +7,30 @@ interface FAQItem {
 }
 
 interface ProjectFAQSectionProps {
-  faqs?: FAQItem[];
+  faqs?: FAQItem[] | any[];
+  projectName?: string;
 }
 
-export default function ProjectFAQSection({ faqs }: ProjectFAQSectionProps) {
+export default function ProjectFAQSection({ faqs, projectName }: ProjectFAQSectionProps) {
   if (!faqs || faqs.length === 0) return null;
+
+  // Normalize FAQ items to handle different formats (question/answer, q/a, etc.)
+  const normalizedFaqs = faqs.map((faq: any) => ({
+    question: faq.question || faq.q || faq.title || 'Question',
+    answer: faq.answer || faq.a || faq.description || faq.content || 'Answer not available',
+  }));
 
   return (
     <section className="mb-12">
       <Card>
         <CardHeader>
-          <CardTitle>Frequently Asked Questions</CardTitle>
+          <CardTitle>
+            {projectName ? `Frequently Asked Questions about ${projectName}` : 'Frequently Asked Questions'}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <Accordion type="single" collapsible className="w-full">
-            {faqs.map((faq, idx) => (
+            {normalizedFaqs.map((faq, idx) => (
               <AccordionItem key={idx} value={`faq-${idx}`}>
                 <AccordionTrigger className="text-left">
                   {faq.question}
