@@ -1,26 +1,714 @@
-@import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+
+    --primary: 222.2 47.4% 11.2%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 222.2 84% 4.9%;
+
+    --radius: 0.5rem;
+    
+    /* Premium Luxury Colors */
+    --luxury-gold: 43 74% 49%;
+    --luxury-gold-light: 43 74% 66%;
+    --luxury-gold-dark: 43 74% 35%;
+    --luxury-navy: 222 47% 11%;
+    --luxury-navy-light: 222 47% 25%;
+    --luxury-slate: 215 16% 47%;
+    --luxury-cream: 40 40% 97%;
+    --luxury-charcoal: 0 0% 13%;
+    
+    /* Blue Heading Color */
+    --heading-blue: 217 91% 60%;
+    --heading-blue-dark: 217 91% 45%;
+    
+    /* Premium Gradients */
+    --gradient-luxury: linear-gradient(135deg, hsl(43 74% 49%) 0%, hsl(43 74% 35%) 100%);
+    --gradient-elegant: linear-gradient(135deg, hsl(222 47% 11%) 0%, hsl(222 47% 25%) 100%);
+    --gradient-subtle: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(40 40% 97%) 100%);
+    --gradient-royal: linear-gradient(135deg, hsl(222 47% 11%) 0%, hsl(43 74% 35%) 50%, hsl(222 47% 11%) 100%);
+    
+    /* Shadows */
+    --shadow-luxury: 0 20px 60px -15px hsla(43, 74%, 35%, 0.3);
+    --shadow-elegant: 0 10px 40px -10px hsla(222, 47%, 11%, 0.2);
+
+    --sidebar-background: 0 0% 98%;
+
+    --sidebar-foreground: 240 5.3% 26.1%;
+
+    --sidebar-primary: 240 5.9% 10%;
+
+    --sidebar-primary-foreground: 0 0% 98%;
+
+    --sidebar-accent: 240 4.8% 95.9%;
+
+    --sidebar-accent-foreground: 240 5.9% 10%;
+
+    --sidebar-border: 220 13% 91%;
+
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* ==========================================
+   LUXURY RICH TEXT EDITOR STYLES
+   ========================================== */
+
+/* Editor Container */
+.luxury-rich-text-editor .ql-editor {
+  min-height: 400px;
+  font-size: 16px;
+  line-height: 1.8;
+  font-family: 'Inter', sans-serif;
+}
+
+/* Toolbar Styling */
+.luxury-rich-text-editor .ql-toolbar {
+  background: hsl(var(--muted));
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px 8px 0 0;
+  padding: 12px;
+}
+
+.luxury-rich-text-editor .ql-container {
+  border: 1px solid hsl(var(--border));
+  border-radius: 0 0 8px 8px;
+  background: white;
+}
+
+/* Gold accent for active buttons */
+.luxury-rich-text-editor .ql-toolbar button.ql-active,
+.luxury-rich-text-editor .ql-toolbar button:hover {
+  color: #d4af37;
+  background: rgba(212, 175, 55, 0.1);
+}
+
+/* Font Family Classes */
+.ql-font-playfair-display {
+  font-family: 'Playfair Display', serif;
+}
+
+.ql-font-cormorant-garamond {
+  font-family: 'Cormorant Garamond', serif;
+}
+
+.ql-font-inter {
+  font-family: 'Inter', sans-serif;
+}
+
+.ql-font-georgia {
+  font-family: Georgia, serif;
+}
+
+.ql-font-times-new-roman {
+  font-family: 'Times New Roman', serif;
+}
+
+/* Image Alignment & Text Wrapping in Editor */
+.luxury-rich-text-editor .ql-editor img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  margin: 1rem 0;
+  cursor: pointer;
+}
+
+/* Left-aligned image with text wrap */
+.luxury-rich-text-editor .ql-editor img[style*="float: left"],
+.luxury-rich-text-editor .ql-editor img.ql-align-left {
+  float: left;
+  margin: 0 2rem 1rem 0;
+  max-width: 45%;
+}
+
+/* Right-aligned image with text wrap */
+.luxury-rich-text-editor .ql-editor img[style*="float: right"],
+.luxury-rich-text-editor .ql-editor img.ql-align-right {
+  float: right;
+  margin: 0 0 1rem 2rem;
+  max-width: 45%;
+}
+
+/* Center-aligned image (no wrap) */
+.luxury-rich-text-editor .ql-editor img.ql-align-center {
+  display: block;
+  margin: 2rem auto;
+  max-width: 80%;
+}
+
+/* Luxury headings in editor */
+.luxury-rich-text-editor .ql-editor h1,
+.luxury-rich-text-editor .ql-editor h2 {
+  font-family: 'Playfair Display', serif;
+  color: #1a1a1a;
+  font-weight: 700;
+}
+
+.luxury-rich-text-editor .ql-editor h3,
+.luxury-rich-text-editor .ql-editor h4 {
+  font-family: 'Cormorant Garamond', serif;
+  color: #1a1a1a;
+  font-weight: 600;
+}
+
+/* ==========================================
+   LANDING PAGE RICH DESCRIPTION RENDERING
+   ========================================== */
+
+/* Landing Page Rich Description Rendering */
+.luxury-description-render img {
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  max-width: 100%;
+  height: auto;
+}
+
+/* Preserve text wrapping from editor */
+.luxury-description-render img[style*="float: left"] {
+  float: left;
+  margin: 0 2rem 1rem 0;
+  max-width: 45%;
+}
+
+.luxury-description-render img[style*="float: right"] {
+  float: right;
+  margin: 0 0 1rem 2rem;
+  max-width: 45%;
+}
+
+.luxury-description-render img[style*="display: block"] {
+  display: block;
+  margin: 2rem auto;
+  max-width: 80%;
+}
+
+/* Typography enhancements */
+.luxury-description-render h1,
+.luxury-description-render h2 {
+  font-family: 'Playfair Display', serif;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+}
+
+.luxury-description-render h3,
+.luxury-description-render h4 {
+  font-family: 'Cormorant Garamond', serif;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.luxury-description-render p {
+  line-height: 1.8;
+  margin-bottom: 1.25rem;
+}
+
+/* Custom font families in rendered content */
+.luxury-description-render .ql-font-playfair-display {
+  font-family: 'Playfair Display', serif;
+}
+
+.luxury-description-render .ql-font-cormorant-garamond {
+  font-family: 'Cormorant Garamond', serif;
+}
+
+.luxury-description-render .ql-font-inter {
+  font-family: 'Inter', sans-serif;
+}
+
+.luxury-description-render .ql-font-georgia {
+  font-family: Georgia, serif;
+}
+
+.luxury-description-render .ql-font-times-new-roman {
+  font-family: 'Times New Roman', serif;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .luxury-description-render img[style*="float"] {
+    float: none !important;
+    display: block;
+    margin: 1rem auto;
+    max-width: 100% !important;
+  }
+}
+
+/* Enhanced Rich Text Styles for Blog Content */
+@layer components {
+  .article-content {
+    @apply text-gray-800 leading-relaxed;
+    font-size: 1.1rem;
+    line-height: 1.8;
+    /* REMOVED ANY HEIGHT OR OVERFLOW RESTRICTIONS */
+    min-height: auto !important;
+    max-height: none !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  .article-content h1 {
+    @apply text-4xl font-bold text-gray-900 mb-6 mt-8 leading-tight;
+  }
+
+  .article-content h2 {
+    @apply text-3xl font-bold text-gray-900 mb-5 mt-7 leading-snug;
+  }
+
+  .article-content h3 {
+    @apply text-2xl font-semibold text-gray-800 mb-4 mt-6 leading-snug;
+  }
+
+  .article-content h4 {
+    @apply text-xl font-semibold text-gray-800 mb-3 mt-5;
+  }
+
+  .article-content h5 {
+    @apply text-lg font-semibold text-gray-800 mb-3 mt-4;
+  }
+
+  .article-content h6 {
+    @apply text-base font-semibold text-gray-800 mb-2 mt-4;
+  }
+
+  .article-content p {
+    @apply mb-4 text-gray-700 leading-relaxed;
+    /* ENSURE PARAGRAPHS DISPLAY FULLY */
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+  }
+
+  .article-content ul {
+    @apply mb-4 pl-6 space-y-2;
+  }
+
+  .article-content ol {
+    @apply mb-4 pl-6 space-y-2;
+  }
+
+  .article-content li {
+    @apply text-gray-700 leading-relaxed;
+  }
+
+  .article-content ul li {
+    @apply list-disc;
+  }
+
+  .article-content ol li {
+    @apply list-decimal;
+  }
+
+  .article-content blockquote {
+    @apply border-l-4 border-blue-500 pl-6 py-2 mb-4 italic text-gray-600 bg-gray-50 rounded-r-lg;
+  }
+
+  .article-content a {
+    @apply text-blue-600 hover:text-blue-800 underline font-medium;
+  }
+
+  .article-content strong {
+    @apply font-bold text-gray-900;
+  }
+
+  .article-content em {
+    @apply italic;
+  }
+
+  .article-content code {
+    @apply bg-gray-100 px-2 py-1 rounded text-sm font-mono text-gray-800;
+  }
+
+  .article-content pre {
+    @apply bg-gray-900 text-gray-100 p-4 rounded-lg mb-4 overflow-x-auto;
+  }
+
+  .article-content pre code {
+    @apply bg-transparent p-0 text-gray-100;
+  }
+
+  .article-content table {
+    @apply w-full border-collapse border border-gray-300 mb-4;
+  }
+
+  .article-content th {
+    @apply border border-gray-300 px-4 py-2 bg-gray-100 font-semibold text-left;
+  }
+
+  .article-content td {
+    @apply border border-gray-300 px-4 py-2;
+  }
+
+  .article-content img {
+    @apply rounded-lg shadow-md mb-4 max-w-full h-auto;
+  }
+
+  .article-content hr {
+    @apply border-t border-gray-300 my-8;
+  }
+
+  /* ReactQuill Editor Enhancements */
+  .prose-editor .ql-editor {
+    min-height: 350px !important;
+    font-size: 16px !important;
+    line-height: 1.6 !important;
+    padding: 20px !important;
+  }
+
+  .prose-editor .ql-toolbar {
+    border-top-left-radius: 0.5rem !important;
+    border-top-right-radius: 0.5rem !important;
+    border-bottom: 1px solid #e5e7eb !important;
+  }
+
+  .prose-editor .ql-container {
+    border-bottom-left-radius: 0.5rem !important;
+    border-bottom-right-radius: 0.5rem !important;
+    font-family: inherit !important;
+  }
+
+  .prose-editor .ql-editor.ql-blank::before {
+    font-style: italic !important;
+    color: #9ca3af !important;
+  }
+
+  /* Handle large content gracefully */
+  .prose-editor .ql-editor {
+    max-height: none !important;
+    overflow-y: auto !important;
+  }
+
+  /* Better paste handling styles */
+  .prose-editor .ql-clipboard {
+    position: fixed !important;
+    left: -100000px !important;
+    height: 1px !important;
+    overflow-y: hidden !important;
+  }
+
+  /* CRITICAL FIX: Remove any prose class limitations that might truncate content */
+  .prose {
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .prose-lg {
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  /* Ensure no line clamping is applied */
+  .line-clamp-2,
+  .line-clamp-3,
+  .-webkit-line-clamp {
+    -webkit-line-clamp: unset !important;
+    overflow: visible !important;
+    display: block !important;
+  }
+}
+
+/* ==========================================
+   MICRO-MARKET PAGE VISUAL ENHANCEMENTS
+   ========================================== */
+
+/* H2 Section Headings - Primary Brand Color */
+.micro-market-h2 {
+  color: hsl(var(--primary));
+  font-weight: 700;
+  font-size: 1.875rem; /* 30px */
+  margin-bottom: 1.5rem;
+  margin-top: 2rem;
+}
+
+/* Highlighted Metrics - Blue Accent */
+.metric-highlight {
+  color: #007bff;
+  font-weight: 700;
+}
+
+/* Green highlight for positive financial data */
+.metric-positive {
+  color: #059669; /* emerald-600 */
+  font-weight: 700;
+}
+
+/* Table Header Accent Background */
+.table-header-accent {
+  background-color: #f7f7f7;
+  font-weight: 600;
+}
+
+/* Data Visualization Container */
+.chart-container {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border: 1px solid hsl(var(--border));
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin: 2rem 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.chart-container img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Developer Logo Styling */
+.developer-logo {
+  max-width: 120px;
+  max-height: 60px;
+  object-fit: contain;
+  margin-right: 1rem;
+  filter: grayscale(0%);
+  transition: all 0.3s ease;
+}
+
+.developer-logo:hover {
+  filter: grayscale(0%) brightness(1.1);
+  transform: scale(1.05);
+}
+
+/* Connectivity Map Container */
+.map-container {
+  position: relative;
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  margin: 2rem 0;
+}
+
+.map-container img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+}
+
+/* Price Badge in Listings Slider - Enhanced Visibility */
+.price-badge {
+  color: #059669 !important; /* emerald-600 */
+  font-weight: 800 !important;
+  font-size: 1.125rem !important;
+}
+
+/* Responsive Typography for Mobile */
+@media (max-width: 768px) {
+  .micro-market-h2 {
+    font-size: 1.5rem;
+  }
+  
+  .developer-logo {
+    max-width: 80px;
+    max-height: 40px;
+  }
+}
+
+/* ==========================================
+   AUTHORITY CONTENT BLOCK - White Paper Style
+   ========================================== */
+
+.authority-content-block {
+  background: linear-gradient(180deg, hsl(var(--muted) / 0.5) 0%, hsl(var(--background)) 100%);
+  border: 1px solid hsl(var(--border));
+  border-left: 4px solid hsl(var(--primary));
+  border-radius: 12px;
+  padding: 2rem 2.5rem;
+  margin: 2rem 0 3rem 0;
+  box-shadow: 0 4px 20px hsl(var(--foreground) / 0.04);
+}
+
+.authority-content-block h2 {
+  font-family: 'Georgia', 'Times New Roman', serif;
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: hsl(var(--foreground));
+  margin-bottom: 1.25rem;
+  line-height: 1.3;
+}
+
+.authority-content-block h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: hsl(var(--primary));
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.authority-content-block p {
+  font-size: 1.0625rem;
+  line-height: 1.8;
+  color: hsl(var(--muted-foreground));
+  margin-bottom: 1rem;
+}
+
+.authority-content-block ul,
+.authority-content-block ol {
+  margin-left: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.authority-content-block li {
+  margin-bottom: 0.5rem;
+  line-height: 1.7;
+  color: hsl(var(--muted-foreground));
+}
+
+.authority-content-block strong {
+  color: hsl(var(--primary));
+  font-weight: 600;
+}
+
+/* Table Styling for Auction Data */
+.authority-content-block table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.5rem 0;
+  font-size: 0.9375rem;
+  background: hsl(var(--background));
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px hsl(var(--foreground) / 0.06);
+}
+
+.authority-content-block thead {
+  background: hsl(var(--primary) / 0.08);
+}
+
+.authority-content-block th {
+  text-align: left;
+  padding: 0.875rem 1rem;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  font-size: 0.8125rem;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+  border-bottom: 2px solid hsl(var(--primary) / 0.2);
+}
+
+.authority-content-block td {
+  padding: 0.75rem 1rem;
+  color: hsl(var(--muted-foreground));
+  border-bottom: 1px solid hsl(var(--border));
+  vertical-align: top;
+}
+
+.authority-content-block tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.authority-content-block tbody tr:hover {
+  background: hsl(var(--muted) / 0.3);
+}
+
+/* Highlight price values in tables */
+.authority-content-block td:nth-child(3),
+.authority-content-block td:nth-child(2) {
+  font-weight: 500;
+}
+
+/* Mobile responsive tables */
+@media (max-width: 768px) {
+  .authority-content-block table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    font-size: 0.875rem;
+  }
+  
+  .authority-content-block th,
+  .authority-content-block td {
+    padding: 0.625rem 0.75rem;
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 768px) {
+  .authority-content-block {
+    padding: 1.5rem 1.25rem;
+  }
+  
+  .authority-content-block h2 {
+    font-size: 1.5rem;
+  }
 }
