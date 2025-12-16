@@ -282,7 +282,7 @@ export default function MicromarketEditor() {
                   <Save className="mr-2 h-4 w-4" />
                   {loading ? 'Saving...' : 'Save Micromarket'}
                 </Button>
-                <Button type="button" variant="outline" onClick={() => navigate('/admin')}>
+                <Button type="button" variant="outline" onClick={() => router.push('/admin')}>
                   Cancel
                 </Button>
               </div>

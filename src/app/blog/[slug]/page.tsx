@@ -54,7 +54,7 @@ const RelatedArticles = ({
               <p className="text-gray-600 mb-2 line-clamp-2">
                 {article.seo_description || article.description}
               </p>
-              <Link to={`/blog/${article.slug}`}>
+              <Link href={`/blog/${article.slug}`}>
                 <Button
                   variant="outline"
                   size="sm"
@@ -134,7 +134,7 @@ const ArticleDetailPage = ({
       }
     })();
     // eslint-disable-next-line
-  }, [param, articles, navigate]);
+  }, [param, articles, router]);
 
   // Helper to ensure absolute image URLs for OG tags
   const getAbsoluteImageUrl = (imageUrl: string | null | undefined): string => {

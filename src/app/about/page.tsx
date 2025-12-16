@@ -362,7 +362,7 @@ const About = () => {
             Contact us today for expert advice and personalized service
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link to="/contact" className="w-full sm:w-auto">
+            <Link href="/contact" className="w-full sm:w-auto">
               <Button 
                 size="lg"
                 variant="secondary"

@@ -100,7 +100,7 @@ const BlogListPage = ({
                   <p className="text-gray-600 mb-4 line-clamp-3">
                     {article.seo_description || article.description}
                   </p>
-                  <Link to={`/blog/${article.slug}`}>
+                  <Link href={`/blog/${article.slug}`}>
                     <Button variant="outline" className="w-full border-remax-red text-remax-red hover:bg-remax-red/10">
                       Read More
                       <ArrowRight className="h-4 w-4 ml-2" />

@@ -262,7 +262,7 @@ const AgentManagement = () => {
                     <p>Specialization: {agent.specialization || "N/A"}</p>
                   </div>
                   <div className="flex justify-end mt-4 space-x-2">
-                    <Link to={`/agent/${agent.id}`}>
+                    <Link href={`/agent/${agent.id}`}>
                       <Button variant="ghost" size="sm">
                         <Edit className="h-4 w-4 mr-2" />
                         Edit

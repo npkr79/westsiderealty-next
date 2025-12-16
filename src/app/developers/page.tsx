@@ -181,7 +181,7 @@ const DevelopersHubPage = () => {
                     </div>
 
                     <Button asChild variant="outline" className="w-full">
-                      <Link to={`/developers/${developer.url_slug}`}>
+                      <Link href={`/developers/${developer.url_slug}`}>
                         View Developer Profile
                       </Link>
                     </Button>
