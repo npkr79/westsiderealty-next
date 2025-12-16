@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
-import { microMarketPagesService, MicroMarketPage, FeaturedProject } from "@/services/microMarketPagesService";
+import { microMarketPagesService, type MicroMarketPage, type FeaturedProject } from "@/services/microMarketPagesService";
 import { projectService, ProjectWithRelations } from "@/services/projectService";
 import BreadcrumbNav from "@/components/layout/BreadcrumbNav";
 import { Building2, TrendingUp, MapPin, School, Hospital, ShoppingBag } from "lucide-react";
