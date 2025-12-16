@@ -296,7 +296,7 @@ const AgentManagement = () => {
         )}
 
         <AddAgentModal
-          isOpen={isAddAgentModalOpen}
+          open={isAddAgentModalOpen}
           onClose={() => setIsAddAgentModalOpen(false)}
           onAgentAdded={handleAgentAdded}
         />

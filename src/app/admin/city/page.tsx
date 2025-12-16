@@ -261,7 +261,13 @@ export default function CityEditor() {
 
               <ImageUploader
                 value={formData.hero_image_url}
-                onChange={(url) => setFormData(prev => ({ ...prev, hero_image_url: url }))}
+                onChange={(urlOrFile) => {
+                  // Convert File to URL string, or use string directly
+                  const url = urlOrFile instanceof File 
+                    ? URL.createObjectURL(urlOrFile) 
+                    : (urlOrFile || '');
+                  setFormData(prev => ({ ...prev, hero_image_url: url }));
+                }}
                 bucket="project-hero-images"
                 label="Hero Image"
               />

@@ -7,18 +7,27 @@ interface AmenitiesSelectorProps {
   options?: string[];
   value?: string[];
   onChange?: (value: string[]) => void;
+  selectedAmenities?: string[];
+  onAmenitiesChange?: (amenities: string[]) => void;
 }
 
 export default function AmenitiesSelector({
   options = [],
   value = [],
   onChange,
+  selectedAmenities,
+  onAmenitiesChange,
 }: AmenitiesSelectorProps) {
+  const currentValue = selectedAmenities || value;
+  const handleChange = (amenities: string[]) => {
+    onAmenitiesChange?.(amenities);
+    onChange?.(amenities);
+  };
   const toggle = (amenity: string) => {
-    const next = value.includes(amenity)
-      ? value.filter((a) => a !== amenity)
-      : [...value, amenity];
-    onChange?.(next);
+    const next = currentValue.includes(amenity)
+      ? currentValue.filter((a) => a !== amenity)
+      : [...currentValue, amenity];
+    handleChange(next);
   };
 
   if (options.length === 0) return null;
@@ -30,7 +39,7 @@ export default function AmenitiesSelector({
         {options.map((amenity) => (
           <label key={amenity} className="flex items-center gap-2 text-sm">
             <Checkbox
-              checked={value.includes(amenity)}
+              checked={currentValue.includes(amenity)}
               onCheckedChange={() => toggle(amenity)}
             />
             <span>{amenity}</span>

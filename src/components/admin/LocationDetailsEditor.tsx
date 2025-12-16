@@ -10,14 +10,17 @@ import type { LocationDetails } from "@/types/locationDetails";
 interface LocationDetailsEditorProps {
   value?: LocationDetails;
   onChange?: (value: LocationDetails) => void;
+  locationDetails?: LocationDetails | any;
 }
 
 export default function LocationDetailsEditor({
   value,
   onChange,
+  locationDetails,
 }: LocationDetailsEditorProps) {
+  const initialValue = locationDetails || value || { address: "", latitude: "", longitude: "", landmarks: "" };
   const [state, setState] = useState<LocationDetails>(
-    value || { address: "", latitude: "", longitude: "", landmarks: "" } as any
+    initialValue as any
   );
 
   const update = (field: keyof LocationDetails, val: any) => {

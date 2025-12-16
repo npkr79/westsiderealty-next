@@ -3,7 +3,9 @@
 import ContactForm from "@/components/ContactForm";
 
 interface DeveloperContactFormProps {
+  developerId?: string;
   developerName?: string;
+  primaryCity?: string | null;
 }
 
 export default function DeveloperContactForm({ developerName }: DeveloperContactFormProps) {

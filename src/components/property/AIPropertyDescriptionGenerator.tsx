@@ -6,8 +6,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 
 interface AIPropertyDescriptionGeneratorProps {
-  formData: any;
-  setFormData: (updater: (prev: any) => any) => void;
+  formData?: any;
+  setFormData?: (updater: (prev: any) => any) => void;
+  onDescriptionGenerated?: (description: string) => void;
 }
 
 /**
@@ -17,6 +18,7 @@ interface AIPropertyDescriptionGeneratorProps {
 export default function AIPropertyDescriptionGenerator({
   formData,
   setFormData,
+  onDescriptionGenerated,
 }: AIPropertyDescriptionGeneratorProps) {
   const [prompt, setPrompt] = useState("");
   const [loading, setLoading] = useState(false);
@@ -24,10 +26,16 @@ export default function AIPropertyDescriptionGenerator({
   const handleGenerate = async () => {
     setLoading(true);
     // Simple placeholder behaviour: append the prompt to the description.
-    setFormData((prev: any) => ({
-      ...prev,
-      description: (prev.description || "") + (prompt ? `\n\n${prompt}` : ""),
-    }));
+    const generatedDescription = prompt || "AI-generated description placeholder";
+    
+    if (onDescriptionGenerated) {
+      onDescriptionGenerated(generatedDescription);
+    } else if (setFormData) {
+      setFormData((prev: any) => ({
+        ...prev,
+        description: (prev.description || "") + (prompt ? `\n\n${prompt}` : ""),
+      }));
+    }
     setLoading(false);
   };
 

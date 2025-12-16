@@ -5,20 +5,21 @@ import { Card, CardContent } from "@/components/ui/card";
 import type { ProjectWithRelations } from "@/services/projectService";
 
 interface DeveloperProjectCardProps {
-  project: ProjectWithRelations;
-  citySlug: string;
+  project: ProjectWithRelations | any;
+  citySlug?: string;
 }
 
 export default function DeveloperProjectCard({
   project,
   citySlug,
 }: DeveloperProjectCardProps) {
+  const defaultCitySlug = citySlug || project.city_slug || 'hyderabad';
   return (
     <Card className="hover:shadow-md transition-shadow">
       <CardContent className="p-4 space-y-2">
         <h3 className="font-semibold text-lg">
           <Link
-            href={`/${citySlug}/${project.micro_market?.url_slug ?? ""}/projects/${project.url_slug}`}
+            href={`/${defaultCitySlug}/${project.micro_market?.url_slug ?? ""}/projects/${project.url_slug}`}
             className="hover:underline"
           >
             {project.project_name}

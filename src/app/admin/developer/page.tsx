@@ -229,7 +229,12 @@ export default function DeveloperEditor() {
               <div className="grid grid-cols-2 gap-4">
                 <ImageUploader
                   value={formData.logo_url}
-                  onChange={(url) => setFormData(prev => ({ ...prev, logo_url: url }))}
+                  onChange={(urlOrFile) => {
+                    const url = urlOrFile instanceof File 
+                      ? URL.createObjectURL(urlOrFile) 
+                      : (urlOrFile || '');
+                    setFormData(prev => ({ ...prev, logo_url: url }));
+                  }}
                   bucket="brand-assets"
                   label="Logo"
                   aspectRatio="1/1"
@@ -237,7 +242,12 @@ export default function DeveloperEditor() {
 
                 <ImageUploader
                   value={formData.banner_image_url}
-                  onChange={(url) => setFormData(prev => ({ ...prev, banner_image_url: url }))}
+                  onChange={(urlOrFile) => {
+                    const url = urlOrFile instanceof File 
+                      ? URL.createObjectURL(urlOrFile) 
+                      : (urlOrFile || '');
+                    setFormData(prev => ({ ...prev, banner_image_url: url }));
+                  }}
                   bucket="project-hero-images"
                   label="Banner Image"
                 />

@@ -3,6 +3,9 @@
 import { Card, CardContent } from "@/components/ui/card";
 
 interface ArticleAuthorCardProps {
+  author?: string;
+  date?: string;
+  readTime?: string;
   authorName?: string;
   authorTitle?: string;
 }

@@ -14,15 +14,22 @@ const AlertDialog = ({ children }: { children: React.ReactNode }) => <>{children
 
 const AlertDialogTrigger = React.forwardRef<
   HTMLButtonElement,
-  React.ButtonHTMLAttributes<HTMLButtonElement>
->(({ className, ...props }, ref) => (
-  <button
-    ref={ref}
-    className={cn(buttonVariants(), className)}
-    type={props.type ?? "button"}
-    {...props}
-  />
-))
+  React.ButtonHTMLAttributes<HTMLButtonElement> & { asChild?: boolean }
+>(({ className, asChild, children, ...props }, ref) => {
+  if (asChild && React.isValidElement(children)) {
+    return React.cloneElement(children, { ...props, ref } as any);
+  }
+  return (
+    <button
+      ref={ref}
+      className={cn(buttonVariants(), className)}
+      type={props.type ?? "button"}
+      {...props}
+    >
+      {children}
+    </button>
+  );
+})
 AlertDialogTrigger.displayName = "AlertDialogTrigger"
 
 const AlertDialogPortal = ({ children }: { children: React.ReactNode }) => <>{children}</>

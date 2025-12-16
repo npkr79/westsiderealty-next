@@ -127,7 +127,12 @@ export default async function ProjectsHubPage({ params, searchParams }: PageProp
     console.error("Error fetching projects:", error);
   }
 
-  const projects = (data || []) as Project[];
+  // Transform data: Supabase joins return arrays, but we need single objects
+  const projects = ((data || []) as any[]).map(item => ({
+    ...item,
+    micro_market: Array.isArray(item.micro_market) ? item.micro_market[0] : item.micro_market,
+    developer: Array.isArray(item.developer) ? item.developer[0] : item.developer,
+  })) as Project[];
 
   const breadcrumbItems = [
     { label: "Home", href: "/" },

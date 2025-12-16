@@ -10,8 +10,8 @@ export interface SimpleUploadedImage {
 }
 
 interface ImageUploadSectionProps {
-  uploadedImages: SimpleUploadedImage[];
-  setUploadedImages: (images: SimpleUploadedImage[]) => void;
+  uploadedImages: SimpleUploadedImage[] | any[];
+  setUploadedImages: (images: SimpleUploadedImage[] | any[]) => void;
   existingImages?: string[];
   onExistingImageRemove?: (url: string) => void;
   onCoverImageChange?: (url: string) => void;
@@ -37,7 +37,11 @@ export default function ImageUploadSection({
       const url = URL.createObjectURL(file);
       newImages.push({ url, name: file.name });
     });
-    setUploadedImages([...uploadedImages, ...newImages]);
+    // Normalize uploadedImages to SimpleUploadedImage format
+    const normalized = uploadedImages.map((img: any) => 
+      img.url ? { url: img.url, name: img.name } : img
+    );
+    setUploadedImages([...normalized, ...newImages]);
   };
 
   const handleRemoveExisting = (url: string) => {
@@ -45,7 +49,14 @@ export default function ImageUploadSection({
   };
 
   const handleRemoveUploaded = (url: string) => {
-    setUploadedImages(uploadedImages.filter((img) => img.url !== url));
+    // Normalize and filter
+    const normalized = uploadedImages.map((img: any) => 
+      img.url ? { url: img.url, name: img.name } : img
+    );
+    setUploadedImages(normalized.filter((img: any) => {
+      const imgUrl = img.url || img.preview || img.id;
+      return imgUrl !== url;
+    }));
   };
 
   const allExisting = existingImages || [];

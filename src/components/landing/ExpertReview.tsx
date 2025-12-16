@@ -7,6 +7,7 @@ interface ExpertReviewProps {
   expertName?: string;
   designation?: string;
   review?: string;
+  projectName?: string;
 }
 
 export default function ExpertReview({

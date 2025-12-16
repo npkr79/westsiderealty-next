@@ -4,7 +4,12 @@ import ContactForm from "@/components/ContactForm";
 import { X } from "lucide-react";
 import { useState } from "react";
 
-export default function FloatingLeadCapture() {
+interface FloatingLeadCaptureProps {
+  landingPageId?: string;
+  brochureUrl?: string | null;
+}
+
+export default function FloatingLeadCapture({ landingPageId, brochureUrl }: FloatingLeadCaptureProps = {}) {
   const [open, setOpen] = useState(false);
 
   return (

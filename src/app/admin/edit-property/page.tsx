@@ -113,7 +113,7 @@ const EditProperty = () => {
   };
 
   const handleInputChange = (field: string, value: any) => {
-    setProperty(prev => ({ ...prev, [field]: value }));
+    setProperty((prev: any) => ({ ...prev, [field]: value }));
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, isMain: boolean = false) => {
@@ -165,14 +165,14 @@ const EditProperty = () => {
 
   const removeGalleryImage = (index: number) => {
     const currentGallery = property.image_gallery_urls || [];
-    const newGallery = currentGallery.filter((_, i) => i !== index);
+    const newGallery = currentGallery.filter((_: any, i: number) => i !== index);
     handleInputChange('image_gallery_urls', newGallery);
   };
 
   const handleAmenityToggle = (amenity: string) => {
     const currentAmenities = property.amenities || [];
     const newAmenities = currentAmenities.includes(amenity)
-      ? currentAmenities.filter(a => a !== amenity)
+      ? currentAmenities.filter((a: any) => a !== amenity)
       : [...currentAmenities, amenity];
     handleInputChange('amenities', newAmenities);
   };
@@ -640,7 +640,7 @@ const EditProperty = () => {
                 <Label>Gallery Images</Label>
                 <div className="mt-2 space-y-3">
                   <div className="grid grid-cols-3 gap-3">
-                    {(property.image_gallery_urls || []).map((url, index) => (
+                    {(property.image_gallery_urls || []).map((url: any, index: number) => (
                       <div key={index} className="relative group">
                         <img 
                           src={url} 

@@ -1,6 +1,8 @@
 "use client";
 
 interface UltraLuxuryContentBlockProps {
+  block?: any;
+  isUltraLuxury?: boolean;
   title?: string;
   subtitle?: string;
   bullets?: string[];

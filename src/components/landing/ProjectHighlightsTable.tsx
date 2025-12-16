@@ -4,8 +4,8 @@ interface ProjectHighlightsTableProps {
   projectType?: string;
   landArea?: string;
   bhkConfig?: string;
-  minSize?: number;
-  maxSize?: number;
+  minSize?: number | undefined;
+  maxSize?: number | undefined;
   possessionDate?: string;
   reraNumber?: string;
 }

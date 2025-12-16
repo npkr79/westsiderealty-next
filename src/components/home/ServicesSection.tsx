@@ -2,7 +2,11 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-export default function ServicesSection() {
+interface ServicesSectionProps {
+  services?: any[];
+}
+
+export default function ServicesSection({ services }: ServicesSectionProps = {}) {
   const services = [
     {
       title: "Hyderabad Resale Advisory",

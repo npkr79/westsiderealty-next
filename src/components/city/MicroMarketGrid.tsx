@@ -17,13 +17,13 @@ export default function MicroMarketGrid({ microMarkets, citySlug }: MicroMarketG
           Prime Micro-Markets in {citySlug.charAt(0).toUpperCase() + citySlug.slice(1)}
         </h2>
         <div className="grid gap-6 md:grid-cols-3">
-          {microMarkets.map((mm) => (
-            <Card key={mm.id} className="hover:shadow-lg transition-shadow">
+          {microMarkets.map((mm, index) => (
+            <Card key={mm.url_slug || index} className="hover:shadow-lg transition-shadow">
               <CardHeader>
                 <CardTitle>{mm.micro_market_name}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2 text-sm text-muted-foreground">
-                {mm.short_description && <p>{mm.short_description}</p>}
+                {mm.hero_hook && <p>{mm.hero_hook}</p>}
                 <Link
                   href={`/${citySlug}/${mm.url_slug}`}
                   className="text-primary font-medium hover:underline"

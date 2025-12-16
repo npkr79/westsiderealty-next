@@ -2,7 +2,10 @@
 
 interface StatItem {
   label: string;
-  value: string;
+  value?: string;
+  number?: string;
+  description?: string;
+  icon?: any;
 }
 
 const DEFAULT_STATS: StatItem[] = [
@@ -17,8 +20,11 @@ export default function StatsSection({ stats = DEFAULT_STATS }: { stats?: StatIt
       <div className="container mx-auto max-w-4xl px-4 grid grid-cols-1 gap-6 md:grid-cols-3">
         {stats.map((stat, idx) => (
           <div key={idx} className="text-center">
-            <p className="text-3xl font-bold text-primary">{stat.value}</p>
+            <p className="text-3xl font-bold text-primary">{stat.value || stat.number || ""}</p>
             <p className="text-sm text-muted-foreground mt-1">{stat.label}</p>
+            {stat.description && (
+              <p className="text-xs text-muted-foreground mt-1">{stat.description}</p>
+            )}
           </div>
         ))}
       </div>

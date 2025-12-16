@@ -284,7 +284,12 @@ export default function ProjectEditor() {
 
               <ImageUploader
                 value={formData.hero_image_url}
-                onChange={(url) => setFormData(prev => ({ ...prev, hero_image_url: url }))}
+                onChange={(urlOrFile) => {
+                  const url = urlOrFile instanceof File 
+                    ? URL.createObjectURL(urlOrFile) 
+                    : (urlOrFile || '');
+                  setFormData(prev => ({ ...prev, hero_image_url: url }));
+                }}
                 bucket="project-hero-images"
                 label="Hero Image"
               />

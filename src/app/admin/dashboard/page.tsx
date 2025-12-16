@@ -176,7 +176,7 @@ const AdminDashboard = () => {
 
       {/* Add Agent Modal */}
       <AddAgentModal 
-        isOpen={isAddAgentModalOpen} 
+        open={isAddAgentModalOpen} 
         onClose={() => setIsAddAgentModalOpen(false)} 
       />
     </div>

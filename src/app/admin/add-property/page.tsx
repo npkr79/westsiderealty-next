@@ -527,8 +527,18 @@ export default function AddProperty() {
 
         {/* Image Upload */}
         <ImageUploadSection
-          uploadedImages={uploadedImages}
-          setUploadedImages={setUploadedImages}
+          uploadedImages={uploadedImages.map(img => ({ url: img.preview || img.url || '', name: img.file?.name }))}
+          setUploadedImages={(images) => {
+            // Convert SimpleUploadedImage[] back to UploadedImage[]
+            const converted = images.map((img: any) => ({
+              id: img.id || Math.random().toString(36),
+              file: img.file || null,
+              preview: img.url,
+              url: img.url,
+              name: img.name || img.file?.name || 'image',
+            }));
+            setUploadedImages(converted);
+          }}
           existingImages={[]}
           onExistingImageRemove={() => {}}
           onCoverImageChange={setCoverImage}

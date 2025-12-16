@@ -3,12 +3,14 @@
 import { Badge } from "@/components/ui/badge";
 
 interface ArticleHeroProps {
+  image?: string | null;
   title: string;
   category?: string;
   date?: string;
+  excerpt?: string;
 }
 
-export default function ArticleHero({ title, category, date }: ArticleHeroProps) {
+export default function ArticleHero({ title, category, date, image, excerpt }: ArticleHeroProps) {
   return (
     <section className="py-10 border-b border-border bg-background">
       <div className="container mx-auto max-w-3xl px-4 space-y-3">

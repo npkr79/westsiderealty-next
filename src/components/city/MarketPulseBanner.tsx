@@ -29,8 +29,8 @@ export default function MarketPulseBanner({
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {microMarkets.slice(0, 4).map((mm) => (
-            <Badge key={mm.id} variant="outline" className="flex items-center gap-1">
+          {microMarkets.slice(0, 4).map((mm, index) => (
+            <Badge key={mm.url_slug || index} variant="outline" className="flex items-center gap-1">
               <MapPin className="h-3 w-3" />
               {mm.micro_market_name}
             </Badge>

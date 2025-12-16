@@ -1,22 +1,66 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface ImageLightboxProps {
   images: string[];
+  isOpen?: boolean;
+  onClose?: () => void;
+  initialIndex?: number;
 }
 
-export default function ImageLightbox({ images }: ImageLightboxProps) {
-  const [open, setOpen] = useState(false);
-  const [activeIndex, setActiveIndex] = useState(0);
+export default function ImageLightbox({ images, isOpen: controlledOpen, onClose, initialIndex = 0 }: ImageLightboxProps) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(initialIndex);
+
+  // Use controlled mode if isOpen is provided, otherwise use internal state
+  const isOpen = controlledOpen !== undefined ? controlledOpen : internalOpen;
+  const handleClose = () => {
+    if (controlledOpen !== undefined) {
+      onClose?.();
+    } else {
+      setInternalOpen(false);
+    }
+  };
+
+  // Update active index when initialIndex changes
+  useEffect(() => {
+    if (initialIndex !== undefined) {
+      setActiveIndex(initialIndex);
+    }
+  }, [initialIndex]);
 
   if (!images || images.length === 0) return null;
 
   const openAt = (index: number) => {
     setActiveIndex(index);
-    setOpen(true);
+    if (controlledOpen === undefined) {
+      setInternalOpen(true);
+    }
   };
 
+  // If controlled mode, only show the lightbox overlay
+  if (controlledOpen !== undefined) {
+    if (!isOpen) return null;
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
+        <button
+          type="button"
+          className="absolute inset-0"
+          onClick={handleClose}
+        />
+        <div className="relative max-h-[90vh] max-w-5xl">
+          <img
+            src={images[activeIndex]}
+            alt={`Gallery image ${activeIndex + 1}`}
+            className="max-h-[90vh] max-w-full rounded-lg object-contain"
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // Uncontrolled mode - show gallery grid and lightbox
   return (
     <>
       <div className="grid gap-2 md:grid-cols-3">
@@ -36,12 +80,12 @@ export default function ImageLightbox({ images }: ImageLightboxProps) {
         ))}
       </div>
 
-      {open && (
+      {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
           <button
             type="button"
             className="absolute inset-0"
-            onClick={() => setOpen(false)}
+            onClick={handleClose}
           />
           <div className="relative max-h-[90vh] max-w-5xl">
             <img

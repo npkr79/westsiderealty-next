@@ -7,12 +7,16 @@ interface JSONEditorProps {
   label: string;
   value?: unknown;
   onChange?: (val: unknown) => void;
+  description?: string;
 }
 
-export function JSONEditor({ label, value, onChange }: JSONEditorProps) {
+export function JSONEditor({ label, value, onChange, description }: JSONEditorProps) {
   return (
     <div className="space-y-2">
       <Label>{label}</Label>
+      {description && (
+        <p className="text-xs text-muted-foreground">{description}</p>
+      )}
       <Textarea
         rows={6}
         className="font-mono text-xs"

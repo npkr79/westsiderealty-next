@@ -41,7 +41,7 @@ export function buildMetadata({
     openGraph: {
       title,
       description,
-      type,
+      type: (type as "article" | "website" | "profile" | undefined) || "website",
       siteName,
       url: canonicalUrl ?? BASE_URL,
       images: imageUrl ? [{ url: imageUrl }] : undefined,

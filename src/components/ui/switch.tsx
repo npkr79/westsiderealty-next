@@ -8,8 +8,15 @@ import { cn } from "@/lib/utils"
  */
 const Switch = React.forwardRef<
   HTMLButtonElement,
-  React.ButtonHTMLAttributes<HTMLButtonElement> & { checked?: boolean }
->(({ className, checked = false, onClick, ...props }, ref) => {
+  React.ButtonHTMLAttributes<HTMLButtonElement> & { checked?: boolean; onCheckedChange?: (checked: boolean) => void }
+>(({ className, checked = false, onClick, onCheckedChange, ...props }, ref) => {
+  const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    if (onCheckedChange) {
+      onCheckedChange(!checked);
+    }
+    onClick?.(e);
+  };
+
   return (
     <button
       ref={ref}
@@ -20,7 +27,7 @@ const Switch = React.forwardRef<
         checked ? "bg-primary" : "bg-input",
         className
       )}
-      onClick={onClick}
+      onClick={handleClick}
       {...props}
     >
       <span

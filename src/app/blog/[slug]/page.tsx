@@ -119,7 +119,7 @@ const ArticleDetailPage = ({
           setSelectedArticle(article);
         } else {
           // Fallback: try by ID in articles
-          article = articles.find((a) => String(a.id) === String(param));
+          article = articles.find((a) => String(a.id) === String(param)) || null;
           if (article) {
             router.replace(`/blog/${article.slug}`);
           } else {
@@ -177,35 +177,8 @@ const ArticleDetailPage = ({
   
   return (
     <>
-      <Helmet>
-        <title>{selectedArticle.seo_title || selectedArticle.title} | RE/MAX Westside Realty Blog</title>
-        <meta name="description" content={selectedArticle.seo_description || selectedArticle.description.substring(0, 160)} />
-        <meta name="keywords" content={`real estate blog, ${selectedArticle.category}, property insights`} />
-        
-        {/* Open Graph */}
-        <meta property="og:title" content={selectedArticle.title} />
-        <meta property="og:description" content={selectedArticle.seo_description || selectedArticle.description.substring(0, 160)} />
-        <meta property="og:image" content={ogImage} />
-        <meta property="og:url" content={canonicalUrl} />
-        <meta property="og:type" content="article" />
-        <meta property="og:site_name" content="RE/MAX Westside Realty" />
-        <meta property="article:published_time" content={selectedArticle.date} />
-        <meta property="article:author" content={selectedArticle.author || "RE/MAX Westside Realty Team"} />
-        
-        {/* Twitter Card */}
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content={selectedArticle.title} />
-        <meta name="twitter:description" content={selectedArticle.seo_description || selectedArticle.description.substring(0, 160)} />
-        <meta name="twitter:image" content={ogImage} />
-        
-        {/* Canonical */}
-        <link rel="canonical" href={canonicalUrl} />
-        
-        {/* JSON-LD Structured Data */}
-        <script type="application/ld+json">
-          {JSON.stringify(articleSchema)}
-        </script>
-      </Helmet>
+      {/* Note: SEO metadata should be handled via generateMetadata in server components */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }} />
       
       <ReadingProgressBar />
       <ArticleHero
@@ -281,7 +254,7 @@ const ArticleDetailPage = ({
                   .map(relatedArticle => (
                     <li key={relatedArticle.id}>
                       <Link 
-                        to={`/blog/${relatedArticle.slug}`}
+                        href={`/blog/${relatedArticle.slug}`}
                         className="text-remax-red hover:underline font-semibold flex items-center"
                       >
                         <ArrowRight className="h-4 w-4 mr-2" />
@@ -303,7 +276,7 @@ const ArticleDetailPage = ({
             </p>
             {articles.find(a => a.topic_cluster === selectedArticle.topic_cluster && a.is_pillar_article) && (
               <Link 
-                to={`/blog/${articles.find(a => a.topic_cluster === selectedArticle.topic_cluster && a.is_pillar_article)?.slug}`}
+                href={`/blog/${articles.find(a => a.topic_cluster === selectedArticle.topic_cluster && a.is_pillar_article)?.slug}`}
                 className="text-remax-red hover:underline font-semibold inline-flex items-center"
               >
                 Read the Complete Guide to {selectedArticle.topic_cluster}

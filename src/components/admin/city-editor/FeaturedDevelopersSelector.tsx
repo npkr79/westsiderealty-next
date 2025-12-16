@@ -1,25 +1,27 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { developerService } from "@/services/developerService";
+import { developersHubService } from "@/services/developersHubService";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 
 interface FeaturedDevelopersSelectorProps {
   value?: string[];
   onChange?: (ids: string[]) => void;
+  cityId?: string;
 }
 
 export function FeaturedDevelopersSelector({
   value = [],
   onChange,
+  cityId,
 }: FeaturedDevelopersSelectorProps) {
   const [developers, setDevelopers] = useState<{ id: string; developer_name: string }[]>([]);
 
   useEffect(() => {
     const load = async () => {
-      const data = await developerService.getDevelopers?.();
-      setDevelopers(data || []);
+      const data = await developersHubService.getDevelopers();
+      setDevelopers(data.map((d: any) => ({ id: d.id, developer_name: d.developer_name })) || []);
     };
     load();
   }, []);

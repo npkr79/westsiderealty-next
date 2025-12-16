@@ -298,8 +298,17 @@ export default function EditProperty() {
           />
 
           <ImageUploadSection
-            uploadedImages={uploadedImages}
-            setUploadedImages={setUploadedImages}
+            uploadedImages={uploadedImages.map(img => ({ url: img.preview || img.url || '', name: img.file?.name }))}
+            setUploadedImages={(images) => {
+              const converted = images.map((img: any) => ({
+                id: img.id || Math.random().toString(36),
+                file: img.file || null,
+                preview: img.url,
+                url: img.url,
+                name: img.name || img.file?.name || 'image',
+              }));
+              setUploadedImages(converted);
+            }}
             existingImages={existingImages}
             onExistingImageRemove={handleExistingImageRemove}
             onCoverImageChange={setCoverImage}

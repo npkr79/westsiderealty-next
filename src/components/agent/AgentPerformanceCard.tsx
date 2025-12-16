@@ -3,12 +3,14 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface AgentPerformanceCardProps {
+  agent?: { id: string; name: string };
   totalListings?: number;
   activeLeads?: number;
   closedDeals?: number;
 }
 
 export default function AgentPerformanceCard({
+  agent,
   totalListings = 0,
   activeLeads = 0,
   closedDeals = 0,

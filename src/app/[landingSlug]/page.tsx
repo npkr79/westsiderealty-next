@@ -455,8 +455,8 @@ const LandingPageComponent = () => {
           projectType="Luxury High-Rise Apartments"
           landArea={landingPage.project_land_area}
           bhkConfig={configurations.map(c => c.unit_type).join(', ')}
-          minSize={configurations.length > 0 ? Math.min(...configurations.map(c => c.size_min)) : undefined}
-          maxSize={configurations.length > 0 ? Math.max(...configurations.map(c => c.size_max || c.size_min)) : undefined}
+          minSize={configurations.length > 0 ? Math.min(...configurations.map(c => c.size_min).filter((s): s is number => typeof s === 'number' && !isNaN(s))) : undefined}
+          maxSize={configurations.length > 0 ? Math.max(...configurations.map(c => c.size_max || c.size_min).filter((s): s is number => typeof s === 'number' && !isNaN(s))) : undefined}
           possessionDate="July 2030"
           reraNumber={landingPage.rera_number}
         />

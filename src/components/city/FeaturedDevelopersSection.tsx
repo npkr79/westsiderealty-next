@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { developerService } from "@/services/developerService";
+import { developersHubService } from "@/services/developersHubService";
 import Link from "next/link";
 
 interface FeaturedDevelopersSectionProps {
@@ -11,7 +11,7 @@ export default async function FeaturedDevelopersSection({
   cityId,
   cityName,
 }: FeaturedDevelopersSectionProps) {
-  const developers = await developerService.getDevelopersByCity?.(cityId);
+  const developers = await developersHubService.getDevelopers({ cityFocus: cityName });
   const items = developers || [];
 
   if (!items || items.length === 0) return null;
