@@ -26,7 +26,11 @@ const truncateText = (text: string, maxLength = 140) => {
 };
 
 const DeveloperPage = () => {
-  const { slug, citySlug } = useParams<{ slug: string; citySlug?: string }>();
+  const params = useParams<{ slug?: string | string[]; citySlug?: string | string[] }>();
+  const slugParam = params.slug;
+  const citySlugParam = params.citySlug;
+  const slug = Array.isArray(slugParam) ? slugParam[0] : slugParam;
+  const citySlug = Array.isArray(citySlugParam) ? citySlugParam[0] : citySlugParam;
   const [developer, setDeveloper] = useState<Developer | null>(null);
   const [loading, setLoading] = useState(true);
 

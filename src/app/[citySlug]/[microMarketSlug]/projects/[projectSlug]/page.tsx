@@ -41,7 +41,10 @@ import LocationHighlightsCard from "@/components/project-details/LocationHighlig
 import BottomLeadFormSection from "@/components/project-details/BottomLeadFormSection";
 
 export default function ProjectDetailPage() {
-  const { citySlug, microMarketSlug, projectSlug } = useParams();
+  const params = useParams();
+  const citySlug = Array.isArray(params.citySlug) ? params.citySlug[0] : params.citySlug;
+  const microMarketSlug = Array.isArray(params.microMarketSlug) ? params.microMarketSlug[0] : params.microMarketSlug;
+  const projectSlug = Array.isArray(params.projectSlug) ? params.projectSlug[0] : params.projectSlug;
   const [project, setProject] = useState<ProjectWithRelations | null>(null);
   const [listings, setListings] = useState<HyderabadProperty[]>([]);
   const [loading, setLoading] = useState(true);

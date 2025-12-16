@@ -26,7 +26,9 @@ interface Developer {
 }
 
 export default function CityDevelopersPage() {
-  const { citySlug } = useParams<{ citySlug: string }>();
+  const params = useParams<{ citySlug?: string | string[] }>();
+  const citySlugParam = params.citySlug;
+  const citySlug = Array.isArray(citySlugParam) ? citySlugParam[0] : citySlugParam;
   const supabase = createClient();
   const [city, setCity] = useState<CityInfo | null>(null);
   const [developers, setDevelopers] = useState<Developer[]>([]);

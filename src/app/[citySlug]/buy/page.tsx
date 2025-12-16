@@ -13,7 +13,8 @@ interface PageProps {
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const { citySlug } = await params;
+  const { citySlug: citySlugParam } = await params;
+  const citySlug = Array.isArray(citySlugParam) ? citySlugParam[0] : citySlugParam;
   const config = CITY_CONFIGS[citySlug as CitySlug];
 
   if (!config) {
@@ -53,7 +54,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 }
 
 export default async function BuyPage({ params }: PageProps) {
-  const { citySlug } = await params;
+  const { citySlug: citySlugParam } = await params;
+  const citySlug = Array.isArray(citySlugParam) ? citySlugParam[0] : citySlugParam;
   const config = CITY_CONFIGS[citySlug as CitySlug];
 
   // Return 404 for unknown cities

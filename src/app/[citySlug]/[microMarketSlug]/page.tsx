@@ -90,7 +90,9 @@ const getFaqSchemaJsonString = (pageData: MicroMarketPage | null): string => {
 };
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const { citySlug, microMarketSlug } = await params;
+  const { citySlug: citySlugParam, microMarketSlug: microMarketSlugParam } = await params;
+  const citySlug = Array.isArray(citySlugParam) ? citySlugParam[0] : citySlugParam;
+  const microMarketSlug = Array.isArray(microMarketSlugParam) ? microMarketSlugParam[0] : microMarketSlugParam;
   const pageData = await microMarketPagesService.getMicroMarketPageBySlug(microMarketSlug);
 
   if (!pageData) {
@@ -137,7 +139,9 @@ export async function generateStaticParams() {
 }
 
 export default async function MicroMarketPage({ params }: PageProps) {
-  const { citySlug, microMarketSlug } = await params;
+  const { citySlug: citySlugParam, microMarketSlug: microMarketSlugParam } = await params;
+  const citySlug = Array.isArray(citySlugParam) ? citySlugParam[0] : citySlugParam;
+  const microMarketSlug = Array.isArray(microMarketSlugParam) ? microMarketSlugParam[0] : microMarketSlugParam;
 
   const pageData = await microMarketPagesService.getMicroMarketPageBySlug(microMarketSlug);
 

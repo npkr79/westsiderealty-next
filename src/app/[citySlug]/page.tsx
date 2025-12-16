@@ -34,7 +34,8 @@ interface PageProps {
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const { citySlug } = await params;
+  const { citySlug: citySlugParam } = await params;
+  const citySlug = Array.isArray(citySlugParam) ? citySlugParam[0] : citySlugParam;
   const city = await cityService.getCityBySlug(citySlug);
 
   if (!city) {
@@ -65,7 +66,8 @@ export async function generateStaticParams() {
 }
 
 export default async function CityPage({ params }: PageProps) {
-  const { citySlug } = await params;
+  const { citySlug: citySlugParam } = await params;
+  const citySlug = Array.isArray(citySlugParam) ? citySlugParam[0] : citySlugParam;
   const slug = citySlug || "hyderabad";
 
   const city = await cityService.getCityBySlug(slug);

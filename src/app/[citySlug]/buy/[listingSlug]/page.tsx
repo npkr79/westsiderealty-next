@@ -26,8 +26,11 @@ type PropertyType = HyderabadProperty | GoaProperty | DubaiProperty;
 type LocationType = 'hyderabad' | 'goa' | 'dubai';
 
  const PropertyDetailsPage = () => {
-   const params = useParams<{ slug: string }>();
-   const slug = params.slug;
+   const params = useParams<{ slug?: string | string[]; citySlug?: string | string[] }>();
+   const slugParam = params.slug;
+   const citySlugParam = params.citySlug;
+   const slug = Array.isArray(slugParam) ? slugParam[0] : slugParam;
+   const citySlug = Array.isArray(citySlugParam) ? citySlugParam[0] : citySlugParam;
    const router = useRouter();
    const pathname = usePathname();
   const [property, setProperty] = useState<PropertyType | null>(null);

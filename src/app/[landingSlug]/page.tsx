@@ -86,7 +86,11 @@ const LOCATION_ICON_MAP: Record<string, any> = {
 };
 
 const LandingPageComponent = () => {
-  const { uri, slug } = useParams<{ uri?: string; slug?: string }>();
+  const params = useParams<{ uri?: string | string[]; slug?: string | string[] }>();
+  const uriParam = params.uri;
+  const slugParam = params.slug;
+  const uri = Array.isArray(uriParam) ? uriParam[0] : uriParam;
+  const slug = Array.isArray(slugParam) ? slugParam[0] : slugParam;
   const pageUri = uri || slug; // Support both param names for flexibility
   const [landingPage, setLandingPage] = useState<LandingPage | null>(null);
   const [images, setImages] = useState<LandingPageImage[]>([]);

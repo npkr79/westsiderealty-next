@@ -17,7 +17,8 @@ interface PageProps {
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const { citySlug } = await params;
+  const { citySlug: citySlugParam } = await params;
+  const citySlug = Array.isArray(citySlugParam) ? citySlugParam[0] : citySlugParam;
   const supabase = await createClient();
   
   const { data: city } = await supabase
@@ -62,7 +63,8 @@ interface City {
 }
 
 export default async function MicroMarketsHubPage({ params }: PageProps) {
-  const { citySlug } = await params;
+  const { citySlug: citySlugParam } = await params;
+  const citySlug = Array.isArray(citySlugParam) ? citySlugParam[0] : citySlugParam;
   const supabase = await createClient();
 
   // Fetch city info
