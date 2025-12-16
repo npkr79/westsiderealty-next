@@ -1,3 +1,5 @@
+ "use client";
+
 import { Metadata } from "next";
 import { buildMetadata } from "@/components/common/SEO";
 import RegisterPage from "@/components/pages/RegisterPage";
@@ -19,13 +21,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Home, Eye, EyeOff, Upload } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
 const Register = () => {
   const { signUp } = useAuth();
-  const navigate = useNavigate();
+  const router = useRouter();
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -76,7 +79,7 @@ const Register = () => {
         console.error("Registration error:", error);
       } else {
         toast.success("Registration successful! Please sign in.");
-        navigate("/login");
+      router.push("/login");
       }
     } catch (error) {
       console.error("Registration error:", error);

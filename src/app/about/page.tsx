@@ -92,7 +92,7 @@ import {
   Star,
   Clock
 } from "lucide-react";
-import { Link } from "react-router-dom";
+import Link from "next/link";
 import FooterSection from "@/components/home/FooterSection";
 import { siteImagesService, locationSettingsService } from "@/services/adminService";
 import { convertYouTubeToEmbed } from "@/utils/urlConverters";

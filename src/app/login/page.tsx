@@ -1,18 +1,7 @@
-import { Metadata } from "next";
-import { buildMetadata } from "@/components/common/SEO";
-import LoginPage from "@/components/pages/LoginPage";
+ "use client";
 
-export const metadata: Metadata = buildMetadata({
-  title: "Login | RE/MAX Westside Realty",
-  description: "Sign in to manage your RE/MAX Westside Realty account.",
-  canonicalUrl: "https://www.westsiderealty.in/login",
-});
-
-export default function Page() {
-  return <LoginPage />;
-}
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -22,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
 const Login = () => {
-  const navigate = useNavigate();
+  const router = useRouter();
   const { signIn, signInWithPhone, user, isAdmin, isAgent, isLoading } = useAuth();
   
   // Admin login state
@@ -39,12 +28,12 @@ const Login = () => {
   useEffect(() => {
     if (!isLoading && user) {
       if (isAdmin) {
-        navigate("/admin", { replace: true });
+        router.replace("/admin");
       } else if (isAgent) {
-        navigate("/agent/dashboard", { replace: true });
+        router.replace("/agent/dashboard");
       }
     }
-  }, [user, isAdmin, isAgent, isLoading, navigate]);
+  }, [user, isAdmin, isAgent, isLoading, router]);
 
   const handleAdminLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,7 +49,7 @@ const Login = () => {
       });
     } else {
       toast.success("Login successful");
-      navigate("/admin", { replace: true });
+      router.replace("/admin");
     }
 
     setLoading(false);
@@ -94,7 +83,7 @@ const Login = () => {
       toast.success("Login successful", {
         description: "Welcome! Redirecting to your dashboard..."
       });
-      navigate("/agent/dashboard", { replace: true });
+      router.replace("/agent/dashboard");
     }
 
     setLoading(false);
