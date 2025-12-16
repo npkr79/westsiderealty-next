@@ -1,5 +1,8 @@
+ "use client";
+
 import { useState, useEffect } from "react";
-import { useParams, useNavigate, Link, useSearchParams } from "react-router-dom";
+import Link from "next/link";
+import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,10 +20,11 @@ import { LocationDetails } from "@/types/locationDetails";
 import RichTextEditor from "@/components/property/RichTextEditor";
 
 const EditProperty = () => {
-  const { id } = useParams();
+  const params = useParams();
+  const id = typeof params?.id === "string" ? params.id : undefined;
   console.log('🔥 ADMIN EditProperty loaded with ID:', id);
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [property, setProperty] = useState<any>({});
@@ -38,7 +42,7 @@ const EditProperty = () => {
   useEffect(() => {
     if (propertyLocation === 'goa') {
       toast.info('Goa properties use the new editor. Redirecting...');
-      navigate('/admin/properties');
+      router.push('/admin/properties');
     }
   }, [propertyLocation, navigate]);
 
@@ -98,7 +102,7 @@ const EditProperty = () => {
         fetchProjects(detectedLocation);
       } else {
         toast.error('Property not found');
-        navigate('/admin/properties');
+        router.push('/admin/properties');
       }
     } catch (error) {
       console.error('Error loading property:', error);
@@ -244,7 +248,7 @@ const EditProperty = () => {
       }
 
       toast.success('Property updated successfully');
-      navigate('/admin/properties');
+      router.push('/admin/properties');
     } catch (error: any) {
       console.error('❌❌❌ ERROR UPDATING PROPERTY ❌❌❌');
       console.error('Error object:', error);
@@ -718,7 +722,7 @@ const EditProperty = () => {
             <Button
               type="button"
               variant="outline"
-              onClick={() => navigate('/admin/properties')}
+              onClick={() => router.push('/admin/properties')}
             >
               Cancel
             </Button>

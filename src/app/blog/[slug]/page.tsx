@@ -1,7 +1,8 @@
 
-import { useNavigate } from "react-router-dom";
+ "use client";
+
 import { useEffect, useState } from "react";
-import { Helmet } from "react-helmet";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +12,8 @@ import ArticleHero from "@/components/blog/ArticleHero";
 import ArticleAuthorCard from "@/components/blog/ArticleAuthorCard";
 import ReadingProgressBar from "@/components/blog/ReadingProgressBar";
 import SocialShareButtons from "@/components/common/SocialShareButtons";
-import { Link } from "react-router-dom";
+import Link from "next/link";
+import Head from "next/head";
 
 // RelatedArticles subcomponent
 const RelatedArticles = ({
@@ -70,9 +72,9 @@ const RelatedArticles = ({
 
 // CtaSection subcomponent
 const CtaSection = () => {
-  const navigate = useNavigate();
+  const router = useRouter();
   const handleContactClick = () => {
-    navigate("/contact");
+    router.push("/contact");
   };
   return (
     <section className="bg-remax-red/90 rounded-xl p-8 mb-20 text-white shadow">
@@ -104,7 +106,7 @@ const ArticleDetailPage = ({
   setArticles,
   setIsLoading,
 }: ArticleDetailPageProps) => {
-  const navigate = useNavigate();
+  const router = useRouter();
   const [selectedArticle, setSelectedArticle] = useState<BlogArticle | null>(null);
 
   useEffect(() => {
@@ -120,7 +122,7 @@ const ArticleDetailPage = ({
           // Fallback: try by ID in articles
           article = articles.find((a) => String(a.id) === String(param));
           if (article) {
-            navigate(`/blog/${article.slug}`, { replace: true });
+            router.replace(`/blog/${article.slug}`);
           } else {
             setSelectedArticle(null);
           }

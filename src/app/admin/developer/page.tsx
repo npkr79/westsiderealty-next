@@ -1,5 +1,7 @@
+ "use client";
+
 import { useState, useEffect } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useRouter, useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,8 +13,9 @@ import { toast } from "sonner";
 import { ArrowLeft, Save } from "lucide-react";
 
 export default function DeveloperEditor() {
-  const { id } = useParams();
-  const navigate = useNavigate();
+  const params = useParams();
+  const id = typeof params?.id === "string" ? params.id : undefined;
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   
   const [formData, setFormData] = useState({
@@ -96,7 +99,7 @@ export default function DeveloperEditor() {
         toast.success("Developer created successfully");
       }
 
-      navigate('/admin');
+      router.push('/admin');
     } catch (error) {
       console.error('Error saving developer:', error);
       toast.error("Failed to save developer");
@@ -110,7 +113,7 @@ export default function DeveloperEditor() {
       <div className="max-w-4xl mx-auto">
         <Button
           variant="ghost"
-          onClick={() => navigate('/admin')}
+          onClick={() => router.push('/admin')}
           className="mb-4"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
@@ -257,7 +260,7 @@ export default function DeveloperEditor() {
                   <Save className="mr-2 h-4 w-4" />
                   {loading ? 'Saving...' : 'Save Developer'}
                 </Button>
-                <Button type="button" variant="outline" onClick={() => navigate('/admin')}>
+                <Button type="button" variant="outline" onClick={() => router.push('/admin')}>
                   Cancel
                 </Button>
               </div>

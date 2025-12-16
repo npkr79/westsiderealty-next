@@ -1,5 +1,7 @@
+ "use client";
+
 import { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import ImageLightbox from "@/components/landing/ImageLightbox";
 import { Card, CardContent } from "@/components/ui/card";

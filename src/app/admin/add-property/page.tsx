@@ -1,5 +1,7 @@
+ "use client";
+
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,7 +25,7 @@ import RichTextEditor from "@/components/property/RichTextEditor";
 import AIPropertyDescriptionGenerator from "@/components/property/AIPropertyDescriptionGenerator";
 
 export default function AddProperty() {
-  const navigate = useNavigate();
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>([]);
   const [coverImage, setCoverImage] = useState<string>("");
@@ -191,7 +193,7 @@ export default function AddProperty() {
       }
 
       toast.success("Property created successfully!");
-      navigate("/admin/dashboard");
+      router.push("/admin/dashboard");
     } catch (error) {
       console.error("Error creating property:", error);
       toast.error("Failed to create property");
@@ -205,7 +207,7 @@ export default function AddProperty() {
       <div className="mb-6">
         <Button
           variant="ghost"
-          onClick={() => navigate("/admin/dashboard")}
+          onClick={() => router.push("/admin/dashboard")}
           className="mb-4"
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
@@ -545,7 +547,7 @@ export default function AddProperty() {
           <Button
             type="button"
             variant="outline"
-            onClick={() => navigate("/admin/dashboard")}
+            onClick={() => router.push("/admin/dashboard")}
             disabled={loading}
           >
             Cancel

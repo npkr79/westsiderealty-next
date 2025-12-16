@@ -1,5 +1,7 @@
+ "use client";
+
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useRouter, useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -17,8 +19,9 @@ import { ImageUploader } from "@/components/admin/ImageUploader";
 import RichTextEditor from "@/components/property/RichTextEditor";
 
 export default function CityEditor() {
-  const { id } = useParams();
-  const navigate = useNavigate();
+  const params = useParams();
+  const id = typeof params?.id === "string" ? params.id : undefined;
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   
   const [formData, setFormData] = useState({
@@ -114,7 +117,7 @@ export default function CityEditor() {
         toast.success("City created successfully");
       }
 
-      navigate('/admin');
+      router.push('/admin');
     } catch (error) {
       console.error('Error saving city:', error);
       toast.error("Failed to save city");
@@ -128,7 +131,7 @@ export default function CityEditor() {
       <div className="max-w-4xl mx-auto">
         <Button
           variant="ghost"
-          onClick={() => navigate('/admin')}
+          onClick={() => router.push('/admin')}
           className="mb-4"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
@@ -297,7 +300,7 @@ export default function CityEditor() {
                   <Save className="mr-2 h-4 w-4" />
                   {loading ? 'Saving...' : 'Save City'}
                 </Button>
-                <Button type="button" variant="outline" onClick={() => navigate('/admin')}>
+                <Button type="button" variant="outline" onClick={() => router.push('/admin')}>
                   Cancel
                 </Button>
               </div>

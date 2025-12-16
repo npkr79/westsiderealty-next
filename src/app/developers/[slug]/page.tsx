@@ -1,5 +1,8 @@
+ "use client";
+
 import { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams } from "next/navigation";
+import Link from "next/link";
 import { Helmet } from "react-helmet";
 import { developerService, Developer } from "@/services/developerService";
 import { Building2, Award, MapPin, Globe, Calendar, TrendingUp, User, Clock, MessageSquare, Star } from "lucide-react";
