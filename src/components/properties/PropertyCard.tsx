@@ -13,7 +13,7 @@ interface PropertyCardProps {
 
 export default function PropertyCard({ property, location, viewMode = "grid" }: PropertyCardProps) {
   const href = `/${location}/buy/${property.slug}`;
-  const safeImage = property.mainImageUrl || property.imageGallery[0] || "/placeholder.svg";
+  const safeImage = property.main_image_url || (property.image_gallery && property.image_gallery[0]) || "/placeholder.svg";
 
   return (
     <Link href={href}>
@@ -31,10 +31,12 @@ export default function PropertyCard({ property, location, viewMode = "grid" }: 
           <p className="text-sm text-muted-foreground line-clamp-2">
             {property.location}
           </p>
-          <p className="text-base font-semibold text-primary">{property.priceDisplay}</p>
+          <p className="text-base font-semibold text-primary">
+            {property.price_display || `₹${property.price.toLocaleString()}`}
+          </p>
           {property.bedrooms && (
             <p className="text-xs text-muted-foreground">
-              {property.bedrooms} • {property.areaSqft ? `${property.areaSqft} sq.ft` : "Size on request"}
+              {property.bedrooms} • {property.area_sqft ? `${property.area_sqft} sq.ft` : "Size on request"}
             </p>
           )}
         </CardContent>

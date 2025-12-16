@@ -17,7 +17,7 @@ export default function GoaPropertyCard({
   viewMode = "grid",
 }: GoaPropertyCardProps) {
   const href = `/${location}/buy/${property.slug}`;
-  const image = property.mainImageUrl || property.imageGallery[0] || "/placeholder.svg";
+  const image = property.main_image_url || (property.image_gallery && property.image_gallery[0]) || "/placeholder.svg";
 
   return (
     <Link href={href}>
@@ -38,11 +38,11 @@ export default function GoaPropertyCard({
             {property.location}
           </p>
           <p className="text-base font-semibold text-primary">
-            {property.priceDisplay}
+            {property.price_display || `₹${property.price.toLocaleString()}`}
           </p>
-          {property.rentalYieldMin && property.rentalYieldMax && (
+          {property.rental_yield_min && property.rental_yield_max && (
             <p className="text-xs text-emerald-600">
-              Potential rental yield: {property.rentalYieldMin}%–{property.rentalYieldMax}%
+              Potential rental yield: {property.rental_yield_min}%–{property.rental_yield_max}%
             </p>
           )}
         </CardContent>

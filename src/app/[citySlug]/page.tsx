@@ -6,7 +6,8 @@ import { cityService, CityInfo } from "@/services/cityService";
 import { projectService, ProjectInfo } from "@/services/projectService";
 import { goaHolidayPropertyService } from "@/services/goaHolidayPropertyService";
 import { microMarketService, MicroMarketGridItem } from "@/services/microMarketService";
-import type { GoaHolidayProperty } from "@/types/goaHolidayProperty";
+import { UnifiedPropertyService } from "@/services/unifiedPropertyService";
+import type { UnifiedProperty } from "@/types/unifiedProperty";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArrowRight, TrendingUp, MapPin, Building2 } from "lucide-react";
@@ -78,18 +79,17 @@ export default async function CityPage({ params }: PageProps) {
 
   // Fetch data based on city type
   let featuredProjects: ProjectInfo[] = [];
-  let featuredGoaProperties: GoaHolidayProperty[] = [];
+  let featuredGoaProperties: UnifiedProperty[] = [];
   let microMarkets: MicroMarketGridItem[] = [];
   let totalListings = 0;
 
   // Check if this is Goa city
   if (city.city_name.toLowerCase() === "goa") {
-    // Fetch featured Goa properties
-    const goaProperties = await goaHolidayPropertyService.getProperties({
-      is_featured: true,
-      status: "Active",
-    });
-    featuredGoaProperties = goaProperties.slice(0, 6);
+    // Fetch featured Goa properties using UnifiedPropertyService
+    featuredGoaProperties = await UnifiedPropertyService.getProperties('goa');
+    featuredGoaProperties = featuredGoaProperties
+      .filter(p => p.is_featured)
+      .slice(0, 6);
   } else {
     // Fetch featured projects for other cities
     const projects = await projectService.getProjectsByCity(city.id, true);
