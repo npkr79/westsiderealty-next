@@ -29,8 +29,7 @@ export default function ExpertReview({
               {designation ? ` • ${designation}` : null}
             </p>
           </CardContent>
-        </div>
-      </Card>
+        </Card>
     </section>
   );
 }
