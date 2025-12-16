@@ -1,15 +1,11 @@
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from "@/lib/supabase/server";
+import type { GoaHolidayProperty, GoaHolidayPropertyFilter } from "@/types/goaHolidayProperty";
 
-
-import type { 
-
-const supabase = await createClient();
-  GoaHolidayProperty, 
-  GoaHolidayPropertyFilter 
-} from "@/types/goaHolidayProperty";
+const supabasePromise = createClient();
 
 class GoaHolidayPropertyService {
   async getProperties(filters: GoaHolidayPropertyFilter = {}): Promise<GoaHolidayProperty[]> {
+    const supabase = await supabasePromise;
     let query = supabase
       .from('goa_holiday_properties')
       .select('*')
