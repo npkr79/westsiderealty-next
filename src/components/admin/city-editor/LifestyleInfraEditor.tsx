@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -16,7 +16,13 @@ interface LifestyleInfraEditorProps {
 }
 
 export function LifestyleInfraEditor({ value = [], onChange }: LifestyleInfraEditorProps) {
-  const [items, setItems] = useState<LifestyleSection[]>(value);
+  const [items, setItems] = useState<LifestyleSection[]>(Array.isArray(value) ? value : []);
+
+  useEffect(() => {
+    if (Array.isArray(value)) {
+      setItems(value);
+    }
+  }, [value]);
 
   const updateItem = (index: number, field: keyof LifestyleSection, val: string) => {
     const next = [...items];

@@ -279,7 +279,7 @@ export default function CityEditor() {
               />
 
               <LifestyleInfraEditor
-                value={formData.lifestyle_infrastructure_json}
+                value={Array.isArray(formData.lifestyle_infrastructure_json) ? formData.lifestyle_infrastructure_json : []}
                 onChange={(value) => setFormData(prev => ({ ...prev, lifestyle_infrastructure_json: value }))}
               />
 

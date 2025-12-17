@@ -9,7 +9,7 @@ export default function BuyerPersonasSection({
   personas,
   cityName,
 }: BuyerPersonasSectionProps) {
-  if (!personas || personas.length === 0) return null;
+  if (!Array.isArray(personas) || personas.length === 0) return null;
 
   return (
     <section className="py-16 bg-secondary/5">

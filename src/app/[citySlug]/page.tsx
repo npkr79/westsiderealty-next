@@ -272,7 +272,7 @@ export default async function CityPage({ params }: PageProps) {
       <WhyInvestSection cityName={city.city_name} cityData={city} />
 
       {/* Buyer Personas Section */}
-      {city.buyer_personas_json && (
+      {Array.isArray(city.buyer_personas_json) && city.buyer_personas_json.length > 0 && (
         <BuyerPersonasSection personas={city.buyer_personas_json} cityName={city.city_name} />
       )}
 
@@ -296,7 +296,10 @@ export default async function CityPage({ params }: PageProps) {
       {slug === "hyderabad" && <HyderabadInvestmentGuide />}
 
       {/* Investment Areas Section */}
-      <InvestmentAreasSection cityName={city.city_name} investmentZonesData={city.investment_zones_json} />
+      <InvestmentAreasSection 
+        cityName={city.city_name} 
+        investmentZonesData={Array.isArray(city.investment_zones_json) ? city.investment_zones_json : []} 
+      />
 
       {/* Featured Developers */}
       <FeaturedDevelopersSection cityId={city.id} cityName={city.city_name} />
@@ -358,7 +361,9 @@ export default async function CityPage({ params }: PageProps) {
       )}
 
       {/* FAQs */}
-      <CityFAQSection faqs={faqs} cityName={city.city_name} />
+      {Array.isArray(faqs) && faqs.length > 0 && (
+        <CityFAQSection faqs={faqs} cityName={city.city_name} />
+      )}
 
       <FooterSection />
     </>

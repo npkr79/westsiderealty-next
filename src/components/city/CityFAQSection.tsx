@@ -7,7 +7,7 @@ interface CityFAQSectionProps {
 }
 
 export default function CityFAQSection({ faqs, cityName }: CityFAQSectionProps) {
-  if (!faqs || faqs.length === 0) return null;
+  if (!Array.isArray(faqs) || faqs.length === 0) return null;
 
   return (
     <section className="py-16 bg-background">

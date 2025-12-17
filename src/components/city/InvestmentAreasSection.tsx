@@ -14,7 +14,7 @@ export default function InvestmentAreasSection({
   cityName,
   investmentZonesData,
 }: InvestmentAreasSectionProps) {
-  if (!investmentZonesData || investmentZonesData.length === 0) return null;
+  if (!Array.isArray(investmentZonesData) || investmentZonesData.length === 0) return null;
 
   return (
     <section className="py-16 bg-background">

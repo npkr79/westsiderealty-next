@@ -39,7 +39,10 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { supabaseImageService, UploadedImage } from "@/services/supabaseImageService";
 import { blogService, BlogArticle } from "@/services/blogService";
-import ReactQuill from 'react-quill';
+import dynamic from 'next/dynamic';
+
+// Dynamically import ReactQuill only on client side
+const ReactQuill = dynamic(() => import('react-quill'), { ssr: false });
 import 'react-quill/dist/quill.snow.css';
 import {
   Tabs,
@@ -82,7 +85,6 @@ const BlogManagement = () => {
     author: "Westside Realty Team"
   });
   const { toast } = useToast();
-  const quillRef = useRef<ReactQuill>(null);
 
   const quillModules = {
     toolbar: [
@@ -176,14 +178,15 @@ const BlogManagement = () => {
   };
 
     const handleInsertImage = (url: string) => {
-      const editor = quillRef.current?.getEditor();
-      if (editor) {
-        const range = editor.getSelection();
-        editor.insertEmbed(range ? range.index : 0, "image", url, "user");
-      }
+      // Insert image URL into content
+      const imageHtml = `<img src="${url}" alt="Inserted image" />`;
+      setFormData(prev => ({
+        ...prev,
+        content: prev.content + imageHtml
+      }));
       toast({
         title: "Image Inserted",
-        description: "The image was inserted at the cursor position.",
+        description: "The image URL was added to the content.",
       });
     };
 
@@ -509,7 +512,6 @@ const BlogManagement = () => {
                       </div>
                       <div className="border rounded-lg bg-white">
                         <ReactQuill
-                          ref={quillRef}
                           theme="snow"
                           value={formData.content}
                           onChange={handleContentChange}
