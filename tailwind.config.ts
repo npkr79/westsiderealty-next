@@ -11,7 +11,6 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Core design tokens wired to CSS variables (HSL)
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
         primary: {
@@ -45,7 +44,6 @@ const config: Config = {
           DEFAULT: "hsl(var(--popover))",
           foreground: "hsl(var(--popover-foreground))",
         },
-        // Luxury theme custom colors (HSL variables already defined in globals.css)
         "luxury-gold": "hsl(var(--luxury-gold))",
         "luxury-gold-light": "hsl(var(--luxury-gold-light))",
         "luxury-gold-dark": "hsl(var(--luxury-gold-dark))",
@@ -54,10 +52,8 @@ const config: Config = {
         "luxury-slate": "hsl(var(--luxury-slate))",
         "luxury-cream": "hsl(var(--luxury-cream))",
         "luxury-charcoal": "hsl(var(--luxury-charcoal))",
-        // Heading blue
         "heading-blue": "hsl(var(--heading-blue))",
         "heading-blue-dark": "hsl(var(--heading-blue-dark))",
-        // Brand colors (Lovable SPA exact hex)
         "remax-blue": "#003da5",
         "remax-red": "#e31837",
       },
@@ -65,16 +61,6 @@ const config: Config = {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
-      },
-      boxShadow: {
-        luxury: "var(--shadow-luxury)",
-        elegant: "var(--shadow-elegant)",
-      },
-      backgroundImage: {
-        "gradient-luxury": "var(--gradient-luxury)",
-        "gradient-elegant": "var(--gradient-elegant)",
-        "gradient-subtle": "var(--gradient-subtle)",
-        "gradient-royal": "var(--gradient-royal)",
       },
     },
   },
