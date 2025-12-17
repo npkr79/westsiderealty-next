@@ -496,7 +496,8 @@ export const contentStorageService = {
             throw new Error(`Micro-market not found for project (micro_market_id: ${project.micro_market_id})`);
           }
 
-          const constructedUrl = `/${city.url_slug}/${microMarket.url_slug}/projects/${project.url_slug}`;
+          // Use canonical project URL: /citySlug/projects/projectSlug
+          const constructedUrl = `/${city.url_slug}/projects/${project.url_slug}`;
           console.log('Constructed URL:', constructedUrl);
           console.log('=== End of URL construction ===');
 

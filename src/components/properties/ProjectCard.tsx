@@ -11,11 +11,8 @@ interface ProjectCardProps {
 }
 
 export default function ProjectCard({ project, citySlug }: ProjectCardProps) {
-  // Build correct project URL: /citySlug/microMarketSlug/projects/projectSlug
-  // Always require micro-market slug for proper routing
-  const microMarketSlug = project.micro_market?.url_slug || project.micro_market_slug;
-  
-  if (!microMarketSlug || !project.url_slug) {
+  // Build canonical project URL: /citySlug/projects/projectSlug
+  if (!project.url_slug) {
     // Return a non-clickable card if required data is missing
     return (
       <Card className="h-full overflow-hidden opacity-50">
@@ -30,7 +27,7 @@ export default function ProjectCard({ project, citySlug }: ProjectCardProps) {
     );
   }
   
-  const href = `/${citySlug}/${microMarketSlug}/projects/${project.url_slug}`;
+  const href = `/${citySlug}/projects/${project.url_slug}`;
   
   const image =
     project.hero_image_url ||

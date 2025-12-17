@@ -472,7 +472,7 @@ export default async function MicroMarketPage({ params }: PageProps) {
                           <TableRow key={project.id}>
                             <TableCell>
                               <Link
-                                href={`/${citySlug}/${microMarketSlug}/projects/${project.url_slug}`}
+                                href={`/${citySlug}/projects/${project.url_slug}`}
                                 className="font-medium text-primary underline decoration-primary/50 underline-offset-2 hover:decoration-primary hover:text-primary transition-colors"
                               >
                                 {project.project_name}

@@ -14,10 +14,8 @@ export default function DeveloperProjectCard({
   citySlug,
 }: DeveloperProjectCardProps) {
   const defaultCitySlug = citySlug || project.city_slug || 'hyderabad';
-  const microMarketSlug = project.micro_market?.url_slug || project.micro_market_slug;
-  const projectHref = microMarketSlug
-    ? `/${defaultCitySlug}/${microMarketSlug}/projects/${project.url_slug}`
-    : `/${defaultCitySlug}/projects/${project.url_slug}`;
+  // Use canonical project URL: /citySlug/projects/projectSlug
+  const projectHref = `/${defaultCitySlug}/projects/${project.url_slug}`;
   
   return (
     <Card className="hover:shadow-md transition-shadow">

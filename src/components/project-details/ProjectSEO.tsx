@@ -20,7 +20,8 @@ export default function ProjectSEO({
   microMarketSlug,
   projectSlug,
 }: ProjectSEOProps) {
-  const canonicalUrl = `https://www.westsiderealty.in/${citySlug}/${microMarketSlug ?? "projects"}/${projectSlug}`;
+  // Use canonical project URL: /citySlug/projects/projectSlug
+  const canonicalUrl = `https://www.westsiderealty.in/${citySlug}/projects/${projectSlug}`;
 
   const schema = {
     "@context": "https://schema.org",
