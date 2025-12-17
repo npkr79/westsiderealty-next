@@ -58,26 +58,26 @@ const Header = () => {
         <Link
           href="/"
           className={cn(
-            "flex items-end absolute left-1/2 -translate-x-1/2 lg:static lg:left-auto lg:translate-x-0",
+            "flex items-center absolute left-1/2 -translate-x-1/2 lg:static lg:left-auto lg:translate-x-0",
             "h-16"
           )}
-          style={{ width: "auto" }}
+          style={{ width: "auto", maxWidth: "200px" }}
         >
           {!imgError && headerLogo ? (
             <Image
               src={headerLogo}
               alt="REMAX WR Logo"
-              className="h-16 w-96 object-contain"
-              width={384}
-              height={64}
+              className="h-12 w-auto object-contain max-w-[180px]"
+              width={180}
+              height={48}
               draggable={false}
               onError={() => setImgError(true)}
               data-testid="header-logo"
               priority
             />
           ) : (
-            <span className="text-xl font-bold text-remax-red" data-testid="header-logo-fallback">
-              RE/MAX Westside Realty
+            <span className="text-lg font-bold text-remax-red whitespace-nowrap" data-testid="header-logo-fallback">
+              RE/MAX Westside
             </span>
           )}
         </Link>

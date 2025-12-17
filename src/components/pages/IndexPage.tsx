@@ -17,7 +17,8 @@ import AboutPreviewSection from "@/components/home/AboutPreviewSection";
 import TestimonialsSection from "@/components/home/TestimonialsSection";
 import CtaSection from "@/components/home/CtaSection";
 import FooterSection from "@/components/home/FooterSection";
-import { supabaseTestimonialService, siteImagesService } from "@/services/adminService";
+import { supabaseTestimonialClientService } from "@/services/admin/supabaseTestimonialClientService";
+import { siteImagesService } from "@/services/adminService";
 
 const fallbackImage = "/placeholder.svg";
 
@@ -29,9 +30,15 @@ export default function IndexPage() {
   useEffect(() => {
     const fetchTestimonials = async () => {
       setLoading(true);
-      const result = await supabaseTestimonialService.getTestimonials(true);
-      setTestimonials(result);
-      setLoading(false);
+      try {
+        const result = await supabaseTestimonialClientService.getTestimonials(true);
+        setTestimonials(result);
+      } catch (error) {
+        console.error("Error fetching testimonials:", error);
+        setTestimonials([]);
+      } finally {
+        setLoading(false);
+      }
     };
     fetchTestimonials();
 
