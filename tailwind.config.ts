@@ -59,6 +59,9 @@ const config: Config = {
         // Heading blue
         "heading-blue": "hsl(var(--heading-blue))",
         "heading-blue-dark": "hsl(var(--heading-blue-dark))",
+        // Brand colors (Lovable SPA exact hex)
+        "remax-blue": "#003da5",
+        "remax-red": "#e31837",
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -66,8 +69,8 @@ const config: Config = {
         sm: "calc(var(--radius) - 4px)",
       },
       boxShadow: {
-        "luxury": "var(--shadow-luxury)",
-        "elegant": "var(--shadow-elegant)",
+        luxury: "var(--shadow-luxury)",
+        elegant: "var(--shadow-elegant)",
       },
       backgroundImage: {
         "gradient-luxury": "var(--gradient-luxury)",
