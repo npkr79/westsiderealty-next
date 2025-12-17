@@ -52,7 +52,7 @@ const Header = () => {
   };
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-white">
+    <header className="sticky top-0 z-50 w-full border-b bg-white shadow-sm">
       <div className="container relative flex h-16 items-center justify-center lg:justify-between">
         {/* Logo, centered on mobile/tablet, left on desktop */}
         <Link
@@ -90,8 +90,8 @@ const Header = () => {
               <Link href="/">
                 <NavigationMenuLink
                   className={cn(
-                    "text-base font-semibold px-4 py-2 rounded-md transition-colors hover:text-remax-red",
-                    isActive("/") ? "text-remax-red" : "text-muted-foreground"
+                    "text-base font-semibold px-4 py-2 rounded-md transition-colors hover:text-blue-700",
+                    isActive("/") ? "text-blue-700" : "text-gray-700"
                   )}
                 >
                   Home
@@ -104,8 +104,8 @@ const Header = () => {
               <Link href="/about">
                 <NavigationMenuLink
                   className={cn(
-                    "text-base font-semibold px-4 py-2 rounded-md transition-colors hover:text-remax-red",
-                    isActive("/about") ? "text-remax-red" : "text-muted-foreground"
+                    "text-base font-semibold px-4 py-2 rounded-md transition-colors hover:text-blue-700",
+                    isActive("/about") ? "text-blue-700" : "text-gray-700"
                   )}
                 >
                   About Us
@@ -118,8 +118,8 @@ const Header = () => {
               <Link href="/services">
                 <NavigationMenuLink
                   className={cn(
-                    "text-base font-semibold px-4 py-2 rounded-md transition-colors hover:text-remax-red",
-                    isActive("/services") ? "text-remax-red" : "text-muted-foreground"
+                    "text-base font-semibold px-4 py-2 rounded-md transition-colors hover:text-blue-700",
+                    isActive("/services") ? "text-blue-700" : "text-gray-700"
                   )}
                 >
                   What We Do
@@ -138,8 +138,8 @@ const Header = () => {
               <Link href="/blog">
                 <NavigationMenuLink
                   className={cn(
-                    "text-base font-semibold px-4 py-2 rounded-md transition-colors hover:text-remax-red",
-                    isActive("/blog") ? "text-remax-red" : "text-muted-foreground"
+                    "text-base font-semibold px-4 py-2 rounded-md transition-colors hover:text-blue-700",
+                    isActive("/blog") ? "text-blue-700" : "text-gray-700"
                   )}
                 >
                   Market Insights
@@ -152,7 +152,7 @@ const Header = () => {
         {/* Desktop Contact Button */}
         <div className="hidden lg:flex items-center">
           <Button
-            className="bg-remax-red hover:bg-remax-red/90 ml-2"
+            className="bg-blue-700 hover:bg-blue-800 text-white rounded-full ml-2"
             size="lg"
             onClick={handleContactClick}
           >
@@ -181,7 +181,7 @@ const Header = () => {
               />
               <div className="border-t pt-4 mt-4">
                 <Button
-                  className="w-full bg-remax-red hover:bg-remax-red/90"
+                  className="w-full bg-blue-700 hover:bg-blue-800 text-white rounded-full"
                   size="lg"
                   onClick={() => {
                     setIsOpen(false);

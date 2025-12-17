@@ -30,7 +30,7 @@ const MegaMenuProperties = () => {
 
   return (
     <NavigationMenuItem>
-      <NavigationMenuTrigger className="text-base font-semibold bg-transparent hover:bg-transparent hover:text-remax-red data-[state=open]:bg-transparent">
+      <NavigationMenuTrigger className="text-base font-semibold bg-transparent hover:bg-transparent hover:text-blue-700 data-[state=open]:bg-transparent text-gray-700">
         Properties
       </NavigationMenuTrigger>
       <NavigationMenuContent>
@@ -39,7 +39,7 @@ const MegaMenuProperties = () => {
           <div>
             <div className="flex items-center gap-2 mb-3 pb-2 border-b">
               <MapPin className="h-4 w-4 text-remax-red" />
-              <h3 className="font-semibold text-sm text-foreground">Explore By City</h3>
+              <h3 className="font-semibold text-sm text-gray-900">Explore By City</h3>
             </div>
             <ul className="space-y-1">
               {isLoading ? (

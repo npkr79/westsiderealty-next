@@ -116,7 +116,7 @@ export default function IndexPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
+    <div className="min-h-screen bg-white">
       <Header />
       <HeroSection onContactClick={handleContactClick} />
       <StatsSection stats={stats} />

@@ -25,14 +25,14 @@ const DevelopersDropdown = () => {
 
   return (
     <NavigationMenuItem>
-      <NavigationMenuTrigger className="text-base font-semibold bg-transparent hover:bg-transparent hover:text-remax-red data-[state=open]:bg-transparent">
+      <NavigationMenuTrigger className="text-base font-semibold bg-transparent hover:bg-transparent hover:text-blue-700 data-[state=open]:bg-transparent text-gray-700">
         Developers
       </NavigationMenuTrigger>
       <NavigationMenuContent>
         <div className="p-4 w-[280px]">
           <div className="flex items-center gap-2 mb-3 pb-2 border-b">
             <Building className="h-4 w-4 text-remax-red" />
-            <h3 className="font-semibold text-sm text-foreground">Top Developers</h3>
+            <h3 className="font-semibold text-sm text-gray-900">Top Developers</h3>
           </div>
           <ul className="space-y-1">
             {isLoading ? (

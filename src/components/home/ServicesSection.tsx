@@ -36,12 +36,12 @@ export default function ServicesSection({ services }: ServicesSectionProps = {})
   const displayServices = services || defaultServices;
 
   return (
-    <section className="py-10 bg-muted/40">
+    <section className="py-10 bg-white">
       <div className="container mx-auto px-4">
-        <h2 className="text-2xl md:text-3xl font-bold mb-6 text-center">What We Help You With</h2>
+        <h2 className="text-2xl md:text-3xl font-bold mb-6 text-center text-blue-900">What We Do</h2>
         <div className="grid gap-6 md:grid-cols-3">
           {displayServices.map((service: ServiceItem, index: number) => (
-            <Card key={service.title || index}>
+            <Card key={service.title || index} className="bg-white shadow-md">
               {service.image && (
                 <div className="relative h-48 w-full overflow-hidden rounded-t-lg">
                   <Image
@@ -55,17 +55,17 @@ export default function ServicesSection({ services }: ServicesSectionProps = {})
                 </div>
               )}
               <CardHeader>
-                <CardTitle className="flex items-center gap-3">
-                  {service.icon && <service.icon className="h-6 w-6 text-primary" />}
+                <CardTitle className="flex items-center gap-3 text-gray-900">
+                  {service.icon && <service.icon className="h-6 w-6 text-blue-600" />}
                   {service.title}
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground">{service.description}</p>
+                <p className="text-sm text-gray-600">{service.description}</p>
                 {service.areas && service.areas.length > 0 && (
                   <div className="mt-3 flex flex-wrap gap-2">
                     {service.areas.map((area, idx) => (
-                      <span key={idx} className="text-xs bg-muted px-2 py-1 rounded">
+                      <span key={idx} className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
                         {area}
                       </span>
                     ))}
