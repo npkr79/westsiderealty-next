@@ -95,14 +95,16 @@ export default function ProjectDetailPage() {
           setBrochureUrl(foundBrochureUrl);
           
           // Fetch listings if this is Hyderabad
-          if (citySlug === "hyderabad" && projectData.micro_market?.url_slug) {
+          if (citySlug === "hyderabad") {
             setLoadingListings(true);
             try {
-              const propertyListings = await locationPropertyService.getPropertiesByProject(
-                projectData.micro_market.url_slug,
-                projectData.project_name
+              // Fetch all Hyderabad properties and filter by project name
+              const allProperties = await locationPropertyService.getHyderabadProperties();
+              const projectListings = allProperties.filter(
+                prop => prop.project_name?.toLowerCase() === projectData.project_name.toLowerCase() &&
+                       prop.status === 'active'
               );
-              setListings(propertyListings || []);
+              setListings(projectListings);
             } catch (error) {
               console.error("Error fetching listings:", error);
               setListings([]);
