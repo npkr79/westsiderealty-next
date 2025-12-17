@@ -14,13 +14,18 @@ export default function DeveloperProjectCard({
   citySlug,
 }: DeveloperProjectCardProps) {
   const defaultCitySlug = citySlug || project.city_slug || 'hyderabad';
+  const microMarketSlug = project.micro_market?.url_slug || project.micro_market_slug;
+  const projectHref = microMarketSlug
+    ? `/${defaultCitySlug}/${microMarketSlug}/projects/${project.url_slug}`
+    : `/${defaultCitySlug}/projects/${project.url_slug}`;
+  
   return (
     <Card className="hover:shadow-md transition-shadow">
       <CardContent className="p-4 space-y-2">
         <h3 className="font-semibold text-lg">
           <Link
-            href={`/${defaultCitySlug}/${project.micro_market?.url_slug ?? ""}/projects/${project.url_slug}`}
-            className="hover:underline"
+            href={projectHref}
+            className="hover:underline text-primary"
           >
             {project.project_name}
           </Link>

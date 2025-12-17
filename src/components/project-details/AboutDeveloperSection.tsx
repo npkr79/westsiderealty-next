@@ -75,7 +75,7 @@ export default function AboutDeveloperSection({
           )}
           <div className="pt-4">
             <Link 
-              href={`/${citySlug}/developers/${developerSlug}`}
+              href={`/developers/${developerSlug}`}
               className="text-primary hover:underline font-semibold"
             >
               View Full Developer Profile →

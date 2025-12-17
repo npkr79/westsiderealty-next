@@ -11,7 +11,27 @@ interface ProjectCardProps {
 }
 
 export default function ProjectCard({ project, citySlug }: ProjectCardProps) {
-  const href = `/${citySlug}/${project.micro_market?.url_slug ?? project.micro_market_slug ?? "projects"}/${project.url_slug}`;
+  // Build correct project URL: /citySlug/microMarketSlug/projects/projectSlug
+  // Always require micro-market slug for proper routing
+  const microMarketSlug = project.micro_market?.url_slug || project.micro_market_slug;
+  
+  if (!microMarketSlug || !project.url_slug) {
+    // Return a non-clickable card if required data is missing
+    return (
+      <Card className="h-full overflow-hidden opacity-50">
+        <div className="relative h-40 w-full bg-muted" />
+        <CardContent className="p-4 space-y-1.5">
+          <h3 className="text-base font-semibold text-foreground line-clamp-2">
+            {project.project_name || 'Project'}
+          </h3>
+          <p className="text-xs text-muted-foreground">Details unavailable</p>
+        </CardContent>
+      </Card>
+    );
+  }
+  
+  const href = `/${citySlug}/${microMarketSlug}/projects/${project.url_slug}`;
+  
   const image =
     project.hero_image_url ||
     project.main_image_url ||
@@ -19,7 +39,7 @@ export default function ProjectCard({ project, citySlug }: ProjectCardProps) {
     "/placeholder.svg";
 
   return (
-    <Link href={href}>
+    <Link href={href} className="block">
       <Card className="h-full overflow-hidden">
         <div className="relative h-40 w-full">
           <Image

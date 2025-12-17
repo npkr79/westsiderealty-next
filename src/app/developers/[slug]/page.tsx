@@ -36,12 +36,21 @@ const DeveloperPage = () => {
 
   useEffect(() => {
     const fetchDeveloper = async () => {
-      if (!slug) return;
+      if (!slug) {
+        setLoading(false);
+        return;
+      }
       
-      setLoading(true);
-      const data = await developerService.getDeveloperBySlug(slug);
-      setDeveloper(data);
-      setLoading(false);
+      try {
+        setLoading(true);
+        const data = await developerService.getDeveloperBySlug(slug);
+        setDeveloper(data || null);
+      } catch (error) {
+        console.error('Error fetching developer:', error);
+        setDeveloper(null);
+      } finally {
+        setLoading(false);
+      }
     };
 
     fetchDeveloper();
