@@ -45,8 +45,6 @@ const config: Config = {
           DEFAULT: "hsl(var(--popover))",
           foreground: "hsl(var(--popover-foreground))",
         },
-        "remax-red": "hsl(var(--remax-red))",
-        "remax-blue": "hsl(var(--remax-blue))",
         // Luxury theme custom colors (HSL variables already defined in globals.css)
         "luxury-gold": "hsl(var(--luxury-gold))",
         "luxury-gold-light": "hsl(var(--luxury-gold-light))",
