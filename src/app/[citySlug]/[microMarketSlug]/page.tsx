@@ -473,7 +473,7 @@ export default async function MicroMarketPage({ params }: PageProps) {
                             <TableCell>
                               <Link
                                 href={`/${citySlug}/${microMarketSlug}/projects/${project.url_slug}`}
-                                className="font-medium text-primary underline decoration-primary/50 underline-offset-2 hover:decoration-primary"
+                                className="font-medium text-primary underline decoration-primary/50 underline-offset-2 hover:decoration-primary hover:text-primary transition-colors"
                               >
                                 {project.project_name}
                               </Link>
@@ -483,7 +483,7 @@ export default async function MicroMarketPage({ params }: PageProps) {
                               {project.developer?.url_slug ? (
                                 <Link
                                   href={`/developers/${project.developer.url_slug}`}
-                                  className="text-primary/80 underline decoration-primary/30 underline-offset-2 hover:text-primary hover:decoration-primary"
+                                  className="text-primary/80 underline decoration-primary/30 underline-offset-2 hover:text-primary hover:decoration-primary transition-colors"
                                 >
                                   {project.developer.developer_name}
                                 </Link>
