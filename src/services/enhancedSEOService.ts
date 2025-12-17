@@ -1,8 +1,15 @@
 import { createClient } from '@/lib/supabase/server';
 
-
-import { marked } from "marked";
-const supabase = await createClient();
+// Stub for marked - simple markdown to HTML converter
+const marked = {
+  parse: (markdown: string): string => {
+    // Simple markdown to HTML conversion (basic implementation)
+    return markdown
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      .replace(/\n/g, '<br>');
+  }
+};
 
 interface PropertyData {
   id: string;
@@ -338,6 +345,7 @@ High demand for ${property.bhk_config || `${property.bedrooms} BHK`} apartments 
 
   public async bulkOptimizeProperties(tableName: string): Promise<{ success: number; failed: number; total: number }> {
     try {
+      const supabase = await createClient();
       const columns = this.getTableColumns(tableName);
       
       const { data: properties, error } = await supabase

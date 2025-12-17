@@ -1,6 +1,6 @@
  "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -19,7 +19,7 @@ import LocationDetailsEditor from "@/components/admin/LocationDetailsEditor";
 import { LocationDetails } from "@/types/locationDetails";
 import RichTextEditor from "@/components/property/RichTextEditor";
 
-const EditProperty = () => {
+const EditPropertyContent = () => {
   const params = useParams();
   const id = typeof params?.id === "string" ? params.id : undefined;
   console.log('🔥 ADMIN EditProperty loaded with ID:', id);
@@ -567,7 +567,7 @@ const EditProperty = () => {
               )}
 
               <LocationDetailsEditor
-                locationDetails={(property as any).nearby_landmarks || {}}
+                value={(property as any).nearby_landmarks || {}}
                 onChange={(details) => handleInputChange('nearby_landmarks', details)}
               />
 
@@ -713,8 +713,8 @@ const EditProperty = () => {
 
           {/* Amenities */}
           <AmenitiesSelector 
-            selectedAmenities={property.amenities || []}
-            onAmenitiesChange={(amenities) => handleInputChange('amenities', amenities)}
+            value={property.amenities || []}
+            onChange={(amenities) => handleInputChange('amenities', amenities)}
           />
 
           {/* Submit */}
@@ -734,6 +734,18 @@ const EditProperty = () => {
         </form>
       </div>
     </div>
+  );
+};
+
+const EditProperty = () => {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <p>Loading property...</p>
+      </div>
+    }>
+      <EditPropertyContent />
+    </Suspense>
   );
 };
 

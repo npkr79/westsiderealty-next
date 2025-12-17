@@ -10,9 +10,9 @@ export default function CityLifestyleHub({ lifestyleData, cityName }: CityLifest
 
   const sections = Array.isArray(lifestyleData)
     ? lifestyleData
-    : lifestyleData.sections || [];
+    : Array.isArray(lifestyleData?.sections) ? lifestyleData.sections : [];
 
-  if (!sections.length) return null;
+  if (!Array.isArray(sections) || !sections.length) return null;
 
   return (
     <section className="py-16 bg-secondary/10">

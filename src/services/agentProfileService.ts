@@ -62,7 +62,7 @@ export const agentProfileService = {
 
       // Fix service areas type conversion
       const serviceAreas: string[] = Array.isArray(data.service_areas)
-        ? data.service_areas.filter((area): area is string => typeof area === 'string')
+        ? data.service_areas.filter((area: any): area is string => typeof area === 'string')
         : [];
 
       const updatedUser: User = {
@@ -106,7 +106,7 @@ export const agentProfileService = {
       return data.map(agent => ({
         ...agent,
         service_areas: Array.isArray(agent.service_areas) 
-          ? agent.service_areas.filter((area): area is string => typeof area === 'string')
+          ? agent.service_areas.filter((area: any): area is string => typeof area === 'string')
           : []
       }));
     } catch (error) {
@@ -131,7 +131,7 @@ export const agentProfileService = {
       return {
         ...data,
         service_areas: Array.isArray(data.service_areas) 
-          ? data.service_areas.filter((area): area is string => typeof area === 'string')
+          ? data.service_areas.filter((area: any): area is string => typeof area === 'string')
           : []
       };
     } catch (error) {

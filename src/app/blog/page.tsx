@@ -1,44 +1,15 @@
-"use client";
-
-import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calendar, ArrowRight, Phone } from "lucide-react";
 import Link from "next/link";
 import { blogService, BlogArticle } from "@/services/blogService";
-
-// Newsletter Cta
-const NewsletterCtaSection = () => {
-  const handleWhatsAppContact = () => {
-    window.open('https://wa.me/919866085831', '_blank');
-  };
-  return (
-    <section className="py-16 px-4 bg-gray-50">
-      <div className="container mx-auto text-center">
-        <h2 className="text-3xl font-bold mb-4">Stay Updated</h2>
-        <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
-          Get the latest market insights and investment opportunities delivered directly to you.
-        </p>
-        <Button 
-          size="lg" 
-          className="bg-remax-red hover:bg-remax-red/90"
-          onClick={handleWhatsAppContact}
-        >
-          <Phone className="h-5 w-5 mr-2" />
-          Contact Us for Updates
-        </Button>
-      </div>
-    </section>
-  );
-};
+import NewsletterCtaSection from "@/components/blog/NewsletterCtaSection";
 
 const BlogListPage = ({
-  articles,
-  isLoading,
+  articles = [],
 }: {
   articles: BlogArticle[];
-  isLoading: boolean;
 }) => (
   <div>
     {/* Hero Section */}
@@ -57,9 +28,7 @@ const BlogListPage = ({
     {/* Articles Grid */}
     <section className="py-16 px-4">
       <div className="container mx-auto">
-        {isLoading ? (
-          <div className="text-center py-12">Loading...</div>
-        ) : articles.length === 0 ? (
+        {articles.length === 0 ? (
           <div className="text-center py-12">
             <h3 className="text-xl font-semibold text-gray-700 mb-4">
               Coming Soon
@@ -117,4 +86,13 @@ const BlogListPage = ({
   </div>
 );
 
-export default BlogListPage;
+export default async function BlogPage() {
+  let articles: BlogArticle[] = [];
+  try {
+    articles = await blogService.getPublishedArticles();
+  } catch (error) {
+    console.error("Error fetching blog articles:", error);
+  }
+
+  return <BlogListPage articles={articles} />;
+}

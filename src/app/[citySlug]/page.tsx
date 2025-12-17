@@ -97,7 +97,7 @@ export default async function CityPage({ params }: PageProps) {
 
     // Fetch micro-markets for the city
     const markets = await microMarketService.getMicroMarketsByCity(slug);
-    microMarkets = markets;
+    microMarkets = Array.isArray(markets) ? markets : [];
 
     // Fetch total property count for Hyderabad
     if (slug === "hyderabad") {
@@ -106,9 +106,9 @@ export default async function CityPage({ params }: PageProps) {
   }
 
   const marketSnapshot = city.market_snapshot_json || {};
-  const featuredMicromarkets = city.featured_micromarkets_json || [];
-  const propertyTypes = city.top_property_types_json || [];
-  const faqs = city.city_faqs_json || [];
+  const featuredMicromarkets = Array.isArray(city.featured_micromarkets_json) ? city.featured_micromarkets_json : [];
+  const propertyTypes = Array.isArray(city.top_property_types_json) ? city.top_property_types_json : [];
+  const faqs = Array.isArray(city.city_faqs_json) ? city.city_faqs_json : [];
 
   // Generate canonical URL
   const canonicalUrl = city.canonical_url || `https://www.westsiderealty.in/${slug}`;
@@ -120,7 +120,7 @@ export default async function CityPage({ params }: PageProps) {
     name: city.h1_title || `Real Estate in ${city.city_name}`,
     description: city.meta_description,
     url: canonicalUrl,
-    areaServed: microMarkets.map((m) => m.micro_market_name),
+    areaServed: Array.isArray(microMarkets) ? microMarkets.map((m) => m.micro_market_name) : [],
     provider: {
       "@type": "RealEstateAgent",
       name: "RE/MAX Westside Realty",

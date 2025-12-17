@@ -1,8 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
-
-
 import type { Json } from "@/integrations/supabase/types";
-const supabase = await createClient();
 
 export interface GeneratedContent {
   seo_title: string;
@@ -66,6 +63,7 @@ export const contentStorageService = {
    */
   async saveCityContent(cityId: string, content: any): Promise<void> {
     try {
+      const supabase = await createClient();
       console.log('Saving city content:', { cityId, content });
 
       const updateData: any = {
@@ -128,6 +126,7 @@ export const contentStorageService = {
    */
   async saveMicromarketContent(micromarketId: string, content: any): Promise<void> {
     try {
+      const supabase = await createClient();
       console.log('Saving micromarket content:', { micromarketId, content });
 
       const updateData: any = {
@@ -180,6 +179,7 @@ export const contentStorageService = {
    */
   async saveDeveloperContent(developerId: string, content: any): Promise<void> {
     try {
+      const supabase = await createClient();
       console.log('Saving developer content:', { developerId, content });
 
       const updateData: any = {
@@ -278,6 +278,7 @@ export const contentStorageService = {
    */
   async saveProjectContent(projectId: string, content: any): Promise<void> {
     try {
+      const supabase = await createClient();
       console.log('Saving project content:', { projectId, content });
 
       const updateData: any = {
@@ -379,6 +380,7 @@ export const contentStorageService = {
     entityId: string
   ): Promise<void> {
     try {
+      const supabase = await createClient();
       // Map pageType to correct table name
       const tableNameMap: Record<string, string> = {
         city: 'cities',
@@ -420,6 +422,7 @@ export const contentStorageService = {
    */
   async getPublishedPageUrl(pageType: 'city' | 'micromarket' | 'developer' | 'project', entityId: string): Promise<string> {
     try {
+      const supabase = await createClient();
       switch (pageType) {
         case 'project': {
           console.log('=== Getting published URL for project ===');

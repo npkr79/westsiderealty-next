@@ -10,7 +10,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
-const Login = () => {
+// Force dynamic rendering to prevent prerendering (useAuth requires AuthProvider)
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+export const fetchCache = 'force-no-store';
+
+const LoginContent = () => {
   const router = useRouter();
   const { signIn, signInWithPhone, user, isAdmin, isAgent, isLoading } = useAuth();
   
@@ -211,6 +216,24 @@ const Login = () => {
       </Card>
     </div>
   );
+};
+
+const Login = () => {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
+        <div className="text-lg">Loading...</div>
+      </div>
+    );
+  }
+
+  return <LoginContent />;
 };
 
 export default Login;

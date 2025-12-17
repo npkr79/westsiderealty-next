@@ -86,8 +86,9 @@ class PropertyService {
 
     // Apply location filter with exact microMarket matching
     if (filters.location && filters.location !== 'all') {
+      const locationFilter = filters.location;
       filteredProperties = filteredProperties.filter(
-        p => p.microMarket === filters.location || p.location.includes(filters.location)
+        p => p.microMarket === locationFilter || (p.location && p.location.includes(locationFilter))
       );
     }
 

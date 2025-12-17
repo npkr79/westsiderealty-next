@@ -1,11 +1,11 @@
 
 import { Metadata } from "next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { MapPin, Phone, Mail, Clock, Send } from "lucide-react";
+import { MapPin, Phone, Mail, Clock } from "lucide-react";
 import FooterSection from "@/components/home/FooterSection";
-import { contactService, locationSettingsService } from "@/services/adminService";
 import ContactForm from "@/components/ContactForm";
 import { JsonLd, buildMetadata } from "@/components/common/SEO";
+import WhatsAppButton from "@/components/contact/WhatsAppButton";
 
 const CONTACT_SCHEMA = {
   "@context": "https://schema.org",
@@ -30,38 +30,36 @@ export const metadata: Metadata = buildMetadata({
 });
 
 export default function Contact() {
-  const contactInfo = contactService.getContactInfo();
-  const locationSettings = locationSettingsService.getLocationSettings();
+  // Use default values for server-side rendering (localStorage is not available)
+  const defaultContactInfo = {
+    address: "415, 4th Floor, Kokapet Terminal\nKokapet, Hyderabad – 500075",
+    phone: "+91 9866085831",
+    email: "info@westsiderealty.in",
+    businessHours: "Monday - Saturday\n9:00 AM - 7:00 PM",
+  };
 
   const contactInfoDisplay = [
     {
       icon: MapPin,
       title: "Office Address",
-      content: contactInfo.address || "415, 4th Floor, Kokapet Terminal\nKokapet, Hyderabad – 500075",
+      content: defaultContactInfo.address,
     },
     {
       icon: Phone,
       title: "Phone Number",
-      content: contactInfo.phone || "+91 9866085831",
+      content: defaultContactInfo.phone,
     },
     {
       icon: Mail,
       title: "Email Address",
-      content: contactInfo.email || "info@westsiderealty.in",
+      content: defaultContactInfo.email,
     },
     {
       icon: Clock,
       title: "Business Hours",
-      content: contactInfo.businessHours || "Monday - Saturday\n9:00 AM - 7:00 PM",
+      content: defaultContactInfo.businessHours,
     },
   ];
-
-  const handleWhatsAppContact = () => {
-    const message =
-      "Hi, I'm interested in your real estate services. Could you please provide more information?";
-    const whatsappUrl = `https://wa.me/919866085831?text=${encodeURIComponent(message)}`;
-    window.open(whatsappUrl, "_blank");
-  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -100,17 +98,7 @@ export default function Contact() {
                         </div>
                       </div>
                     ))}
-                    <Card>
-                      <CardContent className="pt-4">
-                        <button
-                          className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-input bg-background px-4 py-2 text-sm font-medium shadow-sm transition-colors hover:bg-accent"
-                          onClick={handleWhatsAppContact}
-                        >
-                          <span className="mr-2">Chat on WhatsApp</span>
-                          <Send className="h-5 w-5" />
-                        </button>
-                      </CardContent>
-                    </Card>
+                    <WhatsAppButton />
                   </div>
                 </CardContent>
               </Card>

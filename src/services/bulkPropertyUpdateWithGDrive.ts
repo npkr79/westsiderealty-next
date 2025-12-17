@@ -159,7 +159,8 @@ export const bulkUpdatePropertiesWithGDrive = async (
       }
     } catch (error) {
       console.error('[GDrive] Error fetching images:', error);
-      throw new Error(`Failed to fetch images from Google Drive: ${error.message}`);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      throw new Error(`Failed to fetch images from Google Drive: ${errorMessage}`);
     }
   }
   

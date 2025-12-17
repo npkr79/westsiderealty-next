@@ -194,7 +194,7 @@ export const bulkUploadUpdateProperties = async (properties: ExcelPropertyRow[],
   // Process Hyderabad properties
   for (const prop of hyderabadProperties) {
     const propertyId = prop.property_id;
-    delete prop.property_id; // Remove before insert/update
+    const { property_id, ...propWithoutId } = prop as any; // Remove before insert/update
     
     try {
       // Check if property exists
@@ -208,7 +208,7 @@ export const bulkUploadUpdateProperties = async (properties: ExcelPropertyRow[],
         // Update existing property
         const { error } = await supabase
           .from('hyderabad_properties')
-          .update(prop)
+          .update(propWithoutId)
           .eq('id', existing.id);
         
         if (error) {
@@ -222,7 +222,7 @@ export const bulkUploadUpdateProperties = async (properties: ExcelPropertyRow[],
         // Insert new property
         const { error } = await supabase
           .from('hyderabad_properties')
-          .insert(prop);
+          .insert(propWithoutId);
         
         if (error) {
           console.error('Hyderabad insert error:', error);
@@ -287,7 +287,7 @@ export const bulkUploadUpdateProperties = async (properties: ExcelPropertyRow[],
   // Process Dubai properties
   for (const prop of dubaiProperties) {
     const propertyId = prop.property_id;
-    delete prop.property_id;
+    const { property_id, ...propWithoutId } = prop as any; // Remove before insert/update
     
     try {
       const { data: existing } = await supabase
@@ -299,7 +299,7 @@ export const bulkUploadUpdateProperties = async (properties: ExcelPropertyRow[],
       if (existing) {
         const { error } = await supabase
           .from('dubai_properties')
-          .update(prop)
+          .update(propWithoutId)
           .eq('id', existing.id);
         
         if (error) {
@@ -312,7 +312,7 @@ export const bulkUploadUpdateProperties = async (properties: ExcelPropertyRow[],
       } else {
         const { error } = await supabase
           .from('dubai_properties')
-          .insert(prop);
+          .insert(propWithoutId);
         
         if (error) {
           console.error('Dubai insert error:', error);

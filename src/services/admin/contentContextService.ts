@@ -181,14 +181,20 @@ export const contentContextService = {
         .eq('developer_id', developerId)
         .limit(5);
 
-      const notableProjects = projects?.map(p => ({
-        name: p.project_name,
-        location: p.micro_markets?.micro_market_name || 'Location',
-        type: typeof p.property_types === 'string' ? p.property_types : 'Mixed-use',
-      })) || [];
+      const notableProjects = projects?.map(p => {
+        const microMarket = Array.isArray(p.micro_markets) ? p.micro_markets[0] : p.micro_markets;
+        return {
+          name: p.project_name,
+          location: microMarket?.micro_market_name || 'Location',
+          type: typeof p.property_types === 'string' ? p.property_types : 'Mixed-use',
+        };
+      }) || [];
 
       // Get unique micromarkets
-      const micromarkets = [...new Set(projects?.map(p => p.micro_markets?.micro_market_name).filter(Boolean))] as string[];
+      const micromarkets = [...new Set(projects?.map(p => {
+        const microMarket = Array.isArray(p.micro_markets) ? p.micro_markets[0] : p.micro_markets;
+        return microMarket?.micro_market_name;
+      }).filter(Boolean))] as string[];
 
       const context: DeveloperContext = {
         developerName: developer.developer_name,

@@ -9,6 +9,11 @@ export const metadata: Metadata = buildMetadata({
   canonicalUrl: "https://www.westsiderealty.in/register",
 });
 
+// Force dynamic rendering to prevent prerendering (useAuth requires AuthProvider)
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+export const fetchCache = 'force-no-store';
+
 export default function Page() {
   return <RegisterPage />;
 }

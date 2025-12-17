@@ -69,6 +69,7 @@ class GoaHolidayPropertyService {
   }
 
   async getPropertyById(id: string): Promise<GoaHolidayProperty | null> {
+    const supabase = await supabasePromise;
     const { data, error } = await supabase
       .from('goa_holiday_properties')
       .select('*')
@@ -86,6 +87,7 @@ class GoaHolidayPropertyService {
   }
 
   async getPropertyBySlug(slug: string): Promise<GoaHolidayProperty | null> {
+    const supabase = await supabasePromise;
     const { data, error } = await supabase
       .from('goa_holiday_properties')
       .select('*')
@@ -103,6 +105,7 @@ class GoaHolidayPropertyService {
   }
 
   async createProperty(propertyData: Partial<GoaHolidayProperty>): Promise<GoaHolidayProperty | null> {
+    const supabase = await supabasePromise;
     const { data, error } = await supabase
       .from('goa_holiday_properties')
       .insert([this.transformPropertyDataToSupabase(propertyData)])
@@ -118,6 +121,7 @@ class GoaHolidayPropertyService {
   }
 
   async updateProperty(id: string, updates: Partial<GoaHolidayProperty>): Promise<GoaHolidayProperty | null> {
+    const supabase = await supabasePromise;
     const { data, error } = await supabase
       .from('goa_holiday_properties')
       .update(this.transformPropertyDataToSupabase(updates))
@@ -134,6 +138,7 @@ class GoaHolidayPropertyService {
   }
 
   async deleteProperty(id: string): Promise<boolean> {
+    const supabase = await supabasePromise;
     const { error } = await supabase
       .from('goa_holiday_properties')
       .delete()

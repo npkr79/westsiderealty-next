@@ -132,7 +132,8 @@ export const bulkUploadPropertiesWithGDrive = async (
       console.log(`[GDrive] Fetched ${driveFiles.length} files from Google Drive`);
     } catch (error) {
       console.error('[GDrive] Error fetching images:', error);
-      throw new Error(`Failed to fetch images from Google Drive: ${error.message}`);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      throw new Error(`Failed to fetch images from Google Drive: ${errorMessage}`);
     }
   }
   
