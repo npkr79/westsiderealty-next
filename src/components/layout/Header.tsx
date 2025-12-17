@@ -27,16 +27,16 @@ const Header = () => {
   const pathname = usePathname();
 
   useEffect(() => {
-    const imgs = siteImagesService.getSiteImages();
-
-    if (
-      imgs.headerLogo &&
-      imgs.headerLogo !== "https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/brand-assets//REMAX%20WR%20Logo%20with%20no%20background.jpg"
-    ) {
-      const defaults = siteImagesService.forceResetToDefaultImages();
-      setHeaderLogo(defaults.headerLogo);
-    } else {
-      setHeaderLogo(imgs.headerLogo || "");
+    const defaultLogo = "https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/brand-assets//REMAX%20WR%20Logo%20with%20no%20background.jpg";
+    
+    try {
+      const imgs = siteImagesService.getSiteImages();
+      // Use the logo from service, or fallback to default
+      const logoUrl = imgs?.headerLogo || defaultLogo;
+      setHeaderLogo(logoUrl);
+    } catch (error) {
+      // If service fails, use default logo
+      setHeaderLogo(defaultLogo);
     }
   }, []);
 
@@ -65,7 +65,7 @@ const Header = () => {
         >
           {!imgError && headerLogo ? (
             <Image
-              src={headerLogo || "/placeholder.svg"}
+              src={headerLogo}
               alt="REMAX WR Logo"
               className="h-16 w-96 object-contain"
               width={384}
@@ -76,7 +76,9 @@ const Header = () => {
               priority
             />
           ) : (
-            <span data-testid="header-logo-fallback" />
+            <span className="text-xl font-bold text-remax-red" data-testid="header-logo-fallback">
+              RE/MAX Westside Realty
+            </span>
           )}
         </Link>
 

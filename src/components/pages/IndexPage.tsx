@@ -9,6 +9,7 @@ import {
   Palmtree,
   Landmark,
 } from "lucide-react";
+import Header from "@/components/layout/Header";
 import HeroSection from "@/components/home/HeroSection";
 import StatsSection from "@/components/home/StatsSection";
 import ServicesSection from "@/components/home/ServicesSection";
@@ -109,6 +110,7 @@ export default function IndexPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
+      <Header />
       <HeroSection onContactClick={handleContactClick} />
       <StatsSection stats={stats} />
       <ServicesSection services={services} />

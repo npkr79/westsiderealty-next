@@ -1,13 +1,24 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import Image from "next/image";
+import { LucideIcon } from "lucide-react";
+
+interface ServiceItem {
+  icon?: LucideIcon;
+  title: string;
+  description: string;
+  areas?: string[];
+  color?: string;
+  image?: string;
+}
 
 interface ServicesSectionProps {
-  services?: any[];
+  services?: ServiceItem[];
 }
 
 export default function ServicesSection({ services }: ServicesSectionProps = {}) {
-  const defaultServices = [
+  const defaultServices: ServiceItem[] = [
     {
       title: "Hyderabad Resale Advisory",
       description: "Expert guidance for buying and selling resale apartments and villas in West Hyderabad.",
@@ -29,13 +40,37 @@ export default function ServicesSection({ services }: ServicesSectionProps = {})
       <div className="container mx-auto px-4">
         <h2 className="text-2xl md:text-3xl font-bold mb-6 text-center">What We Help You With</h2>
         <div className="grid gap-6 md:grid-cols-3">
-          {displayServices.map((service: any, index: number) => (
+          {displayServices.map((service: ServiceItem, index: number) => (
             <Card key={service.title || index}>
+              {service.image && (
+                <div className="relative h-48 w-full overflow-hidden rounded-t-lg">
+                  <Image
+                    src={service.image}
+                    alt={service.title}
+                    fill
+                    style={{ objectFit: "cover" }}
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                    className="transition-transform duration-300 hover:scale-105"
+                  />
+                </div>
+              )}
               <CardHeader>
-                <CardTitle>{service.title}</CardTitle>
+                <CardTitle className="flex items-center gap-3">
+                  {service.icon && <service.icon className="h-6 w-6 text-primary" />}
+                  {service.title}
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground">{service.description}</p>
+                {service.areas && service.areas.length > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {service.areas.map((area, idx) => (
+                      <span key={idx} className="text-xs bg-muted px-2 py-1 rounded">
+                        {area}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))}
