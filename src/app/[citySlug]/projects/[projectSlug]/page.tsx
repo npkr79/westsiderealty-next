@@ -39,6 +39,7 @@ import ProjectRERATimeline from "@/components/project-details/ProjectRERATimelin
 import TrustStrip from "@/components/project-details/TrustStrip";
 import LocationHighlightsCard from "@/components/project-details/LocationHighlightsCard";
 import BottomLeadFormSection from "@/components/project-details/BottomLeadFormSection";
+import { getProjectImageUrls } from "@/lib/project-images";
 
 export default function ProjectDetailPage() {
   const params = useParams();
@@ -67,6 +68,13 @@ export default function ProjectDetailPage() {
   const [loadingListings, setLoadingListings] = useState(true);
   const [isLeadFormOpen, setIsLeadFormOpen] = useState(false);
   const [brochureUrl, setBrochureUrl] = useState<string | null>(null);
+
+  const handleWhatsApp = () => {
+    if (typeof window !== 'undefined') {
+      const message = `Hi, I'm interested in ${project?.project_name || 'this project'}. ${window.location.href}`;
+      window.open(`https://wa.me/919866085831?text=${encodeURIComponent(message)}`, '_blank');
+    }
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -186,27 +194,22 @@ export default function ProjectDetailPage() {
         {/* Hero Gallery */}
         <ProjectHeroGallery
           projectName={project.project_name}
-          images={
-            project.hero_image_url
-              ? [project.hero_image_url, ...(Array.isArray(project.images) ? project.images : [])]
-              : Array.isArray(project.images)
-              ? project.images
-              : []
-          }
+          images={getProjectImageUrls(project)}
         />
 
         {/* Sticky Navigation */}
-        <ProjectStickyNav projectName={project.project_name} />
+        <ProjectStickyNav projectName={project.project_name} onWhatsApp={handleWhatsApp} />
 
         {/* Main Content */}
         <div className="container mx-auto px-4 py-8">
           <div className="max-w-5xl mx-auto space-y-12">
             {/* Key Facts Strip */}
             <ProjectKeyFactsStrip
-              priceRange={project.price_range_text}
-              unitSizeRange={project.unit_size_range}
-              possessionDate={(project as any).possession_date_text}
+              priceDisplay={(project as any).price_display_string || project.price_range_text}
               reraId={(project as any).rera_id}
+              reraLink={(project as any).rera_link}
+              status={(project as any).completion_status}
+              onEnquire={() => setIsLeadFormOpen(true)}
             />
 
             {/* Trust Strip */}
@@ -214,39 +217,38 @@ export default function ProjectDetailPage() {
 
             {/* Project Overview */}
             <ProjectOverviewSection
-              projectName={project.project_name}
-              description={project.long_description_seo || project.meta_description}
-              highlights={(project as any).key_highlights_json}
+              reraId={(project as any).rera_id}
+              possessionDate={(project as any).possession_date_text || (project as any).rera_possession_date}
+              status={(project as any).completion_status}
+              description={(project as any).long_description_html || (project as any).project_overview_seo || project.meta_description}
+              highlights={(project as any).project_snapshot_json}
             />
 
             {/* Price Table */}
-            {project.price_range_text && (
+            {(project as any).project_snapshot_json && (
               <ProjectPriceTable
-                priceRange={project.price_range_text}
-                unitSizes={project.unit_size_range}
-                projectName={project.project_name}
+                projectSnapshotJson={(project as any).project_snapshot_json}
               />
             )}
 
             {/* Floor Plans */}
             {(project as any).floor_plan_images && Array.isArray((project as any).floor_plan_images) && (project as any).floor_plan_images.length > 0 && (
               <ProjectFloorPlans
-                floorPlans={(project as any).floor_plan_images}
-                projectName={project.project_name}
+                floorPlanImages={(project as any).floor_plan_images}
               />
             )}
 
             {/* Specifications */}
             <ProjectSpecifications
               specifications={(project as any).specifications_json}
-              projectName={project.project_name}
             />
 
             {/* Amenities */}
-            <ProjectAmenities
-              amenities={(project as any).amenities_json}
-              projectName={project.project_name}
-            />
+            {(project as any).amenities_json && (
+              <ProjectAmenities
+                amenities={(project as any).amenities_json}
+              />
+            )}
 
             {/* Location */}
             <ProjectLocation
@@ -361,8 +363,8 @@ export default function ProjectDetailPage() {
               <RelatedProjectsSection
                 citySlug={citySlug}
                 currentProjectId={project.id}
-                microMarketId={project.micro_market?.id ? String(project.micro_market.id) : undefined}
-                developerId={project.developer?.id ? String(project.developer.id) : undefined}
+                microMarketId={project.micro_market_id ? String(project.micro_market_id) : undefined}
+                developerId={project.developer_id ? String(project.developer_id) : undefined}
               />
             )}
 
@@ -406,19 +408,17 @@ export default function ProjectDetailPage() {
         </div>
 
         {/* Sticky Offer Banner */}
-        {brochureUrl && (
+        {(project as any).special_offers && (
           <StickyOfferBanner
-            projectName={project.project_name}
-            brochureUrl={brochureUrl}
-            onUnlockClick={() => setIsLeadFormOpen(true)}
+            offerData={(project as any).special_offers}
+            onClaim={() => setIsLeadFormOpen(true)}
           />
         )}
 
         {/* Mobile Actions */}
         <ProjectMobileActions
-          projectName={project.project_name}
-          whatsappNumber="+919866085831"
-          brochureUrl={brochureUrl || undefined}
+          onWhatsApp={handleWhatsApp}
+          onEnquire={() => setIsLeadFormOpen(true)}
         />
 
         {/* Lead Form Dialog */}
@@ -435,7 +435,6 @@ export default function ProjectDetailPage() {
               projectId={project.id}
               developerName={project.developer?.developer_name}
               brochureUrl={brochureUrl || undefined}
-              onSuccess={() => setIsLeadFormOpen(false)}
             />
           </DialogContent>
         </Dialog>

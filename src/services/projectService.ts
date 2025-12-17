@@ -36,6 +36,7 @@ export interface ProjectInfo {
 export interface ProjectWithRelations extends Omit<ProjectInfo, 'description'> {
   h1_title?: string;
   hero_image_url?: string | null;
+  main_image_url?: string | null; // Alternative image field
   description?: string; // Computed field, optional for database queries
   project_snapshot_json?: any;
   location_advantages_json?: any;
@@ -54,6 +55,10 @@ export interface ProjectWithRelations extends Omit<ProjectInfo, 'description'> {
   westside_realty_review?: string | null;
   long_description_html?: string | null;
   schema_markup_json?: any;
+  // Image gallery fields (may exist in DB via select('*'))
+  gallery_images_json?: unknown; // JSONB field for gallery images
+  gallery_images?: unknown; // Alternative gallery field
+  images?: unknown; // Direct images field (if exists in DB)
   city?: {
     city_name: string;
     url_slug: string;

@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Card, CardContent } from "@/components/ui/card";
 import type { ProjectWithRelations } from "@/services/projectService";
+import { getProjectPrimaryImage } from "@/lib/project-images";
 
 interface ProjectCardProps {
   project: ProjectWithRelations | any;
@@ -29,11 +30,7 @@ export default function ProjectCard({ project, citySlug }: ProjectCardProps) {
   
   const href = `/${citySlug}/projects/${project.url_slug}`;
   
-  const image =
-    project.hero_image_url ||
-    project.main_image_url ||
-    (Array.isArray(project.images) && project.images[0]) ||
-    "/placeholder.svg";
+  const image = getProjectPrimaryImage(project);
 
   return (
     <Link href={href} className="block">
