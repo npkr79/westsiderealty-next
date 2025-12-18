@@ -1,3 +1,7 @@
+// NOTE: This file should only be used in Server Components
+// The "server-only" package would prevent client imports but causes build issues
+// with services that are imported by both server and client components
+// TODO: Refactor services to have separate client/server versions
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 
 export async function createClient() {

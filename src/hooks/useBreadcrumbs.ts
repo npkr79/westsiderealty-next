@@ -2,8 +2,6 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { usePathname } from 'next/navigation';
-import { cityService } from '@/services/cityService';
-import { microMarketPagesService } from '@/services/microMarketPagesService';
 import { developerService } from '@/services/developerService';
 import { createClient } from '@/lib/supabase/client';
 
@@ -30,7 +28,13 @@ export function useBreadcrumbs() {
 
       try {
         if (citySlug) {
-          const cityData = await cityService.getCityBySlug(citySlug);
+          // Fetch city data using client
+          const { data: cityData } = await supabase
+            .from('cities')
+            .select('city_name')
+            .eq('url_slug', citySlug)
+            .maybeSingle();
+          
           if (cityData) {
             items.push({ label: cityData.city_name, href: `/${citySlug}` });
           }
@@ -60,7 +64,12 @@ export function useBreadcrumbs() {
             }
           } else if (levelOne && levelOne !== 'properties') {
             const mmSlug = levelOne;
-            const mmData = await microMarketPagesService.getMicroMarketPageBySlug(mmSlug);
+            // Fetch micro-market data using client
+            const { data: mmData } = await supabase
+              .from('micro_markets')
+              .select('micro_market_name')
+              .eq('url_slug', mmSlug)
+              .maybeSingle();
 
             if (mmData) {
               items.push({

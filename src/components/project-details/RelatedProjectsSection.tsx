@@ -23,18 +23,19 @@ export default function RelatedProjectsSection({
 
   useEffect(() => {
     const load = async () => {
-      // Simple placeholder: fetch projects by city and filter client-side.
-      const all = await projectService.getProjectsByCity?.(citySlug);
-      const filtered =
-        all?.filter((p: any) => p.id !== currentProjectId).slice(0, 6) || [];
-      setProjects(filtered);
+      try {
+        // Fetch projects by city and filter client-side
+        const all = await projectService.getProjectsByCity(citySlug);
+        const filtered =
+          all?.filter((p: any) => p.id !== currentProjectId).slice(0, 6) || [];
+        setProjects(filtered);
+      } catch (error) {
+        console.error("Error loading related projects:", error);
+        setProjects([]);
+      }
     };
 
-    // Only run if helper exists; otherwise skip.
-    // @ts-expect-error: getProjectsByCitySlug may not exist on older service.
-    if (projectService.getProjectsByCitySlug) {
-      load();
-    }
+    load();
   }, [citySlug, currentProjectId]);
 
   if (!projects.length) return null;
@@ -46,9 +47,17 @@ export default function RelatedProjectsSection({
         {microMarketName ? ` in ${microMarketName}` : ""}
       </h2>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {projects.map((project) => (
-          <ProjectCard key={project.id} project={project as any} citySlug={citySlug} />
-        ))}
+        {projects.map((project) => {
+          // Use city slug from project or fallback to prop
+          const projectCitySlug = (project as any).city?.url_slug || citySlug;
+          return (
+            <ProjectCard 
+              key={project.id} 
+              project={project as any} 
+              citySlug={projectCitySlug} 
+            />
+          );
+        })}
       </div>
     </section>
   );

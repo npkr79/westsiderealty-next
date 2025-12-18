@@ -228,17 +228,31 @@ export const projectService = {
     projectSlug: string
   ): Promise<ProjectWithRelations | null> {
     const supabase = createClient();
+    
+    // First, get the city ID to avoid complex joins
+    const { data: cityData } = await supabase
+      .from('cities')
+      .select('id')
+      .eq('url_slug', citySlug)
+      .maybeSingle();
+
+    if (!cityData?.id) {
+      console.error('City not found for slug:', citySlug);
+      return null;
+    }
+
+    // Query project by city_id and url_slug (more reliable than join)
     const { data, error } = await supabase
       .from('projects')
       .select(`
         *,
         floor_plan_images,
-        city:cities!inner(*),
+        city:cities(*),
         developer:developers(*),
         micro_market:micro_markets!projects_micromarket_id_fkey(*)
       `)
       .eq('url_slug', projectSlug)
-      .eq('city.url_slug', citySlug)
+      .eq('city_id', cityData.id)
       .or('status.ilike.published,status.ilike.%under construction%')
       .maybeSingle();
 
@@ -247,9 +261,12 @@ export const projectService = {
       return null;
     }
 
-    if (data) console.log('🔥 Service: Loaded Floor Plans:', (data as any).floor_plan_images);
+    if (data) {
+      console.log('🔥 Service: Loaded Floor Plans:', (data as any).floor_plan_images);
+      return data as ProjectWithRelations;
+    }
 
-    return data as ProjectWithRelations;
+    return null;
   },
 
   /**

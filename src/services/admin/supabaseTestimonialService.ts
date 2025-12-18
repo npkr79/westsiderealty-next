@@ -1,7 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
 
-const supabase = await createClient();
-
 // Supabase Testimonial Service
 
 export interface SupabaseTestimonial {
@@ -17,6 +15,7 @@ export interface SupabaseTestimonial {
 
 class SupabaseTestimonialService {
   async getTestimonials(publishedOnly = true): Promise<SupabaseTestimonial[]> {
+    const supabase = await createClient();
     const query = supabase
       .from("testimonials")
       .select("*")
@@ -34,6 +33,7 @@ class SupabaseTestimonialService {
   }
 
   async addTestimonial(payload: Omit<SupabaseTestimonial, "id" | "status" | "created_at" | "updated_at">): Promise<boolean> {
+    const supabase = await createClient();
     const { error } = await supabase
       .from("testimonials")
       .insert([{ ...payload, status: "published" }]);
@@ -45,6 +45,7 @@ class SupabaseTestimonialService {
   }
 
   async updateTestimonial(id: string, payload: Partial<Omit<SupabaseTestimonial, "id" | "created_at" | "updated_at">>) {
+    const supabase = await createClient();
     const { error } = await supabase
       .from("testimonials")
       .update({ ...payload })
@@ -57,6 +58,7 @@ class SupabaseTestimonialService {
   }
 
   async deleteTestimonial(id: string) {
+    const supabase = await createClient();
     const { error } = await supabase
       .from("testimonials")
       .delete()

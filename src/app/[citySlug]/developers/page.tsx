@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
  import { useParams } from "next/navigation";
  import Head from "next/head";
  import { createClient } from "@/lib/supabase/client";
-import { cityService, CityInfo } from "@/services/cityService";
+import { CityInfo } from "@/services/cityService";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Building2, MapPin, Award } from "lucide-react";
@@ -39,11 +39,22 @@ export default function CityDevelopersPage() {
       if (!citySlug) return;
 
       try {
-        // Fetch city data
-        const cityData = await cityService.getCityBySlug(citySlug);
-        setCity(cityData);
+        // Fetch city data using client
+        const { data: cityData, error: cityError } = await supabase
+          .from('cities')
+          .select('*')
+          .eq('url_slug', citySlug)
+          .eq('page_status', 'published')
+          .maybeSingle();
+
+        if (cityError) {
+          console.error('Error fetching city:', cityError);
+        }
 
         if (cityData) {
+          setCity(cityData as CityInfo);
+
+          // Fetch developers operating in this city
           // Fetch developers operating in this city
           const { data, error } = await supabase
             .from('city_developers')

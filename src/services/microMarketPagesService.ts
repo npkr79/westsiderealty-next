@@ -1,6 +1,4 @@
 import { createClient } from '@/lib/supabase/server';
-const supabase = await createClient();
-
 
 export interface FAQ {
   question: string;
@@ -124,6 +122,7 @@ export interface PropertyListing {
 class MicroMarketPagesService {
   // Public methods
   async getMicroMarketPageBySlug(slug: string): Promise<MicroMarketPage | null> {
+    const supabase = await createClient();
     const { data, error } = await supabase
       .from("micro_markets")
       .select("*")
@@ -140,6 +139,7 @@ class MicroMarketPagesService {
   }
 
   async getFeaturedProjectsForPage(pageId: string): Promise<FeaturedProject[]> {
+    const supabase = await createClient();
     const { data, error } = await supabase
       .from("micro_market_featured_projects")
       .select("*")
@@ -155,6 +155,7 @@ class MicroMarketPagesService {
   }
 
   async getLiveListingsForMicroMarket(microMarketName: string): Promise<PropertyListing[]> {
+    const supabase = await createClient();
     const { data, error } = await supabase
       .from("hyderabad_properties")
       .select("id, title, slug, price, price_display, bhk_config, area_sqft, main_image_url")
@@ -181,6 +182,7 @@ class MicroMarketPagesService {
 
   // Admin methods
   async getAllMicroMarketPages(): Promise<MicroMarketPage[]> {
+    const supabase = await createClient();
     const { data, error } = await supabase
       .from("micro_markets")
       .select("*")
@@ -195,6 +197,7 @@ class MicroMarketPagesService {
   }
 
   async createMicroMarketPage(pageData: Partial<MicroMarketPage>): Promise<MicroMarketPage | null> {
+    const supabase = await createClient();
     const { data, error } = await supabase
       .from("micro_markets")
       .insert(pageData as any)
@@ -210,6 +213,7 @@ class MicroMarketPagesService {
   }
 
   async updateMicroMarketPage(id: string, pageData: Partial<MicroMarketPage>): Promise<void> {
+    const supabase = await createClient();
     const { error } = await supabase
       .from("micro_markets")
       .update(pageData as any)
@@ -222,6 +226,7 @@ class MicroMarketPagesService {
   }
 
   async deleteMicroMarketPage(id: string): Promise<void> {
+    const supabase = await createClient();
     const { error } = await supabase
       .from("micro_markets")
       .delete()
@@ -234,6 +239,7 @@ class MicroMarketPagesService {
   }
 
   async addFeaturedProject(projectData: Omit<FeaturedProject, "id">): Promise<void> {
+    const supabase = await createClient();
     const { error } = await supabase
       .from("micro_market_featured_projects")
       .insert(projectData);
@@ -245,6 +251,7 @@ class MicroMarketPagesService {
   }
 
   async removeFeaturedProject(id: string): Promise<void> {
+    const supabase = await createClient();
     const { error } = await supabase
       .from("micro_market_featured_projects")
       .delete()
