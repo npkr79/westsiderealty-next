@@ -1,6 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
-const supabase = await createClient();
-
+import { createClient } from '@/lib/supabase/client';
 
 export interface ProjectInfo {
   id: string;
@@ -96,6 +94,7 @@ const truncateWords = (text: string, maxWords: number): string => {
 
 export const projectService = {
   async getProjectByName(projectName: string): Promise<ProjectInfo | null> {
+    const supabase = createClient();
     const { data, error } = await supabase
       .from('projects')
       .select('id, project_name, meta_description, project_overview_seo')
@@ -120,6 +119,7 @@ export const projectService = {
 
     console.log('🔍 [ProjectService] Fetching full description for:', projectName);
 
+    const supabase = createClient();
     const { data, error } = await supabase
       .from('projects')
       .select('project_overview_seo, meta_description')
@@ -142,6 +142,7 @@ export const projectService = {
 
     console.log('🔍 [ProjectService] Fetching descriptions for projects:', projectNames);
 
+    const supabase = createClient();
     const { data, error } = await supabase
       .from('projects')
       .select('id, project_name, meta_description, project_overview_seo')
@@ -193,6 +194,7 @@ export const projectService = {
     microMarketSlug: string,
     projectSlug: string
   ): Promise<ProjectWithRelations | null> {
+    const supabase = createClient();
     const { data, error } = await supabase
       .from('projects')
       .select(`
@@ -225,6 +227,7 @@ export const projectService = {
     citySlug: string,
     projectSlug: string
   ): Promise<ProjectWithRelations | null> {
+    const supabase = createClient();
     const { data, error } = await supabase
       .from('projects')
       .select(`
@@ -253,6 +256,7 @@ export const projectService = {
    * Get all projects for a city
    */
   async getProjectsByCity(cityId: string, featuredOnly: boolean = false): Promise<ProjectWithRelations[]> {
+    const supabase = createClient();
     let query = supabase
       .from('projects')
       .select(`
@@ -286,6 +290,7 @@ export const projectService = {
     citySlug: string,
     microMarketSlug: string
   ): Promise<ProjectWithRelations[]> {
+    const supabase = createClient();
     const { data, error } = await supabase
       .from('projects')
       .select(`
@@ -315,6 +320,7 @@ export const projectService = {
   async getRelatedProjectsByMicroMarketId(
     microMarketId: string
   ): Promise<ProjectWithRelations[]> {
+    const supabase = createClient();
     const { data, error } = await supabase
       .from('projects')
       .select(`
@@ -341,6 +347,7 @@ export const projectService = {
    * Get featured projects for a city
    */
   async getFeaturedProjects(cityId: string, limit: number = 6): Promise<ProjectWithRelations[]> {
+    const supabase = createClient();
     const { data, error } = await supabase
       .from('projects')
       .select(`
@@ -366,6 +373,7 @@ export const projectService = {
    * Get projects by developer
    */
   async getProjectsByDeveloper(developerId: string): Promise<ProjectWithRelations[]> {
+    const supabase = createClient();
     const { data, error } = await supabase
       .from('projects')
       .select(`
@@ -393,6 +401,7 @@ export const projectService = {
     searchTerm: string,
     cityId?: string
   ): Promise<ProjectWithRelations[]> {
+    const supabase = createClient();
     let query = supabase
       .from('projects')
       .select(`

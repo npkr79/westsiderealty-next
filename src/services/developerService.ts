@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/client";
 
 export interface Developer {
   id: string;
@@ -31,7 +31,7 @@ export interface Developer {
 
 export const developerService = {
   async getDeveloperBySlug(slug: string): Promise<Developer | null> {
-    const supabase = await createClient();
+    const supabase = createClient();
     const { data, error } = await supabase
       .from('developers')
       .select('*')
@@ -47,7 +47,7 @@ export const developerService = {
   },
 
   async getDeveloperByName(name: string): Promise<Developer | null> {
-    const supabase = await createClient();
+    const supabase = createClient();
     const { data, error } = await supabase
       .from('developers')
       .select('*')
