@@ -38,7 +38,7 @@ export default function AgentLayout({ children }: { children: React.ReactNode })
 
     checkAuth();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: any) => {
       if (event === "SIGNED_OUT") {
         router.push("/login");
       }

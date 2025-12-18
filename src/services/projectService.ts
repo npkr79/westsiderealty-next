@@ -163,7 +163,7 @@ export const projectService = {
 
     const projectMap = new Map<string, ProjectInfo>();
     
-    data.forEach(project => {
+    data.forEach((project: any) => {
       const combined = `${project.meta_description || ''} ${project.project_overview_seo || ''}`.trim();
       const words = combined.split(/\s+/).filter(w => w.length > 0);
       const truncated = words.slice(0, 40).join(' ') + (words.length > 40 ? '...' : '');

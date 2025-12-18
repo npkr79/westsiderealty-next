@@ -92,7 +92,7 @@ export default function AddProperty() {
         .select("seo_slug, slug");
 
       const existingSlugs =
-        existingProps?.map((p) => p.seo_slug || p.slug).filter(Boolean) || [];
+        existingProps?.map((p: any) => p.seo_slug || p.slug).filter(Boolean) || [];
 
       // Generate clean slug from SEO-optimized title
       let baseSlug = slugify(formData.title);

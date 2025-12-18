@@ -83,7 +83,7 @@ export default function EditProperty() {
           .order("name");
 
         if (projectsData) {
-          setProjects(["Independent", ...projectsData.map((p) => p.name)]);
+          setProjects(["Independent", ...projectsData.map((p: any) => p.name)]);
         }
 
         setProperty(propertyData);
