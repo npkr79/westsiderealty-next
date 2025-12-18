@@ -65,7 +65,7 @@ export default function AddProperty() {
           .order('name');
         
         if (data) {
-          setProjects(['Independent', ...data.map(p => p.name)]);
+          setProjects(['Independent', ...data.map((p: any) => p.name)]);
         }
       }
     };
@@ -97,7 +97,7 @@ export default function AddProperty() {
         .from(tableName)
         .select('seo_slug');
 
-      const existingSlugs = existingProps?.map(p => p.seo_slug).filter(Boolean) || [];
+      const existingSlugs = existingProps?.map((p: any) => p.seo_slug).filter(Boolean) || [];
 
       // Generate clean slug from SEO-optimized title
       let baseSlug = slugify(formData.title);

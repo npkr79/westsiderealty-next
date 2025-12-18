@@ -99,7 +99,7 @@ const LeadsManagement = () => {
       setPropertyLeads(propertyRes.data || []);
       
       // Transform all_leads to match LandingPageLead interface
-      const transformedLanding = (landingRes.data || []).map(lead => ({
+      const transformedLanding = (landingRes.data || []).map((lead: any) => ({
         ...lead,
         name: lead.full_name,
         message: lead.requirements_message,
@@ -107,7 +107,7 @@ const LeadsManagement = () => {
       setLandingPageLeads(transformedLanding as any);
       
       // Transform commercial leads to match Lead interface
-      const transformedCommercial = (commercialRes.data || []).map(lead => ({
+      const transformedCommercial = (commercialRes.data || []).map((lead: any) => ({
         ...lead,
         id: String(lead.id),
         name: lead.full_name,

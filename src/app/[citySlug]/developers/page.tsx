@@ -69,7 +69,7 @@ export default function CityDevelopersPage() {
 
           // Extract developer data from the nested structure
           const devs = data
-            ?.map(item => (item.developers as any))
+            ?.map((item: any) => (item.developers as any))
             .filter(Boolean) || [];
           
           setDevelopers(devs);

@@ -48,6 +48,30 @@ export default function ProjectDetailPage() {
   const citySlug = Array.isArray(citySlugParam) ? citySlugParam[0] : citySlugParam;
   const projectSlug = Array.isArray(projectSlugParam) ? projectSlugParam[0] : projectSlugParam;
   
+  // All hooks must be called unconditionally at the top level
+  const [hasMounted, setHasMounted] = useState(false);
+  const [project, setProject] = useState<ProjectWithRelations | null>(null);
+  const [listings, setListings] = useState<HyderabadProperty[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadingListings, setLoadingListings] = useState(true);
+  const [isLeadFormOpen, setIsLeadFormOpen] = useState(false);
+  const [brochureUrl, setBrochureUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
+
+  // Don't render anything meaningful until mounted to avoid hydration mismatch
+  if (!hasMounted) {
+    return (
+      <Layout>
+        <div className="min-h-screen flex items-center justify-center">
+          <Skeleton className="h-96 w-full" />
+        </div>
+      </Layout>
+    );
+  }
+
   // Early return if required params are missing
   if (!citySlug || !projectSlug) {
     return (
@@ -61,13 +85,6 @@ export default function ProjectDetailPage() {
       </Layout>
     );
   }
-  
-  const [project, setProject] = useState<ProjectWithRelations | null>(null);
-  const [listings, setListings] = useState<HyderabadProperty[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadingListings, setLoadingListings] = useState(true);
-  const [isLeadFormOpen, setIsLeadFormOpen] = useState(false);
-  const [brochureUrl, setBrochureUrl] = useState<string | null>(null);
 
   const handleWhatsApp = () => {
     if (typeof window !== 'undefined') {

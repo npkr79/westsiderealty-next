@@ -55,7 +55,7 @@ const EditPropertyContent = () => {
         .order('name');
       
       if (data) {
-        setProjects(['Independent', ...data.map(p => p.name)]);
+        setProjects(['Independent', ...data.map((p: any) => p.name)]);
       }
     }
   };
