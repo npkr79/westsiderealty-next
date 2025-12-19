@@ -88,7 +88,22 @@ export default async function ProjectsHubPage({ searchParams }: PageProps) {
     console.error("Error fetching projects:", error);
   }
 
-  const projectsList = (projects || []) as Project[];
+  // Normalize the data - Supabase may return arrays for relations, convert to single objects
+  const projectsList: Project[] = (projects || []).map((p: any) => ({
+    id: p.id,
+    project_name: p.project_name,
+    url_slug: p.url_slug,
+    hero_image_url: p.hero_image_url,
+    price_range_text: p.price_range_text,
+    status: p.status,
+    city_slug: p.city_slug,
+    micro_market: Array.isArray(p.micro_market) 
+      ? (p.micro_market[0] || null)
+      : (p.micro_market || null),
+    developer: Array.isArray(p.developer)
+      ? (p.developer[0] || null)
+      : (p.developer || null),
+  }));
 
   // JSON-LD structured data
   const jsonLd = {
