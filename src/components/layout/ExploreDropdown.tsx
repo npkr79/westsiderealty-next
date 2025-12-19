@@ -8,7 +8,7 @@ import {
   NavigationMenuItem,
   NavigationMenuTrigger,
 } from "@/components/ui/navigation-menu";
-import { navigationService, NavMicroMarket, NavDeveloper } from "@/services/navigationService";
+import { navigationService, NavMicroMarket, NavDeveloper, NavCity } from "@/services/navigationService";
 
 const ExploreDropdown = () => {
   const [microMarkets, setMicroMarkets] = useState<NavMicroMarket[]>([]);
@@ -28,18 +28,44 @@ const ExploreDropdown = () => {
     fetchData();
   }, []);
 
+  const allCities: NavCity[] = [
+    { city_name: "Dubai", url_slug: "dubai" },
+    { city_name: "Goa", url_slug: "goa" },
+    { city_name: "Hyderabad", url_slug: "hyderabad" }
+  ];
+
   return (
     <NavigationMenuItem>
       <NavigationMenuTrigger className="text-base font-semibold bg-transparent hover:bg-transparent hover:text-blue-700 data-[state=open]:bg-transparent text-gray-700">
         Explore
       </NavigationMenuTrigger>
       <NavigationMenuContent>
-        <div className="grid gap-6 p-6 w-[500px] lg:w-[600px] lg:grid-cols-2">
+        <div className="grid gap-6 p-6 w-[500px] lg:w-[600px] lg:grid-cols-3">
+          {/* By City Section */}
+          <div>
+            <div className="flex items-center gap-2 mb-3 pb-2 border-b">
+              <MapPin className="h-4 w-4 text-remax-red" />
+              <h3 className="font-semibold text-sm text-gray-900">By City</h3>
+            </div>
+            <ul className="space-y-1">
+              {allCities.map((city) => (
+                <li key={city.url_slug}>
+                  <Link
+                    href={`/${city.url_slug}`}
+                    className="block py-2 px-3 rounded-md text-sm text-muted-foreground hover:bg-accent hover:text-remax-red transition-colors"
+                  >
+                    {city.city_name}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
           {/* Micro-Markets Section */}
           <div>
             <div className="flex items-center gap-2 mb-3 pb-2 border-b">
               <MapPin className="h-4 w-4 text-remax-red" />
-              <h3 className="font-semibold text-sm text-gray-900">Micro-Markets</h3>
+              <h3 className="font-semibold text-sm text-gray-900">By Micro-Market</h3>
             </div>
             <p className="text-xs text-muted-foreground mb-3">Explore by neighborhood</p>
             <ul className="space-y-1">
@@ -75,7 +101,7 @@ const ExploreDropdown = () => {
           <div>
             <div className="flex items-center gap-2 mb-3 pb-2 border-b">
               <Building className="h-4 w-4 text-remax-red" />
-              <h3 className="font-semibold text-sm text-gray-900">Developers</h3>
+              <h3 className="font-semibold text-sm text-gray-900">By Developer</h3>
             </div>
             <ul className="space-y-1">
               <li>

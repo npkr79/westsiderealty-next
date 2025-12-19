@@ -18,7 +18,6 @@ import { siteImagesService } from "@/services/adminService";
 import BuyDropdown from "./BuyDropdown";
 import NewProjectsDropdown from "./NewProjectsDropdown";
 import ExploreDropdown from "./ExploreDropdown";
-import InsightsDropdown from "./InsightsDropdown";
 import MobileNavigationMenu from "./MobileNavigationMenu";
 
 const Header = () => {
@@ -87,6 +86,36 @@ const Header = () => {
         {/* Desktop Navigation with Mega Menu */}
         <NavigationMenu className="hidden lg:flex">
           <NavigationMenuList className="space-x-1">
+            {/* About Us - Direct Link */}
+            <NavigationMenuItem>
+              <Link
+                href="/about"
+                className={cn(
+                  "text-base font-semibold px-3 py-2 rounded-md transition-colors",
+                  isActive("/about") 
+                    ? "text-remax-red" 
+                    : "text-gray-700 hover:text-remax-red hover:bg-gray-50"
+                )}
+              >
+                About Us
+              </Link>
+            </NavigationMenuItem>
+
+            {/* What We Do - Direct Link */}
+            <NavigationMenuItem>
+              <Link
+                href="/services"
+                className={cn(
+                  "text-base font-semibold px-3 py-2 rounded-md transition-colors",
+                  isActive("/services") || isActive("/what-we-do")
+                    ? "text-remax-red" 
+                    : "text-gray-700 hover:text-remax-red hover:bg-gray-50"
+                )}
+              >
+                What We Do
+              </Link>
+            </NavigationMenuItem>
+
             {/* Buy - Priority 1 */}
             <BuyDropdown />
 
@@ -96,8 +125,35 @@ const Header = () => {
             {/* Explore - Priority 3 */}
             <ExploreDropdown />
 
-            {/* Insights - Priority 4 */}
-            <InsightsDropdown />
+            {/* Insights - Direct Link */}
+            <NavigationMenuItem>
+              <Link
+                href="/blog"
+                className={cn(
+                  "text-base font-semibold px-3 py-2 rounded-md transition-colors",
+                  isActive("/blog") || isActive("/insights")
+                    ? "text-remax-red" 
+                    : "text-gray-700 hover:text-remax-red hover:bg-gray-50"
+                )}
+              >
+                Insights
+              </Link>
+            </NavigationMenuItem>
+
+            {/* Contact - Direct Link */}
+            <NavigationMenuItem>
+              <Link
+                href="/contact"
+                className={cn(
+                  "text-base font-semibold px-3 py-2 rounded-md transition-colors",
+                  isActive("/contact")
+                    ? "text-remax-red" 
+                    : "text-gray-700 hover:text-remax-red hover:bg-gray-50"
+                )}
+              >
+                Contact
+              </Link>
+            </NavigationMenuItem>
           </NavigationMenuList>
         </NavigationMenu>
 

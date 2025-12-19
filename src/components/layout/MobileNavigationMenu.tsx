@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ChevronDown, Home, TrendingUp, Building2, MapPin, Building, BarChart3, BookOpen, Info } from "lucide-react";
+import { ChevronDown, Home, TrendingUp, Building2, MapPin, Building, ArrowRight } from "lucide-react";
 import {
   Collapsible,
   CollapsibleContent,
@@ -29,25 +29,25 @@ const MobileNavigationMenu = ({ onNavigate, isActive }: MobileNavigationMenuProp
 
   useEffect(() => {
     const fetchData = async () => {
-      const [citiesData, mmData, devsData] = await Promise.all([
-        navigationService.getNavigationCities(),
+      const [mmData, devsData] = await Promise.all([
         navigationService.getFeaturedMicroMarkets(),
         navigationService.getFeaturedDevelopers(),
       ]);
-      setCities(citiesData);
       setMicroMarkets(mmData);
       setDevelopers(devsData);
       
-      // Fetch listing counts
-      const counts: Record<string, number> = {};
-      for (const city of citiesData) {
-        const count = await navigationService.getResaleListingsCount(city.url_slug);
-        counts[city.url_slug] = count;
-      }
-      setListingCounts(counts);
+      // Only fetch listing count for Hyderabad
+      const count = await navigationService.getResaleListingsCount("hyderabad");
+      setListingCounts({ hyderabad: count });
     };
     fetchData();
   }, []);
+
+  const allCities: NavCity[] = [
+    { city_name: "Dubai", url_slug: "dubai" },
+    { city_name: "Goa", url_slug: "goa" },
+    { city_name: "Hyderabad", url_slug: "hyderabad" }
+  ];
 
   return (
     <div className="flex flex-col space-y-2">
@@ -63,7 +63,31 @@ const MobileNavigationMenu = ({ onNavigate, isActive }: MobileNavigationMenuProp
         Home
       </Link>
 
-      {/* Buy Accordion - Priority 1 */}
+      {/* About Us - Direct Link */}
+      <Link
+        href="/about"
+        onClick={onNavigate}
+        className={cn(
+          "text-lg font-medium transition-colors hover:text-remax-red py-2",
+          isActive("/about") ? "text-remax-red" : "text-muted-foreground"
+        )}
+      >
+        About Us
+      </Link>
+
+      {/* What We Do - Direct Link */}
+      <Link
+        href="/services"
+        onClick={onNavigate}
+        className={cn(
+          "text-lg font-medium transition-colors hover:text-remax-red py-2",
+          isActive("/services") || isActive("/what-we-do") ? "text-remax-red" : "text-muted-foreground"
+        )}
+      >
+        What We Do
+      </Link>
+
+      {/* Buy Accordion */}
       <Collapsible open={buyOpen} onOpenChange={setBuyOpen}>
         <CollapsibleTrigger className="flex items-center justify-between w-full text-lg font-medium text-muted-foreground hover:text-remax-red py-2">
           <span>Buy</span>
@@ -75,28 +99,25 @@ const MobileNavigationMenu = ({ onNavigate, isActive }: MobileNavigationMenuProp
           />
         </CollapsibleTrigger>
         <CollapsibleContent className="pl-4 space-y-3 pt-2">
-          {/* Resale Properties */}
+          {/* Resale Properties - Only Hyderabad */}
           <div>
             <div className="flex items-center gap-2 text-sm font-medium text-foreground mb-2">
               <Home className="h-3 w-3 text-remax-red" />
               <span>Resale Properties</span>
             </div>
             <div className="space-y-1 pl-5">
-              {cities.map((city) => (
-                <Link
-                  key={city.url_slug}
-                  href={`/buy/${city.url_slug}`}
-                  onClick={onNavigate}
-                  className="flex items-center justify-between text-sm text-muted-foreground hover:text-remax-red py-1"
-                >
-                  <span>{city.city_name}</span>
-                  {listingCounts[city.url_slug] > 0 && (
-                    <Badge variant="secondary" className="text-xs">
-                      {listingCounts[city.url_slug]}
-                    </Badge>
-                  )}
-                </Link>
-              ))}
+              <Link
+                href="/buy/hyderabad"
+                onClick={onNavigate}
+                className="flex items-center justify-between text-sm text-muted-foreground hover:text-remax-red py-1"
+              >
+                <span>Hyderabad Resale Properties</span>
+                {listingCounts.hyderabad > 0 && (
+                  <Badge variant="secondary" className="text-xs">
+                    {listingCounts.hyderabad} listings
+                  </Badge>
+                )}
+              </Link>
             </div>
           </div>
           {/* Investor Share */}
@@ -118,7 +139,7 @@ const MobileNavigationMenu = ({ onNavigate, isActive }: MobileNavigationMenuProp
         </CollapsibleContent>
       </Collapsible>
 
-      {/* New Projects Accordion - Priority 2 */}
+      {/* New Projects Accordion */}
       <Collapsible open={newProjectsOpen} onOpenChange={setNewProjectsOpen}>
         <CollapsibleTrigger className="flex items-center justify-between w-full text-lg font-medium text-muted-foreground hover:text-remax-red py-2">
           <span>New Projects</span>
@@ -130,47 +151,45 @@ const MobileNavigationMenu = ({ onNavigate, isActive }: MobileNavigationMenuProp
           />
         </CollapsibleTrigger>
         <CollapsibleContent className="pl-4 space-y-3 pt-2">
-          <Link
-            href="/projects"
-            onClick={onNavigate}
-            className="block text-sm font-medium text-remax-red hover:underline py-1"
-          >
-            All Projects
-          </Link>
-          <div className="space-y-1 pl-2">
-            {cities.map((city) => (
-              <Link
-                key={city.url_slug}
-                href={`/${city.url_slug}/projects`}
-                onClick={onNavigate}
-                className="block text-sm text-muted-foreground hover:text-remax-red py-1"
-              >
-                {city.city_name} Projects
-              </Link>
-            ))}
-          </div>
-          <div className="pt-2 border-t">
+          {/* Projects by City */}
+          <div>
             <div className="flex items-center gap-2 text-sm font-medium text-foreground mb-2">
-              <Building className="h-3 w-3 text-remax-red" />
-              <span>By Developer</span>
+              <Building2 className="h-3 w-3 text-remax-red" />
+              <span>Projects by City</span>
             </div>
             <div className="space-y-1 pl-5">
-              {developers.slice(0, 5).map((dev) => (
+              {allCities.map((city) => (
                 <Link
-                  key={dev.url_slug}
-                  href={`/developers/${dev.url_slug}`}
+                  key={city.url_slug}
+                  href={`/${city.url_slug}/projects`}
                   onClick={onNavigate}
                   className="block text-sm text-muted-foreground hover:text-remax-red py-1"
                 >
-                  {dev.developer_name}
+                  {city.city_name} Projects
                 </Link>
               ))}
+            </div>
+          </div>
+          {/* Featured/Latest Projects */}
+          <div>
+            <div className="flex items-center gap-2 text-sm font-medium text-foreground mb-2">
+              <ArrowRight className="h-3 w-3 text-remax-red" />
+              <span>Featured/Latest Projects</span>
+            </div>
+            <div className="space-y-1 pl-5">
+              <Link
+                href="/projects"
+                onClick={onNavigate}
+                className="block text-sm text-muted-foreground hover:text-remax-red py-1"
+              >
+                All Projects
+              </Link>
             </div>
           </div>
         </CollapsibleContent>
       </Collapsible>
 
-      {/* Explore Accordion - Priority 3 */}
+      {/* Explore Accordion */}
       <Collapsible open={exploreOpen} onOpenChange={setExploreOpen}>
         <CollapsibleTrigger className="flex items-center justify-between w-full text-lg font-medium text-muted-foreground hover:text-remax-red py-2">
           <span>Explore</span>
@@ -182,11 +201,30 @@ const MobileNavigationMenu = ({ onNavigate, isActive }: MobileNavigationMenuProp
           />
         </CollapsibleTrigger>
         <CollapsibleContent className="pl-4 space-y-3 pt-2">
-          {/* Micro-Markets */}
+          {/* By City */}
           <div>
             <div className="flex items-center gap-2 text-sm font-medium text-foreground mb-2">
               <MapPin className="h-3 w-3 text-remax-red" />
-              <span>Micro-Markets</span>
+              <span>By City</span>
+            </div>
+            <div className="space-y-1 pl-5">
+              {allCities.map((city) => (
+                <Link
+                  key={city.url_slug}
+                  href={`/${city.url_slug}`}
+                  onClick={onNavigate}
+                  className="block text-sm text-muted-foreground hover:text-remax-red py-1"
+                >
+                  {city.city_name}
+                </Link>
+              ))}
+            </div>
+          </div>
+          {/* By Micro-Market */}
+          <div>
+            <div className="flex items-center gap-2 text-sm font-medium text-foreground mb-2">
+              <MapPin className="h-3 w-3 text-remax-red" />
+              <span>By Micro-Market</span>
             </div>
             <Link
               href="/hyderabad/areas"
@@ -208,11 +246,11 @@ const MobileNavigationMenu = ({ onNavigate, isActive }: MobileNavigationMenuProp
               ))}
             </div>
           </div>
-          {/* Developers */}
+          {/* By Developer */}
           <div>
             <div className="flex items-center gap-2 text-sm font-medium text-foreground mb-2">
               <Building className="h-3 w-3 text-remax-red" />
-              <span>Developers</span>
+              <span>By Developer</span>
             </div>
             <Link
               href="/developers"
@@ -237,44 +275,17 @@ const MobileNavigationMenu = ({ onNavigate, isActive }: MobileNavigationMenuProp
         </CollapsibleContent>
       </Collapsible>
 
-      {/* Insights Accordion - Priority 4 */}
-      <Collapsible open={insightsOpen} onOpenChange={setInsightsOpen}>
-        <CollapsibleTrigger className="flex items-center justify-between w-full text-lg font-medium text-muted-foreground hover:text-remax-red py-2">
-          <span>Insights</span>
-          <ChevronDown
-            className={cn(
-              "h-4 w-4 transition-transform duration-200",
-              insightsOpen && "rotate-180"
-            )}
-          />
-        </CollapsibleTrigger>
-        <CollapsibleContent className="pl-4 space-y-1 pt-2">
-          <Link
-            href="/insights"
-            onClick={onNavigate}
-            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-remax-red py-1"
-          >
-            <BarChart3 className="h-3 w-3" />
-            <span>Market Insights</span>
-          </Link>
-          <Link
-            href="/blog"
-            onClick={onNavigate}
-            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-remax-red py-1"
-          >
-            <BookOpen className="h-3 w-3" />
-            <span>Blog</span>
-          </Link>
-          <Link
-            href="/about"
-            onClick={onNavigate}
-            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-remax-red py-1"
-          >
-            <Info className="h-3 w-3" />
-            <span>About Us</span>
-          </Link>
-        </CollapsibleContent>
-      </Collapsible>
+      {/* Insights - Direct Link */}
+      <Link
+        href="/blog"
+        onClick={onNavigate}
+        className={cn(
+          "text-lg font-medium transition-colors hover:text-remax-red py-2",
+          isActive("/blog") || isActive("/insights") ? "text-remax-red" : "text-muted-foreground"
+        )}
+      >
+        Insights
+      </Link>
 
       {/* Contact Link */}
       <Link

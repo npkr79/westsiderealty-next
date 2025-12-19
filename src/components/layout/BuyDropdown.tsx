@@ -18,16 +18,16 @@ const BuyDropdown = () => {
 
   useEffect(() => {
     const fetchData = async () => {
-      const citiesData = await navigationService.getNavigationCities();
-      setCities(citiesData);
+      // Only show Hyderabad for resale properties
+      const hyderabadCity: NavCity = {
+        city_name: "Hyderabad",
+        url_slug: "hyderabad"
+      };
+      setCities([hyderabadCity]);
       
-      // Fetch listing counts for each city
-      const counts: Record<string, number> = {};
-      for (const city of citiesData) {
-        const count = await navigationService.getResaleListingsCount(city.url_slug);
-        counts[city.url_slug] = count;
-      }
-      setListingCounts(counts);
+      // Fetch listing count for Hyderabad
+      const count = await navigationService.getResaleListingsCount("hyderabad");
+      setListingCounts({ hyderabad: count });
       setIsLoading(false);
     };
     fetchData();
@@ -50,24 +50,20 @@ const BuyDropdown = () => {
             <ul className="space-y-1">
               {isLoading ? (
                 <li className="text-sm text-muted-foreground">Loading...</li>
-              ) : cities.length > 0 ? (
-                cities.map((city) => (
-                  <li key={city.url_slug}>
-                    <Link
-                      href={`/buy/${city.url_slug}`}
-                      className="flex items-center justify-between py-2 px-3 rounded-md text-sm text-muted-foreground hover:bg-accent hover:text-remax-red transition-colors group"
-                    >
-                      <span>{city.city_name}</span>
-                      {listingCounts[city.url_slug] > 0 && (
-                        <Badge variant="secondary" className="text-xs">
-                          {listingCounts[city.url_slug]} listings
-                        </Badge>
-                      )}
-                    </Link>
-                  </li>
-                ))
               ) : (
-                <li className="text-sm text-muted-foreground">No cities available</li>
+                <li>
+                  <Link
+                    href="/buy/hyderabad"
+                    className="flex items-center justify-between py-2 px-3 rounded-md text-sm text-muted-foreground hover:bg-accent hover:text-remax-red transition-colors group"
+                  >
+                    <span>Hyderabad Resale Properties</span>
+                    {listingCounts.hyderabad > 0 && (
+                      <Badge variant="secondary" className="text-xs">
+                        {listingCounts.hyderabad} listings
+                      </Badge>
+                    )}
+                  </Link>
+                </li>
               )}
             </ul>
           </div>
