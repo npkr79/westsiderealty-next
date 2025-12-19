@@ -17,6 +17,7 @@ import AboutPreviewSection from "@/components/home/AboutPreviewSection";
 import TestimonialsSection from "@/components/home/TestimonialsSection";
 import CtaSection from "@/components/home/CtaSection";
 import FooterSection from "@/components/home/FooterSection";
+import CityCardsSection from "@/components/home/CityCardsSection";
 import { supabaseTestimonialClientService } from "@/services/admin/supabaseTestimonialClientService";
 import { siteImagesService } from "@/services/adminService";
 
@@ -127,6 +128,9 @@ export default function IndexPage() {
           "https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/service-images//remax-office.jpg"
         }
       />
+      {/* Explore Cities Section */}
+      <CityCardsSection />
+
       {loading ? (
         <div className="py-20 text-center text-gray-400 text-lg">
           Loading testimonials...

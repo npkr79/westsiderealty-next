@@ -88,6 +88,27 @@ export const navigationService = {
     return developersCache;
   },
 
+  async getResaleListingsCount(citySlug: string): Promise<number> {
+    const supabase = await createClient();
+    
+    // For Hyderabad, use hyderabad_properties table
+    if (citySlug === "hyderabad") {
+      const { count, error } = await supabase
+        .from("hyderabad_properties")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "active");
+      
+      if (error) {
+        console.error("Error fetching resale listings count:", error);
+        return 0;
+      }
+      return count || 0;
+    }
+    
+    // For other cities, you can add similar logic
+    return 0;
+  },
+
   clearCache() {
     citiesCache = null;
     microMarketsCache = null;

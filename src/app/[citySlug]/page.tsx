@@ -20,15 +20,14 @@ import BuyerPersonasSection from "@/components/city/BuyerPersonasSection";
 import MarketTrendsSection from "@/components/city/MarketTrendsSection";
 import WhyInvestSection from "@/components/city/WhyInvestSection";
 import InvestmentAreasSection from "@/components/city/InvestmentAreasSection";
-import MicroMarketGrid from "@/components/city/MicroMarketGrid";
 import HyderabadInvestmentGuide from "@/components/city/HyderabadInvestmentGuide";
+import MicroMarketGrid from "@/components/city/MicroMarketGrid";
 import HyderabadFAQSchema from "@/components/seo/HyderabadFAQSchema";
 import CityFAQSection from "@/components/city/CityFAQSection";
 import MarketPulseBanner from "@/components/city/MarketPulseBanner";
 import MarketUpdateBanner from "@/components/city/MarketUpdateBanner";
 import { buildMetadata } from "@/components/common/SEO";
 import { JsonLd } from "@/components/common/SEO";
-import { getHeroImageUrl } from "@/utils/imageOptimization";
 
 interface PageProps {
   params: Promise<{ citySlug: string }>;
@@ -153,18 +152,8 @@ export default async function CityPage({ params }: PageProps) {
     ],
   };
 
-  const safeImageSrc = (src: string | null | undefined) => {
-    if (!src || !src.trim()) {
-      // Return a default Hyderabad hero image if none provided
-      return "https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/service-images/hyderabad-view.jpg";
-    }
-    // Use optimized hero image URL if it's a valid image
-    try {
-      return getHeroImageUrl(src);
-    } catch {
-      return src;
-    }
-  };
+  const safeImageSrc = (src: string | null | undefined) =>
+    src && src.trim() ? src : "/fallback-hero.jpg";
 
   return (
     <>
@@ -349,14 +338,10 @@ export default async function CityPage({ params }: PageProps) {
       {/* Micro-Markets Grid */}
       <MicroMarketGrid microMarkets={microMarkets} citySlug={slug} />
 
-      {/* Hyderabad Investment Guide - 2025 Trends */}
-      {slug === "hyderabad" && <HyderabadInvestmentGuide />}
-
-      {/* Investment Areas Section */}
-      <InvestmentAreasSection 
-        cityName={city.city_name} 
-        investmentZonesData={Array.isArray(city.investment_zones_json) ? city.investment_zones_json : []} 
-      />
+      {/* Hyderabad Investment Guide - from investment_zones_json */}
+      {slug === "hyderabad" && city.investment_zones_json && (
+        <HyderabadInvestmentGuide zones={city.investment_zones_json} />
+      )}
 
       {/* Featured Developers - Removed per requirements */}
 

@@ -15,8 +15,10 @@ import {
 import { Menu, Phone } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { siteImagesService } from "@/services/adminService";
-import MegaMenuProperties from "./MegaMenuProperties";
-import DevelopersDropdown from "./DevelopersDropdown";
+import BuyDropdown from "./BuyDropdown";
+import NewProjectsDropdown from "./NewProjectsDropdown";
+import ExploreDropdown from "./ExploreDropdown";
+import InsightsDropdown from "./InsightsDropdown";
 import MobileNavigationMenu from "./MobileNavigationMenu";
 
 const Header = () => {
@@ -85,67 +87,17 @@ const Header = () => {
         {/* Desktop Navigation with Mega Menu */}
         <NavigationMenu className="hidden lg:flex">
           <NavigationMenuList className="space-x-1">
-            {/* Home */}
-            <NavigationMenuItem>
-              <Link href="/">
-                <NavigationMenuLink
-                  className={cn(
-                    "text-base font-semibold px-4 py-2 rounded-md transition-colors hover:text-blue-700",
-                    isActive("/") ? "text-blue-700" : "text-gray-700"
-                  )}
-                >
-                  Home
-                </NavigationMenuLink>
-              </Link>
-            </NavigationMenuItem>
+            {/* Buy - Priority 1 */}
+            <BuyDropdown />
 
-            {/* About Us */}
-            <NavigationMenuItem>
-              <Link href="/about">
-                <NavigationMenuLink
-                  className={cn(
-                    "text-base font-semibold px-4 py-2 rounded-md transition-colors hover:text-blue-700",
-                    isActive("/about") ? "text-blue-700" : "text-gray-700"
-                  )}
-                >
-                  About Us
-                </NavigationMenuLink>
-              </Link>
-            </NavigationMenuItem>
+            {/* New Projects - Priority 2 */}
+            <NewProjectsDropdown />
 
-            {/* What We Do */}
-            <NavigationMenuItem>
-              <Link href="/services">
-                <NavigationMenuLink
-                  className={cn(
-                    "text-base font-semibold px-4 py-2 rounded-md transition-colors hover:text-blue-700",
-                    isActive("/services") ? "text-blue-700" : "text-gray-700"
-                  )}
-                >
-                  What We Do
-                </NavigationMenuLink>
-              </Link>
-            </NavigationMenuItem>
+            {/* Explore - Priority 3 */}
+            <ExploreDropdown />
 
-            {/* Properties Mega Menu */}
-            <MegaMenuProperties />
-
-            {/* Developers Dropdown */}
-            <DevelopersDropdown />
-
-            {/* Market Insights */}
-            <NavigationMenuItem>
-              <Link href="/blog">
-                <NavigationMenuLink
-                  className={cn(
-                    "text-base font-semibold px-4 py-2 rounded-md transition-colors hover:text-blue-700",
-                    isActive("/blog") ? "text-blue-700" : "text-gray-700"
-                  )}
-                >
-                  Market Insights
-                </NavigationMenuLink>
-              </Link>
-            </NavigationMenuItem>
+            {/* Insights - Priority 4 */}
+            <InsightsDropdown />
           </NavigationMenuList>
         </NavigationMenu>
 
