@@ -47,20 +47,26 @@ export default async function ProjectDetailPage({ params }: PageProps) {
   let brochureUrl: string | null = null;
 
   try {
+    console.log(`[ProjectDetailPage] Fetching project: citySlug=${citySlug}, projectSlug=${projectSlug}`);
     project = await projectService.getCityLevelProjectBySlug(citySlug, projectSlug);
     
     if (!project) {
+      console.error(`[ProjectDetailPage] Project not found: citySlug=${citySlug}, projectSlug=${projectSlug}`);
       notFound();
     }
+
+    console.log(`[ProjectDetailPage] ✅ Project found: ${project.project_name}`);
 
     // Fetch brochure (non-blocking)
     try {
       brochureUrl = await findBrochureByProjectName(project.project_name);
     } catch (err) {
       // Ignore brochure errors
+      console.warn(`[ProjectDetailPage] Brochure not found for: ${project.project_name}`);
     }
   } catch (error) {
-    console.error("Error fetching project:", error);
+    console.error("[ProjectDetailPage] ❌ Error fetching project:", error);
+    console.error("[ProjectDetailPage] Error details:", JSON.stringify(error, null, 2));
     throw error; // Let error boundary catch it
   }
 
