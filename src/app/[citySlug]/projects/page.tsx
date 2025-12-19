@@ -95,7 +95,7 @@ export default async function ProjectsHubPage({ params, searchParams }: PageProp
     .from("projects")
     .select("id, project_name, url_slug, hero_image_url, price_range_text, status, micro_market:micro_markets!projects_micromarket_id_fkey(micro_market_name, url_slug), developer:developers(developer_name, url_slug)")
     .eq("city_slug", citySlug)
-    .eq("is_published", true)
+    .or("status.ilike.published,status.ilike.%under construction%,page_status.eq.published")
     .order("created_at", { ascending: false });
 
   // Apply search filter

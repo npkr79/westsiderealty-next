@@ -112,6 +112,19 @@ export default async function ProjectDetailPage({ params }: PageProps) {
           projectName={project.project_name || "Project"}
           images={getProjectImageUrls(project) || []}
         />
+        
+        {/* Debug: Log image data */}
+        {process.env.NODE_ENV === 'development' && (
+          <div style={{ display: 'none' }}>
+            {console.log('[ProjectDetailPage] Image data:', {
+              hero_image_url: project.hero_image_url,
+              gallery_images_json: (project as any).gallery_images_json,
+              gallery_images: (project as any).gallery_images,
+              images: (project as any).images,
+              extracted: getProjectImageUrls(project)
+            })}
+          </div>
+        )}
 
         {/* Client Actions Component - handles all interactive elements */}
         <ProjectDetailClientActions

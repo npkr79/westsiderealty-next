@@ -251,7 +251,7 @@ export const projectService = {
     console.log(`[getCityLevelProjectBySlug] Found city ID: ${cityData.id}`);
 
     // Query project by city_id and url_slug
-    // Try multiple approaches: is_published, status filter, then no filter
+    // Try with status filter first, then without filter
     let { data, error } = await supabase
       .from('projects')
       .select(`
@@ -263,30 +263,10 @@ export const projectService = {
       `)
       .eq('url_slug', projectSlug)
       .eq('city_id', cityData.id)
-      .eq('is_published', true)
+      .or('status.ilike.published,status.ilike.%under construction%,page_status.eq.published')
       .maybeSingle();
     
-    // If no result with is_published, try with status filter
-    if (!data && !error) {
-      console.log('[getCityLevelProjectBySlug] No result with is_published=true, trying status filter...');
-      const result = await supabase
-        .from('projects')
-        .select(`
-          *,
-          floor_plan_images,
-          city:cities(*),
-          developer:developers(*),
-          micro_market:micro_markets!projects_micromarket_id_fkey(*)
-        `)
-        .eq('url_slug', projectSlug)
-        .eq('city_id', cityData.id)
-        .or('status.ilike.published,status.ilike.%under construction%')
-        .maybeSingle();
-      data = result.data;
-      error = result.error;
-    }
-    
-    // If still no result, try without any status filter (project might exist but not published)
+    // If no result with status filter, try without any filter (project might exist but not published)
     if (!data && !error) {
       console.log('[getCityLevelProjectBySlug] No result with status filter, trying without any filter...');
       const result = await supabase
@@ -306,7 +286,6 @@ export const projectService = {
       
       if (data) {
         console.warn('[getCityLevelProjectBySlug] ⚠️ Project found but may not be published:', {
-          is_published: (data as any).is_published,
           status: (data as any).status,
           page_status: (data as any).page_status
         });
@@ -347,6 +326,12 @@ export const projectService = {
 
     if (data) {
       console.log('[getCityLevelProjectBySlug] ✅ Successfully loaded project:', data.project_name);
+      console.log('[getCityLevelProjectBySlug] Image fields:', {
+        hero_image_url: (data as any).hero_image_url,
+        gallery_images_json: (data as any).gallery_images_json,
+        gallery_images: (data as any).gallery_images,
+        images: (data as any).images
+      });
       console.log('[getCityLevelProjectBySlug] Floor Plans:', (data as any).floor_plan_images);
       return data as ProjectWithRelations;
     }
