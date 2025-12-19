@@ -6,7 +6,7 @@ import { buildMetadata } from "@/components/common/SEO";
 import { JsonLd } from "@/components/common/SEO";
 import FooterSection from "@/components/home/FooterSection";
 import ProjectCard from "@/components/properties/ProjectCard";
-import ProjectsFilters from "@/components/projects/ProjectsFilters";
+import ProjectsFiltersRoot from "@/components/projects/ProjectsFiltersRoot";
 import { Building2 } from "lucide-react";
 
 interface PageProps {
@@ -134,7 +134,7 @@ export default async function ProjectsHubPage({ searchParams }: PageProps) {
         {/* Filters */}
         <section className="border-b bg-card/50 sticky top-16 z-10 backdrop-blur-sm">
           <div className="container mx-auto px-4 py-4">
-            <ProjectsFilters
+            <ProjectsFiltersRoot
               cities={citiesData || []}
               microMarkets={microMarketOptions}
               initialSearch={resolvedSearchParams.search}
