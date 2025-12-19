@@ -29,6 +29,7 @@ import MarketPulseBanner from "@/components/city/MarketPulseBanner";
 import MarketUpdateBanner from "@/components/city/MarketUpdateBanner";
 import { buildMetadata } from "@/components/common/SEO";
 import { JsonLd } from "@/components/common/SEO";
+import { getHeroImageUrl } from "@/utils/imageOptimization";
 
 interface PageProps {
   params: Promise<{ citySlug: string }>;
@@ -153,8 +154,15 @@ export default async function CityPage({ params }: PageProps) {
     ],
   };
 
-  const safeImageSrc = (src: string | null | undefined) =>
-    src && src.trim() ? src : "/placeholder.svg";
+  const safeImageSrc = (src: string | null | undefined) => {
+    if (!src || !src.trim()) return "/placeholder.svg";
+    // Use optimized hero image URL if it's a valid image
+    try {
+      return getHeroImageUrl(src);
+    } catch {
+      return src;
+    }
+  };
 
   return (
     <>
@@ -209,6 +217,43 @@ export default async function CityPage({ params }: PageProps) {
           </div>
         </div>
       </section>
+
+      {/* Hero Stats Bar - Hyderabad Only */}
+      {slug === "hyderabad" && (
+        <section className="bg-gradient-to-r from-primary/5 via-background to-secondary/5 border-b border-border py-4">
+          <div className="container mx-auto px-4">
+            <div className="flex flex-wrap gap-4 justify-center items-center">
+              {city.average_price_sqft && (
+                <div className="px-4 py-2 rounded-lg bg-background border border-border shadow-sm">
+                  <span className="text-sm font-semibold text-foreground">
+                    ₹{city.average_price_sqft.toLocaleString()} Avg. Price/sft
+                  </span>
+                </div>
+              )}
+              {totalListings > 0 && (
+                <div className="px-4 py-2 rounded-lg bg-background border border-border shadow-sm">
+                  <span className="text-sm font-semibold text-foreground">
+                    {totalListings}+ Active Properties
+                  </span>
+                </div>
+              )}
+              {microMarkets.length > 0 && (() => {
+                const neopolis = microMarkets.find(mm => mm.micro_market_name?.toLowerCase().includes('neopolis'));
+                if (neopolis) {
+                  return (
+                    <div className="px-4 py-2 rounded-lg bg-background border border-border shadow-sm">
+                      <span className="text-sm font-semibold text-foreground">
+                        Neopolis (+15% YoY) Top Growth Area
+                      </span>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Market Pulse Banner - Hyderabad Only */}
       {slug === "hyderabad" && microMarkets.length > 0 && (

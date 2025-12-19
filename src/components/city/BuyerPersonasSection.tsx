@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
 interface BuyerPersonasSectionProps {
   personas: any[];
@@ -14,17 +15,64 @@ export default function BuyerPersonasSection({
   return (
     <section className="py-16 bg-secondary/5">
       <div className="container mx-auto px-4">
-        <h2 className="text-2xl md:text-3xl font-bold mb-6 text-[hsl(var(--heading-blue))]">
-          Who Buys in {cityName}?
+        <h2 className="text-3xl md:text-4xl font-bold mb-8 text-center text-[hsl(var(--heading-blue))]">
+          Who's Buying in {cityName}?
         </h2>
         <div className="grid gap-6 md:grid-cols-3">
           {personas.map((persona, idx) => (
-            <Card key={idx}>
+            <Card key={idx} className="h-full">
               <CardHeader>
-                <CardTitle>{persona.title || persona.name}</CardTitle>
+                <CardTitle className="text-xl">{persona.title || persona.name || persona.type}</CardTitle>
+                {persona.budget && (
+                  <Badge variant="secondary" className="mt-2 w-fit">
+                    Budget: {persona.budget}
+                  </Badge>
+                )}
               </CardHeader>
-              <CardContent className="text-sm text-muted-foreground space-y-2">
-                {persona.description && <p>{persona.description}</p>}
+              <CardContent className="text-sm text-muted-foreground space-y-3">
+                {persona.description && (
+                  <p className="leading-relaxed">{persona.description}</p>
+                )}
+                
+                {persona.preferences && Array.isArray(persona.preferences) && (
+                  <div>
+                    <h4 className="font-semibold text-foreground mb-2">Preferences:</h4>
+                    <ul className="list-disc list-inside space-y-1">
+                      {persona.preferences.map((pref: string, i: number) => (
+                        <li key={i}>{pref}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                
+                {persona.priorities && Array.isArray(persona.priorities) && (
+                  <div>
+                    <h4 className="font-semibold text-foreground mb-2">Priorities:</h4>
+                    <ul className="list-disc list-inside space-y-1">
+                      {persona.priorities.map((priority: string, i: number) => (
+                        <li key={i}>{priority}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                
+                {persona.target_areas && Array.isArray(persona.target_areas) && (
+                  <div>
+                    <h4 className="font-semibold text-foreground mb-2">Target Areas:</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {persona.target_areas.map((area: string, i: number) => (
+                        <Badge key={i} variant="outline">{area}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                {persona.investment_goals && (
+                  <div>
+                    <h4 className="font-semibold text-foreground mb-2">Investment Goals:</h4>
+                    <p>{persona.investment_goals}</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))}
