@@ -53,7 +53,7 @@ const BuyDropdown = () => {
               ) : (
                 <li>
                   <Link
-                    href="/buy/hyderabad"
+                    href="/hyderabad/properties"
                     className="flex items-center justify-between py-2 px-3 rounded-md text-sm text-muted-foreground hover:bg-accent hover:text-remax-red transition-colors group"
                   >
                     <span>Hyderabad Resale Properties</span>

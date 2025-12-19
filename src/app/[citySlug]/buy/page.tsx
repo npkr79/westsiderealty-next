@@ -4,7 +4,6 @@ import { UnifiedPropertyService } from "@/services/unifiedPropertyService";
 import { CITY_CONFIGS, type CitySlug } from "@/types/unifiedProperty";
 import PropertyListingClient from "@/components/properties/PropertyListingClient";
 import BreadcrumbNav from "@/components/layout/BreadcrumbNav";
-import FooterSection from "@/components/home/FooterSection";
 import { JsonLd } from "@/components/common/SEO";
 import { buildMetadata } from "@/components/common/SEO";
 
@@ -93,7 +92,6 @@ export default async function BuyPage({ params }: PageProps) {
           citySlug={citySlug as CitySlug}
           initialProperties={properties}
         />
-        <FooterSection />
       </div>
     </>
   );

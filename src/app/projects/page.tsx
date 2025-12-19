@@ -4,7 +4,6 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { buildMetadata } from "@/components/common/SEO";
 import { JsonLd } from "@/components/common/SEO";
-import FooterSection from "@/components/home/FooterSection";
 import ProjectCard from "@/components/properties/ProjectCard";
 import ProjectsFiltersRoot from "@/components/projects/ProjectsFiltersRoot";
 import { Building2 } from "lucide-react";
@@ -177,7 +176,6 @@ export default async function ProjectsHubPage({ searchParams }: PageProps) {
         </section>
       </main>
 
-      <FooterSection />
     </>
   );
 }

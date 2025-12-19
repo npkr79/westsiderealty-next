@@ -11,7 +11,6 @@ import type { UnifiedProperty } from "@/types/unifiedProperty";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArrowRight, TrendingUp, MapPin, Building2 } from "lucide-react";
-import FooterSection from "@/components/home/FooterSection";
 import ProjectCard from "@/components/properties/ProjectCard";
 import GoaPropertyCard from "@/components/properties/GoaPropertyCard";
 import CityLifestyleHub from "@/components/city/CityLifestyleHub";
@@ -88,6 +87,10 @@ export default async function CityPage({ params }: PageProps) {
     featuredGoaProperties = featuredGoaProperties
       .filter(p => p.is_featured)
       .slice(0, 6);
+    
+    // Also fetch projects for Goa if they exist
+    const goaProjects = await projectService.getProjectsByCity(city.id, true);
+    featuredProjects = goaProjects.slice(0, 6);
   } else {
     // Fetch featured projects for other cities
     const projects = await projectService.getProjectsByCity(city.id, true);
@@ -405,7 +408,6 @@ export default async function CityPage({ params }: PageProps) {
         <CityFAQSection faqs={faqs} cityName={city.city_name} />
       )}
 
-      <FooterSection />
     </>
   );
 }

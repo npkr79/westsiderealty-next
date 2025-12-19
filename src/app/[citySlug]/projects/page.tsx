@@ -5,7 +5,6 @@ import { createClient } from "@/lib/supabase/server";
 import { buildMetadata } from "@/components/common/SEO";
 import { JsonLd } from "@/components/common/SEO";
 import BreadcrumbNav from "@/components/layout/BreadcrumbNav";
-import FooterSection from "@/components/home/FooterSection";
 import ProjectCard from "@/components/properties/ProjectCard";
 import ProjectsFilters from "@/components/projects/ProjectsFilters";
 import { Building2 } from "lucide-react";
@@ -195,7 +194,6 @@ export default async function ProjectsHubPage({ params, searchParams }: PageProp
         </section>
       </div>
 
-      <FooterSection />
     </>
   );
 }
