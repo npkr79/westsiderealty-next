@@ -41,9 +41,9 @@ export default function RelatedProjectsSection({
           related = Array.isArray(maybe) ? (maybe as any) : [];
         }
 
-        // Filter out current + cap
+        // Filter out current + cap (normalize IDs to strings for comparison)
         const filtered = (related || [])
-          .filter((p) => p?.id && p.id !== currentProjectId)
+          .filter((p) => p?.id && String(p.id) !== String(currentProjectId))
           .slice(0, 6);
 
         setProjects(filtered);

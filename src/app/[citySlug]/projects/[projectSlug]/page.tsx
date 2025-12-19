@@ -69,6 +69,12 @@ export default async function ProjectDetailPage({ params }: PageProps) {
     ? (project as any).landmarks_json
     : [];
 
+  // Ensure project has required fields
+  if (!project.project_name) {
+    console.error("Project missing required field: project_name");
+    notFound();
+  }
+
   const breadcrumbItems = [
     { label: "Home", href: "/" },
     { label: project.city?.city_name || citySlug, href: `/${citySlug}` },
@@ -89,8 +95,8 @@ export default async function ProjectDetailPage({ params }: PageProps) {
 
         {/* Hero Gallery */}
         <ProjectHeroGallery
-          projectName={project.project_name}
-          images={getProjectImageUrls(project)}
+          projectName={project.project_name || "Project"}
+          images={getProjectImageUrls(project) || []}
         />
 
         {/* Client Actions Component - handles all interactive elements */}
@@ -251,10 +257,10 @@ export default async function ProjectDetailPage({ params }: PageProps) {
             )}
 
             {/* Related Projects */}
-            {citySlug && (
+            {citySlug && project.id && (
               <RelatedProjectsSection
                 citySlug={citySlug}
-                currentProjectId={project.id}
+                currentProjectId={String(project.id)}
                 microMarketId={project.micro_market_id ? String(project.micro_market_id) : undefined}
                 developerId={project.developer_id ? String(project.developer_id) : undefined}
               />
