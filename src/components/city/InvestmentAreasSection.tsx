@@ -23,16 +23,26 @@ export default function InvestmentAreasSection({
           High-Potential Investment Zones in {cityName}
         </h2>
         <div className="grid gap-6 md:grid-cols-3">
-          {investmentZonesData.map((zone, idx) => (
-            <Card key={idx}>
-              <CardHeader>
-                <CardTitle>{zone.name}</CardTitle>
-              </CardHeader>
-              <CardContent className="text-sm text-muted-foreground">
-                {zone.description}
-              </CardContent>
-            </Card>
-          ))}
+          {investmentZonesData.map((zone: any, idx) => {
+            // Handle both string and object formats for zone
+            const zoneName = typeof zone === 'object' && zone !== null
+              ? (zone.name || zone.title || JSON.stringify(zone))
+              : String(zone);
+            const zoneDescription = typeof zone === 'object' && zone !== null
+              ? (typeof zone.description === 'string' ? zone.description : (zone.description?.text || zone.description?.content || ''))
+              : '';
+            
+            return (
+              <Card key={idx}>
+                <CardHeader>
+                  <CardTitle>{zoneName}</CardTitle>
+                </CardHeader>
+                <CardContent className="text-sm text-muted-foreground">
+                  {zoneDescription}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       </div>
     </section>

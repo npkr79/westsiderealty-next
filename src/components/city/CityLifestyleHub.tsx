@@ -141,7 +141,13 @@ export default function CityLifestyleHub({ lifestyleData, cityName }: CityLifest
                   )}
                   <CardContent className="p-4">
                     <h4 className="font-semibold mb-2">{item.title}</h4>
-                    {item.description && <p className="text-sm text-muted-foreground">{item.description}</p>}
+                    {item.description && (
+                      <p className="text-sm text-muted-foreground">
+                        {typeof item.description === 'string' 
+                          ? item.description 
+                          : (item.description?.text || item.description?.content || '')}
+                      </p>
+                    )}
                   </CardContent>
                 </Card>
               ))}
@@ -154,9 +160,14 @@ export default function CityLifestyleHub({ lifestyleData, cityName }: CityLifest
           <div>
             <h3 className="text-lg font-semibold mb-3">Key Festivals</h3>
             <div className="flex flex-wrap gap-2">
-              {content.festivals.map((festival: string, idx: number) => (
-                <Badge key={idx} variant="secondary">{festival}</Badge>
-              ))}
+              {content.festivals.map((festival: any, idx: number) => {
+                const festivalName = typeof festival === 'string' 
+                  ? festival 
+                  : (festival?.name || festival?.title || JSON.stringify(festival));
+                return (
+                  <Badge key={idx} variant="secondary">{festivalName}</Badge>
+                );
+              })}
             </div>
           </div>
         )}

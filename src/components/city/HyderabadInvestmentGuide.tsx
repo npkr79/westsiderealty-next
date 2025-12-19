@@ -80,50 +80,72 @@ export default function HyderabadInvestmentGuide({ zones }: HyderabadInvestmentG
                 Where to Invest: Premium vs. Growth Corridors
               </h3>
               <div className="grid md:grid-cols-2 gap-6">
-                {zones_comparison.map((zone, idx) => (
-                  <Card
-                    key={zone.slug || zone.name || idx}
-                    className={`border-2 ${
-                      idx === 0 ? "border-primary/20" : "border-secondary/20"
-                    } bg-white/80 backdrop-blur-sm shadow-lg`}
-                  >
-                    <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <CardTitle>{zone.name}</CardTitle>
-                        {zone.type && (
-                          <Badge variant={idx === 0 ? "default" : "secondary"}>
-                            {zone.type}
-                          </Badge>
+                {zones_comparison.map((zone: any, idx) => {
+                  // Safely extract zone properties - handle both string and object formats
+                  const zoneName = typeof zone === 'object' && zone !== null
+                    ? (zone.name || zone.title || '')
+                    : String(zone);
+                  const zoneType = typeof zone === 'object' && zone !== null
+                    ? (zone.type || '')
+                    : '';
+                  const zoneTagline = typeof zone === 'object' && zone !== null
+                    ? (typeof zone.tagline === 'string' ? zone.tagline : '')
+                    : '';
+                  const zoneYoyGrowth = typeof zone === 'object' && zone !== null
+                    ? (typeof zone.yoy_growth === 'string' ? zone.yoy_growth : String(zone.yoy_growth || ''))
+                    : '';
+                  const zoneAvgPrice = typeof zone === 'object' && zone !== null
+                    ? (typeof zone.avg_price === 'string' ? zone.avg_price : String(zone.avg_price || ''))
+                    : '';
+                  const zoneVerdict = typeof zone === 'object' && zone !== null
+                    ? (typeof zone.verdict === 'string' ? zone.verdict : '')
+                    : '';
+                  
+                  return (
+                    <Card
+                      key={zone?.slug || zoneName || idx}
+                      className={`border-2 ${
+                        idx === 0 ? "border-primary/20" : "border-secondary/20"
+                      } bg-white/80 backdrop-blur-sm shadow-lg`}
+                    >
+                      <CardHeader>
+                        <div className="flex items-center justify-between">
+                          <CardTitle>{zoneName}</CardTitle>
+                          {zoneType && (
+                            <Badge variant={idx === 0 ? "default" : "secondary"}>
+                              {zoneType}
+                            </Badge>
+                          )}
+                        </div>
+                        {zoneTagline && (
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {zoneTagline}
+                          </p>
                         )}
-                      </div>
-                      {zone.tagline && (
-                        <p className="text-sm text-muted-foreground mt-1">
-                          {zone.tagline}
-                        </p>
-                      )}
-                    </CardHeader>
-                    <CardContent className="space-y-3 text-sm text-muted-foreground">
-                      {zone.yoy_growth && (
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold text-foreground">YoY Growth:</span>
-                          <span>{zone.yoy_growth}</span>
-                        </div>
-                      )}
-                      {zone.avg_price && (
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold text-foreground">Avg Price:</span>
-                          <span>{zone.avg_price}</span>
-                        </div>
-                      )}
-                      {zone.verdict && (
-                        <div className="pt-2 border-t border-border">
-                          <p className="font-semibold text-foreground mb-1">Verdict:</p>
-                          <p>{zone.verdict}</p>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                ))}
+                      </CardHeader>
+                      <CardContent className="space-y-3 text-sm text-muted-foreground">
+                        {zoneYoyGrowth && (
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-foreground">YoY Growth:</span>
+                            <span>{zoneYoyGrowth}</span>
+                          </div>
+                        )}
+                        {zoneAvgPrice && (
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-foreground">Avg Price:</span>
+                            <span>{zoneAvgPrice}</span>
+                          </div>
+                        )}
+                        {zoneVerdict && (
+                          <div className="pt-2 border-t border-border">
+                            <p className="font-semibold text-foreground mb-1">Verdict:</p>
+                            <p>{zoneVerdict}</p>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -141,9 +163,12 @@ export default function HyderabadInvestmentGuide({ zones }: HyderabadInvestmentG
                 {hmda_master_plan.description && <p>{hmda_master_plan.description}</p>}
                 {Array.isArray(hmda_master_plan.vectors) && hmda_master_plan.vectors.length > 0 && (
                   <ul className="list-disc list-inside space-y-1">
-                    {hmda_master_plan.vectors.map((item, idx) => (
-                      <li key={idx}>{item}</li>
-                    ))}
+                    {hmda_master_plan.vectors.map((item: any, idx) => {
+                      const itemText = typeof item === 'string' 
+                        ? item 
+                        : (item?.text || item?.name || item?.title || JSON.stringify(item));
+                      return <li key={idx}>{itemText}</li>;
+                    })}
                   </ul>
                 )}
               </CardContent>
