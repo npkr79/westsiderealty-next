@@ -26,19 +26,26 @@ import LocationHighlightsCard from "@/components/project-details/LocationHighlig
 import BottomLeadFormSection from "@/components/project-details/BottomLeadFormSection";
 import { getProjectImageUrls } from "@/lib/project-images";
 import ProjectDetailClientActions from "./ProjectDetailClientActions";
+import DebugClient from "./DebugClient";
 
 interface PageProps {
   params: Promise<{ citySlug: string | string[]; projectSlug: string | string[] }>;
 }
 
 export default async function ProjectDetailPage({ params }: PageProps) {
+  // Log on server-side (check your terminal/server logs)
+  console.log('[ProjectDetailPage] 🚀 Page component started');
+  
   const { citySlug: citySlugParam, projectSlug: projectSlugParam } = await params;
   
   // Normalize params from string | string[] to string
   const citySlug = Array.isArray(citySlugParam) ? citySlugParam[0] : citySlugParam;
   const projectSlug = Array.isArray(projectSlugParam) ? projectSlugParam[0] : projectSlugParam;
 
+  console.log('[ProjectDetailPage] 📝 Normalized params:', { citySlug, projectSlug });
+
   if (!citySlug || !projectSlug) {
+    console.error('[ProjectDetailPage] ❌ Missing required params');
     notFound();
   }
 
@@ -93,6 +100,7 @@ export default async function ProjectDetailPage({ params }: PageProps) {
 
   return (
     <Layout>
+      <DebugClient citySlug={citySlug} projectSlug={projectSlug} />
       <ProjectSEO project={project} citySlug={citySlug} projectSlug={projectSlug} />
       <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-4">

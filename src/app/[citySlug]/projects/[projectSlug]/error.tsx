@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 
 export default function Error({
@@ -9,6 +10,13 @@ export default function Error({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  useEffect(() => {
+    console.error("[ErrorBoundary] ❌ Page error caught:", error);
+    console.error("[ErrorBoundary] Error message:", error?.message);
+    console.error("[ErrorBoundary] Error stack:", error?.stack);
+    console.error("[ErrorBoundary] Error digest:", error?.digest);
+  }, [error]);
+
   return (
     <main className="mx-auto max-w-3xl px-6 py-16">
       <h1 className="text-2xl font-semibold">This page crashed</h1>
@@ -19,6 +27,7 @@ export default function Error({
       <pre className="mt-6 whitespace-pre-wrap rounded-md border p-4 text-sm">
         {error?.message || "Unknown error"}
         {error?.digest ? `\n\ndigest: ${error.digest}` : ""}
+        {error?.stack ? `\n\nstack: ${error.stack}` : ""}
       </pre>
 
       <div className="mt-6 flex gap-3">
