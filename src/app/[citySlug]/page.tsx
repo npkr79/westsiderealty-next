@@ -174,47 +174,57 @@ export default async function CityPage({ params }: PageProps) {
       <JsonLd jsonLd={[cityJsonLd, breadcrumbJsonLd]} />
 
       {/* Hero Section */}
-      <section className="relative py-32 px-4 overflow-hidden min-h-[70vh] flex items-center">
-        {/* Hero Background Image */}
-        <div
-          className="absolute inset-0 -z-20 bg-cover bg-center"
-          style={{
-            backgroundImage: `url(${safeImageSrc(city.hero_image_url)})`,
-          }}
-        />
-        {/* Dark Overlay for Text Readability */}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/60 to-black/70 -z-10" />
+      <section className="relative py-0 overflow-hidden">
+        <div className="relative h-[60vh] w-full">
+          <Image
+            src={safeImageSrc(city.hero_image_url)}
+            alt={`${city.city_name} Real Estate`}
+            fill
+            className="object-cover"
+            priority
+          />
+          {/* Dark overlay for text readability */}
+          <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/60 to-black/80" />
 
-        <div className="container mx-auto relative z-10">
-          <div className="max-w-4xl mx-auto text-center space-y-8">
-            <div className="inline-block px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 text-sm font-semibold text-white mb-4">
-              {city.country}
-            </div>
-            <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-white leading-tight drop-shadow-2xl">
-              {city.h1_title}
-            </h1>
-            <p className="text-xl md:text-2xl text-white/90 max-w-2xl mx-auto leading-relaxed drop-shadow-lg">
-              {city.hero_hook}
-            </p>
-            <div className="flex flex-wrap gap-4 justify-center pt-6">
-              <Button
-                size="lg"
-                className="text-base px-8 shadow-lg hover:shadow-xl transition-shadow bg-primary hover:bg-primary/90"
-                asChild
-              >
-                <Link
-                  href={
-                    city.city_name.toLowerCase() === "goa"
-                      ? "/goa/buy"
-                      : `/${slug}/buy`
-                  }
-                >
-                  View All Properties <ArrowRight className="ml-2 h-5 w-5" />
-                </Link>
-              </Button>
-              <Button size="lg" variant="secondary" className="text-base px-8 shadow-lg hover:shadow-xl transition-shadow" asChild>
-                <Link href="/contact">Talk to Our Team</Link>
-              </Button>
+          {/* Hero content */}
+          <div className="absolute inset-0 flex items-center justify-center px-4">
+            <div className="container mx-auto">
+              <div className="max-w-4xl mx-auto text-center space-y-8">
+                <div className="inline-block px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 text-sm font-semibold text-white mb-4">
+                  {city.country}
+                </div>
+                <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-white leading-tight drop-shadow-2xl">
+                  {city.h1_title}
+                </h1>
+                <p className="text-xl md:text-2xl text-white/90 max-w-2xl mx-auto leading-relaxed drop-shadow-lg">
+                  {city.hero_hook}
+                </p>
+                <div className="flex flex-wrap gap-4 justify-center pt-4">
+                  <Button
+                    size="lg"
+                    className="text-base px-8 shadow-lg hover:shadow-xl transition-shadow bg-primary hover:bg-primary/90"
+                    asChild
+                  >
+                    <Link
+                      href={
+                        city.city_name.toLowerCase() === "goa"
+                          ? "/goa/buy"
+                          : `/${slug}/buy`
+                      }
+                    >
+                      View All Properties <ArrowRight className="ml-2 h-5 w-5" />
+                    </Link>
+                  </Button>
+                  <Button
+                    size="lg"
+                    variant="secondary"
+                    className="text-base px-8 shadow-lg hover:shadow-xl transition-shadow"
+                    asChild
+                  >
+                    <Link href="/contact">Talk to Our Team</Link>
+                  </Button>
+                </div>
+              </div>
             </div>
           </div>
         </div>

@@ -1,27 +1,26 @@
 "use client";
 
-import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Landmark, Briefcase, Home, TrendingUp, MapPin } from "lucide-react";
+import { Landmark, Users, Cloud, MapPin, TrendingUp } from "lucide-react";
 
 interface CityOverviewSectionProps {
   overviewData: any;
 }
 
-const iconMap: Record<string, any> = {
+const iconMap: Record<string, React.ElementType> = {
   landmark: Landmark,
-  briefcase: Briefcase,
-  home: Home,
-  trendingUp: TrendingUp,
-  mapPin: MapPin,
+  users: Users,
+  cloud: Cloud,
+  "map-pin": MapPin,
+  "trending-up": TrendingUp,
 };
 
 export default function CityOverviewSection({ overviewData }: CityOverviewSectionProps) {
   if (!overviewData) return null;
 
   // Parse the JSON data - handle the structure: { main: {...}, sections: [...] }
-  let sections: Array<{ id: string; icon?: any; title: string; content: string }> = [];
+  let sections: Array<{ id: string; icon?: string; title: string; content: string }> = [];
   let mainContent: string | null = null;
   
   if (typeof overviewData === "string") {
@@ -33,7 +32,7 @@ export default function CityOverviewSection({ overviewData }: CityOverviewSectio
       if (parsed.sections && Array.isArray(parsed.sections)) {
         sections = parsed.sections.map((section: any) => ({
           id: section.id || section.title?.toLowerCase() || "",
-          icon: section.icon ? iconMap[section.icon] : null,
+          icon: section.icon || "landmark",
           title: section.title || "",
           content: section.content || ""
         }));
@@ -50,7 +49,7 @@ export default function CityOverviewSection({ overviewData }: CityOverviewSectio
     if (overviewData.sections && Array.isArray(overviewData.sections)) {
       sections = overviewData.sections.map((section: any) => ({
         id: section.id || section.title?.toLowerCase() || "",
-        icon: section.icon ? iconMap[section.icon] : null,
+        icon: section.icon || "landmark",
         title: section.title || "",
         content: section.content || ""
       }));
@@ -58,15 +57,13 @@ export default function CityOverviewSection({ overviewData }: CityOverviewSectio
   } else if (Array.isArray(overviewData)) {
     sections = overviewData.map((section: any) => ({
       id: section.id || section.title?.toLowerCase() || "",
-      icon: section.icon ? iconMap[section.icon] : null,
+      icon: section.icon || "landmark",
       title: section.title || "",
       content: section.content || ""
     }));
   }
 
   if (sections.length === 0) return null;
-
-  const [activeTab, setActiveTab] = useState(sections[0]?.id || sections[0]?.title || "overview");
 
   return (
     <section className="py-20 px-4 bg-gradient-to-b from-background to-secondary/10">
@@ -82,21 +79,31 @@ export default function CityOverviewSection({ overviewData }: CityOverviewSectio
                 dangerouslySetInnerHTML={{ __html: mainContent }}
               />
             )}
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-2 md:grid-cols-5 mb-6">
-                {sections.map((section) => (
-                  <TabsTrigger key={section.id} value={section.id} className="flex items-center gap-2">
-                    {section.icon && <section.icon className="h-4 w-4" />}
-                    {section.title}
-                  </TabsTrigger>
-                ))}
+            <Tabs defaultValue={sections[0]?.id} className="w-full">
+              <TabsList className="flex w-full flex-wrap justify-center gap-2 bg-transparent h-auto mb-8 overflow-x-auto">
+                {sections.map((section) => {
+                  const Icon = iconMap[section.icon || "landmark"] || Landmark;
+                  const shortLabel = section.title.split(":")[0].trim();
+                  return (
+                    <TabsTrigger
+                      key={section.id}
+                      value={section.id}
+                      className="px-4 py-2 rounded-full border bg-card hover:bg-primary/10 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground flex items-center gap-2 text-sm"
+                    >
+                      <Icon className="w-4 h-4" />
+                      {shortLabel}
+                    </TabsTrigger>
+                  );
+                })}
               </TabsList>
               {sections.map((section) => (
-                <TabsContent key={section.id} value={section.id} className="mt-4">
-                  <div 
-                    className="prose prose-sm max-w-none text-muted-foreground"
-                    dangerouslySetInnerHTML={{ __html: section.content }}
-                  />
+                <TabsContent key={section.id} value={section.id} className="mt-0">
+                  <div className="bg-card rounded-xl p-6 md:p-8 shadow-lg border">
+                    <h3 className="text-xl font-semibold mb-4">{section.title}</h3>
+                    <p className="text-muted-foreground leading-relaxed">
+                      {section.content}
+                    </p>
+                  </div>
                 </TabsContent>
               ))}
             </Tabs>
