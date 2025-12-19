@@ -9,14 +9,12 @@ import {
   Palmtree,
   Landmark,
 } from "lucide-react";
-import Header from "@/components/layout/Header";
 import HeroSection from "@/components/home/HeroSection";
 import StatsSection from "@/components/home/StatsSection";
 import ServicesSection from "@/components/home/ServicesSection";
 import AboutPreviewSection from "@/components/home/AboutPreviewSection";
 import TestimonialsSection from "@/components/home/TestimonialsSection";
 import CtaSection from "@/components/home/CtaSection";
-import FooterSection from "@/components/home/FooterSection";
 import CityCardsSection from "@/components/home/CityCardsSection";
 import { supabaseTestimonialClientService } from "@/services/admin/supabaseTestimonialClientService";
 import { siteImagesService } from "@/services/adminService";
@@ -118,7 +116,6 @@ export default function IndexPage() {
 
   return (
     <div className="min-h-screen bg-white">
-      <Header />
       <HeroSection onContactClick={handleContactClick} />
       <StatsSection stats={stats} />
       <ServicesSection services={services} />
@@ -139,7 +136,6 @@ export default function IndexPage() {
         <TestimonialsSection testimonials={Array.isArray(testimonials) ? testimonials : []} />
       )}
       <CtaSection onContactClick={handleContactClick} />
-      <FooterSection />
     </div>
   );
 }

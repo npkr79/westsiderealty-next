@@ -17,7 +17,6 @@ import {
   Star,
   Clock,
 } from "lucide-react";
-import FooterSection from "@/components/home/FooterSection";
 import { siteImagesService, locationSettingsService } from "@/services/adminService";
 import { convertYouTubeToEmbed } from "@/utils/urlConverters";
 
@@ -242,7 +241,6 @@ export default function AboutPage() {
           </div>
         </div>
       </section>
-      <FooterSection />
     </div>
   );
 }

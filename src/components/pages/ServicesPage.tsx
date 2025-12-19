@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import FooterSection from "@/components/home/FooterSection";
 import { siteImagesService, serviceOverlaysService } from "@/services/adminService";
 import { Building2, Palmtree, Landmark } from "lucide-react";
 import ServicesHeroSection from "@/components/services/ServicesHeroSection";
@@ -120,7 +119,6 @@ export default function ServicesPage() {
       <WhyChooseUsSection />
       <AdvisoryProcessSection />
       <ServicesCTASection />
-      <FooterSection />
     </div>
   );
 }
