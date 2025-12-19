@@ -11,7 +11,6 @@ import { AlertTriangle } from "lucide-react";
 import Layout from "@/components/layout/Layout";
 import BreadcrumbNav from "@/components/layout/BreadcrumbNav";
 import PropertyCard from "@/components/properties/PropertyCard";
-import FooterSection from "@/components/home/FooterSection";
 import CityHubBacklink from "@/components/seo/CityHubBacklink";
 import ProjectSEO from "@/components/project-details/ProjectSEO";
 import ProjectHeroGallery from "@/components/project-details/ProjectHeroGallery";
@@ -431,7 +430,6 @@ export default function ProjectDetailClient(props: { citySlug: string; projectSl
         </Dialog>
 
         <CityHubBacklink />
-        <FooterSection />
       </div>
     </Layout>
   );

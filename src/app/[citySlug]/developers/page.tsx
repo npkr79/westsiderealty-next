@@ -10,7 +10,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Building2, MapPin, Award } from "lucide-react";
 import BreadcrumbNav from "@/components/layout/BreadcrumbNav";
-import FooterSection from "@/components/home/FooterSection";
 
 interface Developer {
   id: string;
@@ -276,8 +275,6 @@ export default function CityDevelopersPage() {
             )}
           </div>
         </section>
-
-        <FooterSection />
       </div>
     </>
   );

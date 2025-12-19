@@ -7,8 +7,6 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import Header from "@/components/layout/Header";
-import FooterSection from "@/components/home/FooterSection";
 import { developersHubService, DeveloperListItem, DeveloperFilters } from "@/services/developersHubService";
 
 const DevelopersHubPage = () => {
@@ -49,8 +47,6 @@ const DevelopersHubPage = () => {
 
   return (
     <>
-      <Header />
-
       <main className="min-h-screen bg-background">
         {/* Hero Section */}
         <section className="bg-gradient-to-br from-primary/10 via-background to-secondary/10 py-16">
@@ -185,8 +181,6 @@ const DevelopersHubPage = () => {
           )}
         </section>
       </main>
-
-      <FooterSection />
     </>
   );
 };

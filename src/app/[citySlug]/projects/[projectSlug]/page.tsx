@@ -6,7 +6,6 @@ import { createClient } from "@/lib/supabase/server";
 import { buildMetadata } from "@/components/common/SEO";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { Breadcrumbs } from "@/components/seo/Breadcrumbs";
-import Layout from "@/components/layout/Layout";
 import BreadcrumbNav from "@/components/layout/BreadcrumbNav";
 import CityHubBacklink from "@/components/seo/CityHubBacklink";
 import ProjectSEO from "@/components/project-details/ProjectSEO";
@@ -193,7 +192,7 @@ export default async function ProjectDetailPage({ params }: PageProps) {
   }
 
   return (
-    <Layout>
+    <>
       <DebugClient citySlug={citySlug} projectSlug={projectSlug} />
       <JsonLd data={realEstateSchema} />
       <Breadcrumbs items={breadcrumbItems} />
@@ -388,7 +387,7 @@ export default async function ProjectDetailPage({ params }: PageProps) {
 
         <CityHubBacklink />
       </div>
-    </Layout>
+    </>
   );
 }
 

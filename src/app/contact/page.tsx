@@ -2,7 +2,6 @@
 import { Metadata } from "next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MapPin, Phone, Mail, Clock } from "lucide-react";
-import FooterSection from "@/components/home/FooterSection";
 import ContactForm from "@/components/ContactForm";
 import { JsonLd, buildMetadata } from "@/components/common/SEO";
 import WhatsAppButton from "@/components/contact/WhatsAppButton";
@@ -127,8 +126,6 @@ export default function Contact() {
           </div>
         </div>
       </section>
-
-      <FooterSection />
     </div>
   );
 }

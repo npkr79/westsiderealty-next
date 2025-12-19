@@ -6,7 +6,6 @@ import { createClient } from "@/lib/supabase/server";
 import { buildMetadata } from "@/components/common/SEO";
 import { JsonLd } from "@/components/common/SEO";
 import BreadcrumbNav from "@/components/layout/BreadcrumbNav";
-import FooterSection from "@/components/home/FooterSection";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -193,8 +192,6 @@ export default async function MicroMarketsHubPage({ params }: PageProps) {
           )}
         </section>
       </div>
-
-      <FooterSection />
     </>
   );
 }

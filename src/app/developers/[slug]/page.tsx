@@ -10,7 +10,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import Layout from "@/components/layout/Layout";
-import FooterSection from "@/components/home/FooterSection";
 import CityHubBacklink from "@/components/seo/CityHubBacklink";
 import DeveloperProjectCard from "@/components/developer/DeveloperProjectCard";
 import DeveloperContactForm from "@/components/developer/DeveloperContactForm";
@@ -602,7 +601,6 @@ const DeveloperPage = () => {
       </div>
         
       <CityHubBacklink />
-      <FooterSection />
     </Layout>
   );
 };

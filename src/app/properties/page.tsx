@@ -3,8 +3,6 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Building2, MapPin, Waves, Landmark } from "lucide-react";
 import { JsonLd, buildMetadata } from "@/components/common/SEO";
-import FooterSection from "@/components/home/FooterSection";
-import Header from "@/components/layout/Header";
 
 export const metadata: Metadata = buildMetadata({
   title: "Properties - Browse All Real Estate Listings | RE/MAX Westside Realty",
@@ -58,8 +56,6 @@ export default function PropertiesPage() {
     <>
       <JsonLd jsonLd={PROPERTIES_SCHEMA} />
       <div className="min-h-screen bg-white">
-        <Header />
-        
         {/* Hero Section */}
         <section className="py-20 px-4 bg-gradient-to-r from-pink-100/50 via-blue-50 to-blue-100/50">
           <div className="container mx-auto text-center">
@@ -103,8 +99,6 @@ export default function PropertiesPage() {
             </div>
           </div>
         </section>
-
-        <FooterSection />
       </div>
     </>
   );

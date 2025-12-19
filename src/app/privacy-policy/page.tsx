@@ -1,6 +1,5 @@
 
 import { Metadata } from "next";
-import FooterSection from "@/components/home/FooterSection";
 import { Card, CardContent } from "@/components/ui/card";
 import { buildMetadata } from "@/components/common/SEO";
 
@@ -158,8 +157,6 @@ export default function PrivacyPolicy() {
           </Card>
         </div>
       </div>
-
-      <FooterSection />
     </div>
   );
 }

@@ -47,7 +47,6 @@ import {
   Hospital,
   ShoppingBag
 } from "lucide-react";
-import FooterSection from "@/components/home/FooterSection";
 import GoogleMapEmbed from "@/components/common/GoogleMapEmbed";
 import SEO from "@/components/common/SEO";
 import FloatingLeadCapture from "@/components/landing/FloatingLeadCapture";
@@ -241,7 +240,6 @@ const LandingPageComponent = () => {
             </Button>
           </div>
         </div>
-        <FooterSection />
       </div>
     );
   }
@@ -1103,8 +1101,6 @@ const LandingPageComponent = () => {
           </div>
         </div>
       </section>
-
-      <FooterSection />
 
       {/* Image Lightbox */}
       <ImageLightbox
