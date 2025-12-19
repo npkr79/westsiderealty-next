@@ -229,20 +229,30 @@ export const projectService = {
   ): Promise<ProjectWithRelations | null> {
     const supabase = createClient();
     
+    console.log(`[getCityLevelProjectBySlug] Fetching project: citySlug=${citySlug}, projectSlug=${projectSlug}`);
+    
     // First, get the city ID to avoid complex joins
-    const { data: cityData } = await supabase
+    const { data: cityData, error: cityError } = await supabase
       .from('cities')
       .select('id')
       .eq('url_slug', citySlug)
       .maybeSingle();
 
-    if (!cityData?.id) {
-      console.error('City not found for slug:', citySlug);
+    if (cityError) {
+      console.error('[getCityLevelProjectBySlug] Error fetching city:', cityError);
       return null;
     }
 
-    // Query project by city_id and url_slug (more reliable than join)
-    const { data, error } = await supabase
+    if (!cityData?.id) {
+      console.error('[getCityLevelProjectBySlug] City not found for slug:', citySlug);
+      return null;
+    }
+
+    console.log(`[getCityLevelProjectBySlug] Found city ID: ${cityData.id}`);
+
+    // Query project by city_id and url_slug
+    // First try with is_published (like projects listing page), then fallback to status
+    let { data, error } = await supabase
       .from('projects')
       .select(`
         *,
@@ -253,19 +263,68 @@ export const projectService = {
       `)
       .eq('url_slug', projectSlug)
       .eq('city_id', cityData.id)
-      .or('status.ilike.published,status.ilike.%under construction%')
+      .eq('is_published', true)
       .maybeSingle();
+    
+    // If no result with is_published, try with status filter
+    if (!data && !error) {
+      console.log('[getCityLevelProjectBySlug] No result with is_published, trying status filter...');
+      const result = await supabase
+        .from('projects')
+        .select(`
+          *,
+          floor_plan_images,
+          city:cities(*),
+          developer:developers(*),
+          micro_market:micro_markets!projects_micromarket_id_fkey(*)
+        `)
+        .eq('url_slug', projectSlug)
+        .eq('city_id', cityData.id)
+        .or('status.ilike.published,status.ilike.%under construction%')
+        .maybeSingle();
+      data = result.data;
+      error = result.error;
+    }
 
     if (error) {
-      console.error('Error fetching city-level project:', error);
+      console.error('[getCityLevelProjectBySlug] Error fetching project:', error);
+      console.error('[getCityLevelProjectBySlug] Error details:', JSON.stringify(error, null, 2));
+      
+      // Try without status filter as fallback
+      console.log('[getCityLevelProjectBySlug] Retrying without status filter...');
+      const { data: fallbackData, error: fallbackError } = await supabase
+        .from('projects')
+        .select(`
+          *,
+          floor_plan_images,
+          city:cities(*),
+          developer:developers(*),
+          micro_market:micro_markets!projects_micromarket_id_fkey(*)
+        `)
+        .eq('url_slug', projectSlug)
+        .eq('city_id', cityData.id)
+        .maybeSingle();
+      
+      if (fallbackError) {
+        console.error('[getCityLevelProjectBySlug] Fallback query also failed:', fallbackError);
+        return null;
+      }
+      
+      if (fallbackData) {
+        console.log('[getCityLevelProjectBySlug] Found project via fallback query');
+        return fallbackData as ProjectWithRelations;
+      }
+      
       return null;
     }
 
     if (data) {
-      console.log('🔥 Service: Loaded Floor Plans:', (data as any).floor_plan_images);
+      console.log('[getCityLevelProjectBySlug] ✅ Successfully loaded project:', data.project_name);
+      console.log('[getCityLevelProjectBySlug] Floor Plans:', (data as any).floor_plan_images);
       return data as ProjectWithRelations;
     }
 
+    console.warn('[getCityLevelProjectBySlug] ⚠️ Project not found:', { citySlug, projectSlug, cityId: cityData.id });
     return null;
   },
 
