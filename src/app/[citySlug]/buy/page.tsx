@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { UnifiedPropertyService } from "@/services/unifiedPropertyService";
 import { CITY_CONFIGS, type CitySlug } from "@/types/unifiedProperty";
 import PropertyListingClient from "@/components/properties/PropertyListingClient";
@@ -88,10 +89,12 @@ export default async function BuyPage({ params }: PageProps) {
         <div className="container mx-auto px-4 py-8">
           <BreadcrumbNav items={breadcrumbItems} />
         </div>
-        <PropertyListingClient
-          citySlug={citySlug as CitySlug}
-          initialProperties={properties}
-        />
+        <Suspense fallback={<div className="container mx-auto px-4 py-8">Loading properties...</div>}>
+          <PropertyListingClient
+            citySlug={citySlug as CitySlug}
+            initialProperties={properties}
+          />
+        </Suspense>
       </div>
     </>
   );

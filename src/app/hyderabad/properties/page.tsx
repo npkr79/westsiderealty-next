@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { buildMetadata } from "@/components/common/SEO";
 import { JsonLd } from "@/components/common/SEO";
@@ -53,10 +54,12 @@ export default async function HyderabadPropertiesPage() {
         subtitle={`${count || properties.length} properties available`}
         breadcrumbs={breadcrumbItems}
       />
-      <PropertyListingClient
-        citySlug="hyderabad"
-        initialProperties={properties}
-      />
+      <Suspense fallback={<div className="container mx-auto px-4 py-8">Loading properties...</div>}>
+        <PropertyListingClient
+          citySlug="hyderabad"
+          initialProperties={properties}
+        />
+      </Suspense>
     </>
   );
 }
