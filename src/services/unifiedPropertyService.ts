@@ -18,15 +18,34 @@ export class UnifiedPropertyService {
 
     const supabase = await createClient();
 
+    // Different cities use different status values
+    // Hyderabad uses 'active', Goa uses 'Active', Dubai uses 'published'
+    let statusFilter: string;
+    switch (citySlug) {
+      case 'hyderabad':
+        statusFilter = 'active';
+        break;
+      case 'goa':
+        statusFilter = 'Active';
+        break;
+      case 'dubai':
+        statusFilter = 'published';
+        break;
+      default:
+        statusFilter = 'published';
+    }
+
     const { data, error } = await supabase
       .from(config.tableName)
       .select('*')
-      .eq('status', 'published')
+      .eq('status', statusFilter)
       .order('is_featured', { ascending: false })
       .order('created_at', { ascending: false });
 
     if (error) {
       console.error(`Error fetching ${citySlug} properties:`, error);
+      console.error(`Status filter used: ${statusFilter}`);
+      console.error(`Table name: ${config.tableName}`);
       return [];
     }
 

@@ -21,14 +21,14 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function HyderabadPropertiesPage() {
   const supabase = await createClient();
   
-  // Get property count
+  // Fetch properties using UnifiedPropertyService (which handles hyderabad_properties)
+  const properties = await UnifiedPropertyService.getProperties('hyderabad');
+
+  // Get property count for display
   const { count } = await supabase
     .from('hyderabad_properties')
     .select('*', { count: 'exact', head: true })
     .eq('status', 'active');
-
-  // Fetch properties using UnifiedPropertyService (which handles hyderabad_properties)
-  const properties = await UnifiedPropertyService.getProperties('hyderabad');
 
   const breadcrumbItems = [
     { label: "Home", href: "/" },
