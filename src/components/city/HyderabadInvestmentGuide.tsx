@@ -82,24 +82,24 @@ export default function HyderabadInvestmentGuide({ zones }: HyderabadInvestmentG
               <div className="grid md:grid-cols-2 gap-6">
                 {zones_comparison.map((zone: any, idx) => {
                   // Safely extract zone properties - handle both string and object formats
-                  const zoneName = typeof zone === 'object' && zone !== null
-                    ? (zone.name || zone.title || '')
-                    : String(zone);
-                  const zoneType = typeof zone === 'object' && zone !== null
-                    ? (zone.type || '')
-                    : '';
-                  const zoneTagline = typeof zone === 'object' && zone !== null
-                    ? (typeof zone.tagline === 'string' ? zone.tagline : '')
-                    : '';
-                  const zoneYoyGrowth = typeof zone === 'object' && zone !== null
-                    ? (typeof zone.yoy_growth === 'string' ? zone.yoy_growth : String(zone.yoy_growth || ''))
-                    : '';
-                  const zoneAvgPrice = typeof zone === 'object' && zone !== null
-                    ? (typeof zone.avg_price === 'string' ? zone.avg_price : String(zone.avg_price || ''))
-                    : '';
-                  const zoneVerdict = typeof zone === 'object' && zone !== null
-                    ? (typeof zone.verdict === 'string' ? zone.verdict : '')
-                    : '';
+                  // Also handle cases where zone might have areas/focus properties that are objects
+                  if (typeof zone !== 'object' || zone === null) {
+                    return null; // Skip non-object zones
+                  }
+                  
+                  const zoneName = zone.name || zone.title || '';
+                  const zoneType = zone.type || '';
+                  const zoneTagline = typeof zone.tagline === 'string' ? zone.tagline : '';
+                  const zoneYoyGrowth = typeof zone.yoy_growth === 'string' 
+                    ? zone.yoy_growth 
+                    : (zone.yoy_growth ? String(zone.yoy_growth) : '');
+                  const zoneAvgPrice = typeof zone.avg_price === 'string' 
+                    ? zone.avg_price 
+                    : (zone.avg_price ? String(zone.avg_price) : '');
+                  const zoneVerdict = typeof zone.verdict === 'string' ? zone.verdict : '';
+                  
+                  // Handle areas and focus if they exist (but don't render them directly)
+                  // These might be objects, so we skip them
                   
                   return (
                     <Card

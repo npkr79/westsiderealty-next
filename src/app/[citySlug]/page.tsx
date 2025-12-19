@@ -19,7 +19,6 @@ import CityOverviewSection from "@/components/city/CityOverviewSection";
 import BuyerPersonasSection from "@/components/city/BuyerPersonasSection";
 import MarketTrendsSection from "@/components/city/MarketTrendsSection";
 import WhyInvestSection from "@/components/city/WhyInvestSection";
-import InvestmentAreasSection from "@/components/city/InvestmentAreasSection";
 import HyderabadInvestmentGuide from "@/components/city/HyderabadInvestmentGuide";
 import MicroMarketGrid from "@/components/city/MicroMarketGrid";
 import HyderabadFAQSchema from "@/components/seo/HyderabadFAQSchema";
