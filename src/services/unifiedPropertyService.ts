@@ -101,7 +101,10 @@ export class UnifiedPropertyService {
       investor_share: item.investor_share || false,
       is_resale: item.is_resale || false,
       bhk_config: item.bhk_config,
-    }));
+      // Additional fields for filtering
+      amenities: Array.isArray(item.amenities) ? item.amenities : [],
+      possession_status: item.possession_status,
+    } as any));
   }
 
   /**

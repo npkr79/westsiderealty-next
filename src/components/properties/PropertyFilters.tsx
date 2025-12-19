@@ -89,7 +89,9 @@ export default function PropertyFilters({
         <div>
           <Label>Property Type</Label>
           <Select
-            value={localFilters.propertyType || 'all'}
+            value={Array.isArray(localFilters.propertyType) 
+              ? localFilters.propertyType[0] || 'all'
+              : (localFilters.propertyType || 'all')}
             onValueChange={(value) => updateFilter('propertyType', value === 'all' ? undefined : value)}
           >
             <SelectTrigger>

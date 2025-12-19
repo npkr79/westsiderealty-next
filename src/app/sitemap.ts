@@ -18,8 +18,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           .eq("is_published", true),
         supabase
           .from("landing_pages")
-          .select("url_slug, developer_slug, updated_at")
-          .eq("is_active", true),
+          .select("uri, updated_at")
+          .eq("status", "published")
+          .eq("is_published", true),
         supabase
           .from("blog_articles")
           .select("slug, updated_at")
@@ -130,7 +131,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // Landing Pages
     landingPagesResult.data?.forEach((lp) => {
       urls.push({
-        url: `${baseUrl}/hyderabad/${lp.developer_slug}/${lp.url_slug}`,
+        url: `${baseUrl}/landing/${lp.uri}`,
         lastModified: lp.updated_at ? new Date(lp.updated_at) : new Date(),
         changeFrequency: "weekly",
         priority: 0.9,

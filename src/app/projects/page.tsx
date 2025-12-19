@@ -29,7 +29,7 @@ interface Project {
   hero_image_url: string | null;
   price_range_text: string | null;
   status: string | null;
-  city_slug: string;
+  city: { city_name: string; url_slug: string } | null;
   micro_market: { micro_market_name: string; url_slug: string } | null;
   developer: { developer_name: string; url_slug: string } | null;
 }
@@ -57,16 +57,22 @@ export default async function ProjectsHubPage({ searchParams }: PageProps) {
     city_slug: mm.city?.url_slug || "",
   }));
 
-  // Build query for projects (all cities)
+  // Build query for projects (all cities) - use city relationship
   let query = supabase
     .from("projects")
-    .select("id, project_name, url_slug, hero_image_url, price_range_text, status, city_slug, micro_market:micro_markets!projects_micromarket_id_fkey(micro_market_name, url_slug), developer:developers(developer_name, url_slug)")
-    .or("status.ilike.published,status.ilike.%under construction%,page_status.eq.published")
+    .select(`
+      id, project_name, url_slug, hero_image_url, price_range_text, status, is_published,
+      city:cities!projects_city_id_fkey(city_name, url_slug),
+      micro_market:micro_markets!projects_micromarket_id_fkey(micro_market_name, url_slug),
+      developer:developers(developer_name, url_slug)
+    `)
+    .eq("is_published", true)
     .order("created_at", { ascending: false });
 
   // Apply filters
   if (resolvedSearchParams.city) {
-    query = query.eq("city_slug", resolvedSearchParams.city);
+    // Filter by city relationship
+    query = query.eq("city.url_slug", resolvedSearchParams.city);
   }
 
   if (resolvedSearchParams.status) {
@@ -95,7 +101,9 @@ export default async function ProjectsHubPage({ searchParams }: PageProps) {
     hero_image_url: p.hero_image_url,
     price_range_text: p.price_range_text,
     status: p.status,
-    city_slug: p.city_slug,
+    city: Array.isArray(p.city) 
+      ? (p.city[0] || null)
+      : (p.city || null),
     micro_market: Array.isArray(p.micro_market) 
       ? (p.micro_market[0] || null)
       : (p.micro_market || null),
@@ -165,9 +173,9 @@ export default async function ProjectsHubPage({ searchParams }: PageProps) {
                     key={project.id}
                     project={{
                       ...project,
-                      city: { city_name: project.city_slug, url_slug: project.city_slug },
+                      city: project.city || { city_name: "Unknown", url_slug: "" },
                     }}
-                    citySlug={project.city_slug}
+                    citySlug={project.city?.url_slug || ""}
                   />
                 ))}
               </div>

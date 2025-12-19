@@ -51,9 +51,11 @@ export interface UnifiedProperty {
  */
 export interface UnifiedPropertyFilters {
   searchQuery?: string;
-  propertyType?: string;
+  propertyType?: string | string[]; // Can be single or array for checkboxes
   priceRange?: string;
-  bedrooms?: number;
+  priceMin?: number; // For slider
+  priceMax?: number; // For slider
+  bedrooms?: number | number[]; // Can be single or array for buttons
   location?: string;
   sortBy?: string;
   
@@ -63,6 +65,8 @@ export interface UnifiedPropertyFilters {
   landownerShare?: boolean;
   investorShare?: boolean;
   isResale?: boolean;
+  possessionStatus?: string; // Ready to Move, Under Construction
+  amenities?: string[]; // Array of amenity names
   
   // Goa-specific
   district?: string;

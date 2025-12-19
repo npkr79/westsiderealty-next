@@ -1,36 +1,38 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { buildMetadata } from "@/components/common/SEO";
 import { JsonLd } from "@/components/common/SEO";
-import BreadcrumbNav from "@/components/layout/BreadcrumbNav";
+import { PageHeader } from "@/components/common/PageHeader";
 import ProjectCard from "@/components/properties/ProjectCard";
-import ProjectsFilters from "@/components/projects/ProjectsFilters";
 import { Building2 } from "lucide-react";
 
 interface PageProps {
   params: Promise<{ citySlug: string }>;
-  searchParams: Promise<{ search?: string; microMarket?: string; status?: string }>;
+  searchParams: Promise<{ search?: string; status?: string }>;
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const { citySlug: citySlugParam } = await params;
-  const citySlug = Array.isArray(citySlugParam) ? citySlugParam[0] : citySlugParam;
+  const { citySlug } = await params;
   const supabase = await createClient();
   
-  const { data: cityData } = await supabase
+  const { data: city } = await supabase
     .from("cities")
-    .select("city_name")
+    .select("city_name, seo_title, meta_description")
     .eq("url_slug", citySlug)
-    .maybeSingle();
+    .single();
 
-  const cityName = cityData?.city_name || citySlug.charAt(0).toUpperCase() + citySlug.slice(1);
+  if (!city) {
+    return {
+      title: "Projects Not Found",
+    };
+  }
+
   const canonicalUrl = `https://www.westsiderealty.in/${citySlug}/projects`;
 
   return buildMetadata({
-    title: `Premium Real Estate Projects in ${cityName} | Westside Realty`,
-    description: `Explore premium residential projects in ${cityName}. Find luxury apartments, villas, and plots from top developers.`,
+    title: `${city.seo_title || city.city_name} Projects - Premium Real Estate | RE/MAX Westside Realty`,
+    description: city.meta_description || `Explore premium residential projects in ${city.city_name}. Find luxury apartments, villas, and plots from top developers.`,
     canonicalUrl,
   });
 }
@@ -56,144 +58,125 @@ interface Project {
   developer: { developer_name: string; url_slug: string } | null;
 }
 
-interface MicroMarketOption {
-  micro_market_name: string;
-  url_slug: string;
-}
-
-export default async function ProjectsHubPage({ params, searchParams }: PageProps) {
-  const { citySlug: citySlugParam } = await params;
-  const citySlug = Array.isArray(citySlugParam) ? citySlugParam[0] : citySlugParam;
+export default async function CityProjectsPage({ params, searchParams }: PageProps) {
+  const { citySlug } = await params;
   const resolvedSearchParams = await searchParams;
   const supabase = await createClient();
 
-  // Fetch city name
-  const { data: cityData } = await supabase
+  // Get city info
+  const { data: city } = await supabase
     .from("cities")
-    .select("city_name, id")
+    .select("id, city_name, url_slug")
     .eq("url_slug", citySlug)
-    .maybeSingle();
+    .single();
 
-  if (!cityData) {
+  if (!city) {
     notFound();
   }
 
-  const cityName = cityData.city_name || citySlug.charAt(0).toUpperCase() + citySlug.slice(1);
-
-  // Fetch micro market options
-  const { data: mmData } = await supabase
-    .from("micro_markets")
-    .select("micro_market_name, url_slug")
-    .eq("city_id", cityData.id)
-    .order("micro_market_name");
-
-  const microMarketOptions = (mmData || []) as MicroMarketOption[];
-
-  // Build query for projects
+  // Build query for projects in this city
   let query = supabase
     .from("projects")
-    .select("id, project_name, url_slug, hero_image_url, price_range_text, status, micro_market:micro_markets!projects_micromarket_id_fkey(micro_market_name, url_slug), developer:developers(developer_name, url_slug)")
-    .eq("city_slug", citySlug)
-    .or("status.ilike.published,status.ilike.%under construction%,page_status.eq.published")
+    .select(`
+      id, project_name, url_slug, hero_image_url, price_range_text, status, is_published,
+      micro_market:micro_markets!projects_micromarket_id_fkey(micro_market_name, url_slug),
+      developer:developers(developer_name, url_slug)
+    `)
+    .eq("city_id", city.id)
+    .eq("is_published", true)
     .order("created_at", { ascending: false });
+
+  // Apply status filter
+  if (resolvedSearchParams.status) {
+    if (resolvedSearchParams.status === "published") {
+      query = query.eq("status", "published");
+    } else if (resolvedSearchParams.status === "under-construction") {
+      query = query.ilike("status", "%under construction%");
+    }
+  }
 
   // Apply search filter
   if (resolvedSearchParams.search) {
     query = query.ilike("project_name", `%${resolvedSearchParams.search}%`);
   }
 
-  // Apply micro market filter
-  if (resolvedSearchParams.microMarket && resolvedSearchParams.microMarket !== "all") {
-    const { data: mmData } = await supabase
-      .from("micro_markets")
-      .select("id")
-      .eq("url_slug", resolvedSearchParams.microMarket)
-      .maybeSingle();
-
-    if (mmData?.id) {
-      query = query.eq("micromarket_id", mmData.id);
-    }
-  }
-
-  // Apply status filter
-  if (resolvedSearchParams.status && resolvedSearchParams.status !== "all") {
-    query = query.eq("status", resolvedSearchParams.status);
-  }
-
-  const { data, error } = await query;
+  const { data: projects, error } = await query;
 
   if (error) {
     console.error("Error fetching projects:", error);
   }
 
-  // Transform data: Supabase joins return arrays, but we need single objects
-  const projects = ((data || []) as any[]).map(item => ({
-    ...item,
-    micro_market: Array.isArray(item.micro_market) ? item.micro_market[0] : item.micro_market,
-    developer: Array.isArray(item.developer) ? item.developer[0] : item.developer,
-  })) as Project[];
+  // Normalize the data
+  const projectsList: Project[] = (projects || []).map((p: any) => ({
+    id: p.id,
+    project_name: p.project_name,
+    url_slug: p.url_slug,
+    hero_image_url: p.hero_image_url,
+    price_range_text: p.price_range_text,
+    status: p.status,
+    micro_market: Array.isArray(p.micro_market) 
+      ? (p.micro_market[0] || null)
+      : (p.micro_market || null),
+    developer: Array.isArray(p.developer)
+      ? (p.developer[0] || null)
+      : (p.developer || null),
+  }));
+
+  // JSON-LD structured data
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    name: `${city.city_name} Real Estate Projects`,
+    description: `Premium residential projects in ${city.city_name}`,
+    url: `https://www.westsiderealty.in/${citySlug}/projects`,
+  };
 
   const breadcrumbItems = [
     { label: "Home", href: "/" },
-    { label: cityName, href: `/${citySlug}` },
-    { label: "Projects" },
+    { label: city.city_name, href: `/${citySlug}` },
+    { label: "Projects", href: `/${citySlug}/projects` },
   ];
 
   return (
     <>
-      <JsonLd
-        jsonLd={{
-          "@context": "https://schema.org",
-          "@type": "ItemList",
-          "name": `Projects in ${cityName}`,
-          "description": `Premium residential projects in ${cityName}`,
-          "url": `https://www.westsiderealty.in/${citySlug}/projects`,
-          "numberOfItems": projects.length,
-        }}
+      <JsonLd jsonLd={[jsonLd]} />
+      <PageHeader
+        title={`New Projects in ${city.city_name}`}
+        subtitle={`${projectsList.length} projects available`}
+        breadcrumbs={breadcrumbItems}
       />
 
-      <div className="min-h-screen bg-background">
-        <div className="container mx-auto px-4 py-8">
-          <BreadcrumbNav items={breadcrumbItems} />
-        </div>
-
-        <section className="bg-gradient-to-br from-primary/10 via-background to-secondary/10 py-16">
-          <div className="container mx-auto px-4">
-            <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
-              Premium Projects in {cityName}
-            </h1>
-            <p className="text-lg text-muted-foreground max-w-2xl">
-              Discover top residential projects from leading developers. RERA verified.
-            </p>
-          </div>
-        </section>
-
-        <section className="border-b bg-card/50 sticky top-0 z-10 backdrop-blur-sm">
-          <div className="container mx-auto px-4 py-4">
-            <ProjectsFilters microMarketOptions={microMarketOptions} citySlug={citySlug} />
-          </div>
-        </section>
-
+      <main className="min-h-screen bg-background">
         <section className="container mx-auto px-4 py-12">
-          {projects.length === 0 ? (
+          {projectsList.length === 0 ? (
             <div className="text-center py-12">
               <Building2 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-medium">No projects found</h3>
-              <p className="text-muted-foreground">Try adjusting your filters</p>
+              <p className="text-muted-foreground">Try adjusting your search filters</p>
             </div>
           ) : (
             <>
-              <p className="text-muted-foreground mb-6">{projects.length} projects found</p>
+              <div className="mb-6">
+                <p className="text-muted-foreground">
+                  Found {projectsList.length} project{projectsList.length !== 1 ? "s" : ""}
+                </p>
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {projects.map((project) => (
-                  <ProjectCard key={project.id} project={project as any} citySlug={citySlug} />
+                {projectsList.map((project) => (
+                  <ProjectCard
+                    key={project.id}
+                    project={{
+                      ...project,
+                      city: { city_name: city.city_name, url_slug: city.url_slug },
+                    }}
+                    citySlug={citySlug}
+                  />
                 ))}
               </div>
             </>
           )}
         </section>
-      </div>
-
+      </main>
     </>
   );
 }

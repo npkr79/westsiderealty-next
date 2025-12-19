@@ -10,6 +10,7 @@ import { Grid, List, Star, MapPin, Waves, Building } from "lucide-react";
 import PropertyCard from "@/components/properties/PropertyCard";
 import GoaPropertyCard from "@/components/properties/GoaPropertyCard";
 import PropertyFilters from "@/components/properties/PropertyFilters";
+import HyderabadPropertyFilters from "@/components/properties/HyderabadPropertyFilters";
 import LandownerSEOContent from "@/components/properties/LandownerSEOContent";
 import type { UnifiedProperty, UnifiedPropertyFilters, CitySlug } from "@/types/unifiedProperty";
 import { CITY_CONFIGS } from "@/types/unifiedProperty";
@@ -36,17 +37,62 @@ export default function PropertyListingClient({
 
   // Read URL parameters and apply initial filters
   useEffect(() => {
-    const microMarket = searchParams.get('microMarket');
-    const community = searchParams.get('community');
-    
     const initialFilters: UnifiedPropertyFilters = {};
     
-    if (microMarket) {
-      initialFilters.microMarkets = [microMarket];
-    }
+    // Read all URL params
+    const search = searchParams.get('search');
+    const propertyType = searchParams.get('propertyType');
+    const bedrooms = searchParams.get('bedrooms');
+    const microMarkets = searchParams.get('microMarkets');
+    const communities = searchParams.get('communities');
+    const possessionStatus = searchParams.get('possessionStatus');
+    const priceMin = searchParams.get('priceMin');
+    const priceMax = searchParams.get('priceMax');
+    const landownerShare = searchParams.get('landownerShare');
+    const investorShare = searchParams.get('investorShare');
+    const isResale = searchParams.get('isResale');
+    const amenities = searchParams.get('amenities');
+    const sortBy = searchParams.get('sortBy');
     
-    if (community) {
-      initialFilters.communities = [community];
+    if (search) initialFilters.searchQuery = search;
+    if (propertyType) {
+      initialFilters.propertyType = propertyType.includes(',') 
+        ? propertyType.split(',') 
+        : propertyType;
+    }
+    if (bedrooms) {
+      const beds = bedrooms.split(',').map(b => parseInt(b));
+      initialFilters.bedrooms = beds.length === 1 ? beds[0] : beds;
+    }
+    if (microMarkets) {
+      initialFilters.microMarkets = microMarkets.split(',');
+    }
+    if (communities) {
+      initialFilters.communities = communities.split(',');
+    }
+    if (possessionStatus) {
+      initialFilters.possessionStatus = possessionStatus;
+    }
+    if (priceMin) {
+      initialFilters.priceMin = parseInt(priceMin);
+    }
+    if (priceMax) {
+      initialFilters.priceMax = parseInt(priceMax);
+    }
+    if (landownerShare === 'true') {
+      initialFilters.landownerShare = true;
+    }
+    if (investorShare === 'true') {
+      initialFilters.investorShare = true;
+    }
+    if (isResale === 'true') {
+      initialFilters.isResale = true;
+    }
+    if (amenities) {
+      initialFilters.amenities = amenities.split(',');
+    }
+    if (sortBy) {
+      initialFilters.sortBy = sortBy;
     }
     
     if (Object.keys(initialFilters).length > 0) {
@@ -68,9 +114,15 @@ export default function PropertyListingClient({
       );
     }
 
-    // Property type
-    if (filters.propertyType && filters.propertyType !== 'all') {
-      filtered = filtered.filter(property => property.property_type === filters.propertyType);
+    // Property type (support both single and array)
+    if (filters.propertyType) {
+      if (Array.isArray(filters.propertyType)) {
+        filtered = filtered.filter(property => 
+          filters.propertyType!.includes(property.property_type)
+        );
+      } else if (filters.propertyType !== 'all') {
+        filtered = filtered.filter(property => property.property_type === filters.propertyType);
+      }
     }
 
     // Location
@@ -81,16 +133,29 @@ export default function PropertyListingClient({
       );
     }
 
-    // Bedrooms
-    if (filters.bedrooms) {
-      filtered = filtered.filter(property => property.bedrooms === filters.bedrooms);
+    // Bedrooms (support both single and array)
+    if (filters.bedrooms !== undefined) {
+      if (Array.isArray(filters.bedrooms)) {
+        const bedroomsArray = filters.bedrooms as number[];
+        filtered = filtered.filter(property => 
+          property.bedrooms && bedroomsArray.includes(property.bedrooms)
+        );
+      } else {
+        filtered = filtered.filter(property => property.bedrooms === filters.bedrooms);
+      }
     }
 
-    // Price range
+    // Price range (support both priceRange string and priceMin/priceMax)
     if (filters.priceRange) {
       const [min, max] = parsePriceRange(filters.priceRange);
       filtered = filtered.filter(property => {
         return property.price >= min && (max === null || property.price <= max);
+      });
+    } else if (filters.priceMin !== undefined || filters.priceMax !== undefined) {
+      filtered = filtered.filter(property => {
+        const min = filters.priceMin ?? 0;
+        const max = filters.priceMax ?? Infinity;
+        return property.price >= min && property.price <= max;
       });
     }
 
@@ -133,6 +198,29 @@ export default function PropertyListingClient({
       }
       if (filters.isResale) {
         filtered = filtered.filter(property => property.is_resale);
+      }
+
+      // Possession status
+      if (filters.possessionStatus) {
+        filtered = filtered.filter(property => {
+          // Check if property has possession_status field (may be in different format)
+          const possessionStatus = (property as any).possession_status || (property as any).possessionStatus;
+          return possessionStatus?.toLowerCase() === filters.possessionStatus?.toLowerCase();
+        });
+      }
+
+      // Amenities filter
+      if (filters.amenities && filters.amenities.length > 0) {
+        filtered = filtered.filter(property => {
+          const propertyAmenities = (property as any).amenities || [];
+          if (!Array.isArray(propertyAmenities)) return false;
+          // Check if property has all selected amenities
+          return filters.amenities!.every(amenity =>
+            propertyAmenities.some((propAmenity: string) =>
+              propAmenity.toLowerCase().includes(amenity.toLowerCase())
+            )
+          );
+        });
       }
     }
 
@@ -244,9 +332,17 @@ export default function PropertyListingClient({
     }, {} as Record<string, UnifiedProperty[]>);
   }, [shareProperties, citySlug]);
 
-  const maxPrice = properties.length > 0 
-    ? Math.max(...properties.map(p => p.price), 500000000)
-    : 500000000;
+  // Calculate min and max prices from properties
+  const priceRange = useMemo(() => {
+    if (properties.length === 0) {
+      return { min: 0, max: 500000000 };
+    }
+    const prices = properties.map(p => p.price).filter(p => p > 0);
+    return {
+      min: prices.length > 0 ? Math.min(...prices) : 0,
+      max: prices.length > 0 ? Math.max(...prices) : 500000000,
+    };
+  }, [properties]);
 
   const IconComponent = {
     MapPin,
@@ -301,13 +397,24 @@ export default function PropertyListingClient({
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Filters Sidebar */}
           <div className="lg:col-span-1">
-            <PropertyFilters
-              citySlug={citySlug}
-              filters={filters}
-              onFiltersChange={handleFiltersChange}
-              onReset={handleResetFilters}
-              maxPrice={maxPrice}
-            />
+            {citySlug === 'hyderabad' ? (
+              <HyderabadPropertyFilters
+                filters={filters}
+                onFiltersChange={handleFiltersChange}
+                onReset={handleResetFilters}
+                minPrice={priceRange.min}
+                maxPrice={priceRange.max}
+                properties={properties}
+              />
+            ) : (
+              <PropertyFilters
+                citySlug={citySlug}
+                filters={filters}
+                onFiltersChange={handleFiltersChange}
+                onReset={handleResetFilters}
+                maxPrice={priceRange.max}
+              />
+            )}
           </div>
 
           {/* Main Content */}
