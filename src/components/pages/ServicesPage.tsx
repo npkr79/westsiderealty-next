@@ -44,9 +44,9 @@ export default function ServicesPage() {
     return [
       {
         icon: Building2,
-        title: "Resale Properties in Gated Communities – West Hyderabad",
+        title: "Premium Properties in Gated Communities – West Hyderabad",
         description:
-          "We specialize in premium resale apartments, villas, and homes within the most desirable gated communities of West Hyderabad — including Kokapet, Narsingi, Financial District, Gachibowli, and Gandipet. Whether you're buying or selling, we bring deep market knowledge and verified inventory to ensure smoother, faster, and more profitable transactions.",
+          "We specialize in premium apartments, villas, and homes within the most desirable gated communities of West Hyderabad — including Kokapet, Narsingi, Financial District, Gachibowli, and Gandipet. Whether you're buying or selling, we bring deep market knowledge and verified inventory to ensure smoother, faster, and more profitable transactions.",
         areas: ["Kokapet", "Narsingi", "Financial District", "Gachibowli", "Gandipet", "Manikonda"],
         features: [
           "Premium gated communities",

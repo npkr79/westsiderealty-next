@@ -36,7 +36,29 @@ const NewProjectsDropdown = () => {
       </NavigationMenuTrigger>
       <NavigationMenuContent>
         <div className="p-6 w-[400px]">
-          {/* Projects by City Section */}
+          {/* Featured/Latest Projects Section - FIRST */}
+          <div>
+            <div className="flex items-center gap-2 mb-3 pb-2 border-b">
+              <ArrowRight className="h-4 w-4 text-remax-red" />
+              <h3 className="font-semibold text-sm text-gray-900">Featured/Latest Projects</h3>
+            </div>
+            <ul className="space-y-1">
+              <li>
+                <Link
+                  href="/projects"
+                  className="flex items-center justify-between py-2 px-3 rounded-md text-sm text-muted-foreground hover:bg-accent hover:text-remax-red transition-colors group"
+                >
+                  <span>All Projects</span>
+                  <ArrowRight className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          {/* Divider */}
+          <div className="my-4 border-t border-gray-200" />
+
+          {/* Projects by City Section - SECOND */}
           <div>
             <div className="flex items-center gap-2 mb-3 pb-2 border-b">
               <Building2 className="h-4 w-4 text-remax-red" />
@@ -59,25 +81,6 @@ const NewProjectsDropdown = () => {
               ) : (
                 <li className="text-sm text-muted-foreground">No cities available</li>
               )}
-            </ul>
-          </div>
-
-          {/* Featured/Latest Projects Section */}
-          <div className="mt-6">
-            <div className="flex items-center gap-2 mb-3 pb-2 border-b">
-              <ArrowRight className="h-4 w-4 text-remax-red" />
-              <h3 className="font-semibold text-sm text-gray-900">Featured/Latest Projects</h3>
-            </div>
-            <ul className="space-y-1">
-              <li>
-                <Link
-                  href="/projects"
-                  className="flex items-center justify-between py-2 px-3 rounded-md text-sm text-muted-foreground hover:bg-accent hover:text-remax-red transition-colors group"
-                >
-                  <span>All Projects</span>
-                  <ArrowRight className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
-                </Link>
-              </li>
             </ul>
           </div>
         </div>
