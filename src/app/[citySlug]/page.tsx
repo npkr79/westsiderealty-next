@@ -19,7 +19,6 @@ import CityOverviewSection from "@/components/city/CityOverviewSection";
 import BuyerPersonasSection from "@/components/city/BuyerPersonasSection";
 import MarketTrendsSection from "@/components/city/MarketTrendsSection";
 import WhyInvestSection from "@/components/city/WhyInvestSection";
-import FeaturedDevelopersSection from "@/components/city/FeaturedDevelopersSection";
 import InvestmentAreasSection from "@/components/city/InvestmentAreasSection";
 import MicroMarketGrid from "@/components/city/MicroMarketGrid";
 import HyderabadInvestmentGuide from "@/components/city/HyderabadInvestmentGuide";
@@ -155,7 +154,10 @@ export default async function CityPage({ params }: PageProps) {
   };
 
   const safeImageSrc = (src: string | null | undefined) => {
-    if (!src || !src.trim()) return "/placeholder.svg";
+    if (!src || !src.trim()) {
+      // Return a default Hyderabad hero image if none provided
+      return "https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/service-images/hyderabad-view.jpg";
+    }
     // Use optimized hero image URL if it's a valid image
     try {
       return getHeroImageUrl(src);
@@ -346,8 +348,7 @@ export default async function CityPage({ params }: PageProps) {
         investmentZonesData={Array.isArray(city.investment_zones_json) ? city.investment_zones_json : []} 
       />
 
-      {/* Featured Developers */}
-      <FeaturedDevelopersSection cityId={city.id} cityName={city.city_name} />
+      {/* Featured Developers - Removed per requirements */}
 
       {/* Featured Projects - for cities with regular projects */}
       {featuredProjects.length > 0 && (

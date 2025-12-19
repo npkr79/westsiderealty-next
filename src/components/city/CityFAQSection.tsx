@@ -1,9 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface CityFAQSectionProps {
   faqs: any[];
@@ -13,105 +11,60 @@ interface CityFAQSectionProps {
 export default function CityFAQSection({ faqs, cityName }: CityFAQSectionProps) {
   if (!Array.isArray(faqs) || faqs.length === 0) return null;
 
-  // Group FAQs by category if they have a category field
-  const categorized = faqs.some((faq: any) => faq.category || faq.section);
+  // Parse FAQ structure: [{ category, faqs: [{ question, answer }] }]
+  let faqCategories: Array<{ category: string; faqs: Array<{ question: string; answer: string }> }> = [];
   
-  let categories: Record<string, any[]> = {};
-  
-  if (categorized) {
-    faqs.forEach((faq: any) => {
-      const category = faq.category || faq.section || "General";
-      if (!categories[category]) {
-        categories[category] = [];
-      }
-      categories[category].push(faq);
-    });
+  // Check if FAQs are in the structured format with category and faqs array
+  if (faqs.length > 0 && faqs[0]?.category && Array.isArray(faqs[0]?.faqs)) {
+    faqCategories = faqs;
   } else {
-    // Default categories for Hyderabad
-    const defaultCategories = {
-      "Market Trends & Investment Outlook 2026": faqs.slice(0, 5),
-      "Top Locations & Micro-Markets": faqs.slice(5, 9),
-      "Legal, RERA & Buying Process": faqs.slice(9, 13),
-      "Infrastructure & Future Growth": faqs.slice(13)
-    };
-    
-    // Only use default categories if we have enough FAQs
-    if (faqs.length >= 4) {
-      categories = defaultCategories;
-    } else {
-      categories = { "General": faqs };
-    }
+    // Fallback: treat each item as a single FAQ
+    faqCategories = [{
+      category: "General",
+      faqs: faqs.map((faq: any) => ({
+        question: faq.question || faq.q || "",
+        answer: faq.answer || faq.a || ""
+      }))
+    }];
   }
 
-  const categoryNames = Object.keys(categories);
-  const [activeCategory, setActiveCategory] = useState(categoryNames[0] || "General");
-
   return (
-    <section className="py-16 bg-background">
-      <div className="container mx-auto px-4">
+    <section className="py-20 px-4 bg-gradient-to-b from-background to-secondary/10">
+      <div className="container mx-auto">
         <h2 className="text-3xl md:text-4xl font-bold mb-8 text-center text-[hsl(var(--heading-blue))]">
           Frequently Asked Questions about {cityName}
         </h2>
-        <Card>
+        <Card className="bg-white/80 backdrop-blur-sm border shadow-lg">
           <CardContent className="p-6">
-            {categoryNames.length > 1 ? (
-              <Tabs value={activeCategory} onValueChange={setActiveCategory} className="w-full">
-                <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 mb-6">
-                  {categoryNames.map((category) => (
-                    <TabsTrigger key={category} value={category} className="text-xs md:text-sm">
-                      {category}
-                    </TabsTrigger>
-                  ))}
-                </TabsList>
-                {categoryNames.map((category) => (
-                  <TabsContent key={category} value={category}>
-                    <Accordion type="single" collapsible className="w-full">
-                      {categories[category].map((faq: any, idx: number) => {
-                        const question = faq.question || faq.q;
-                        const answer = faq.answer || faq.a;
-                        return (
-                          <AccordionItem key={idx} value={`faq-${category}-${idx}`}>
-                            <AccordionTrigger className="text-left">
-                              {question}
-                            </AccordionTrigger>
-                            <AccordionContent>
-                              <div 
-                                className="text-sm text-muted-foreground prose prose-sm max-w-none"
-                                dangerouslySetInnerHTML={{ 
-                                  __html: typeof answer === 'string' ? answer : JSON.stringify(answer)
-                                }}
-                              />
-                            </AccordionContent>
-                          </AccordionItem>
-                        );
-                      })}
-                    </Accordion>
-                  </TabsContent>
-                ))}
-              </Tabs>
-            ) : (
-              <Accordion type="single" collapsible className="w-full">
-                {faqs.map((faq: any, idx: number) => {
-                  const question = faq.question || faq.q;
-                  const answer = faq.answer || faq.a;
-                  return (
-                    <AccordionItem key={idx} value={`faq-${idx}`}>
-                      <AccordionTrigger className="text-left">
-                        {question}
-                      </AccordionTrigger>
-                      <AccordionContent>
-                        <div 
-                          className="text-sm text-muted-foreground prose prose-sm max-w-none"
-                          dangerouslySetInnerHTML={{ 
-                            __html: typeof answer === 'string' ? answer : JSON.stringify(answer)
-                          }}
-                        />
-                      </AccordionContent>
-                    </AccordionItem>
-                  );
-                })}
-              </Accordion>
-            )}
+            <Accordion type="single" collapsible className="w-full space-y-4">
+              {faqCategories.map((categoryData, categoryIdx) => (
+                <div key={categoryIdx} className="space-y-3">
+                  {categoryData.category && (
+                    <h3 className="text-xl font-semibold text-foreground mb-3">
+                      {categoryData.category}
+                    </h3>
+                  )}
+                  {categoryData.faqs.map((faq, faqIdx) => {
+                    const uniqueId = `faq-${categoryIdx}-${faqIdx}`;
+                    return (
+                      <AccordionItem key={uniqueId} value={uniqueId} className="border-b">
+                        <AccordionTrigger className="text-left hover:no-underline">
+                          <span className="font-medium">{faq.question}</span>
+                        </AccordionTrigger>
+                        <AccordionContent>
+                          <div 
+                            className="text-sm text-muted-foreground prose prose-sm max-w-none pt-2"
+                            dangerouslySetInnerHTML={{ 
+                              __html: typeof faq.answer === 'string' ? faq.answer : JSON.stringify(faq.answer)
+                            }}
+                          />
+                        </AccordionContent>
+                      </AccordionItem>
+                    );
+                  })}
+                </div>
+              ))}
+            </Accordion>
           </CardContent>
         </Card>
       </div>

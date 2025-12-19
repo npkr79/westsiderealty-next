@@ -69,8 +69,8 @@ export default function WhyInvestSection({ cityName, cityData }: WhyInvestSectio
     : defaultReasons;
 
   return (
-    <section className="py-16 bg-secondary/10">
-      <div className="container mx-auto px-4">
+    <section className="py-20 px-4 bg-gradient-to-b from-background to-secondary/10">
+      <div className="container mx-auto">
         <h2 className="text-3xl md:text-4xl font-bold mb-8 text-center text-[hsl(var(--heading-blue))]">
           Why Invest in {cityName}?
         </h2>
@@ -78,12 +78,14 @@ export default function WhyInvestSection({ cityName, cityData }: WhyInvestSectio
           {reasons.map((reason, idx) => {
             const IconComponent = reason.icon || TrendingUp;
             return (
-              <Card key={reason.id || idx} className="hover:shadow-lg transition-shadow">
+              <Card key={reason.id || idx} className="bg-white/80 backdrop-blur-sm border shadow-lg hover:shadow-xl transition-all">
                 <CardHeader>
                   <div className="flex items-start justify-between mb-2">
-                    <IconComponent className="h-8 w-8 text-primary" />
+                    <div className="p-3 rounded-lg bg-primary/10">
+                      <IconComponent className="h-6 w-6 text-primary" />
+                    </div>
                     {reason.stat && (
-                      <Badge variant="secondary" className="ml-auto">
+                      <Badge variant="secondary" className="ml-auto font-semibold">
                         {reason.stat}
                       </Badge>
                     )}
@@ -93,7 +95,7 @@ export default function WhyInvestSection({ cityName, cityData }: WhyInvestSectio
                 <CardContent className="text-sm text-muted-foreground">
                   <p>{reason.description}</p>
                   <div className="mt-3 pt-3 border-t border-border">
-                    <span className="text-xs text-muted-foreground">Verified Data</span>
+                    <span className="text-xs font-medium text-primary">Verified Data</span>
                   </div>
                 </CardContent>
               </Card>
@@ -102,7 +104,7 @@ export default function WhyInvestSection({ cityName, cityData }: WhyInvestSectio
         </div>
         
         {/* Bottom Banner */}
-        <div className="bg-gradient-to-r from-primary/10 to-secondary/10 rounded-lg p-6 text-center border border-primary/20">
+        <div className="bg-gradient-to-r from-primary/10 to-secondary/10 rounded-lg p-6 text-center border border-primary/20 shadow-md">
           <p className="text-lg font-semibold text-foreground">
             {cityName} Ranks Among Top 5 Cities for Real Estate Investment in India
           </p>

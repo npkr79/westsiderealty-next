@@ -9,12 +9,25 @@ interface MicroMarketGridProps {
   citySlug: string;
 }
 
+// Utility function to strip HTML tags
+const stripHtml = (html: string | null | undefined): string => {
+  if (!html) return '';
+  return html.replace(/<[^>]*>/g, '').trim();
+};
+
+// Utility function to truncate text
+const truncateText = (text: string, maxLength: number = 120): string => {
+  if (!text) return '';
+  if (text.length <= maxLength) return text;
+  return text.substring(0, maxLength).trim() + '...';
+};
+
 export default function MicroMarketGrid({ microMarkets, citySlug }: MicroMarketGridProps) {
   if (!microMarkets || microMarkets.length === 0) return null;
 
   return (
-    <section className="py-16 bg-background">
-      <div className="container mx-auto px-4">
+    <section className="py-20 px-4 bg-gradient-to-b from-background to-secondary/10">
+      <div className="container mx-auto">
         <h2 className="text-3xl md:text-4xl font-bold mb-8 text-center text-[hsl(var(--heading-blue))]">
           Prime Micro-Markets in {citySlug.charAt(0).toUpperCase() + citySlug.slice(1)}
         </h2>
@@ -36,7 +49,7 @@ export default function MicroMarketGrid({ microMarkets, citySlug }: MicroMarketG
             const rentalYield = mm.rental_yield_min;
 
             return (
-              <Card key={mm.url_slug || index} className="hover:shadow-lg transition-shadow h-full flex flex-col">
+              <Card key={mm.url_slug || index} className="bg-white/80 backdrop-blur-sm border shadow-lg hover:shadow-xl transition-all h-full flex flex-col">
                 <CardHeader>
                   <div className="flex items-start justify-between mb-2">
                     <CardTitle className="text-xl">{mm.micro_market_name}</CardTitle>
@@ -50,7 +63,7 @@ export default function MicroMarketGrid({ microMarkets, citySlug }: MicroMarketG
                 </CardHeader>
                 <CardContent className="space-y-3 text-sm text-muted-foreground flex-grow">
                   {mm.hero_hook && (
-                    <p className="line-clamp-2">{mm.hero_hook}</p>
+                    <p className="line-clamp-2">{truncateText(stripHtml(mm.hero_hook))}</p>
                   )}
                   
                   <div className="space-y-2 pt-2 border-t border-border">

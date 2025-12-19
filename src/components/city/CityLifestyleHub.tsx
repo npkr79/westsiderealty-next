@@ -53,6 +53,37 @@ export default function CityLifestyleHub({ lifestyleData, cityName }: CityLifest
   const renderTabContent = (content: any) => {
     if (!content) return null;
 
+    // Handle array format: [{ title, description, image_url }]
+    if (Array.isArray(content)) {
+      return (
+        <div className="space-y-6">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {content.map((item: any, idx: number) => (
+              <Card key={idx} className="bg-white/80 backdrop-blur-sm border shadow-lg hover:shadow-xl transition-all">
+                {item.image_url && (
+                  <div className="relative h-40 w-full">
+                    <Image
+                      src={item.image_url}
+                      alt={item.title || "Lifestyle item"}
+                      fill
+                      className="object-cover rounded-t-lg"
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                    />
+                  </div>
+                )}
+                <CardContent className="p-4">
+                  <h4 className="font-semibold mb-2">{item.title}</h4>
+                  {item.description && (
+                    <p className="text-sm text-muted-foreground" dangerouslySetInnerHTML={{ __html: item.description }} />
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="space-y-6">
         {/* Main Description */}
@@ -63,20 +94,48 @@ export default function CityLifestyleHub({ lifestyleData, cityName }: CityLifest
           />
         )}
 
+        {/* Array of items with image_url */}
+        {Array.isArray(content.items) && (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {content.items.map((item: any, idx: number) => (
+              <Card key={idx} className="bg-white/80 backdrop-blur-sm border shadow-lg hover:shadow-xl transition-all">
+                {item.image_url && (
+                  <div className="relative h-40 w-full">
+                    <Image
+                      src={item.image_url}
+                      alt={item.title || "Lifestyle item"}
+                      fill
+                      className="object-cover rounded-t-lg"
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                    />
+                  </div>
+                )}
+                <CardContent className="p-4">
+                  <h4 className="font-semibold mb-2">{item.title}</h4>
+                  {item.description && (
+                    <p className="text-sm text-muted-foreground" dangerouslySetInnerHTML={{ __html: item.description }} />
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+
         {/* Culinary Heritage Cards (for Culture tab) */}
         {content.culinary_heritage && Array.isArray(content.culinary_heritage) && (
           <div>
             <h3 className="text-xl font-semibold mb-4">Vibrant Culture & Culinary Heritage</h3>
             <div className="grid md:grid-cols-3 gap-4">
               {content.culinary_heritage.map((item: any, idx: number) => (
-                <Card key={idx}>
-                  {item.image && (
+                <Card key={idx} className="bg-white/80 backdrop-blur-sm border shadow-lg hover:shadow-xl transition-all">
+                  {(item.image || item.image_url) && (
                     <div className="relative h-32 w-full">
                       <Image
-                        src={item.image}
+                        src={item.image || item.image_url}
                         alt={item.title || "Culinary heritage"}
                         fill
                         className="object-cover rounded-t-lg"
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                       />
                     </div>
                   )}
@@ -158,12 +217,12 @@ export default function CityLifestyleHub({ lifestyleData, cityName }: CityLifest
   };
 
   return (
-    <section className="py-16 bg-secondary/10">
-      <div className="container px-4">
-        <h2 className="text-3xl md:text-4xl font-bold mb-8 text-[hsl(var(--heading-blue))]">
+    <section className="py-20 px-4 bg-gradient-to-b from-background to-secondary/10">
+      <div className="container mx-auto">
+        <h2 className="text-3xl md:text-4xl font-bold mb-8 text-center text-[hsl(var(--heading-blue))]">
           {cityName} Lifestyle: Culture, Climate, and Connectivity
         </h2>
-        <Card>
+        <Card className="bg-white/80 backdrop-blur-sm border shadow-lg">
           <CardContent className="p-6">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="grid w-full grid-cols-3 mb-6">
