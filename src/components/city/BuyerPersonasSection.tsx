@@ -38,9 +38,11 @@ export default function BuyerPersonasSection({
                   <div>
                     <h4 className="font-semibold text-foreground mb-2">Preferences:</h4>
                     <ul className="list-disc list-inside space-y-1">
-                      {persona.preferences.map((pref: string, i: number) => (
-                        <li key={i}>{pref}</li>
-                      ))}
+                      {persona.preferences.map((pref: any, i: number) => {
+                        // Handle both string and object formats
+                        const prefText = typeof pref === 'string' ? pref : (pref?.text || pref?.name || JSON.stringify(pref));
+                        return <li key={i}>{prefText}</li>;
+                      })}
                     </ul>
                   </div>
                 )}
@@ -49,9 +51,11 @@ export default function BuyerPersonasSection({
                   <div>
                     <h4 className="font-semibold text-foreground mb-2">Priorities:</h4>
                     <ul className="list-disc list-inside space-y-1">
-                      {persona.priorities.map((priority: string, i: number) => (
-                        <li key={i}>{priority}</li>
-                      ))}
+                      {persona.priorities.map((priority: any, i: number) => {
+                        // Handle both string and object formats
+                        const priorityText = typeof priority === 'string' ? priority : (priority?.text || priority?.name || JSON.stringify(priority));
+                        return <li key={i}>{priorityText}</li>;
+                      })}
                     </ul>
                   </div>
                 )}
@@ -60,9 +64,13 @@ export default function BuyerPersonasSection({
                   <div>
                     <h4 className="font-semibold text-foreground mb-2">Target Areas:</h4>
                     <div className="flex flex-wrap gap-2">
-                      {persona.target_areas.map((area: string, i: number) => (
-                        <Badge key={i} variant="outline">{area}</Badge>
-                      ))}
+                      {persona.target_areas.map((area: any, i: number) => {
+                        // Handle both string and object formats
+                        const areaName = typeof area === 'string' ? area : (area?.name || area?.title || JSON.stringify(area));
+                        return (
+                          <Badge key={i} variant="outline">{areaName}</Badge>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
