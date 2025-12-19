@@ -411,3 +411,6 @@ export default async function CityPage({ params }: PageProps) {
     </>
   );
 }
+
+// Revalidate every 24 hours
+export const revalidate = 86400;

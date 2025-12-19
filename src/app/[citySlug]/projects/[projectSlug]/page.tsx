@@ -1,9 +1,13 @@
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 import { projectService, ProjectWithRelations } from "@/services/projectService";
 import { findBrochureByProjectName } from "@/services/brochureService";
+import { createClient } from "@/lib/supabase/server";
+import { buildMetadata } from "@/components/common/SEO";
+import { JsonLd } from "@/components/seo/JsonLd";
+import { Breadcrumbs } from "@/components/seo/Breadcrumbs";
 import Layout from "@/components/layout/Layout";
 import BreadcrumbNav from "@/components/layout/BreadcrumbNav";
-import FooterSection from "@/components/home/FooterSection";
 import CityHubBacklink from "@/components/seo/CityHubBacklink";
 import ProjectSEO from "@/components/project-details/ProjectSEO";
 import ProjectHeroGallery from "@/components/project-details/ProjectHeroGallery";
@@ -30,6 +34,62 @@ import DebugClient from "./DebugClient";
 
 interface PageProps {
   params: Promise<{ citySlug: string | string[]; projectSlug: string | string[] }>;
+}
+
+// Generate all project URLs at build time
+export async function generateStaticParams() {
+  const supabase = await createClient();
+  const { data: projects } = await supabase
+    .from("projects")
+    .select("url_slug, city:cities(url_slug), micro_market:micro_markets(url_slug)")
+    .eq("is_published", true)
+    .eq("page_status", "published")
+    .limit(1000); // Limit to prevent build timeout
+
+  if (!projects) return [];
+
+  return projects
+    .filter((p: any) => p.city?.url_slug && p.url_slug)
+    .map((p: any) => ({
+      citySlug: p.city.url_slug,
+      projectSlug: p.url_slug,
+    }));
+}
+
+// Generate metadata server-side
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { citySlug: citySlugParam, projectSlug: projectSlugParam } = await params;
+  const citySlug = Array.isArray(citySlugParam) ? citySlugParam[0] : citySlugParam;
+  const projectSlug = Array.isArray(projectSlugParam) ? projectSlugParam[0] : projectSlugParam;
+
+  if (!citySlug || !projectSlug) {
+    return {
+      title: "Project Not Found",
+    };
+  }
+
+  const project = await projectService.getCityLevelProjectBySlug(citySlug, projectSlug);
+
+  if (!project) {
+    return {
+      title: "Project Not Found",
+    };
+  }
+
+  const microMarketSlug = project.micro_market?.url_slug;
+  const canonicalUrl = microMarketSlug
+    ? `https://www.westsiderealty.in/${citySlug}/${microMarketSlug}/projects/${projectSlug}`
+    : `https://www.westsiderealty.in/${citySlug}/projects/${projectSlug}`;
+
+  return buildMetadata({
+    title:
+      project.seo_title ||
+      `${project.project_name} | Price, Floor Plans & Details | RE/MAX Westside Realty`,
+    description: project.meta_description || `Explore ${project.project_name} - Premium residential project`,
+    canonicalUrl,
+    imageUrl: project.hero_image_url || undefined,
+    type: "website",
+  });
 }
 
 export default async function ProjectDetailPage({ params }: PageProps) {
@@ -89,14 +149,37 @@ export default async function ProjectDetailPage({ params }: PageProps) {
   }
 
   const breadcrumbItems = [
-    { label: "Home", href: "/" },
-    { label: project.city?.city_name || citySlug, href: `/${citySlug}` },
+    { name: "Home", href: "/" },
+    { name: project.city?.city_name || citySlug, href: `/${citySlug}` },
     ...(microMarketSlug
-      ? [{ label: project.micro_market?.micro_market_name || microMarketSlug, href: `/${citySlug}/${microMarketSlug}` }]
+      ? [{ name: project.micro_market?.micro_market_name || microMarketSlug, href: `/${citySlug}/${microMarketSlug}` }]
       : []),
-    { label: "Projects", href: `/${citySlug}/projects` },
-    { label: project.project_name },
+    { name: "Projects", href: `/${citySlug}/projects` },
+    { name: project.project_name, href: `/${citySlug}/projects/${projectSlug}` },
   ];
+
+  // Real Estate Listing Schema for SEO
+  const realEstateSchema = {
+    "@context": "https://schema.org",
+    "@type": "RealEstateListing",
+    name: project.project_name,
+    description: project.meta_description || `Premium residential project in ${project.city?.city_name || citySlug}`,
+    image: project.hero_image_url,
+    url: `https://www.westsiderealty.in/${citySlug}${microMarketSlug ? `/${microMarketSlug}` : ""}/projects/${projectSlug}`,
+    address: {
+      "@type": "PostalAddress",
+      addressLocality: project.city?.city_name || citySlug,
+      addressRegion: project.micro_market?.micro_market_name || "",
+      addressCountry: "IN",
+    },
+    ...(project.price_range_text && {
+      offers: {
+        "@type": "AggregateOffer",
+        priceCurrency: "INR",
+        priceRange: project.price_range_text,
+      },
+    }),
+  };
 
   // Debug: Log image data in development
   if (process.env.NODE_ENV === 'development') {
@@ -112,10 +195,12 @@ export default async function ProjectDetailPage({ params }: PageProps) {
   return (
     <Layout>
       <DebugClient citySlug={citySlug} projectSlug={projectSlug} />
+      <JsonLd data={realEstateSchema} />
+      <Breadcrumbs items={breadcrumbItems} />
       <ProjectSEO project={project} citySlug={citySlug} projectSlug={projectSlug} />
       <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-4">
-          <BreadcrumbNav items={breadcrumbItems} />
+          <BreadcrumbNav items={breadcrumbItems.map(item => ({ label: item.name, href: item.href }))} />
         </div>
 
         {/* Hero Gallery */}
@@ -302,8 +387,10 @@ export default async function ProjectDetailPage({ params }: PageProps) {
         </div>
 
         <CityHubBacklink />
-        <FooterSection />
       </div>
     </Layout>
   );
 }
+
+// Revalidate every 24 hours
+export const revalidate = 86400;
