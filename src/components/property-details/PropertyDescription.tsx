@@ -1,9 +1,12 @@
 "use client";
 
+import { truncateWords } from "@/lib/textUtils";
+
 interface PropertyDescriptionProps {
   title: string;
   description: string;
   projectName?: string;
+  maxWords?: number; // Optional max words (default: 500)
 }
 
 function stripHtml(html: string): string {
@@ -15,16 +18,20 @@ export default function PropertyDescription({
   title,
   description,
   projectName,
+  maxWords = 500,
 }: PropertyDescriptionProps) {
   if (!description) return null;
 
   // Clean up markdown artifacts like **text::** 
-  const cleanDescription = description
+  let cleanDescription = description
     .replace(/\*\*(.*?)::\*\*/g, '') // Remove **text::**
     .replace(/\*\*(.*?)\*\*/g, '$1') // Convert **bold** to plain text
     .replace(/<[^>]*>/g, '') // Remove HTML tags
     .replace(/\n{3,}/g, '\n\n') // Remove excessive line breaks
     .trim();
+
+  // Truncate to maxWords (default 500)
+  cleanDescription = truncateWords(cleanDescription, maxWords);
 
   return (
     <section className="space-y-3">

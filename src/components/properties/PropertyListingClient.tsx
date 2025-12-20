@@ -15,6 +15,7 @@ import LandownerSEOContent from "@/components/properties/LandownerSEOContent";
 import type { UnifiedProperty, UnifiedPropertyFilters, CitySlug } from "@/types/unifiedProperty";
 import { CITY_CONFIGS } from "@/types/unifiedProperty";
 import { projectService, type ProjectInfo } from "@/services/projectService";
+import { truncateWords } from "@/lib/textUtils";
 
 interface PropertyListingClientProps {
   citySlug: CitySlug;
@@ -462,7 +463,7 @@ export default function PropertyListingClient({
                                 <span className="text-xl font-bold">{projectName}</span>
                                 {projectDescriptions.get(projectName) && (
                                   <p className="text-sm text-muted-foreground font-normal mt-2 leading-relaxed">
-                                    {projectDescriptions.get(projectName)!.description}
+                                    {truncateWords(projectDescriptions.get(projectName)!.description, 500)}
                                   </p>
                                 )}
                               </div>
