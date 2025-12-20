@@ -68,6 +68,26 @@ export default async function CityPage({ params }: PageProps) {
   const citySlug = Array.isArray(citySlugParam) ? citySlugParam[0] : citySlugParam;
   const slug = citySlug || "hyderabad";
 
+  // First, check if this is a landing page (check both status='published' OR is_published=true)
+  const { createClient } = await import("@/lib/supabase/server");
+  const supabase = await createClient();
+  const { data: landingPage, error: landingPageError } = await supabase
+    .from("landing_pages")
+    .select("uri, status, is_published")
+    .eq("uri", slug)
+    .or("status.eq.published,is_published.eq.true")
+    .maybeSingle();
+
+  if (landingPageError) {
+    console.error("[CityPage] Error checking for landing page:", landingPageError);
+  }
+
+  if (landingPage) {
+    // Redirect to the /landing/[slug] route to use the proper landing page component
+    const { redirect } = await import("next/navigation");
+    redirect(`/landing/${slug}`);
+  }
+
   const city = await cityService.getCityBySlug(slug);
 
   if (!city) {

@@ -15,7 +15,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     .from("landing_pages")
     .select("seo_title, meta_description, hero_image_url, title")
     .eq("uri", slug)
-    .eq("status", "published")
+    .or("status.eq.published,is_published.eq.true")
     .maybeSingle();
 
   if (!page) {
@@ -54,8 +54,7 @@ export async function generateStaticParams() {
   const { data: pages } = await supabase
     .from("landing_pages")
     .select("uri")
-    .eq("status", "published")
-    .eq("is_published", true);
+    .or("status.eq.published,is_published.eq.true");
 
   return pages?.map((page) => ({ slug: page.uri })) || [];
 }
@@ -65,11 +64,12 @@ export default async function LandingPageWrapper({ params }: PageProps) {
   const supabase = await createClient();
 
   // Verify the page exists and is published
+  // Check both status='published' OR is_published=true (for backward compatibility)
   const { data: page } = await supabase
     .from("landing_pages")
-    .select("id, uri, status")
+    .select("id, uri, status, is_published")
     .eq("uri", slug)
-    .eq("status", "published")
+    .or("status.eq.published,is_published.eq.true")
     .maybeSingle();
 
   if (!page) {
