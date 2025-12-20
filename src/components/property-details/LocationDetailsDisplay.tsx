@@ -1,7 +1,146 @@
 "use client";
 
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { GraduationCap, Hospital, Building2, ShoppingBag, Car, Plane } from "lucide-react";
+
 interface LocationDetailsDisplayProps {
   nearby_landmarks?: string[] | string | Array<{ name?: string; type?: string; distance?: string }> | { [key: string]: any };
+}
+
+interface LocationItem {
+  name: string;
+  distance?: string;
+}
+
+interface LocationCategory {
+  type: 'schools' | 'hospitals' | 'it_hub' | 'mall' | 'orr' | 'airport';
+  label: string;
+  icon: typeof GraduationCap;
+  color: string;
+  bgColor: string;
+  items: LocationItem[];
+}
+
+// Parse location data to group by category
+function parseLocationData(locationDetails: any): LocationCategory[] {
+  const categories: LocationCategory[] = [];
+
+  if (!locationDetails || typeof locationDetails !== 'object') {
+    return categories;
+  }
+
+  // Schools
+  const schools: LocationItem[] = [];
+  if (locationDetails.school1_name) {
+    schools.push({ 
+      name: locationDetails.school1_name, 
+      distance: locationDetails.school1_distance 
+    });
+  }
+  if (locationDetails.school2_name) {
+    schools.push({ 
+      name: locationDetails.school2_name, 
+      distance: locationDetails.school2_distance 
+    });
+  }
+  if (schools.length > 0) {
+    categories.push({
+      type: 'schools',
+      label: 'Schools',
+      icon: GraduationCap,
+      color: 'text-blue-600',
+      bgColor: 'bg-blue-50',
+      items: schools,
+    });
+  }
+
+  // Hospitals
+  const hospitals: LocationItem[] = [];
+  if (locationDetails.hospital1_name) {
+    hospitals.push({ 
+      name: locationDetails.hospital1_name, 
+      distance: locationDetails.hospital1_distance 
+    });
+  }
+  if (locationDetails.hospital2_name) {
+    hospitals.push({ 
+      name: locationDetails.hospital2_name, 
+      distance: locationDetails.hospital2_distance 
+    });
+  }
+  if (hospitals.length > 0) {
+    categories.push({
+      type: 'hospitals',
+      label: 'Hospitals',
+      icon: Hospital,
+      color: 'text-red-600',
+      bgColor: 'bg-red-50',
+      items: hospitals,
+    });
+  }
+
+  // IT Hub
+  if (locationDetails.it_hub_name) {
+    categories.push({
+      type: 'it_hub',
+      label: 'IT Hub',
+      icon: Building2,
+      color: 'text-purple-600',
+      bgColor: 'bg-purple-50',
+      items: [{ 
+        name: locationDetails.it_hub_name, 
+        distance: locationDetails.it_hub_distance 
+      }],
+    });
+  }
+
+  // Mall
+  if (locationDetails.mall_name) {
+    categories.push({
+      type: 'mall',
+      label: 'Mall',
+      icon: ShoppingBag,
+      color: 'text-pink-600',
+      bgColor: 'bg-pink-50',
+      items: [{ 
+        name: locationDetails.mall_name, 
+        distance: locationDetails.mall_distance 
+      }],
+    });
+  }
+
+  // ORR/Connectivity
+  if (locationDetails.orr_exit_distance) {
+    categories.push({
+      type: 'orr',
+      label: 'ORR Exit',
+      icon: Car,
+      color: 'text-green-600',
+      bgColor: 'bg-green-50',
+      items: [{ 
+        name: 'Outer Ring Road', 
+        distance: locationDetails.orr_exit_distance 
+      }],
+    });
+  }
+
+  // Airport
+  if (locationDetails.airport_distance) {
+    categories.push({
+      type: 'airport',
+      label: 'Airport',
+      icon: Plane,
+      color: 'text-indigo-600',
+      bgColor: 'bg-indigo-50',
+      items: [{ 
+        name: 'International Airport', 
+        distance: locationDetails.airport_distance 
+      }],
+    });
+  }
+
+  return categories;
 }
 
 export default function LocationDetailsDisplay({
@@ -11,94 +150,75 @@ export default function LocationDetailsDisplay({
     return null;
   }
 
-  // Handle different data formats
-  let list: string[] = [];
-  
+  // Try to parse as structured location data
+  let locationData: any = null;
+
   try {
+    // If it's a string, try to parse as JSON
     if (typeof nearby_landmarks === "string") {
-      // Comma-separated string
-      list = nearby_landmarks.split(",").map((s) => s.trim()).filter(Boolean);
-    } else if (Array.isArray(nearby_landmarks)) {
-      // Array of strings or objects
-      if (nearby_landmarks.length === 0) return null;
-      
-      list = nearby_landmarks.map((item) => {
-        if (typeof item === "string") {
-          return item;
-        } else if (item && typeof item === "object" && !Array.isArray(item)) {
-          // Extract name from object, fallback to other properties
-          const name = item.name || item.type || item.distance || item.landmark_name;
-          if (name) return String(name);
-          // If no name property, try to stringify the object
-          return JSON.stringify(item);
-        }
-        return String(item);
-      }).filter(Boolean);
-    } else if (typeof nearby_landmarks === "object" && !Array.isArray(nearby_landmarks)) {
-      // Object (not array) - check if it has array-like structure or key-value pairs
-      const entries = Object.entries(nearby_landmarks);
-      
-      if (entries.length === 0) return null;
-      
-      // Check if values are arrays (like {landmarks: [{name, type, distance}]})
-      const firstValue = entries[0]?.[1];
-      if (Array.isArray(firstValue)) {
-        // Nested array structure
-        list = entries.flatMap(([key, value]) => {
-          if (Array.isArray(value)) {
-            return value.map((item: any) => {
-              if (typeof item === "string") return item;
-              if (item && typeof item === "object") {
-                return item.name || item.type || item.distance || item.landmark_name || JSON.stringify(item);
-              }
-              return String(item);
-            });
-          }
-          return [];
-        }).filter(Boolean);
-      } else {
-        // Object with key-value pairs - extract meaningful values
-        list = entries.map(([key, value]) => {
-          if (typeof value === "string") {
-            // Format as "key: value" if both are meaningful
-            if (key && value && key !== "id" && key !== "created_at" && key !== "updated_at") {
-              return `${key.replace(/_/g, " ")}: ${value}`;
-            }
-            return value;
-          } else if (value && typeof value === "object" && !Array.isArray(value)) {
-            // Nested object - extract name
-            return (value as any).name || (value as any).type || (value as any).distance || key;
-          } else if (Array.isArray(value)) {
-            // Array value - join or take first
-            return value.map((v: any) => typeof v === "string" ? v : (v?.name || v?.type || String(v))).join(", ");
-          }
-          return key;
-        }).filter(Boolean);
+      try {
+        locationData = JSON.parse(nearby_landmarks);
+      } catch {
+        // If parsing fails, it might be a comma-separated string - skip structured format
+        return null;
       }
+    } else if (typeof nearby_landmarks === "object" && nearby_landmarks !== null && !Array.isArray(nearby_landmarks)) {
+      // Already an object - check if it has the expected structure
+      locationData = nearby_landmarks;
+    } else {
+      // Array or other format - skip structured format
+      return null;
     }
   } catch (error) {
-    console.error("[LocationDetailsDisplay] Error processing nearby_landmarks:", error, nearby_landmarks);
+    console.error("[LocationDetailsDisplay] Error parsing location data:", error);
     return null;
   }
 
-  if (!list || list.length === 0) return null;
+  // Parse location data into categories
+  const categories = parseLocationData(locationData);
+
+  if (categories.length === 0) {
+    return null;
+  }
 
   return (
-    <section className="space-y-3">
+    <section className="space-y-4">
       <h2 className="text-2xl font-semibold text-foreground">Location Highlights</h2>
-      <ul className="space-y-2 text-sm text-muted-foreground">
-        {list.map((item, index) => {
-          const { getLocationIcon } = require("@/lib/locationIcons");
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {categories.map((category) => {
+          const IconComponent = category.icon;
           return (
-            <li key={index} className="flex items-center gap-2">
-              <span className="text-lg">{getLocationIcon(item)}</span>
-              <span>{item}</span>
-            </li>
+            <Card key={category.type} className="hover:shadow-md transition-shadow">
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-lg ${category.bgColor}`}>
+                    <IconComponent className={`h-5 w-5 ${category.color}`} />
+                  </div>
+                  <h3 className={`text-sm font-bold uppercase tracking-wide ${category.color}`}>
+                    {category.label}
+                  </h3>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <ul className="space-y-3">
+                  {category.items.map((item, index) => (
+                    <li key={index} className="flex items-center justify-between">
+                      <span className="text-sm text-foreground font-medium flex-1">
+                        {item.name}
+                      </span>
+                      {item.distance && (
+                        <Badge variant="secondary" className="ml-2 text-xs font-semibold">
+                          {item.distance}
+                        </Badge>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
           );
         })}
-      </ul>
+      </div>
     </section>
   );
 }
-
-
