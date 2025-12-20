@@ -20,7 +20,7 @@ import AboutDeveloper from "@/components/property-details/AboutDeveloper";
 import SimilarProperties from "@/components/property-details/SimilarProperties";
 import PropertyDescription from "@/components/property-details/PropertyDescription";
 import { PropertyFAQs } from "@/components/property/PropertyFAQs";
-import { getPropertyFAQs } from "@/services/propertyFAQService";
+import { getPropertyFAQsFromProject } from "@/services/propertyFAQService";
 import { formatPriceWithCr } from "@/lib/priceFormatter";
 import CityHubBacklink from "@/components/seo/CityHubBacklink";
 
@@ -104,9 +104,9 @@ type LocationType = 'hyderabad' | 'goa' | 'dubai';
         setMicroMarketData(mmData);
       }
 
-      // Fetch FAQs
-      if (data && data.id) {
-        const propertyFAQs = await getPropertyFAQs(data.id, location);
+      // Fetch FAQs from projects table based on project_name
+      if (data && 'project_name' in data && data.project_name) {
+        const propertyFAQs = await getPropertyFAQsFromProject(data.project_name);
         setFaqs(propertyFAQs);
       }
       

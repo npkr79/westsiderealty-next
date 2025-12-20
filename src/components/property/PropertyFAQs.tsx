@@ -10,9 +10,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { HelpCircle } from "lucide-react";
 
 interface FAQ {
-  id: string;
+  id?: string;
   question: string;
   answer: string;
+  display_order?: number;
 }
 
 interface PropertyFAQsProps {
