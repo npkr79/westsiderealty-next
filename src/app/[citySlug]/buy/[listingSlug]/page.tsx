@@ -7,7 +7,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { MapPin, ArrowLeft, Share2 } from "lucide-react";
 import { locationPropertyService, type HyderabadProperty, type GoaProperty, type DubaiProperty } from "@/services/locationPropertyService";
-import ImageCarousel from "@/components/realestate/ImageCarousel";
+import { PropertyImageGallery } from "@/components/property/PropertyImageGallery";
 import ContactForm from "@/components/property/ContactForm";
 import GoogleMapEmbed from "@/components/common/GoogleMapEmbed";
 import LocationDetailsDisplay from "@/components/property-details/LocationDetailsDisplay";
@@ -15,10 +15,13 @@ import { projectService } from "@/services/projectService";
 import { microMarketService, type MicroMarketInfo } from "@/services/microMarketService";
 import PropertyAmenities from "@/components/property-details/PropertyAmenities";
 import PropertyHighlights from "@/components/property-details/PropertyHighlights";
-import MicroMarketHighlights from "@/components/property-details/MicroMarketHighlights";
+import { AboutMicroMarket } from "@/components/property/AboutMicroMarket";
 import AboutDeveloper from "@/components/property-details/AboutDeveloper";
 import SimilarProperties from "@/components/property-details/SimilarProperties";
 import PropertyDescription from "@/components/property-details/PropertyDescription";
+import { PropertyFAQs } from "@/components/property/PropertyFAQs";
+import { getPropertyFAQs } from "@/services/propertyFAQService";
+import { formatPriceWithCr } from "@/lib/priceFormatter";
 import CityHubBacklink from "@/components/seo/CityHubBacklink";
 
 type PropertyType = HyderabadProperty | GoaProperty | DubaiProperty;
@@ -36,6 +39,7 @@ type LocationType = 'hyderabad' | 'goa' | 'dubai';
   const [isLoading, setIsLoading] = useState(true);
   const [projectDescription, setProjectDescription] = useState<string | null>(null);
   const [microMarketData, setMicroMarketData] = useState<MicroMarketInfo | null>(null);
+  const [faqs, setFaqs] = useState<any[]>([]);
 
    // Extract location from pathname (/hyderabad/buy/slug, /goa/buy/slug, /dubai/buy/slug)
    const location = pathname.split('/')[1] as LocationType;
@@ -99,6 +103,12 @@ type LocationType = 'hyderabad' | 'goa' | 'dubai';
         const mmData = await microMarketService.getMicroMarketByName(data.micro_market);
         setMicroMarketData(mmData);
       }
+
+      // Fetch FAQs
+      if (data && data.id) {
+        const propertyFAQs = await getPropertyFAQs(data.id, location);
+        setFaqs(propertyFAQs);
+      }
       
        // 301 Redirect: If property has seo_slug and current URL uses old slug, redirect
        if (data && 'seo_slug' in data && data.seo_slug && data.seo_slug !== slug) {
@@ -120,12 +130,6 @@ type LocationType = 'hyderabad' | 'goa' | 'dubai';
     return `https://www.westsiderealty.in/${imageUrl}`;
   };
 
-  const formatPriceWithCr = (price: number) => {
-    if (price >= 10000000) {
-      return `₹${(price / 10000000).toFixed(2)} Cr`;
-    }
-    return `₹${(price / 100000).toFixed(0)} L`;
-  };
 
   if (isLoading) {
     return (
@@ -149,10 +153,19 @@ type LocationType = 'hyderabad' | 'goa' | 'dubai';
     );
   }
 
-  const images = property.image_gallery || [];
-  const mainImage = property.main_image_url || images[0] || '/placeholder.svg';
+  const images = Array.isArray(property.image_gallery) 
+    ? property.image_gallery.filter(Boolean)
+    : [];
+  // Combine main image with gallery if not already included
+  const allImages = property.main_image_url && !images.includes(property.main_image_url)
+    ? [property.main_image_url, ...images]
+    : images.length > 0 
+    ? images 
+    : property.main_image_url 
+    ? [property.main_image_url]
+    : [];
   const canonicalUrl = `https://www.westsiderealty.in/${location}/buy/${(property as any).seo_slug || slug}`;
-  const ogImage = getAbsoluteImageUrl(mainImage);
+  const ogImage = getAbsoluteImageUrl(allImages[0] || property.main_image_url);
 
   // Generate structured data (JSON-LD) with enhanced SEO fields
   const structuredData = {
@@ -255,9 +268,8 @@ type LocationType = 'hyderabad' | 'goa' | 'dubai';
             {/* Left Column */}
             <div className="lg:col-span-2 space-y-6">
               {/* Image Gallery */}
-              <ImageCarousel
-                images={Array.isArray(images) ? images : []}
-                mainImage={mainImage}
+              <PropertyImageGallery
+                images={allImages}
                 title={property.title}
               />
               
@@ -269,13 +281,15 @@ type LocationType = 'hyderabad' | 'goa' | 'dubai';
                     <div className="flex items-center gap-2 text-muted-foreground mb-2">
                       <MapPin className="h-4 w-4" />
                       <span>
-                        {('location' in property ? property.location : '') || 
-                         ('region' in property ? property.region : '') || 
-                         ('community' in property ? property.community : location)}
+                        {('micro_market' in property && property.micro_market) 
+                          ? property.micro_market
+                          : ('location' in property ? property.location : '') || 
+                            ('region' in property ? property.region : '') || 
+                            ('community' in property ? property.community : location)}
                       </span>
                     </div>
                     <p className="text-2xl font-semibold text-remax-red">
-                      {property.price_display || formatPriceWithCr(property.price)}
+                      {property.price_display || `₹${formatPriceWithCr(property.price)}`}
                     </p>
                   </div>
                   <Button
@@ -324,12 +338,35 @@ type LocationType = 'hyderabad' | 'goa' | 'dubai';
                 nearby_landmarks={'nearby_landmarks' in (property || {}) ? (property as any).nearby_landmarks : undefined} 
               />
               
-              {/* Micro Market Highlights */}
-              {microMarketData && <MicroMarketHighlights marketData={microMarketData} />}
+              {/* About Micro-Market */}
+              {microMarketData && (
+                <AboutMicroMarket
+                  microMarketName={microMarketData.micro_market_name || microMarketData.h1_title || 'Micro-Market'}
+                  microMarketSlug={microMarketData.url_slug}
+                  citySlug={citySlug || location}
+                  description={microMarketData.growth_story || microMarketData.connectivity_details || microMarketData.infrastructure_details}
+                  pricePerSqftMin={microMarketData.price_per_sqft_min}
+                  pricePerSqftMax={microMarketData.price_per_sqft_max}
+                  appreciationRate={microMarketData.annual_appreciation_min}
+                />
+              )}
 
               {/* About Developer */}
               {'developer_name' in property && property.developer_name && (
-                <AboutDeveloper developerName={property.developer_name} />
+                <AboutDeveloper 
+                  developerName={property.developer_name}
+                  developerSlug={(property as any).developer_slug}
+                  description={(property as any).developer_description}
+                  yearsInBusiness={(property as any).developer_years_in_business}
+                  totalProjects={(property as any).developer_total_projects}
+                  totalSftDelivered={(property as any).developer_total_sft_delivered}
+                  logoUrl={(property as any).developer_logo_url}
+                />
+              )}
+
+              {/* FAQs */}
+              {faqs.length > 0 && (
+                <PropertyFAQs faqs={faqs} propertyName={property.title} />
               )}
               
               {/* Map - Only show if location data exists */}
@@ -363,7 +400,8 @@ type LocationType = 'hyderabad' | 'goa' | 'dubai';
           <div className="container mx-auto px-4 py-8 mt-8">
             <SimilarProperties
               currentPropertyId={property.id}
-              location={location}
+              citySlug={citySlug || location}
+              microMarket={'micro_market' in property ? property.micro_market : undefined}
               bedrooms={'bedrooms' in property ? property.bedrooms : undefined}
               price={'price' in property ? property.price : undefined}
             />

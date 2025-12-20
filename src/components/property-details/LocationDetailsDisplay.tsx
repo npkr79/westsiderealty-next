@@ -86,10 +86,16 @@ export default function LocationDetailsDisplay({
   return (
     <section className="space-y-3">
       <h2 className="text-2xl font-semibold text-foreground">Location Highlights</h2>
-      <ul className="space-y-1 text-sm text-muted-foreground">
-        {list.map((item, index) => (
-          <li key={index}>• {item}</li>
-        ))}
+      <ul className="space-y-2 text-sm text-muted-foreground">
+        {list.map((item, index) => {
+          const { getLocationIcon } = require("@/lib/locationIcons");
+          return (
+            <li key={index} className="flex items-center gap-2">
+              <span className="text-lg">{getLocationIcon(item)}</span>
+              <span>{item}</span>
+            </li>
+          );
+        })}
       </ul>
     </section>
   );

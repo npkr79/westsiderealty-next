@@ -1,5 +1,7 @@
 "use client";
 
+import { getAmenityIcon } from "@/lib/amenityIcons";
+
 interface PropertyAmenitiesProps {
   amenities?: string[] | any[];
 }
@@ -25,7 +27,10 @@ export default function PropertyAmenities({ amenities = [] }: PropertyAmenitiesP
       <h2 className="text-2xl font-semibold text-foreground">Amenities</h2>
       <ul className="grid gap-2 md:grid-cols-2 text-sm text-muted-foreground">
         {amenityList.map((amenity, index) => (
-          <li key={index}>• {amenity}</li>
+          <li key={index} className="flex items-center gap-2">
+            <span className="text-lg">{getAmenityIcon(amenity)}</span>
+            <span>{amenity}</span>
+          </li>
         ))}
       </ul>
     </section>
