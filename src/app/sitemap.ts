@@ -19,7 +19,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         supabase
           .from("landing_pages")
           .select("uri, updated_at")
-          .or("status.eq.published,is_published.eq.true"),
+          .eq("status", "published"),
         supabase
           .from("blog_articles")
           .select("slug, updated_at")

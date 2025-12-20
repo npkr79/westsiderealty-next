@@ -7,7 +7,6 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { MapPin, ArrowLeft, Share2 } from "lucide-react";
 import { locationPropertyService, type HyderabadProperty, type GoaProperty, type DubaiProperty } from "@/services/locationPropertyService";
-import Layout from "@/components/layout/Layout";
 import ImageCarousel from "@/components/realestate/ImageCarousel";
 import ContactForm from "@/components/property/ContactForm";
 import GoogleMapEmbed from "@/components/common/GoogleMapEmbed";
@@ -26,10 +25,10 @@ type PropertyType = HyderabadProperty | GoaProperty | DubaiProperty;
 type LocationType = 'hyderabad' | 'goa' | 'dubai';
 
  const PropertyDetailsPage = () => {
-   const params = useParams<{ slug?: string | string[]; citySlug?: string | string[] }>();
-   const slugParam = params.slug;
+   const params = useParams<{ listingSlug?: string | string[]; citySlug?: string | string[] }>();
+   const listingSlugParam = params.listingSlug;
    const citySlugParam = params.citySlug;
-   const slug = Array.isArray(slugParam) ? slugParam[0] : slugParam;
+   const slug = Array.isArray(listingSlugParam) ? listingSlugParam[0] : listingSlugParam;
    const citySlug = Array.isArray(citySlugParam) ? citySlugParam[0] : citySlugParam;
    const router = useRouter();
    const pathname = usePathname();
@@ -48,35 +47,45 @@ type LocationType = 'hyderabad' | 'goa' | 'dubai';
   }, [slug, location]);
 
   const fetchPropertyDetails = async () => {
+    if (!slug || !location) {
+      console.error('[PropertyDetailsPage] Cannot fetch: missing slug or location', { slug, location });
+      setIsLoading(false);
+      return;
+    }
+
     console.log('=== FETCHING PROPERTY DETAILS ===');
-    console.log('Location:', location);
-    console.log('Slug:', slug);
+    console.log('[PropertyDetailsPage] Location:', location);
+    console.log('[PropertyDetailsPage] Slug:', slug);
     setIsLoading(true);
     try {
       let data: PropertyType | null = null;
 
       switch (location) {
         case 'hyderabad':
-          console.log('Fetching Hyderabad property...');
-          data = await locationPropertyService.getHyderabadPropertyById(slug!);
-          console.log('Hyderabad property data:', data);
+          console.log('[PropertyDetailsPage] Fetching Hyderabad property with slug:', slug);
+          data = await locationPropertyService.getHyderabadPropertyById(slug);
+          console.log('[PropertyDetailsPage] Hyderabad property result:', data ? 'Found' : 'Not found', data?.id);
           break;
         case 'goa':
-          console.log('Fetching Goa property...');
-          data = await locationPropertyService.getGoaPropertyById(slug!);
-          console.log('Goa property data:', data);
+          console.log('[PropertyDetailsPage] Fetching Goa property with slug:', slug);
+          data = await locationPropertyService.getGoaPropertyById(slug);
+          console.log('[PropertyDetailsPage] Goa property result:', data ? 'Found' : 'Not found');
           break;
         case 'dubai':
-          console.log('Fetching Dubai property...');
-          data = await locationPropertyService.getDubaiPropertyById(slug!);
-          console.log('Dubai property data:', data);
+          console.log('[PropertyDetailsPage] Fetching Dubai property with slug:', slug);
+          data = await locationPropertyService.getDubaiPropertyById(slug);
+          console.log('[PropertyDetailsPage] Dubai property result:', data ? 'Found' : 'Not found');
           break;
         default:
-          console.log('Unknown location:', location);
+          console.error('[PropertyDetailsPage] Unknown location:', location);
       }
 
-      console.log('Final property data:', data);
-      console.log('Floor Plans Data:', data?.floor_plan_images);
+      if (!data) {
+        console.warn('[PropertyDetailsPage] Property not found for slug:', slug, 'location:', location);
+      } else {
+        console.log('[PropertyDetailsPage] Property found:', data.id, data.title);
+      }
+
       setProperty(data);
       
       // Fetch project description if available
@@ -231,8 +240,7 @@ type LocationType = 'hyderabad' | 'goa' | 'dubai';
         </script>
       </Head>
 
-      <Layout>
-        <div className="container mx-auto px-4 py-8 max-w-7xl">
+      <div className="container mx-auto px-4 py-8 max-w-7xl">
           {/* Back Button */}
           <div className="mb-6">
             <Link href="/properties">
@@ -350,20 +358,19 @@ type LocationType = 'hyderabad' | 'goa' | 'dubai';
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Similar Properties */}
-        <div className="container mx-auto px-4 py-8">
-          <SimilarProperties
-            currentPropertyId={property.id}
-            location={location}
-            bedrooms={'bedrooms' in property ? property.bedrooms : undefined}
-            price={'price' in property ? property.price : undefined}
-          />
-        </div>
+          {/* Similar Properties */}
+          <div className="container mx-auto px-4 py-8 mt-8">
+            <SimilarProperties
+              currentPropertyId={property.id}
+              location={location}
+              bedrooms={'bedrooms' in property ? property.bedrooms : undefined}
+              price={'price' in property ? property.price : undefined}
+            />
+          </div>
 
-        <CityHubBacklink />
-      </Layout>
+          <CityHubBacklink />
+        </div>
     </>
   );
 };

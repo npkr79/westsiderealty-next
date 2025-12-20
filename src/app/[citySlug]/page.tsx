@@ -68,14 +68,14 @@ export default async function CityPage({ params }: PageProps) {
   const citySlug = Array.isArray(citySlugParam) ? citySlugParam[0] : citySlugParam;
   const slug = citySlug || "hyderabad";
 
-  // First, check if this is a landing page (check both status='published' OR is_published=true)
+  // First, check if this is a landing page
   const { createClient } = await import("@/lib/supabase/server");
   const supabase = await createClient();
   const { data: landingPage, error: landingPageError } = await supabase
     .from("landing_pages")
-    .select("uri, status, is_published")
+    .select("uri, status")
     .eq("uri", slug)
-    .or("status.eq.published,is_published.eq.true")
+    .eq("status", "published")
     .maybeSingle();
 
   if (landingPageError) {

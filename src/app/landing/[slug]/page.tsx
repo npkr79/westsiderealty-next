@@ -15,7 +15,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     .from("landing_pages")
     .select("seo_title, meta_description, hero_image_url, title")
     .eq("uri", slug)
-    .or("status.eq.published,is_published.eq.true")
+    .eq("status", "published")
     .maybeSingle();
 
   if (!page) {
@@ -54,7 +54,7 @@ export async function generateStaticParams() {
   const { data: pages } = await supabase
     .from("landing_pages")
     .select("uri")
-    .or("status.eq.published,is_published.eq.true");
+    .eq("status", "published");
 
   return pages?.map((page) => ({ slug: page.uri })) || [];
 }
@@ -64,15 +64,20 @@ export default async function LandingPageWrapper({ params }: PageProps) {
   const supabase = await createClient();
 
   // Verify the page exists and is published
-  // Check both status='published' OR is_published=true (for backward compatibility)
-  const { data: page } = await supabase
+  const { data: page, error } = await supabase
     .from("landing_pages")
-    .select("id, uri, status, is_published")
+    .select("id, uri, status")
     .eq("uri", slug)
-    .or("status.eq.published,is_published.eq.true")
+    .eq("status", "published")
     .maybeSingle();
 
+  if (error) {
+    console.error("[LandingPageWrapper] Error fetching landing page:", error);
+    notFound();
+  }
+
   if (!page) {
+    console.warn("[LandingPageWrapper] Landing page not found or not published:", slug);
     notFound();
   }
 

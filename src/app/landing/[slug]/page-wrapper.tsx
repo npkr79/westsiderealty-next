@@ -54,8 +54,7 @@ export async function generateStaticParams() {
   const { data: pages } = await supabase
     .from("landing_pages")
     .select("uri")
-    .eq("status", "published")
-    .eq("is_published", true);
+    .eq("status", "published");
 
   return pages?.map((page) => ({ slug: page.uri })) || [];
 }

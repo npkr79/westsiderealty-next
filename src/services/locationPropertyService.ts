@@ -261,28 +261,22 @@ class LocationPropertyService {
         data = result.data;
         error = result.error;
       } else {
-        // Try seo_slug first, then fallback to old slug for backwards compatibility
-        const seoResult = await supabase
+        // Try both seo_slug and slug in a single query for better performance
+        const result = await supabase
           .from('hyderabad_properties')
           .select('*')
-          .eq('seo_slug', idOrSlug)
+          .or(`seo_slug.eq.${idOrSlug},slug.eq.${idOrSlug}`)
+          .eq('status', 'active')
           .maybeSingle();
 
-        if (seoResult.data) {
-          data = seoResult.data;
+        if (result.data) {
+          data = result.data;
         } else {
-          // Fallback to old slug
-          const slugResult = await supabase
-            .from('hyderabad_properties')
-            .select('*')
-            .eq('slug', idOrSlug)
-            .maybeSingle();
-          data = slugResult.data;
-          error = slugResult.error;
+          error = result.error;
           
           // If still not found, check redirects table
-          if (!data) {
-            console.log('Property not found by slug, checking redirects table...');
+          if (!data && !error) {
+            console.log('[getHyderabadPropertyById] Property not found by slug, checking redirects table...');
             const redirectResult = await supabase
               .from('property_slug_redirects')
               .select('new_slug')
@@ -291,16 +285,19 @@ class LocationPropertyService {
               .maybeSingle();
             
             if (redirectResult.data?.new_slug) {
-              console.log('Redirect found, fetching property by new slug:', redirectResult.data.new_slug);
+              console.log('[getHyderabadPropertyById] Redirect found, fetching property by new slug:', redirectResult.data.new_slug);
               // Fetch using the new slug
               const newSlugResult = await supabase
                 .from('hyderabad_properties')
                 .select('*')
-                .eq('seo_slug', redirectResult.data.new_slug)
+                .or(`seo_slug.eq.${redirectResult.data.new_slug},slug.eq.${redirectResult.data.new_slug}`)
+                .eq('status', 'active')
                 .maybeSingle();
               
               if (newSlugResult.data) {
                 data = newSlugResult.data;
+              } else {
+                error = newSlugResult.error;
               }
             }
           }
