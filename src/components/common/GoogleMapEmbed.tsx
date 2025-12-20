@@ -131,23 +131,39 @@ export default function GoogleMapEmbed({
     );
   }
 
-  // Priority 2: Convert provided URL
+  // Priority 2: Use provided URL directly if it's already an embed URL
   if (url) {
-    const embedUrl = convertGoogleMapsToEmbed(url);
+    // Check if URL is already a Google Maps embed URL
+    const isEmbedUrl = url.includes('maps/embed') || url.includes('maps?pb=');
     
-    if (!embedUrl) {
-      return (
-        <div className="w-full bg-muted/20 rounded-lg flex items-center justify-center p-8" style={{ height }}>
-          <p className="text-muted-foreground text-center">
-            Unable to display map. Invalid URL format.
-          </p>
-        </div>
-      );
+    let embedUrl: string;
+    let directionsUrl: string;
+    
+    if (isEmbedUrl) {
+      // Use embed URL directly (may already have satellite view and place marker)
+      embedUrl = url;
+      // Extract place ID or coordinates for directions
+      const placeMatch = url.match(/!1s([^!]+)/);
+      if (placeMatch) {
+        directionsUrl = `https://www.google.com/maps/place/${encodeURIComponent(placeMatch[1])}`;
+      } else {
+        directionsUrl = url.replace('/embed', '').replace('output=embed', '');
+      }
+    } else {
+      // Convert regular Google Maps URL to embed
+      const convertedUrl = convertGoogleMapsToEmbed(url);
+      if (!convertedUrl) {
+        return (
+          <div className="w-full bg-muted/20 rounded-lg flex items-center justify-center p-8" style={{ height }}>
+            <p className="text-muted-foreground text-center">
+              Unable to display map. Invalid URL format.
+            </p>
+          </div>
+        );
+      }
+      embedUrl = convertedUrl;
+      directionsUrl = url;
     }
-
-    // URL already has satellite view built in from converter
-    const enhancedUrl = embedUrl;
-    const directionsUrl = url; // Use original URL for directions
 
     return (
       <div className="w-full relative" style={{ height: height }}>
@@ -206,7 +222,7 @@ export default function GoogleMapEmbed({
           </div>
         )}
         <iframe
-          src={enhancedUrl}
+          src={embedUrl}
           width="100%"
           height={height}
           style={{ border: 0 }}

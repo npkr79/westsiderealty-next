@@ -109,9 +109,9 @@ export default function Contact() {
                 <CardContent>
                   <div className="rounded-lg overflow-hidden shadow-lg">
                     <iframe
-                      src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3806.7238359893885!2d78.32729527516557!3d17.38511598359169!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3bcb95ee5b2ab6e9%3A0x5e0b4a7a89b65c76!2sRE%2FMAX%20Westside%20Realty!5e0!3m2!1sen!2sin!4v1703680800000!5m2!1sen!2sin"
+                      src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3574.5406493313703!2d78.3269774748044!3d17.385123602871065!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x6869ea289d44d3d%3A0x7ee055e9306884d4!2sRE%2FMAX%20Westside%20Realty!5e1!3m2!1sen!2sin!4v1766248713985!5m2!1sen!2sin"
                       width="100%"
-                      height="250"
+                      height="450"
                       style={{ border: 0 }}
                       allowFullScreen
                       loading="lazy"
