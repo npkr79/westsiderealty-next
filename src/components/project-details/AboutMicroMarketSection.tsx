@@ -36,7 +36,10 @@ export default function AboutMicroMarketSection({
         </CardHeader>
         <CardContent className="space-y-3 text-sm text-muted-foreground">
           {heroHook && (
-            <p className="text-base font-medium text-foreground">{heroHook}</p>
+            <p 
+              className="text-base font-medium text-foreground"
+              dangerouslySetInnerHTML={{ __html: heroHook }}
+            />
           )}
 
           {growthStory && (

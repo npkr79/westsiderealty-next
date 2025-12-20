@@ -157,11 +157,7 @@ export default function ProjectLeadForm({ projectName, projectId, developerName,
   return (
     <div className="space-y-4">
       <Card className="shadow-lg">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-xl">Interested in {projectName}?</CardTitle>
-          <p className="text-sm text-muted-foreground">Get best price and floor plans</p>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           {formContent}
         </CardContent>
       </Card>

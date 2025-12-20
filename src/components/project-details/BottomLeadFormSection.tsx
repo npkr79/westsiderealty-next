@@ -16,21 +16,12 @@ export default function BottomLeadFormSection({
 }: BottomLeadFormSectionProps) {
   return (
     <section className="mt-12 mb-8">
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            Interested in {projectName}?
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ProjectLeadForm
-            projectName={projectName}
-            projectId={projectId}
-            developerName={developerName ?? undefined}
-            brochureUrl={brochureUrl}
-          />
-        </CardContent>
-      </Card>
+      <ProjectLeadForm
+        projectName={projectName}
+        projectId={projectId}
+        developerName={developerName ?? undefined}
+        brochureUrl={brochureUrl}
+      />
     </section>
   );
 }

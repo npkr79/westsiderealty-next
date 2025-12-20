@@ -6,7 +6,6 @@ import { createClient } from "@/lib/supabase/server";
 import { buildMetadata } from "@/components/common/SEO";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { Breadcrumbs } from "@/components/seo/Breadcrumbs";
-import BreadcrumbNav from "@/components/layout/BreadcrumbNav";
 import CityHubBacklink from "@/components/seo/CityHubBacklink";
 import ProjectSEO from "@/components/project-details/ProjectSEO";
 import ProjectHeroGallery from "@/components/project-details/ProjectHeroGallery";
@@ -195,11 +194,10 @@ export default async function ProjectDetailPage({ params }: PageProps) {
     <>
       <DebugClient citySlug={citySlug} projectSlug={projectSlug} />
       <JsonLd data={realEstateSchema} />
-      <Breadcrumbs items={breadcrumbItems} />
       <ProjectSEO project={project} citySlug={citySlug} projectSlug={projectSlug} />
       <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-4">
-          <BreadcrumbNav items={breadcrumbItems.map(item => ({ label: item.name, href: item.href }))} />
+          <Breadcrumbs items={breadcrumbItems} />
         </div>
 
         {/* Hero Gallery */}
@@ -282,11 +280,7 @@ export default async function ProjectDetailPage({ params }: PageProps) {
 
             {/* About Developer */}
             {project.developer && (
-              <section>
-                <h2 className="text-2xl font-bold text-slate-900 mb-6">
-                  About {project.developer.developer_name}
-                </h2>
-                <AboutDeveloperSection
+              <AboutDeveloperSection
                   developerName={project.developer.developer_name}
                   citySlug={citySlug}
                   developerSlug={project.developer.url_slug}
@@ -307,7 +301,6 @@ export default async function ProjectDetailPage({ params }: PageProps) {
                       : null
                   }
                 />
-              </section>
             )}
 
             {/* About Micro Market */}

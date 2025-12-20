@@ -8,8 +8,29 @@ interface ProjectFloorPlansProps {
   floorPlanImages?: string[] | null;
 }
 
+// Helper to validate and normalize image URL
+const normalizeImageUrl = (url: string | null | undefined): string | null => {
+  if (!url || typeof url !== 'string' || url.trim() === '') return null;
+  
+  // If it's already an absolute URL, return as-is
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return url;
+  }
+  
+  // If it's a relative path starting with /, return as-is (Next.js will handle it)
+  if (url.startsWith('/')) {
+    return url;
+  }
+  
+  // Otherwise, assume it's a Supabase storage path and prepend the base URL if needed
+  // You may need to adjust this based on your Supabase configuration
+  return url;
+};
+
 export default function ProjectFloorPlans({ floorPlanImages }: ProjectFloorPlansProps) {
-  const images = Array.isArray(floorPlanImages) ? floorPlanImages : [];
+  const images = Array.isArray(floorPlanImages) 
+    ? floorPlanImages.map(normalizeImageUrl).filter((url): url is string => url !== null)
+    : [];
 
   const [selectedIndex, setSelectedIndex] = useState(0);
 
@@ -27,6 +48,11 @@ export default function ProjectFloorPlans({ floorPlanImages }: ProjectFloorPlans
               alt="Floor plan"
               fill
               className="object-contain bg-muted"
+              onError={(e) => {
+                // Hide broken images
+                const target = e.currentTarget;
+                target.style.display = 'none';
+              }}
             />
           </div>
         </CardContent>
@@ -34,27 +60,35 @@ export default function ProjectFloorPlans({ floorPlanImages }: ProjectFloorPlans
 
       {images.length > 1 && (
         <div className="grid grid-cols-3 md:grid-cols-5 gap-3">
-          {images.map((src, idx) => (
-            <button
-              key={src + idx}
-              type="button"
-              onClick={() => setSelectedIndex(idx)}
-              className={`relative aspect-square rounded border overflow-hidden ${
-                idx === selectedIndex ? "ring-2 ring-primary border-primary" : "border-border"
-              }`}
-            >
-              <Image
-                src={src}
-                alt={`Floor plan ${idx + 1}`}
-                fill
-                className="object-cover"
-              />
-            </button>
-          ))}
+          {images.map((src, idx) => {
+            const normalizedSrc = normalizeImageUrl(src);
+            if (!normalizedSrc) return null;
+            
+            return (
+              <button
+                key={normalizedSrc + idx}
+                type="button"
+                onClick={() => setSelectedIndex(idx)}
+                className={`relative aspect-square rounded border overflow-hidden ${
+                  idx === selectedIndex ? "ring-2 ring-primary border-primary" : "border-border"
+                }`}
+              >
+                <Image
+                  src={normalizedSrc}
+                  alt={`Floor plan ${idx + 1}`}
+                  fill
+                  className="object-cover"
+                  onError={(e) => {
+                    // Hide broken images
+                    const target = e.currentTarget;
+                    target.style.display = 'none';
+                  }}
+                />
+              </button>
+            );
+          })}
         </div>
       )}
     </div>
   );
 }
-
-
