@@ -411,7 +411,12 @@ export default async function MicroMarketPage({ params }: PageProps) {
           )}
 
           {/* Master Plan & Zoning Section */}
-          {pageData.master_plan_json && <MasterPlanSection data={pageData.master_plan_json} />}
+          {pageData.master_plan_json && (
+            <MasterPlanSection 
+              data={pageData.master_plan_json} 
+              microMarketName={pageData.micro_market_name}
+            />
+          )}
 
           {/* Infrastructure Roadmap Timeline */}
           {pageData.infrastructure_json && pageData.infrastructure_json.length > 0 && (

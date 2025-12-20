@@ -59,3 +59,71 @@ export function countWords(text: string | null | undefined): number {
   return cleanText.split(/\s+/).length;
 }
 
+/**
+ * Split text into paragraphs of approximately targetWords each
+ * @param text - The text to split
+ * @param targetWords - Target words per paragraph (default: 200)
+ * @returns Array of paragraph strings
+ */
+export function splitIntoParagraphs(text: string | null | undefined, targetWords: number = 200): string[] {
+  if (!text) return [];
+  
+  // Remove HTML tags and clean up whitespace
+  const cleanText = text
+    .replace(/<[^>]*>/g, '') // Remove HTML tags
+    .replace(/\s+/g, ' ') // Normalize whitespace
+    .trim();
+  
+  if (!cleanText) return [];
+  
+  // Split into words
+  const words = cleanText.split(/\s+/);
+  
+  // If text is less than targetWords, return as single paragraph
+  if (words.length <= targetWords) {
+    return [cleanText];
+  }
+  
+  // Split into paragraphs
+  const paragraphs: string[] = [];
+  let currentParagraph: string[] = [];
+  let currentWordCount = 0;
+  
+  for (let i = 0; i < words.length; i++) {
+    const word = words[i];
+    currentParagraph.push(word);
+    currentWordCount++;
+    
+    // Check if we've reached the target word count
+    if (currentWordCount >= targetWords) {
+      // Try to end at a sentence boundary
+      const paragraphText = currentParagraph.join(' ');
+      const lastPeriod = paragraphText.lastIndexOf('.');
+      const lastExclamation = paragraphText.lastIndexOf('!');
+      const lastQuestion = paragraphText.lastIndexOf('?');
+      const lastSentenceEnd = Math.max(lastPeriod, lastExclamation, lastQuestion);
+      
+      // If we found a sentence end within the last 50 characters, use it
+      if (lastSentenceEnd > paragraphText.length - 50 && lastSentenceEnd > 0) {
+        const sentenceEndIndex = paragraphText.substring(0, lastSentenceEnd + 1).split(/\s+/).length;
+        const paragraphWords = currentParagraph.slice(0, sentenceEndIndex);
+        paragraphs.push(paragraphWords.join(' '));
+        currentParagraph = currentParagraph.slice(sentenceEndIndex);
+        currentWordCount = currentParagraph.length;
+      } else {
+        // Just split at the word boundary
+        paragraphs.push(currentParagraph.join(' '));
+        currentParagraph = [];
+        currentWordCount = 0;
+      }
+    }
+  }
+  
+  // Add remaining words as final paragraph
+  if (currentParagraph.length > 0) {
+    paragraphs.push(currentParagraph.join(' '));
+  }
+  
+  return paragraphs;
+}
+

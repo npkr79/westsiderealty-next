@@ -1,4 +1,14 @@
-import { createClient } from '@/lib/supabase/client';
+// Helper to get the appropriate client (works in both server and client contexts)
+async function getSupabaseClient() {
+  // Check if we're in a server context
+  if (typeof window === 'undefined') {
+    const { createClient } = await import('@/lib/supabase/server');
+    return await createClient();
+  }
+  // Client context
+  const { createClient } = await import('@/lib/supabase/client');
+  return createClient();
+}
 
 export interface PropertyFAQ {
   id?: string;
@@ -19,12 +29,49 @@ export async function getPropertyFAQsFromProject(projectName: string | null | un
 
   try {
     console.log('[PropertyFAQService] Fetching FAQs for project:', projectName);
-    const supabase = createClient();
-    const { data, error } = await supabase
+    const supabase = await getSupabaseClient();
+    
+    // First try exact match
+    let { data, error } = await supabase
       .from('projects')
       .select('faqs_json, project_name')
       .eq('project_name', projectName)
       .maybeSingle();
+
+    // If not found, try case-insensitive match
+    if (!data && !error) {
+      console.log('[PropertyFAQService] Exact match not found, trying case-insensitive match');
+      const { data: caseInsensitiveData, error: caseInsensitiveError } = await supabase
+        .from('projects')
+        .select('faqs_json, project_name')
+        .ilike('project_name', projectName)
+        .maybeSingle();
+      
+      if (caseInsensitiveData) {
+        data = caseInsensitiveData;
+        console.log('[PropertyFAQService] Found with case-insensitive match:', caseInsensitiveData.project_name);
+      } else if (caseInsensitiveError) {
+        error = caseInsensitiveError;
+      }
+    }
+
+    // If still not found, try trimming and normalizing whitespace
+    if (!data && !error) {
+      const normalizedProjectName = projectName.trim().replace(/\s+/g, ' ');
+      console.log('[PropertyFAQService] Trying normalized match:', normalizedProjectName);
+      const { data: normalizedData, error: normalizedError } = await supabase
+        .from('projects')
+        .select('faqs_json, project_name')
+        .ilike('project_name', normalizedProjectName)
+        .maybeSingle();
+      
+      if (normalizedData) {
+        data = normalizedData;
+        console.log('[PropertyFAQService] Found with normalized match:', normalizedData.project_name);
+      } else if (normalizedError) {
+        error = normalizedError;
+      }
+    }
 
     if (error) {
       console.error('[PropertyFAQService] Error fetching project FAQs:', error);
