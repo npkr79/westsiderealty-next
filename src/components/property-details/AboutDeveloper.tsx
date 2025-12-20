@@ -1,10 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { Calendar, Building2, Maximize } from "lucide-react";
+import { Calendar, Medal, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import Image from "next/image";
 
 interface AboutDeveloperProps {
   developerName: string;
@@ -16,10 +14,10 @@ interface AboutDeveloperProps {
   logoUrl?: string;
 }
 
-function stripHtml(html: string): string {
+const stripHtml = (html: string | null | undefined): string => {
   if (!html) return "";
-  return html.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
-}
+  return html.replace(/<[^>]*>?/gm, '').trim();
+};
 
 export default function AboutDeveloper({ 
   developerName, 
@@ -32,8 +30,8 @@ export default function AboutDeveloper({
 }: AboutDeveloperProps) {
   if (!developerName) return null;
 
-  const shortDescription = description 
-    ? (stripHtml(description).slice(0, 400) + (description.length > 400 ? "..." : ""))
+  const cleanDescription = description 
+    ? stripHtml(description)
     : `${developerName} is a reputed developer associated with premium projects in this micro-market.`;
 
   const developerUrl = developerSlug 
@@ -41,66 +39,48 @@ export default function AboutDeveloper({
     : "/developers";
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-xl font-semibold flex items-center gap-2">
-          {logoUrl && (
-            <div className="relative w-8 h-8">
-              <Image
-                src={logoUrl}
-                alt={developerName}
-                fill
-                className="object-contain"
-              />
-            </div>
-          )}
-          About {developerName}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <p className="text-sm text-muted-foreground leading-relaxed">
-          {shortDescription}
-        </p>
+    <div className="rounded-xl border border-gray-200 p-6 space-y-6 bg-white">
+      <h2 className="text-2xl font-bold text-gray-900">About {developerName}</h2>
+      
+      <p className="text-gray-600 leading-relaxed line-clamp-3">
+        {cleanDescription}
+      </p>
 
-        {/* Highlight Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {yearsInBusiness && (
-            <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
-              <Calendar className="w-5 h-5 text-primary" />
-              <div>
-                <p className="text-xs text-muted-foreground">Years Experience</p>
-                <p className="text-sm font-semibold">{yearsInBusiness}+</p>
-              </div>
-            </div>
-          )}
-          {totalProjects && (
-            <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
-              <Building2 className="w-5 h-5 text-primary" />
-              <div>
-                <p className="text-xs text-muted-foreground">Projects Delivered</p>
-                <p className="text-sm font-semibold">{totalProjects}+</p>
-              </div>
-            </div>
-          )}
-          {totalSftDelivered && (
-            <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
-              <Maximize className="w-5 h-5 text-primary" />
-              <div>
-                <p className="text-xs text-muted-foreground">Mn Sft Delivered</p>
-                <p className="text-sm font-semibold">{totalSftDelivered}</p>
-              </div>
-            </div>
-          )}
-        </div>
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {yearsInBusiness && (
+          <div className="rounded-xl p-5 space-y-2 bg-blue-50">
+            <Calendar className="w-6 h-6 text-blue-500" />
+            <p className="text-sm font-semibold text-blue-600">Experience</p>
+            <p className="text-xl font-bold text-gray-900">{yearsInBusiness}+ Years</p>
+            <p className="text-xs text-gray-500">in business</p>
+          </div>
+        )}
+        
+        {totalProjects && (
+          <div className="rounded-xl p-5 space-y-2 bg-green-50">
+            <Medal className="w-6 h-6 text-green-500" />
+            <p className="text-sm font-semibold text-green-600">Projects Delivered</p>
+            <p className="text-xl font-bold text-gray-900">{totalProjects}+</p>
+            <p className="text-xs text-gray-500">completed projects</p>
+          </div>
+        )}
+        
+        {totalSftDelivered && (
+          <div className="rounded-xl p-5 space-y-2 bg-purple-50">
+            <Tag className="w-6 h-6 text-purple-500" />
+            <p className="text-sm font-semibold text-purple-600">SFT Delivered</p>
+            <p className="text-xl font-bold text-gray-900">{totalSftDelivered}</p>
+            <p className="text-xs text-gray-500">square feet</p>
+          </div>
+        )}
+      </div>
 
-        <Link href={developerUrl}>
-          <Button variant="outline" className="w-full">
-            Know more about {developerName}
-          </Button>
-        </Link>
-      </CardContent>
-    </Card>
+      <Link href={developerUrl}>
+        <Button className="w-full bg-slate-900 text-white py-4 rounded-xl font-medium hover:bg-slate-800">
+          Know more about {developerName}
+        </Button>
+      </Link>
+    </div>
   );
 }
-
-
