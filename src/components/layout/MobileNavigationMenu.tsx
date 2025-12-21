@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ChevronDown, Home, TrendingUp, Building2, MapPin, Building, ArrowRight } from "lucide-react";
+import { ChevronDown, Home, TrendingUp, Building2, MapPin, Building, ArrowRight, Flame } from "lucide-react";
 import {
   Collapsible,
   CollapsibleContent,
@@ -11,6 +11,15 @@ import {
 import { cn } from "@/lib/utils";
 import { navigationService, NavCity, NavMicroMarket, NavDeveloper } from "@/services/navigationService";
 import { Badge } from "@/components/ui/badge";
+import { createClient } from "@/lib/supabase/client";
+
+interface LandingPage {
+  id: string;
+  uri: string;
+  title: string;
+  headline: string | null;
+  template_type: string | null;
+}
 
 interface MobileNavigationMenuProps {
   onNavigate: () => void;
@@ -22,6 +31,7 @@ const MobileNavigationMenu = ({ onNavigate, isActive }: MobileNavigationMenuProp
   const [microMarkets, setMicroMarkets] = useState<NavMicroMarket[]>([]);
   const [developers, setDevelopers] = useState<NavDeveloper[]>([]);
   const [listingCounts, setListingCounts] = useState<Record<string, number>>({});
+  const [featuredLaunches, setFeaturedLaunches] = useState<LandingPage[]>([]);
   const [buyOpen, setBuyOpen] = useState(false);
   const [newProjectsOpen, setNewProjectsOpen] = useState(false);
   const [exploreOpen, setExploreOpen] = useState(false);
@@ -39,6 +49,25 @@ const MobileNavigationMenu = ({ onNavigate, isActive }: MobileNavigationMenuProp
       // Only fetch listing count for Hyderabad
       const count = await navigationService.getResaleListingsCount("hyderabad");
       setListingCounts({ hyderabad: count });
+
+      // Fetch featured landing pages
+      try {
+        const supabase = createClient();
+        const { data, error } = await supabase
+          .from("landing_pages")
+          .select("id, uri, title, headline, template_type")
+          .eq("status", "published")
+          .order("created_at", { ascending: false })
+          .limit(4);
+
+        if (error) {
+          console.error("Error fetching featured launches:", error);
+        } else {
+          setFeaturedLaunches((data || []) as LandingPage[]);
+        }
+      } catch (error) {
+        console.error("Error fetching featured launches:", error);
+      }
     };
     fetchData();
   }, []);
@@ -151,6 +180,30 @@ const MobileNavigationMenu = ({ onNavigate, isActive }: MobileNavigationMenuProp
           />
         </CollapsibleTrigger>
         <CollapsibleContent className="pl-4 space-y-3 pt-2">
+          {/* Featured Launches */}
+          {featuredLaunches.length > 0 && (
+            <div>
+              <div className="flex items-center gap-2 text-sm font-medium text-foreground mb-2">
+                <Flame className="h-3 w-3 text-remax-red" />
+                <span>Featured Launches</span>
+              </div>
+              <div className="space-y-1 pl-5">
+                {featuredLaunches.map((launch) => (
+                  <Link
+                    key={launch.id}
+                    href={`/landing/${launch.uri}`}
+                    onClick={onNavigate}
+                    className="block text-sm text-muted-foreground hover:text-remax-red py-1 flex items-center gap-2"
+                  >
+                    <span>{launch.headline || launch.title}</span>
+                    {launch.template_type === "ultra_luxury_duplex" && (
+                      <Flame className="h-3 w-3 text-amber-500" />
+                    )}
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
           {/* Projects by City */}
           <div>
             <div className="flex items-center gap-2 text-sm font-medium text-foreground mb-2">
@@ -170,11 +223,11 @@ const MobileNavigationMenu = ({ onNavigate, isActive }: MobileNavigationMenuProp
               ))}
             </div>
           </div>
-          {/* Featured/Latest Projects */}
+          {/* All Projects */}
           <div>
             <div className="flex items-center gap-2 text-sm font-medium text-foreground mb-2">
               <ArrowRight className="h-3 w-3 text-remax-red" />
-              <span>Featured/Latest Projects</span>
+              <span>All Projects</span>
             </div>
             <div className="space-y-1 pl-5">
               <Link
@@ -182,7 +235,7 @@ const MobileNavigationMenu = ({ onNavigate, isActive }: MobileNavigationMenuProp
                 onClick={onNavigate}
                 className="block text-sm text-muted-foreground hover:text-remax-red py-1"
               >
-                All Projects
+                View All Projects
               </Link>
             </div>
           </div>
