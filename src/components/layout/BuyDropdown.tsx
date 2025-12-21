@@ -74,11 +74,10 @@ const BuyDropdown = () => {
               <TrendingUp className="h-4 w-4 text-remax-red" />
               <h3 className="font-semibold text-sm text-gray-900">Landowner/Investor Share</h3>
             </div>
-            <p className="text-xs text-muted-foreground mb-3">Pre-launch opportunities</p>
             <ul className="space-y-1">
               <li>
                 <Link
-                  href="/buy/investor-share"
+                  href="/hyderabad/landowner-investor-share-flats"
                   className="flex items-center justify-between py-2 px-3 rounded-md text-sm text-muted-foreground hover:bg-accent hover:text-remax-red transition-colors group"
                 >
                   <span>Available Deals</span>
