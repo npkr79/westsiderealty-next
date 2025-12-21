@@ -26,9 +26,10 @@ export default function ProjectsFiltersRoot({
   const router = useRouter();
   const searchParams = useSearchParams();
   const [search, setSearch] = useState(initialSearch || searchParams.get("search") || "");
-  const [cityFilter, setCityFilter] = useState(initialCity || searchParams.get("city") || "");
-  const [microMarketFilter, setMicroMarketFilter] = useState(initialMicroMarket || searchParams.get("microMarket") || "");
-  const [statusFilter, setStatusFilter] = useState(initialStatus || searchParams.get("status") || "");
+  // Initialize filters - use "all" as default, not empty string
+  const [cityFilter, setCityFilter] = useState(initialCity || searchParams.get("city") || "all");
+  const [microMarketFilter, setMicroMarketFilter] = useState(initialMicroMarket || searchParams.get("microMarket") || "all");
+  const [statusFilter, setStatusFilter] = useState(initialStatus || searchParams.get("status") || "all");
 
   // Filter micro markets based on selected city
   const filteredMicroMarkets = cityFilter

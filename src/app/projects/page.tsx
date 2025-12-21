@@ -38,14 +38,53 @@ interface Project {
 
 export default async function ProjectsHubPage({ searchParams }: PageProps) {
   const resolvedSearchParams = await searchParams;
+  
+  // ===== ENV VAR VALIDATION =====
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  
+  console.log("[ProjectsHubPage] ===== ENVIRONMENT CHECK =====");
+  console.log("[ProjectsHubPage] NEXT_PUBLIC_SUPABASE_URL exists:", !!supabaseUrl);
+  console.log("[ProjectsHubPage] NEXT_PUBLIC_SUPABASE_URL length:", supabaseUrl?.length || 0);
+  console.log("[ProjectsHubPage] NEXT_PUBLIC_SUPABASE_ANON_KEY exists:", !!supabaseAnonKey);
+  console.log("[ProjectsHubPage] NEXT_PUBLIC_SUPABASE_ANON_KEY length:", supabaseAnonKey?.length || 0);
+  
+  if (!supabaseUrl || !supabaseAnonKey) {
+    console.error("[ProjectsHubPage] ❌ CRITICAL: Missing Supabase env vars!");
+    throw new Error("Supabase environment variables are not configured");
+  }
+
   const supabase = await createClient();
 
+  // ===== TEST QUERY: Check if projects table has any data =====
+  const { data: testData, error: testError } = await supabase
+    .from("projects")
+    .select("id, project_name, status, is_published, page_status, city_id")
+    .limit(5);
+  
+  console.log("[ProjectsHubPage] ===== TEST QUERY RESULTS =====");
+  console.log("[ProjectsHubPage] Test query error:", testError);
+  console.log("[ProjectsHubPage] Test query returned rows:", testData?.length || 0);
+  if (testData && testData.length > 0) {
+    console.log("[ProjectsHubPage] Sample project:", {
+      id: testData[0].id,
+      name: testData[0].project_name,
+      status: testData[0].status,
+      is_published: testData[0].is_published,
+      page_status: testData[0].page_status,
+      city_id: testData[0].city_id,
+    });
+  }
+
   // Fetch all cities for filter
-  const { data: citiesData } = await supabase
+  const { data: citiesData, error: citiesError } = await supabase
     .from("cities")
     .select("city_name, url_slug")
     .eq("page_status", "published")
     .order("city_name");
+  
+  console.log("[ProjectsHubPage] Cities fetched:", citiesData?.length || 0);
+  if (citiesError) console.error("[ProjectsHubPage] Cities error:", citiesError);
 
   // Fetch micro market options (all cities)
   const { data: mmData } = await supabase
@@ -59,67 +98,184 @@ export default async function ProjectsHubPage({ searchParams }: PageProps) {
     city_slug: mm.city?.url_slug || "",
   }));
 
-  // Get city ID if city filter is applied
+  // ===== FILTER LOGIC =====
+  console.log("[ProjectsHubPage] ===== FILTER PARAMS =====");
+  console.log("[ProjectsHubPage] Raw searchParams:", {
+    city: resolvedSearchParams.city,
+    status: resolvedSearchParams.status,
+    search: resolvedSearchParams.search,
+    microMarket: resolvedSearchParams.microMarket,
+  });
+
+  // Get city ID if city filter is applied (and it's not "all" or empty)
   let cityId: string | null = null;
-  if (resolvedSearchParams.city) {
-    const { data: cityData } = await supabase
+  const cityFilter = resolvedSearchParams.city;
+  if (cityFilter && cityFilter !== "all" && cityFilter.trim() !== "") {
+    console.log("[ProjectsHubPage] Applying city filter:", cityFilter);
+    const { data: cityData, error: cityLookupError } = await supabase
       .from("cities")
-      .select("id")
-      .eq("url_slug", resolvedSearchParams.city)
+      .select("id, city_name")
+      .eq("url_slug", cityFilter)
       .single();
-    cityId = cityData?.id || null;
+    
+    if (cityLookupError) {
+      console.error("[ProjectsHubPage] City lookup error:", cityLookupError);
+    } else if (cityData) {
+      cityId = cityData.id;
+      console.log("[ProjectsHubPage] Found city ID:", cityId, "for:", cityData.city_name);
+    }
+  } else {
+    console.log("[ProjectsHubPage] No city filter (showing all cities)");
   }
 
-  // Build query for projects (all cities) - use city relationship
-  // Use status filter instead of is_published (matching projectService pattern)
+  // Build query for projects (all cities)
+  // Try multiple filter strategies to match what works in city-specific pages
   let query = supabase
     .from("projects")
     .select(`
-      id, project_name, url_slug, hero_image_url, price_range_text, status, is_published,
+      id, project_name, url_slug, hero_image_url, price_range_text, status, is_published, page_status,
       city:cities!projects_city_id_fkey(city_name, url_slug),
       micro_market:micro_markets!projects_micromarket_id_fkey(micro_market_name, url_slug),
       developer:developers(developer_name, url_slug)
     `);
 
-  // Apply status filter - if specific status is selected, use it; otherwise use broad filter
-  if (resolvedSearchParams.status && resolvedSearchParams.status !== "all") {
-    if (resolvedSearchParams.status === "published") {
-      query = query.eq("status", "published");
-    } else if (resolvedSearchParams.status === "under-construction") {
+  // Apply status filter - prioritize is_published if it exists, otherwise use status field
+  const statusFilter = resolvedSearchParams.status;
+  if (statusFilter && statusFilter !== "all" && statusFilter.trim() !== "") {
+    console.log("[ProjectsHubPage] Applying status filter:", statusFilter);
+    if (statusFilter === "published") {
+      // Try is_published first, fallback to status
+      query = query.or("is_published.eq.true,status.eq.published,page_status.eq.published");
+    } else if (statusFilter === "under-construction") {
       query = query.ilike("status", "%under construction%");
     }
   } else {
-    // Default: show published and under construction projects
-    query = query.or("status.ilike.published,status.ilike.%under construction%,page_status.eq.published");
+    // Default: show published projects (try multiple fields)
+    console.log("[ProjectsHubPage] Using default status filter (published/under construction)");
+    query = query.or("is_published.eq.true,status.ilike.published,status.ilike.%under construction%,page_status.eq.published");
   }
 
   // Apply city filter
   if (cityId) {
+    console.log("[ProjectsHubPage] Filtering by city_id:", cityId);
     query = query.eq("city_id", cityId);
   }
 
+  // Apply micro-market filter (if provided and not "all")
+  if (resolvedSearchParams.microMarket && resolvedSearchParams.microMarket !== "all" && resolvedSearchParams.microMarket.trim() !== "") {
+    console.log("[ProjectsHubPage] Applying micro-market filter:", resolvedSearchParams.microMarket);
+    // Note: This requires a join or subquery - for now, we'll filter after fetch if needed
+  }
+
   // Apply search filter
-  if (resolvedSearchParams.search) {
+  if (resolvedSearchParams.search && resolvedSearchParams.search.trim() !== "") {
+    console.log("[ProjectsHubPage] Applying search filter:", resolvedSearchParams.search);
     query = query.ilike("project_name", `%${resolvedSearchParams.search}%`);
   }
 
   // Order results
   query = query.order("created_at", { ascending: false });
 
+  console.log("[ProjectsHubPage] ===== EXECUTING MAIN QUERY =====");
   const { data: projects, error } = await query;
 
-  if (error) {
-    console.error("Error fetching projects:", error);
+  console.log("[ProjectsHubPage] ===== QUERY RESULTS =====");
+  console.log("[ProjectsHubPage] Query error:", error);
+  console.log("[ProjectsHubPage] Projects returned:", projects?.length || 0);
+  
+  let finalProjects = projects;
+  
+  // If main query fails or returns no results, try fallback strategies
+  if (error || !projects || projects.length === 0) {
+    if (error) {
+      console.error("[ProjectsHubPage] ❌ Query error details:", {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
+      });
+    }
+    
+    console.log("[ProjectsHubPage] ===== TRYING FALLBACK QUERY =====");
+    
+    // Fallback 1: Try simpler query with just is_published (like city-specific pages)
+    let fallbackQuery = supabase
+      .from("projects")
+      .select(`
+        id, project_name, url_slug, hero_image_url, price_range_text, status, is_published, page_status,
+        city:cities!projects_city_id_fkey(city_name, url_slug),
+        micro_market:micro_markets!projects_micromarket_id_fkey(micro_market_name, url_slug),
+        developer:developers(developer_name, url_slug)
+      `)
+      .eq("is_published", true);
+    
+    if (cityId) {
+      fallbackQuery = fallbackQuery.eq("city_id", cityId);
+    }
+    
+    if (resolvedSearchParams.search && resolvedSearchParams.search.trim() !== "") {
+      fallbackQuery = fallbackQuery.ilike("project_name", `%${resolvedSearchParams.search}%`);
+    }
+    
+    fallbackQuery = fallbackQuery.order("created_at", { ascending: false });
+    
+    const { data: fallbackData, error: fallbackError } = await fallbackQuery;
+    
+    if (fallbackError) {
+      console.error("[ProjectsHubPage] Fallback query also failed:", fallbackError);
+    } else {
+      console.log("[ProjectsHubPage] Fallback query returned:", fallbackData?.length || 0, "projects");
+      if (fallbackData && fallbackData.length > 0) {
+        finalProjects = fallbackData;
+        console.log("[ProjectsHubPage] ✅ Using fallback query results");
+      } else {
+        // Fallback 2: Try with no status filter at all (just city if specified)
+        console.log("[ProjectsHubPage] ===== TRYING FALLBACK 2 (NO STATUS FILTER) =====");
+        let fallback2Query = supabase
+          .from("projects")
+          .select(`
+            id, project_name, url_slug, hero_image_url, price_range_text, status, is_published, page_status,
+            city:cities!projects_city_id_fkey(city_name, url_slug),
+            micro_market:micro_markets!projects_micromarket_id_fkey(micro_market_name, url_slug),
+            developer:developers(developer_name, url_slug)
+          `);
+        
+        if (cityId) {
+          fallback2Query = fallback2Query.eq("city_id", cityId);
+        }
+        
+        if (resolvedSearchParams.search && resolvedSearchParams.search.trim() !== "") {
+          fallback2Query = fallback2Query.ilike("project_name", `%${resolvedSearchParams.search}%`);
+        }
+        
+        fallback2Query = fallback2Query.order("created_at", { ascending: false }).limit(50);
+        
+        const { data: fallback2Data, error: fallback2Error } = await fallback2Query;
+        
+        if (!fallback2Error && fallback2Data && fallback2Data.length > 0) {
+          console.log("[ProjectsHubPage] Fallback 2 returned:", fallback2Data.length, "projects");
+          finalProjects = fallback2Data;
+          console.log("[ProjectsHubPage] ✅ Using fallback 2 query results (no status filter)");
+        } else {
+          console.warn("[ProjectsHubPage] ⚠️ All query strategies returned no results");
+        }
+      }
+    }
+  }
+  
+  if (finalProjects && finalProjects.length > 0) {
+    console.log("[ProjectsHubPage] ✅ Final projects count:", finalProjects.length);
+    console.log("[ProjectsHubPage] Sample projects:", finalProjects.slice(0, 3).map(p => ({
+      id: p.id,
+      name: p.project_name,
+      status: p.status,
+      is_published: (p as any).is_published,
+      city: (p as any).city,
+    })));
   }
 
-  // Debug logging
-  console.log(`[ProjectsHubPage] Fetched ${projects?.length || 0} projects`);
-  console.log(`[ProjectsHubPage] City filter: ${resolvedSearchParams.city || "all"}`);
-  console.log(`[ProjectsHubPage] Status filter: ${resolvedSearchParams.status || "all"}`);
-  console.log(`[ProjectsHubPage] Search: ${resolvedSearchParams.search || "none"}`);
-
   // Normalize the data - Supabase may return arrays for relations, convert to single objects
-  const projectsList: Project[] = (projects || []).map((p: any) => ({
+  const projectsList: Project[] = (finalProjects || []).map((p: any) => ({
     id: p.id,
     project_name: p.project_name,
     url_slug: p.url_slug,
