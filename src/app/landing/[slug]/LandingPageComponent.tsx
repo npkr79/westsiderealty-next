@@ -55,7 +55,7 @@ import StickyBottomButtons from "@/components/landing/StickyBottomButtons";
 import PermanentLeadForm from "@/components/landing/PermanentLeadForm";
 import StickyOfferBanner from "@/components/landing/StickyOfferBanner";
 import ScrollProgressIndicator from "@/components/landing/ScrollProgressIndicator";
-import { type LandingPage, type LandingPageImage, type LandingPageHighlight, type LandingPageFloorPlan, type LandingPageConfiguration, type LandingPageSpecification, type LandingPageLocationPoint, type LandingPageFAQ } from "@/services/admin/supabaseLandingPagesService";
+import type { LandingPage, LandingPageImage, LandingPageHighlight, LandingPageFloorPlan, LandingPageConfiguration, LandingPageSpecification, LandingPageLocationPoint, LandingPageFAQ } from "@/types/landingPage";
 import { Amenity, ContentBlock } from "@/types/landingPageTemplate";
 import { UltraLuxuryContentBlock } from "@/components/landing/UltraLuxuryContentBlock";
 import ProjectOverviewSection from "@/components/landing/ProjectOverviewSection";

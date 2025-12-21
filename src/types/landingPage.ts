@@ -2,7 +2,7 @@
 // These types are shared between server and client components
 // Import from here instead of the service file to avoid server-side code execution
 
-export interface LandingPage {
+export type LandingPage = {
   id: string;
   uri: string;
   title: string;
@@ -46,7 +46,7 @@ export interface LandingPage {
   updated_at: string;
 }
 
-export interface LandingPageImage {
+export type LandingPageImage = {
   id: string;
   landing_page_id: string;
   image_url: string;
@@ -59,7 +59,7 @@ export interface LandingPageImage {
   updated_at: string;
 }
 
-export interface LandingPageHighlight {
+export type LandingPageHighlight = {
   id: string;
   landing_page_id: string;
   icon_name: string;
@@ -70,7 +70,7 @@ export interface LandingPageHighlight {
   updated_at: string;
 }
 
-export interface LandingPageFloorPlan {
+export type LandingPageFloorPlan = {
   id: string;
   landing_page_id: string;
   plan_name: string;
@@ -82,7 +82,7 @@ export interface LandingPageFloorPlan {
   updated_at: string;
 }
 
-export interface LandingPageConfiguration {
+export type LandingPageConfiguration = {
   id: string;
   landing_page_id: string;
   unit_type: string;
@@ -95,7 +95,7 @@ export interface LandingPageConfiguration {
   updated_at: string;
 }
 
-export interface LandingPageSpecification {
+export type LandingPageSpecification = {
   id: string;
   landing_page_id: string;
   category: string;
@@ -106,7 +106,7 @@ export interface LandingPageSpecification {
   updated_at: string;
 }
 
-export interface LandingPageLocationPoint {
+export type LandingPageLocationPoint = {
   id: string;
   landing_page_id: string;
   landmark_name: string;
@@ -119,7 +119,7 @@ export interface LandingPageLocationPoint {
   updated_at: string;
 }
 
-export interface LandingPageFAQ {
+export type LandingPageFAQ = {
   id: string;
   landing_page_id: string;
   category?: string;
