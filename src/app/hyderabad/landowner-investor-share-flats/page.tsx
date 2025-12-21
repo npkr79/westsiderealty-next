@@ -14,7 +14,7 @@ import { CTASection } from "./components/CTASection";
 
 export async function generateMetadata(): Promise<Metadata> {
   return buildMetadata({
-    title: "Landowner & Investor Share Flats in Hyderabad | Up to 15% Below Market Price",
+    title: "Landowner Share Flats in Hyderabad | 15% Cheaper than Builder Price",
     description: "Buy landowner share & investor share apartments in Hyderabad at 10-15% below market rates. RERA approved projects in Gachibowli, Kokapet, Narsingi. Direct from landowners.",
     keywords: [
       "landowner share flats hyderabad",
@@ -94,7 +94,7 @@ export default async function LandownerInvestorSharePage() {
     }
   }
 
-  // Parse FAQs from JSON or use defaults
+  // Parse FAQs from JSON or use defaults (will be combined with high-value FAQs later)
   let faqs = [];
   if (content.faqs_json) {
     try {
@@ -106,6 +106,25 @@ export default async function LandownerInvestorSharePage() {
 
   // Calculate stats
   const totalProjects = projects.length;
+
+  // High-value FAQs for schema (always include these 3)
+  const highValueFAQs = [
+    {
+      question: "Are landowner share flats legal?",
+      answer: "Yes, they are 100% legal units allocated to the land owner via a registered Joint Development Agreement (JDA).",
+    },
+    {
+      question: "Why are they cheaper?",
+      answer: "Landowners often sell at a lower rate for quick liquidity, offering a 10-15% discount vs. builder prices.",
+    },
+    {
+      question: "Can I get a bank loan?",
+      answer: "Yes, all major banks provide loans for landowner share units in RERA-approved projects.",
+    },
+  ];
+
+  // Combine high-value FAQs with database FAQs (if any)
+  const allFAQs = [...highValueFAQs, ...faqs];
 
   // Schema markup
   const schemaMarkup = {
@@ -122,14 +141,20 @@ export default async function LandownerInvestorSharePage() {
         "@type": "ListItem",
         position: index + 1,
         item: {
-          "@type": "Residence",
+          "@type": "RealEstateListing",
           name: project.project_name,
-          url: `https://www.westsiderealty.in/hyderabad/${project.micro_market?.url_slug || 'projects'}/${project.url_slug}`,
+          url: `https://www.westsiderealty.in/hyderabad/projects/${project.url_slug}`,
           address: {
             "@type": "PostalAddress",
             addressLocality: project.micro_market?.micro_market_name || "Hyderabad",
             addressRegion: "Telangana",
             addressCountry: "IN",
+          },
+          offers: {
+            "@type": "Offer",
+            priceCurrency: "INR",
+            price: "Check Price",
+            description: "10-15% Discount on Market Price",
           },
         },
       })),
@@ -145,22 +170,21 @@ export default async function LandownerInvestorSharePage() {
   return (
     <>
       <JsonLd jsonLd={schemaMarkup} />
-      {faqs.length > 0 && (
-        <JsonLd
-          jsonLd={{
-            "@context": "https://schema.org",
-            "@type": "FAQPage",
-            mainEntity: faqs.map((faq: any) => ({
-              "@type": "Question",
-              name: faq.question,
-              acceptedAnswer: {
-                "@type": "Answer",
-                text: faq.answer,
-              },
-            })),
-          }}
-        />
-      )}
+      {/* FAQPage Schema - Always include high-value FAQs */}
+      <JsonLd
+        jsonLd={{
+          "@context": "https://schema.org",
+          "@type": "FAQPage",
+          mainEntity: allFAQs.map((faq: any) => ({
+            "@type": "Question",
+            name: faq.question,
+            acceptedAnswer: {
+              "@type": "Answer",
+              text: faq.answer,
+            },
+          })),
+        }}
+      />
 
       <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-4">
@@ -178,7 +202,7 @@ export default async function LandownerInvestorSharePage() {
 
         <LandownerProjectsGrid projects={projects} />
 
-        <FAQSection faqs={faqs} />
+        <FAQSection faqs={allFAQs} />
 
         <SEOContent />
 

@@ -74,6 +74,7 @@ interface FAQSectionProps {
 }
 
 export function FAQSection({ faqs }: FAQSectionProps) {
+  // If no FAQs provided, use defaults; otherwise use provided FAQs (which should include high-value ones)
   const displayFAQs = faqs.length > 0 ? faqs : defaultFAQs;
 
   return (
