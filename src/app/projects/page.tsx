@@ -45,7 +45,7 @@ export default async function ProjectsHubPage({ searchParams }: PageProps) {
   // ===== TEST QUERY: Check if projects table has any data =====
   const { data: testData, error: testError } = await supabase
     .from("projects")
-    .select("id, project_name, page_status, completion_status, city_id")
+    .select("id, project_name, status, completion_status, page_status, city_id")
     .limit(5);
   
   // Fetch all cities for filter
@@ -67,60 +67,62 @@ export default async function ProjectsHubPage({ searchParams }: PageProps) {
     city_slug: mm.city?.url_slug || "",
   }));
 
-  // ===== CITY FILTERING =====
+  // Get city ID if city filter is applied (and it's not "all" or empty)
+  let cityId: string | null = null;
   const cityFilter = resolvedSearchParams.city;
-  let cityIds: string[] | null = null;
-
   if (cityFilter && cityFilter !== "all" && cityFilter.trim() !== "") {
-    // Single city filter
-    const { data: cityRow } = await supabase
+    const { data: cityData, error: cityLookupError } = await supabase
       .from("cities")
-      .select("id")
+      .select("id, city_name")
       .eq("url_slug", cityFilter)
-      .maybeSingle();
-    
-    if (cityRow?.id) {
-      cityIds = [cityRow.id];
-    }
-  } else {
-    // Default: Hyderabad + Goa (when no city param or "all" is selected)
-    const { data: defaultCities } = await supabase
-      .from("cities")
-      .select("id")
-      .in("url_slug", ["hyderabad", "goa"]);
-    
-    cityIds = (defaultCities || []).map(c => c.id);
-    // If no default cities found, don't filter by city (show all)
-    if (cityIds.length === 0) {
-      cityIds = null;
-    }
+      .single();
+
+    if (!cityLookupError && cityData) cityId = cityData.id;
   }
 
-  // ===== BUILD MAIN QUERY =====
-  // Start with minimal query - no joins until we confirm it works
+  // Build query (ONLY use page_status for publish)
   let query = supabase
     .from("projects")
     .select(`
-      id, project_name, url_slug, hero_image_url, price_range_text, completion_status, page_status, city_id, created_at,
-      city:cities(city_name, url_slug),
-      micro_market:micro_markets(micro_market_name, url_slug),
-      developer:developers(developer_name, url_slug)
+      id,
+      project_name,
+      url_slug,
+      hero_image_url,
+      price_range_text,
+      status,
+      completion_status,
+      page_status,
+      city:cities!projects_city_id_fkey(city_name, url_slug),
+      micro_market:micro_markets!projects_micromarket_id_fkey(micro_market_name, url_slug),
+      developer:developers!projects_developer_id_fkey(developer_name, url_slug)
     `)
     .eq("page_status", "published");
 
   // Apply city filter
-  if (cityIds && cityIds.length > 0) {
-    query = query.in("city_id", cityIds);
+  if (cityId) query = query.eq("city_id", cityId);
+
+  // Apply micro-market filter (by slug -> id)
+  const microMarketSlug = resolvedSearchParams.microMarket;
+  if (microMarketSlug && microMarketSlug !== "all" && microMarketSlug.trim() !== "") {
+    const { data: mm } = await supabase
+      .from("micro_markets")
+      .select("id")
+      .eq("url_slug", microMarketSlug)
+      .maybeSingle();
+
+    if (mm?.id) query = query.eq("micro_market_id", mm.id);
   }
 
-  // Apply status filter using completion_status
+  // Apply status filter (use completion_status; ignore "published" because we already filter page_status)
   const statusFilter = resolvedSearchParams.status;
-  if (statusFilter && statusFilter !== "all" && statusFilter.trim() !== "") {
-    if (statusFilter === "under-construction") {
-      query = query.ilike("completion_status", "%Under%");
-    } else if (statusFilter === "ready") {
-      query = query.ilike("completion_status", "%Ready%");
-    }
+  if (statusFilter && statusFilter !== "all" && statusFilter.trim() !== "" && statusFilter !== "published") {
+    const map: Record<string, string> = {
+      "under-construction": "Under Construction",
+      "ready-to-move": "Ready",
+      "new-launch": "New Launch",
+    };
+    const needle = map[statusFilter] ?? statusFilter.replace(/-/g, " ");
+    query = query.ilike("completion_status", `%${needle}%`);
   }
 
   // Apply search filter
@@ -128,28 +130,21 @@ export default async function ProjectsHubPage({ searchParams }: PageProps) {
     query = query.ilike("project_name", `%${resolvedSearchParams.search}%`);
   }
 
-  // Order results
   query = query.order("created_at", { ascending: false });
 
   const { data: projects, error } = await query;
 
-  // Normalize the data - Supabase may return arrays for relations, convert to single objects
+  // Normalize relations + map status shown on cards
   const projectsList: Project[] = (projects || []).map((p: any) => ({
     id: p.id,
     project_name: p.project_name,
     url_slug: p.url_slug,
     hero_image_url: p.hero_image_url,
     price_range_text: p.price_range_text,
-    status: p.completion_status || p.status,
-    city: Array.isArray(p.city) 
-      ? (p.city[0] || null)
-      : (p.city || null),
-    micro_market: Array.isArray(p.micro_market) 
-      ? (p.micro_market[0] || null)
-      : (p.micro_market || null),
-    developer: Array.isArray(p.developer)
-      ? (p.developer[0] || null)
-      : (p.developer || null),
+    status: p.completion_status ?? p.status ?? null,
+    city: Array.isArray(p.city) ? (p.city[0] || null) : (p.city || null),
+    micro_market: Array.isArray(p.micro_market) ? (p.micro_market[0] || null) : (p.micro_market || null),
+    developer: Array.isArray(p.developer) ? (p.developer[0] || null) : (p.developer || null),
   }));
 
   // JSON-LD structured data
@@ -216,34 +211,19 @@ export default async function ProjectsHubPage({ searchParams }: PageProps) {
         </section>
 
         {/* Debug Panel */}
-        {debug && (
+        {resolvedSearchParams.debug === "1" && (
           <section className="container mx-auto px-4 py-4 bg-yellow-50 border border-yellow-200 rounded-lg my-4">
-            <h3 className="font-bold text-sm mb-2">🔍 Debug Mode</h3>
+            <h3 className="font-bold text-sm mb-2">🔍 Debug</h3>
             <pre className="text-xs overflow-auto bg-white p-4 rounded border">
-              {JSON.stringify({
-                testError: testError ? {
-                  message: testError.message,
-                  details: testError.details,
-                  hint: testError.hint,
-                  code: testError.code,
-                } : null,
-                testCount: testData?.length ?? 0,
-                mainError: error ? {
-                  message: error.message,
-                  details: error.details,
-                  hint: error.hint,
-                  code: error.code,
-                } : null,
-                mainCount: projects?.length ?? 0,
-                filters: {
-                  city: resolvedSearchParams.city,
-                  status: resolvedSearchParams.status,
-                  search: resolvedSearchParams.search,
-                  microMarket: resolvedSearchParams.microMarket,
+              {JSON.stringify(
+                {
+                  count: projectsList.length,
+                  error: error ? { message: error.message, code: error.code, details: error.details, hint: error.hint } : null,
+                  params: resolvedSearchParams,
                 },
-                cityIds: cityIds,
-                citiesFetched: citiesData?.length ?? 0,
-              }, null, 2)}
+                null,
+                2
+              )}
             </pre>
           </section>
         )}
