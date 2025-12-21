@@ -27,6 +27,7 @@ async function getProperty(citySlug: string, listingSlug: string) {
   // Check if it's a UUID format
   const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(listingSlug);
 
+  // Select all fields including latitude and longitude for map embedding
   let query = supabase.from(tableName).select('*');
 
   if (isUUID) {

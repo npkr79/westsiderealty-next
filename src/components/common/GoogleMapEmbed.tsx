@@ -35,16 +35,31 @@ export default function GoogleMapEmbed({
   reviewCount
 }: GoogleMapEmbedProps) {
   
-  // Helper function to create Google Maps embed URL from coordinates with marker
+  // Helper function to create Google Maps embed URL from coordinates with red pin marker
   const createMapsEmbedFromCoords = (
     latitude: number,
     longitude: number,
-    zoomLevel: number = 18,
+    zoomLevel: number = 16,
     mode: 'roadmap' | 'satellite' = 'satellite'
   ): string => {
-    // Using Google Maps Embed API with marker
-    const mapTypeParam = mode === 'satellite' ? '&maptype=satellite' : '';
-    return `https://maps.google.com/maps?q=${latitude},${longitude}&t=k&z=${zoomLevel}&output=embed&iwloc=near${mapTypeParam}`;
+    // Using Google Maps Embed API with red pin marker
+    // The format: q=lat,lng shows a red pin marker with address card
+    // For satellite view, use t=k parameter
+    const mapTypeParam = mode === 'satellite' ? '&t=k' : '';
+    return `https://maps.google.com/maps?q=${latitude},${longitude}&z=${zoomLevel}&output=embed${mapTypeParam}`;
+  };
+
+  // Helper function to create Google Maps embed URL from address/place name
+  const createMapsEmbedFromAddress = (
+    address: string,
+    zoomLevel: number = 16,
+    mode: 'roadmap' | 'satellite' = 'satellite'
+  ): string => {
+    // Using Google Maps Embed API with place search
+    // The format: q=address shows a red pin marker with address card
+    const mapTypeParam = mode === 'satellite' ? '&t=k' : '';
+    const encodedAddress = encodeURIComponent(address);
+    return `https://maps.google.com/maps?q=${encodedAddress}&z=${zoomLevel}&output=embed${mapTypeParam}`;
   };
 
   // Helper to generate directions URL
@@ -56,7 +71,7 @@ export default function GoogleMapEmbed({
   };
 
   // Priority 1: If lat/lng provided, use them directly
-  if (lat !== undefined && lng !== undefined) {
+  if (lat !== undefined && lng !== undefined && !isNaN(lat) && !isNaN(lng)) {
     const embedUrl = createMapsEmbedFromCoords(lat, lng, zoom, mapType);
     const directionsUrl = getDirectionsUrl();
     
@@ -131,7 +146,86 @@ export default function GoogleMapEmbed({
     );
   }
 
-  // Priority 2: Use provided URL directly if it's already an embed URL
+  // Priority 2: If no coordinates but we have address or businessName, construct from address
+  if ((lat === undefined || lng === undefined || isNaN(lat) || isNaN(lng)) && !url && (address || businessName)) {
+    const addressQuery = businessName && address
+      ? `${businessName}, ${address}`
+      : businessName || address || title;
+    const embedUrl = createMapsEmbedFromAddress(addressQuery, zoom, mapType);
+    const directionsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addressQuery)}`;
+    
+    return (
+      <div className="w-full relative" style={{ height: height }}>
+        {/* Info Card Overlay */}
+        {(businessName || address || rating) && (
+          <div className="absolute top-4 left-4 z-10 bg-white rounded-lg shadow-lg p-4 max-w-xs">
+            {businessName && (
+              <h3 className="font-semibold text-lg text-foreground mb-1">
+                {businessName}
+              </h3>
+            )}
+            {address && (
+              <p className="text-sm text-muted-foreground mb-3">
+                {address}
+              </p>
+            )}
+            {rating && (
+              <div className="flex items-center gap-2 mb-3">
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <Star
+                      key={i}
+                      className={`h-4 w-4 ${
+                        i < Math.round(rating)
+                          ? "fill-yellow-400 text-yellow-400"
+                          : "text-gray-300"
+                      }`}
+                    />
+                  ))}
+                </div>
+                <span className="text-sm font-medium text-foreground">
+                  {rating}
+                </span>
+                {reviewCount && (
+                  <span className="text-sm text-muted-foreground">
+                    • {reviewCount} reviews
+                  </span>
+                )}
+              </div>
+            )}
+            <Button
+              asChild
+              size="sm"
+              className="w-full"
+            >
+              <Link
+                href={directionsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2"
+              >
+                <ExternalLink className="h-4 w-4" />
+                Directions
+              </Link>
+            </Button>
+          </div>
+        )}
+        <iframe
+          src={embedUrl}
+          width="100%"
+          height={height}
+          style={{ border: 0 }}
+          allowFullScreen
+          loading="lazy"
+          referrerPolicy="no-referrer-when-downgrade"
+          title={title}
+          className="w-full h-full rounded-lg"
+        />
+      </div>
+    );
+  }
+
+  // Priority 3: Use provided URL directly if it's already an embed URL
   if (url) {
     // Check if URL is already a Google Maps embed URL
     const isEmbedUrl = url.includes('maps/embed') || url.includes('maps?pb=');

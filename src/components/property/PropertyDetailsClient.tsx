@@ -160,8 +160,8 @@ export default function PropertyDetailsClient({
             <PropertyFAQs faqs={faqs} propertyName={property.title} />
           )}
           
-          {/* Map - Only show if location data exists */}
-          {(property.latitude && property.longitude) || property.google_maps_url ? (
+          {/* Map - Show if location data exists (coordinates, URL, or property name + location) */}
+          {(property.latitude && property.longitude) || property.google_maps_url || (property.title && (property.micro_market || property.location)) ? (
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
               <h3 className="text-xl font-semibold mb-4">Location</h3>
               <GoogleMapEmbed 
@@ -169,6 +169,8 @@ export default function PropertyDetailsClient({
                 lng={property.longitude}
                 url={property.google_maps_url}
                 title={property.title}
+                businessName={property.title}
+                address={`${property.micro_market || property.location || ''}, ${citySlug === 'hyderabad' ? 'Hyderabad' : citySlug === 'goa' ? 'Goa' : 'Dubai'}`.trim()}
                 mapType="satellite"
               />
             </div>

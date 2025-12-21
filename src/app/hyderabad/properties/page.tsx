@@ -1,11 +1,10 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { buildMetadata } from "@/components/common/SEO";
 import { JsonLd } from "@/components/common/SEO";
 import { PageHeader } from "@/components/common/PageHeader";
-import PropertyListingClient from "@/components/properties/PropertyListingClient";
+import PropertyListingClientWrapper from "@/components/properties/PropertyListingClientWrapper";
 import { UnifiedPropertyService } from "@/services/unifiedPropertyService";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -36,14 +35,54 @@ export default async function HyderabadPropertiesPage() {
     { label: "Resale Properties", href: "/hyderabad/properties" },
   ];
 
-  // JSON-LD Schema
+  const baseUrl = "https://www.westsiderealty.in";
+
+  // Enhanced JSON-LD Schema with itemListElement
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "ItemList",
     "name": "Hyderabad Resale Properties",
     "description": "Premium resale properties in Hyderabad",
-    "url": "https://www.westsiderealty.in/hyderabad/properties",
+    "url": `${baseUrl}/hyderabad/properties`,
     "numberOfItems": count || properties.length,
+    "itemListElement": properties.map((prop, index) => {
+      // Get full image URL
+      let imageUrl = prop.main_image_url || "";
+      if (imageUrl && !imageUrl.startsWith("http")) {
+        imageUrl = imageUrl.startsWith("/") 
+          ? `${baseUrl}${imageUrl}` 
+          : `${baseUrl}/${imageUrl}`;
+      }
+      if (!imageUrl) {
+        imageUrl = `${baseUrl}/placeholder.svg`;
+      }
+
+      // Get property URL
+      const propertySlug = prop.seo_slug || prop.slug || prop.id;
+      const propertyUrl = `${baseUrl}/hyderabad/buy/${propertySlug}`;
+
+      // Get description (truncate to 160 chars for schema, strip HTML)
+      const description = prop.description 
+        ? prop.description.substring(0, 160).replace(/<[^>]*>/g, '').trim()
+        : `${prop.title} - ${prop.property_type} in ${prop.location || 'Hyderabad'}`;
+
+      return {
+        "@type": "ListItem",
+        "position": index + 1,
+        "item": {
+          "@type": "RealEstateListing",
+          "name": prop.title,
+          "url": propertyUrl,
+          "image": imageUrl,
+          "description": description,
+          "offers": {
+            "@type": "Offer",
+            "price": prop.price || 0,
+            "priceCurrency": "INR",
+          },
+        },
+      };
+    }),
   };
 
   return (
@@ -54,13 +93,11 @@ export default async function HyderabadPropertiesPage() {
         subtitle={`${count || properties.length} properties available`}
         breadcrumbs={breadcrumbItems}
       />
-      <Suspense fallback={<div className="container mx-auto px-4 py-8">Loading properties...</div>}>
-        <PropertyListingClient
-          citySlug="hyderabad"
-          initialProperties={properties}
-        />
-      </Suspense>
+      {/* Wrapper handles Suspense internally and renders properties immediately */}
+      <PropertyListingClientWrapper
+        citySlug="hyderabad"
+        initialProperties={properties}
+      />
     </>
   );
 }
-

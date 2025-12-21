@@ -27,6 +27,7 @@ export default function PropertyListingClient({
   initialProperties,
 }: PropertyListingClientProps) {
   const searchParams = useSearchParams();
+  // Initialize with server-fetched properties - renders immediately for SEO
   const [properties] = useState<UnifiedProperty[]>(initialProperties);
   const [filteredProperties, setFilteredProperties] = useState<UnifiedProperty[]>(initialProperties);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');

@@ -27,7 +27,7 @@ export default function PropertyCard({ property, location, viewMode = "grid" }: 
           />
         </div>
         <CardContent className="p-4 flex flex-col gap-2">
-          <h3 className="text-base font-semibold text-foreground line-clamp-2">{property.title}</h3>
+          <h2 className="text-base font-semibold text-foreground line-clamp-2">{property.title}</h2>
           <p className="text-sm text-muted-foreground line-clamp-2">
             {property.location}
           </p>
