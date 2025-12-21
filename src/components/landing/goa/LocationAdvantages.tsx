@@ -57,7 +57,11 @@ export default function LocationAdvantages({ landingPage, locationPoints }: Loca
                   lat={landingPage.map_latitude}
                   lng={landingPage.map_longitude}
                   zoom={landingPage.map_zoom || 14}
-                  mapType={landingPage.map_type || 'satellite'}
+                  mapType={
+                    landingPage.map_type === 'roadmap' || landingPage.map_type === 'satellite'
+                      ? landingPage.map_type
+                      : 'satellite'
+                  }
                   businessName={landingPage.title}
                   address={landingPage.location_info}
                 />
