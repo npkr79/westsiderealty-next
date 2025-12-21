@@ -48,14 +48,14 @@ import {
   ShoppingBag
 } from "lucide-react";
 import GoogleMapEmbed from "@/components/common/GoogleMapEmbed";
-import SEO from "@/components/common/SEO";
+// SEO metadata is now handled in page.tsx server component
+// No need for client-side SEO component
 import FloatingLeadCapture from "@/components/landing/FloatingLeadCapture";
 import StickyBottomButtons from "@/components/landing/StickyBottomButtons";
 import PermanentLeadForm from "@/components/landing/PermanentLeadForm";
 import StickyOfferBanner from "@/components/landing/StickyOfferBanner";
 import ScrollProgressIndicator from "@/components/landing/ScrollProgressIndicator";
-import { supabaseLandingPagesService, LandingPage, LandingPageImage, LandingPageHighlight, LandingPageFloorPlan, LandingPageConfiguration, LandingPageSpecification, LandingPageLocationPoint, LandingPageFAQ } from "@/services/admin/supabaseLandingPagesService";
-import { supabaseLandingPagesContentService } from "@/services/admin/supabaseLandingPagesContentService";
+import { type LandingPage, type LandingPageImage, type LandingPageHighlight, type LandingPageFloorPlan, type LandingPageConfiguration, type LandingPageSpecification, type LandingPageLocationPoint, type LandingPageFAQ } from "@/services/admin/supabaseLandingPagesService";
 import { Amenity, ContentBlock } from "@/types/landingPageTemplate";
 import { UltraLuxuryContentBlock } from "@/components/landing/UltraLuxuryContentBlock";
 import ProjectOverviewSection from "@/components/landing/ProjectOverviewSection";
@@ -85,23 +85,31 @@ const LOCATION_ICON_MAP: Record<string, any> = {
 };
 
 interface LandingPageComponentProps {
-  slug: string;
+  landingPage: LandingPage;
+  images: LandingPageImage[];
+  highlights: LandingPageHighlight[];
+  amenities: Amenity[];
+  contentBlocks: ContentBlock[];
+  floorPlans: LandingPageFloorPlan[];
+  configurations: LandingPageConfiguration[];
+  specifications: LandingPageSpecification[];
+  locationPoints: LandingPageLocationPoint[];
+  faqs: LandingPageFAQ[];
 }
 
-const LandingPageComponent = ({ slug: pageUri }: LandingPageComponentProps) => {
-  const [landingPage, setLandingPage] = useState<LandingPage | null>(null);
-  const [images, setImages] = useState<LandingPageImage[]>([]);
-  const [highlights, setHighlights] = useState<LandingPageHighlight[]>([]);
-  const [amenities, setAmenities] = useState<Amenity[]>([]);
-  const [contentBlocks, setContentBlocks] = useState<ContentBlock[]>([]);
-  const [floorPlans, setFloorPlans] = useState<LandingPageFloorPlan[]>([]);
-  const [configurations, setConfigurations] = useState<LandingPageConfiguration[]>([]);
-  const [specifications, setSpecifications] = useState<LandingPageSpecification[]>([]);
-  const [locationPoints, setLocationPoints] = useState<LandingPageLocationPoint[]>([]);
-  const [faqs, setFaqs] = useState<LandingPageFAQ[]>([]);
+const LandingPageComponent = ({
+  landingPage,
+  images,
+  highlights,
+  amenities,
+  contentBlocks,
+  floorPlans,
+  configurations,
+  specifications,
+  locationPoints,
+  faqs
+}: LandingPageComponentProps) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
-  const [notFound, setNotFound] = useState(false);
   const [showFloatingForm, setShowFloatingForm] = useState(false);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [lightboxImages, setLightboxImages] = useState<string[]>([]);
@@ -135,67 +143,8 @@ const LandingPageComponent = ({ slug: pageUri }: LandingPageComponentProps) => {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  useEffect(() => {
-    const loadLandingPage = async () => {
-      if (!pageUri) {
-        setNotFound(true);
-        setIsLoading(false);
-        return;
-      }
-
-      try {
-        const pageData = await supabaseLandingPagesService.getLandingPageByUri(pageUri);
-        
-        if (!pageData || pageData.status !== 'published') {
-          setNotFound(true);
-          setIsLoading(false);
-          return;
-        }
-
-        setLandingPage(pageData);
-        
-        // Load all page data
-        const [
-          landingPageImages, 
-          landingPageHighlights, 
-          landingPageAmenities, 
-          landingPageContentBlocks,
-          landingPageFloorPlans,
-          landingPageConfigurations,
-          landingPageSpecifications,
-          landingPageLocationPoints,
-          landingPageFaqs
-        ] = await Promise.all([
-          supabaseLandingPagesService.getLandingPageImages(pageData.id),
-          supabaseLandingPagesService.getLandingPageHighlights(pageData.id),
-          supabaseLandingPagesContentService.getAmenities(pageData.id),
-          supabaseLandingPagesContentService.getContentBlocks(pageData.id),
-          supabaseLandingPagesService.getFloorPlans(pageData.id),
-          supabaseLandingPagesService.getConfigurations(pageData.id),
-          supabaseLandingPagesService.getSpecifications(pageData.id),
-          supabaseLandingPagesService.getLocationPoints(pageData.id),
-          supabaseLandingPagesService.getFAQs(pageData.id)
-        ]);
-
-        setImages(landingPageImages);
-        setHighlights(landingPageHighlights);
-        setAmenities(landingPageAmenities);
-        setContentBlocks(landingPageContentBlocks);
-        setFloorPlans(landingPageFloorPlans);
-        setConfigurations(landingPageConfigurations);
-        setSpecifications(landingPageSpecifications);
-        setLocationPoints(landingPageLocationPoints);
-        setFaqs(landingPageFaqs);
-      } catch (error) {
-        console.error('Error loading landing page:', error);
-        setNotFound(true);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadLandingPage();
-  }, [pageUri]);
+  // All data is now passed as props from server component
+  // No need for client-side fetching
 
   const nextImage = () => {
     if (images.length > 0) {
@@ -220,148 +169,14 @@ const LandingPageComponent = ({ slug: pageUri }: LandingPageComponentProps) => {
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-xl">Loading...</div>
-      </div>
-    );
-  }
+  // Data is guaranteed to be available from server component
+  // No loading or not found states needed
 
-  if (notFound || !landingPage) {
-    return (
-      <div className="min-h-screen bg-background">
-        <div className="flex items-center justify-center min-h-[50vh]">
-          <div className="text-center">
-            <h1 className="text-4xl font-bold text-gray-900 mb-4">Page Not Found</h1>
-            <p className="text-gray-600 mb-8">The page you're looking for doesn't exist or has been removed.</p>
-            <Button onClick={() => window.location.href = '/'}>
-              Go Back Home
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Generate SEO-optimized title and description
+  // Extract location for display
   const extractedLocation = landingPage.location_info?.split(',')[0]?.trim() || 'Hyderabad';
-  const seoTitle = landingPage.seo_title || `${landingPage.title} - Luxury Property in ${extractedLocation} | RE/MAX Westside`;
-  const seoDescription = landingPage.seo_description || `${landingPage.headline}. ${landingPage.subheadline || ''} Exclusive luxury real estate opportunity. Contact RE/MAX Westside Realty for details.`;
-  
-  // Extract location for keywords
-  const seoKeywords = `${landingPage.title}, Godrej Regal Pavilion price, luxury apartments Rajendra Nagar, premium flats near Financial District, ${landingPage.title.split(' ').slice(0, 2).join(' ')} Hyderabad, Godrej Properties Rajendra Nagar, 2 BHK 3 BHK 4 BHK flats ${extractedLocation}, ultra luxury residential ${extractedLocation}, RERA approved flats Hyderabad, investment property near Gachibowli, luxury apartments near HITEC City, RE/MAX Westside Realty, Nanakramguda apartments, TSPA Hyderabad, Financial District properties`;
-
-  // Structured Data (JSON-LD) for Real Estate Property
-  const structuredData = {
-    "@context": "https://schema.org",
-    "@type": "RealEstateListing",
-    "name": landingPage.title,
-    "description": seoDescription,
-    "url": `https://www.westsiderealty.in/${landingPage.uri}`,
-    "image": landingPage.hero_image_url || "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=1200&h=600&fit=crop",
-    "address": {
-      "@type": "PostalAddress",
-      "addressLocality": extractedLocation,
-      "addressCountry": "IN"
-    },
-    "offers": configurations.length > 0 
-      ? configurations.map(config => ({
-          "@type": "Offer",
-          "name": `${config.unit_type} Apartment`,
-          "description": `${config.unit_type} apartment at ${landingPage.title}`,
-          "price": config.starting_price,
-          "priceCurrency": "INR",
-          "availability": "https://schema.org/InStock",
-          "priceValidUntil": new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          "itemOffered": {
-            "@type": "Apartment",
-            "name": `${config.unit_type} - ${landingPage.title}`,
-            "floorSize": {
-              "@type": "QuantitativeValue",
-              "value": config.size_max ? `${config.size_min}-${config.size_max}` : config.size_min,
-              "unitCode": "FTK"
-            },
-            "numberOfRooms": config.unit_type.replace(/[^0-9.]/g, '')
-          }
-        }))
-      : [{
-          "@type": "Offer",
-          "availability": "https://schema.org/InStock",
-          "priceCurrency": "INR"
-        }],
-    "provider": {
-      "@type": "RealEstateAgent",
-      "name": "RE/MAX Westside Realty",
-      "url": "https://www.westsiderealty.in",
-      "logo": "https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/brand-assets//remax-favicon.png",
-      "telephone": "+919866085831",
-      "email": "info@westsiderealty.in"
-    }
-  };
-
-  // Generate FAQPage Schema dynamically from fetched FAQs
-  const faqSchema = faqs.length > 0 ? {
-    "@context": "https://schema.org",
-    "@type": "FAQPage",
-    "mainEntity": faqs.map(faq => ({
-      "@type": "Question",
-      "name": faq.question,
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": faq.answer
-      }
-    }))
-  } : null;
-
-  // Breadcrumb Schema for SEO
-  const breadcrumbSchema = {
-    "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
-    "itemListElement": [
-      {
-        "@type": "ListItem",
-        "position": 1,
-        "name": "Home",
-        "item": "https://www.westsiderealty.in"
-      },
-      {
-        "@type": "ListItem",
-        "position": 2,
-        "name": "Properties",
-        "item": "https://www.westsiderealty.in/properties"
-      },
-      {
-        "@type": "ListItem",
-        "position": 3,
-        "name": "Hyderabad",
-        "item": "https://www.westsiderealty.in/properties/hyderabad"
-      },
-      {
-        "@type": "ListItem",
-        "position": 4,
-        "name": landingPage.title,
-        "item": `https://www.westsiderealty.in/${landingPage.uri}`
-      }
-    ]
-  };
-
-  // Combine all schemas, filtering out null values
-  const allSchemas = [structuredData, breadcrumbSchema, faqSchema].filter(Boolean);
 
   return (
     <div className="min-h-screen bg-background">
-      <SEO
-        title={seoTitle}
-        description={seoDescription}
-        canonicalUrl={`https://www.westsiderealty.in/${landingPage.uri}`}
-        imageUrl={landingPage.hero_image_url || "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=1200&h=600&fit=crop"}
-        type="article"
-        siteName="RE/MAX Westside Realty"
-        keywords={seoKeywords}
-        jsonLd={allSchemas}
-      />
-
       {/* Floating Lead Capture Popup */}
       <FloatingLeadCapture 
         landingPageId={landingPage.id}
