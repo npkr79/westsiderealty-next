@@ -71,6 +71,7 @@ export default async function ProjectsHubPage({ searchParams }: PageProps) {
   }
 
   // Build query for projects (all cities) - use city relationship
+  // Use status filter instead of is_published (matching projectService pattern)
   let query = supabase
     .from("projects")
     .select(`
@@ -78,33 +79,44 @@ export default async function ProjectsHubPage({ searchParams }: PageProps) {
       city:cities!projects_city_id_fkey(city_name, url_slug),
       micro_market:micro_markets!projects_micromarket_id_fkey(micro_market_name, url_slug),
       developer:developers(developer_name, url_slug)
-    `)
-    .eq("is_published", true)
-    .order("created_at", { ascending: false });
+    `);
 
-  // Apply filters
-  if (cityId) {
-    // Filter by city_id
-    query = query.eq("city_id", cityId);
-  }
-
-  if (resolvedSearchParams.status) {
+  // Apply status filter - if specific status is selected, use it; otherwise use broad filter
+  if (resolvedSearchParams.status && resolvedSearchParams.status !== "all") {
     if (resolvedSearchParams.status === "published") {
       query = query.eq("status", "published");
     } else if (resolvedSearchParams.status === "under-construction") {
       query = query.ilike("status", "%under construction%");
     }
+  } else {
+    // Default: show published and under construction projects
+    query = query.or("status.ilike.published,status.ilike.%under construction%,page_status.eq.published");
   }
 
+  // Apply city filter
+  if (cityId) {
+    query = query.eq("city_id", cityId);
+  }
+
+  // Apply search filter
   if (resolvedSearchParams.search) {
     query = query.ilike("project_name", `%${resolvedSearchParams.search}%`);
   }
+
+  // Order results
+  query = query.order("created_at", { ascending: false });
 
   const { data: projects, error } = await query;
 
   if (error) {
     console.error("Error fetching projects:", error);
   }
+
+  // Debug logging
+  console.log(`[ProjectsHubPage] Fetched ${projects?.length || 0} projects`);
+  console.log(`[ProjectsHubPage] City filter: ${resolvedSearchParams.city || "all"}`);
+  console.log(`[ProjectsHubPage] Status filter: ${resolvedSearchParams.status || "all"}`);
+  console.log(`[ProjectsHubPage] Search: ${resolvedSearchParams.search || "none"}`);
 
   // Normalize the data - Supabase may return arrays for relations, convert to single objects
   const projectsList: Project[] = (projects || []).map((p: any) => ({
