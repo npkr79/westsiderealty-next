@@ -161,7 +161,7 @@ const MobileNavigationMenu = ({ onNavigate, isActive }: MobileNavigationMenuProp
               {allCities.map((city) => (
                 <Link
                   key={city.url_slug}
-                  href={`/${city.url_slug}/projects`}
+                  href={`/${city.url_slug}`}
                   onClick={onNavigate}
                   className="block text-sm text-muted-foreground hover:text-remax-red py-1"
                 >

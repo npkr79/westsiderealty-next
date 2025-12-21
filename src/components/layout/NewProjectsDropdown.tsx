@@ -71,7 +71,7 @@ const NewProjectsDropdown = () => {
                 cities.map((city) => (
                   <li key={city.url_slug}>
                     <Link
-                      href={`/${city.url_slug}/projects`}
+                      href={`/${city.url_slug}`}
                       className="block py-2 px-3 rounded-md text-sm text-muted-foreground hover:bg-accent hover:text-remax-red transition-colors"
                     >
                       {city.city_name} Projects
