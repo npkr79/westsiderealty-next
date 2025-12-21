@@ -7,7 +7,7 @@ import {
   Waves,
   ShoppingBag,
   Umbrella,
-  Museum,
+  Landmark,
   Sun,
   Train,
   MapPin,
@@ -40,7 +40,7 @@ const iconMap: Record<string, LucideIcon> = {
   Waves,
   ShoppingBag,
   Umbrella,
-  Museum,
+  Museum: Landmark, // Use Landmark as alternative for Museum
   Sun,
   Train,
   MapPin,
