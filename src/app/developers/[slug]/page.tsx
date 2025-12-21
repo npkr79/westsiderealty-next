@@ -1,19 +1,25 @@
- "use client";
-
-import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 import Link from "next/link";
-import { developerService, Developer } from "@/services/developerService";
+import Image from "next/image";
+import { createClient } from "@/lib/supabase/server";
+import { buildMetadata } from "@/components/common/SEO";
+import { JsonLd } from "@/components/common/SEO";
+import { Breadcrumbs } from "@/components/seo/Breadcrumbs";
 import { Building2, Award, MapPin, Globe, Calendar, TrendingUp, User, Clock, MessageSquare, Star } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import Layout from "@/components/layout/Layout";
 import CityHubBacklink from "@/components/seo/CityHubBacklink";
 import DeveloperProjectCard from "@/components/developer/DeveloperProjectCard";
 import DeveloperContactForm from "@/components/developer/DeveloperContactForm";
 
+interface PageProps {
+  params: Promise<{ slug: string }>;
+}
+
+// Helper functions
 const stripHtmlTags = (html?: string | null) => {
   if (!html) return "";
   return html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
@@ -24,57 +30,98 @@ const truncateText = (text: string, maxLength = 140) => {
   return text.length > maxLength ? `${text.slice(0, maxLength - 1)}…` : text;
 };
 
-const DeveloperPage = () => {
-  const params = useParams<{ slug?: string | string[]; citySlug?: string | string[] }>();
-  const slugParam = params.slug;
-  const citySlugParam = params.citySlug;
-  const slug = Array.isArray(slugParam) ? slugParam[0] : slugParam;
-  const citySlug = Array.isArray(citySlugParam) ? citySlugParam[0] : citySlugParam;
-  const [developer, setDeveloper] = useState<Developer | null>(null);
-  const [loading, setLoading] = useState(true);
+// Fetch developer data server-side
+async function getDeveloper(slug: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('developers')
+    .select('*')
+    .eq('url_slug', slug)
+    .eq('is_published', true)
+    .single();
 
-  useEffect(() => {
-    const fetchDeveloper = async () => {
-      if (!slug) {
-        setLoading(false);
-        return;
-      }
-      
-      try {
-        setLoading(true);
-        const data = await developerService.getDeveloperBySlug(slug);
-        setDeveloper(data || null);
-      } catch (error) {
-        console.error('Error fetching developer:', error);
-        setDeveloper(null);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchDeveloper();
-  }, [slug]);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-lg">Loading...</div>
-      </div>
-    );
+  if (error || !data) {
+    return null;
   }
+
+  return data;
+}
+
+// Fetch projects by developer server-side
+async function getDeveloperProjects(developerId: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('projects')
+    .select(`
+      id,
+      project_name,
+      url_slug,
+      hero_image_url,
+      meta_description,
+      price_range_text,
+      city:cities!inner(url_slug, city_name),
+      micro_market:micro_markets!projects_micromarket_id_fkey(url_slug, micro_market_name)
+    `)
+    .eq('developer_id', developerId)
+    .or('status.ilike.published,status.ilike.%under construction%')
+    .order('display_order', { ascending: true })
+    .order('project_name', { ascending: true })
+    .limit(20);
+
+  if (error) {
+    console.error('Error fetching developer projects:', error);
+    return [];
+  }
+
+  return data || [];
+}
+
+// Generate dynamic metadata
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { slug } = await params;
+  const developer = await getDeveloper(slug);
 
   if (!developer) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">Developer Not Found</h1>
-          <Link href="/" className="text-heading-blue hover:underline">
-            Return to Home
-          </Link>
-        </div>
-      </div>
-    );
+    return {
+      title: "Developer Not Found",
+    };
   }
+
+  // Fetch top projects for description
+  const projects = await getDeveloperProjects(developer.id);
+  const projectNames = projects.slice(0, 3).map(p => p.project_name).join(', ');
+
+  const title = `${developer.developer_name} Hyderabad Projects | Reviews, Price & New Launches`;
+  const description = projectNames
+    ? `Explore top projects by ${developer.developer_name} in Hyderabad. View floor plans, pricing, and ready-to-move inventory for projects like ${projectNames}.`
+    : `Explore top projects by ${developer.developer_name} in Hyderabad. View floor plans, pricing, and ready-to-move inventory.`;
+
+  // OG Image: Use developer logo or top project hero image
+  const ogImage = developer.logo_url || 
+    (projects.length > 0 && projects[0].hero_image_url) || 
+    undefined;
+
+  const canonicalUrl = `https://www.westsiderealty.in/developers/${developer.url_slug}`;
+
+  return buildMetadata({
+    title,
+    description,
+    canonicalUrl,
+    imageUrl: ogImage,
+    type: "website",
+  });
+}
+
+export default async function DeveloperPage({ params }: PageProps) {
+  const { slug } = await params;
+  const developer = await getDeveloper(slug);
+
+  if (!developer) {
+    notFound();
+  }
+
+  // Fetch developer projects
+  const projects = await getDeveloperProjects(developer.id);
 
   const specializationText = stripHtmlTags(developer.specialization);
   const specializationSummary = truncateText(specializationText, 120);
@@ -99,71 +146,110 @@ const DeveloperPage = () => {
     ? developer.faqs_json
     : [];
 
-  // SEO Structured Data - Use custom schema if provided, otherwise generate default
-  const organizationSchema = developer.schema_markup_json && Object.keys(developer.schema_markup_json).length > 0
-    ? developer.schema_markup_json
-    : {
-        "@context": "https://schema.org",
-        "@type": "RealEstateAgent",
-        "name": developer.developer_name,
-        "description": developer.long_description_seo,
-        "url": developer.website_url || `https://yoursite.com/developers/${developer.url_slug}`,
-        "logo": developer.logo_url,
-        "foundingDate": developer.years_in_business ? new Date().getFullYear() - developer.years_in_business : undefined,
-        "address": {
-          "@type": "PostalAddress",
-          "addressLocality": developer.primary_city_focus || developer.location_focus?.[0] || "",
-          "addressCountry": "IN"
+  const canonicalUrl = `https://www.westsiderealty.in/developers/${developer.url_slug}`;
+
+  // RealEstateAgent Schema with makesOffer
+  const organizationSchema = {
+    "@context": "https://schema.org",
+    "@type": "RealEstateAgent",
+    name: developer.developer_name,
+    url: canonicalUrl,
+    logo: developer.logo_url || undefined,
+    description: developer.long_description_seo || developer.meta_description || developer.tagline || undefined,
+    ...(developer.years_in_business && {
+      foundingDate: new Date().getFullYear() - developer.years_in_business,
+    }),
+    address: {
+      "@type": "PostalAddress",
+      addressLocality: developer.primary_city_focus || "Hyderabad",
+      addressCountry: "IN",
+    },
+    ...(projects.length > 0 && {
+      makesOffer: projects.slice(0, 10).map((project: any) => ({
+        "@type": "Offer",
+        itemOffered: {
+          "@type": "Product",
+          name: project.project_name,
+          description: project.meta_description || `Premium residential project by ${developer.developer_name}`,
+          ...(project.hero_image_url && { image: project.hero_image_url }),
+          ...(project.city && {
+            category: project.city.city_name,
+          }),
         },
-        "aggregateRating": developer.key_awards_json?.length > 0 ? {
-          "@type": "AggregateRating",
-          "ratingValue": "4.8",
-          "reviewCount": developer.testimonial_json?.length || 0,
-        } : undefined,
-      };
+        url: `https://www.westsiderealty.in/${project.city?.url_slug || 'hyderabad'}/projects/${project.url_slug}`,
+        ...(project.price_range_text && {
+          priceSpecification: {
+            "@type": "UnitPriceSpecification",
+            price: project.price_range_text,
+            priceCurrency: "INR",
+          },
+        }),
+      })),
+    }),
+  };
 
   // FAQ Schema
   const faqSchema = faqs && faqs.length > 0 ? {
     "@context": "https://schema.org",
     "@type": "FAQPage",
-    mainEntity: faqs.map((faq: any) => ({
-      "@type": "Question",
-      name: faq.question,
-      acceptedAnswer: {
-        "@type": "Answer",
-        text: faq.answer,
-      },
-    })),
+    mainEntity: faqs
+      .map((faq: any) => {
+        const question = faq.question || faq.q || '';
+        const answer = faq.answer || faq.a || '';
+        if (!question || !answer) return null;
+        return {
+          "@type": "Question",
+          name: question,
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: typeof answer === 'string' ? answer.replace(/<[^>]*>/g, '') : String(answer),
+          },
+        };
+      })
+      .filter(Boolean),
   } : null;
-
-  // Generate canonical URL with www version
-  const canonicalUrl = citySlug 
-    ? `https://www.westsiderealty.in/${citySlug}/developers/${developer.url_slug}`
-    : `https://www.westsiderealty.in/developers/${developer.url_slug}`;
-
-  const ogImage = developer.banner_image_url || developer.logo_url || "https://www.westsiderealty.in/placeholder.svg";
 
   // BreadcrumbList Schema
   const breadcrumbSchema = {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
-    "itemListElement": [
-      { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.westsiderealty.in" },
-      ...(citySlug ? [{ "@type": "ListItem", "position": 2, "name": citySlug.charAt(0).toUpperCase() + citySlug.slice(1), "item": `https://www.westsiderealty.in/${citySlug}` }] : []),
-      { "@type": "ListItem", "position": citySlug ? 3 : 2, "name": developer.developer_name, "item": canonicalUrl }
-    ]
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: "https://www.westsiderealty.in" },
+      { "@type": "ListItem", position: 2, name: "Developers", item: "https://www.westsiderealty.in/developers" },
+      { "@type": "ListItem", position: 3, name: developer.developer_name, item: canonicalUrl },
+    ],
   };
 
+  const breadcrumbItems = [
+    { name: "Home", href: "/" },
+    { name: "Developers", href: "/developers" },
+    { name: developer.developer_name, href: `/developers/${developer.url_slug}` },
+  ];
+
+  const ogImage = developer.banner_image_url || developer.logo_url || undefined;
+
   return (
-    <Layout>
-        <div className="min-h-screen bg-background">
+    <>
+      {/* JSON-LD Structured Data */}
+      <JsonLd jsonLd={organizationSchema} />
+      {faqSchema && <JsonLd jsonLd={faqSchema} />}
+      <JsonLd jsonLd={breadcrumbSchema} />
+
+      <div className="min-h-screen bg-background">
+        {/* Breadcrumbs */}
+        <div className="container mx-auto px-4 py-4">
+          <Breadcrumbs items={breadcrumbItems} />
+        </div>
+
         {/* Hero Section */}
         <div className="relative h-[400px] bg-gradient-to-br from-heading-blue to-heading-blue-dark">
           {developer.banner_image_url && (
-            <img
+            <Image
               src={developer.banner_image_url}
               alt={developer.developer_name}
-              className="absolute inset-0 w-full h-full object-cover"
+              fill
+              className="object-cover"
+              priority
             />
           )}
           <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/60 to-black/40" />
@@ -172,9 +258,11 @@ const DeveloperPage = () => {
           <div className="relative container mx-auto px-4 h-full flex items-center">
             <div className="max-w-4xl">
               {developer.logo_url && (
-                <img
+                <Image
                   src={developer.logo_url}
                   alt={`${developer.developer_name} logo`}
+                  width={80}
+                  height={80}
                   className="h-20 w-auto mb-6 bg-white p-3 rounded-lg shadow-lg"
                 />
               )}
@@ -265,6 +353,47 @@ const DeveloperPage = () => {
                   />
                 </CardContent>
               </Card>
+
+              {/* Projects Section */}
+              {projects.length > 0 && (
+                <Card>
+                  <CardContent className="p-8">
+                    <h2 className="text-3xl font-bold text-heading-blue mb-6">
+                      Projects by {developer.developer_name}
+                    </h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {projects.map((project: any) => (
+                        <div key={project.id} className="border rounded-lg p-4 hover:shadow-lg transition-shadow">
+                          <h3 className="text-xl font-semibold text-heading-blue mb-2">
+                            <Link 
+                              href={`/${project.city?.url_slug || 'hyderabad'}/projects/${project.url_slug}`}
+                              className="hover:underline"
+                            >
+                              {project.project_name}
+                            </Link>
+                          </h3>
+                          {project.micro_market?.micro_market_name && (
+                            <p className="text-sm text-muted-foreground mb-2 flex items-center gap-1">
+                              <MapPin className="w-4 h-4" />
+                              {project.micro_market.micro_market_name}
+                            </p>
+                          )}
+                          {project.price_range_text && (
+                            <p className="text-base font-semibold text-heading-blue">
+                              {project.price_range_text}
+                            </p>
+                          )}
+                          {project.meta_description && (
+                            <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
+                              {project.meta_description}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Founder & History Section */}
               {(developer.founder_bio_summary || (historyTimeline && historyTimeline.length > 0)) && (
@@ -415,10 +544,10 @@ const DeveloperPage = () => {
                       {faqs.map((faq: any, index: number) => (
                         <AccordionItem key={index} value={`item-${index}`} className="border border-border rounded-lg px-4">
                           <AccordionTrigger className="text-left hover:no-underline py-4">
-                            <h3 className="font-semibold text-heading-blue pr-4">{faq.question}</h3>
+                            <h3 className="font-semibold text-heading-blue pr-4">{faq.question || faq.q}</h3>
                           </AccordionTrigger>
                           <AccordionContent className="text-foreground pb-4">
-                            {faq.answer}
+                            {faq.answer || faq.a}
                           </AccordionContent>
                         </AccordionItem>
                       ))}
@@ -473,7 +602,7 @@ const DeveloperPage = () => {
                           Operating Locations
                         </h4>
                         <div className="flex flex-wrap gap-2">
-                          {developer.location_focus.map((location, index) => (
+                          {developer.location_focus.map((location: string, index: number) => (
                             <Badge key={index} variant="secondary">
                               {location}
                             </Badge>
@@ -531,8 +660,10 @@ const DeveloperPage = () => {
                   <p className="text-sm text-muted-foreground mb-4">
                     Explore properties developed by {developer.developer_name}
                   </p>
-                  <Button className="w-full bg-heading-blue hover:bg-heading-blue-dark">
-                    View All Projects
+                  <Button className="w-full bg-heading-blue hover:bg-heading-blue-dark" asChild>
+                    <Link href={`/hyderabad/projects?developer=${developer.url_slug}`}>
+                      View All Projects
+                    </Link>
                   </Button>
                 </CardContent>
               </Card>
@@ -560,9 +691,11 @@ const DeveloperPage = () => {
                     <Button 
                       variant="outline" 
                       className="w-full"
-                      onClick={() => window.open('https://wa.me/919866085831?text=Hi, I\'m interested in ' + developer.developer_name + ' projects', '_blank')}
+                      asChild
                     >
-                      Chat Now
+                      <a href={`https://wa.me/919866085831?text=Hi, I'm interested in ${encodeURIComponent(developer.developer_name)} projects`} target="_blank" rel="noopener noreferrer">
+                        Chat Now
+                      </a>
                     </Button>
                   </CardContent>
                 </Card>
@@ -576,9 +709,11 @@ const DeveloperPage = () => {
                     <Button 
                       variant="outline" 
                       className="w-full"
-                      onClick={() => window.location.href = 'tel:+919866085831'}
+                      asChild
                     >
-                      +91 98660 85831
+                      <a href="tel:+919866085831">
+                        +91 98660 85831
+                      </a>
                     </Button>
                   </CardContent>
                 </Card>
@@ -589,8 +724,8 @@ const DeveloperPage = () => {
                       <Globe className="w-6 h-6 text-heading-blue" />
                     </div>
                     <h3 className="font-semibold text-heading-blue mb-2">Visit Office</h3>
-                    <Button variant="outline" className="w-full">
-                      Get Directions
+                    <Button variant="outline" className="w-full" asChild>
+                      <Link href="/contact">Get Directions</Link>
                     </Button>
                   </CardContent>
                 </Card>
@@ -601,8 +736,6 @@ const DeveloperPage = () => {
       </div>
         
       <CityHubBacklink />
-    </Layout>
+    </>
   );
-};
-
-export default DeveloperPage;
+}
