@@ -46,15 +46,33 @@ const truncateDescription = (text: string, maxLength = 120): string => {
   return cleaned.length > maxLength ? `${cleaned.slice(0, maxLength - 1)}…` : cleaned;
 };
 
-// Categorize micro-markets
-const categorizeMarket = (market: MicroMarket): "high-growth" | "luxury" | "affordable" => {
-  const avgPrice = market.price_per_sqft_min && market.price_per_sqft_max
-    ? (market.price_per_sqft_min + market.price_per_sqft_max) / 2
-    : market.price_per_sqft_min || market.price_per_sqft_max || 0;
+// Calculate average price
+const getAvgPrice = (market: MicroMarket): number | null => {
+  if (market.price_per_sqft_min && market.price_per_sqft_max) {
+    return (market.price_per_sqft_min + market.price_per_sqft_max) / 2;
+  }
+  return market.price_per_sqft_min || market.price_per_sqft_max || null;
+};
 
-  if (avgPrice >= 8000) return "luxury";
-  if (avgPrice <= 5000) return "affordable";
+// Categorize micro-markets with strict thresholds
+const categorizeMarket = (market: MicroMarket): "high-growth" | "luxury" | "affordable" | null => {
+  const avgPrice = getAvgPrice(market);
+  
+  // If price is missing, return null (only show in "All" tab)
+  if (avgPrice === null) {
+    return null;
+  }
+
+  // Strict thresholds
+  if (avgPrice > 10000) return "luxury";
+  if (avgPrice < 8000) return "affordable";
+  // Between 8000-10000, check for high growth
   return "high-growth";
+};
+
+// Check if market is high growth (yoy_appreciation > 12%)
+const isHighGrowth = (market: MicroMarket): boolean => {
+  return (market.annual_appreciation_min || 0) > 12;
 };
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -72,7 +90,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const canonicalUrl = `https://www.westsiderealty.in/${citySlug}/micro-markets`;
 
   return buildMetadata({
-    title: `${cityName} Real Estate Micro-Market Insights 2025 | Investment Dashboard`,
+    title: `${cityName} Real Estate Micro-Market Insights 2026 | Investment Dashboard`,
     description: `Comprehensive guide to property trends, prices, and investment potential in ${cityName}'s top localities. Compare micro-markets, analyze growth rates, and find the best investment opportunities.`,
     canonicalUrl,
   });
@@ -132,11 +150,23 @@ export default async function MicroMarketsHubPage({ params }: PageProps) {
   const microMarkets = (mmData || []) as MicroMarket[];
   const cityName = cityData.city_name || citySlug.charAt(0).toUpperCase() + citySlug.slice(1);
 
-  // Categorize markets
+  // Categorize markets with strict filtering logic
   const allMarkets = microMarkets;
-  const highGrowthMarkets = microMarkets.filter(m => categorizeMarket(m) === "high-growth");
-  const luxuryMarkets = microMarkets.filter(m => categorizeMarket(m) === "luxury");
-  const affordableMarkets = microMarkets.filter(m => categorizeMarket(m) === "affordable");
+  
+  // High Growth: yoy_appreciation > 12%
+  const highGrowthMarkets = microMarkets.filter(m => isHighGrowth(m));
+  
+  // Luxury: avg_price > 10,000
+  const luxuryMarkets = microMarkets.filter(m => {
+    const avgPrice = getAvgPrice(m);
+    return avgPrice !== null && avgPrice > 10000;
+  });
+  
+  // Affordable: avg_price < 8,000
+  const affordableMarkets = microMarkets.filter(m => {
+    const avgPrice = getAvgPrice(m);
+    return avgPrice !== null && avgPrice < 8000;
+  });
 
   // Helper to determine if market is "Top Pick" or "High Yield"
   const getMarketBadges = (market: MicroMarket) => {
@@ -150,11 +180,49 @@ export default async function MicroMarketsHubPage({ params }: PageProps) {
     return badges;
   };
 
+  // FAQ Data for Schema
+  const faqs = [
+    {
+      question: `Which micro-market in West ${cityName} offers the best ROI?`,
+      answer: `Markets like Neopolis and Kokapet show the highest appreciation rates (15%+ YoY) due to infrastructure development and IT corridor proximity. However, ROI depends on your investment timeline and risk appetite.`,
+    },
+    {
+      question: `What is the average price per sq.ft in West ${cityName} micro-markets?`,
+      answer: `Prices range from ₹4,500/sqft in emerging areas to ₹12,000+/sqft in premium locations like Neopolis. The average for established micro-markets is ₹6,500-₹8,500/sqft.`,
+    },
+    {
+      question: `How do I choose between luxury and affordable micro-markets?`,
+      answer: `Luxury markets (₹8,000+/sqft) offer higher capital appreciation but require larger investment. Affordable markets (₹4,500-₹6,000/sqft) provide better rental yields and entry-level opportunities. Consider your budget and investment goals.`,
+    },
+    {
+      question: `What infrastructure projects are driving growth in West ${cityName}?`,
+      answer: `Key drivers include ORR connectivity, metro expansion, IT SEZ developments, and upcoming commercial hubs. These projects are creating employment centers and improving connectivity, directly impacting property values.`,
+    },
+    {
+      question: `Is 2026 a good time to invest in ${cityName} real estate?`,
+      answer: `Yes, 2026 presents strong opportunities with stable prices, infrastructure completion timelines, and growing rental demand. Early investment in emerging micro-markets can yield significant returns as infrastructure matures.`,
+    },
+  ];
+
+  // FAQPage Schema for SEO
+  const faqSchema = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: faqs.map((faq) => ({
+      "@type": "Question",
+      name: faq.question,
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: faq.answer,
+      },
+    })),
+  };
+
   // ItemList Schema for SEO
   const itemListSchema = {
     "@context": "https://schema.org",
     "@type": "ItemList",
-    name: `${cityName} Real Estate Micro-Market Insights 2025`,
+    name: `${cityName} Real Estate Micro-Market Insights 2026`,
     description: `Comprehensive guide to property trends, prices, and investment potential in ${cityName}'s top localities`,
     url: `https://www.westsiderealty.in/${citySlug}/micro-markets`,
     numberOfItems: microMarkets.length,
@@ -216,6 +284,7 @@ export default async function MicroMarketsHubPage({ params }: PageProps) {
   return (
     <>
       <JsonLd jsonLd={itemListSchema} />
+      <JsonLd jsonLd={faqSchema} />
 
       <div className="min-h-screen bg-background">
         {/* Breadcrumbs */}
@@ -228,7 +297,7 @@ export default async function MicroMarketsHubPage({ params }: PageProps) {
           <div className="container mx-auto max-w-5xl">
             <div className="text-center space-y-6">
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-foreground">
-                {cityName} Real Estate Micro-Market Insights 2025
+                {cityName} Real Estate Micro-Market Insights 2026
               </h1>
               <p className="text-xl md:text-2xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
                 Comprehensive guide to property trends, prices, and investment potential in West {cityName}'s top localities.
@@ -409,10 +478,10 @@ export default async function MicroMarketsHubPage({ params }: PageProps) {
 
                   <AccordionItem value="item-5">
                     <AccordionTrigger className="text-left font-semibold">
-                      Is 2025 a good time to invest in {cityName} real estate?
+                      Is 2026 a good time to invest in {cityName} real estate?
                     </AccordionTrigger>
                     <AccordionContent className="text-muted-foreground leading-relaxed">
-                      Yes, 2025 presents strong opportunities with stable prices, infrastructure completion timelines, and growing rental demand. Early investment in emerging micro-markets can yield significant returns as infrastructure matures.
+                      Yes, 2026 presents strong opportunities with stable prices, infrastructure completion timelines, and growing rental demand. Early investment in emerging micro-markets can yield significant returns as infrastructure matures.
                     </AccordionContent>
                   </AccordionItem>
                 </Accordion>
