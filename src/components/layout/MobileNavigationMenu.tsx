@@ -178,7 +178,7 @@ const MobileNavigationMenu = ({ onNavigate, isActive }: MobileNavigationMenuProp
             </div>
             <div className="space-y-1 pl-5">
               <Link
-                href="/projects"
+                href="/hyderabad/projects"
                 onClick={onNavigate}
                 className="block text-sm text-muted-foreground hover:text-remax-red py-1"
               >
