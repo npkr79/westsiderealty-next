@@ -45,7 +45,7 @@ const NewProjectsDropdown = () => {
             <ul className="space-y-1">
               <li>
                 <Link
-                  href="/hyderabad/projects"
+                  href="/projects"
                   className="flex items-center justify-between py-2 px-3 rounded-md text-sm text-muted-foreground hover:bg-accent hover:text-remax-red transition-colors group"
                 >
                   <span>All Projects</span>

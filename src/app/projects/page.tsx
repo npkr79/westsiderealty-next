@@ -6,7 +6,9 @@ import { buildMetadata } from "@/components/common/SEO";
 import { JsonLd } from "@/components/common/SEO";
 import ProjectCard from "@/components/properties/ProjectCard";
 import ProjectsFiltersRoot from "@/components/projects/ProjectsFiltersRoot";
-import { Building2 } from "lucide-react";
+import CityTabs from "@/components/projects/CityTabs";
+import { Building2, Sparkles, MapPin } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 interface PageProps {
   searchParams: Promise<{ search?: string; city?: string; microMarket?: string; status?: string }>;
@@ -57,6 +59,17 @@ export default async function ProjectsHubPage({ searchParams }: PageProps) {
     city_slug: mm.city?.url_slug || "",
   }));
 
+  // Get city ID if city filter is applied
+  let cityId: string | null = null;
+  if (resolvedSearchParams.city) {
+    const { data: cityData } = await supabase
+      .from("cities")
+      .select("id")
+      .eq("url_slug", resolvedSearchParams.city)
+      .single();
+    cityId = cityData?.id || null;
+  }
+
   // Build query for projects (all cities) - use city relationship
   let query = supabase
     .from("projects")
@@ -70,9 +83,9 @@ export default async function ProjectsHubPage({ searchParams }: PageProps) {
     .order("created_at", { ascending: false });
 
   // Apply filters
-  if (resolvedSearchParams.city) {
-    // Filter by city relationship
-    query = query.eq("city.url_slug", resolvedSearchParams.city);
+  if (cityId) {
+    // Filter by city_id
+    query = query.eq("city_id", cityId);
   }
 
   if (resolvedSearchParams.status) {
@@ -127,19 +140,42 @@ export default async function ProjectsHubPage({ searchParams }: PageProps) {
 
       <main className="min-h-screen bg-background">
         {/* Hero Section */}
-        <section className="bg-gradient-to-br from-primary/10 via-background to-secondary/10 py-16">
-          <div className="container mx-auto px-4">
-            <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
-              Premium Real Estate Projects
+        <section className="relative bg-gradient-to-br from-primary/20 via-primary/10 via-background to-secondary/10 py-20 overflow-hidden">
+          {/* Decorative background elements */}
+          <div className="absolute inset-0 opacity-10">
+            <div className="absolute top-10 left-10 w-72 h-72 bg-primary rounded-full blur-3xl"></div>
+            <div className="absolute bottom-10 right-10 w-96 h-96 bg-secondary rounded-full blur-3xl"></div>
+          </div>
+          
+          <div className="container mx-auto px-4 relative z-10">
+            <div className="flex items-center gap-2 mb-4">
+              <Badge className="bg-primary/10 text-primary border-primary/20 px-3 py-1">
+                <Sparkles className="h-3 w-3 mr-1" />
+                Premium Projects
+              </Badge>
+            </div>
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-4">
+              Discover Your Dream Project
             </h1>
-            <p className="text-lg text-muted-foreground max-w-2xl">
-              Explore luxury residential projects from India's leading developers. Find your perfect home or investment opportunity.
+            <p className="text-lg md:text-xl text-muted-foreground max-w-3xl leading-relaxed">
+              Explore RERA-verified residential projects from India's top developers. 
+              Find your perfect home in Hyderabad, Goa, and other prime locations.
             </p>
           </div>
         </section>
 
+        {/* City Tabs */}
+        <section className="border-b bg-card sticky top-16 z-20 backdrop-blur-sm">
+          <div className="container mx-auto px-4">
+            <CityTabs 
+              cities={citiesData || []} 
+              selectedCity={resolvedSearchParams.city}
+            />
+          </div>
+        </section>
+
         {/* Filters */}
-        <section className="border-b bg-card/50 sticky top-16 z-10 backdrop-blur-sm">
+        <section className="border-b bg-card/50 sticky top-[calc(4rem+3rem)] z-10 backdrop-blur-sm">
           <div className="container mx-auto px-4 py-4">
             <ProjectsFiltersRoot
               cities={citiesData || []}
@@ -155,16 +191,18 @@ export default async function ProjectsHubPage({ searchParams }: PageProps) {
         {/* Projects Grid */}
         <section className="container mx-auto px-4 py-12">
           {projectsList.length === 0 ? (
-            <div className="text-center py-12">
-              <Building2 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-medium">No projects found</h3>
-              <p className="text-muted-foreground">Try adjusting your search filters</p>
+            <div className="text-center py-16">
+              <Building2 className="h-16 w-16 text-muted-foreground mx-auto mb-4 opacity-50" />
+              <h3 className="text-xl font-semibold mb-2">No projects found</h3>
+              <p className="text-muted-foreground max-w-md mx-auto">
+                Try adjusting your filters or search terms to find projects.
+              </p>
             </div>
           ) : (
             <>
-              <div className="mb-6">
+              <div className="mb-6 flex items-center justify-between">
                 <p className="text-muted-foreground">
-                  Found {projectsList.length} project{projectsList.length !== 1 ? "s" : ""}
+                  <span className="font-semibold text-foreground">{projectsList.length}</span> project{projectsList.length !== 1 ? "s" : ""} found
                 </p>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
