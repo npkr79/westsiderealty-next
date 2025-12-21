@@ -21,10 +21,12 @@ interface TestimonialsSectionProps {
 export default function TestimonialsSection({ testimonials: propTestimonials }: TestimonialsSectionProps = {}) {
   const [internalTestimonials, setInternalTestimonials] = useState<Testimonial[]>([]);
 
+  // If testimonials are provided as props (from server), use them immediately - no useEffect needed
+  // This ensures testimonials are in the initial HTML for SEO
+  // Only fetch client-side if no props provided (fallback for pages that don't pass props)
   useEffect(() => {
-    if (propTestimonials && propTestimonials.length > 0) {
-      setInternalTestimonials(propTestimonials as any);
-    } else {
+    // Only fetch if no server-provided testimonials
+    if (!propTestimonials || propTestimonials.length === 0) {
       const load = async () => {
         try {
           const data = await supabaseTestimonialClientService.getTestimonials(true);
@@ -38,7 +40,9 @@ export default function TestimonialsSection({ testimonials: propTestimonials }: 
     }
   }, [propTestimonials]);
 
-  const displayTestimonials = propTestimonials && propTestimonials.length > 0 ? propTestimonials : internalTestimonials;
+  // Prioritize server-provided testimonials for SEO (rendered in initial HTML)
+  // These are available immediately without waiting for useEffect
+  const displayTestimonials = (propTestimonials && propTestimonials.length > 0) ? propTestimonials : internalTestimonials;
 
   if (!displayTestimonials || displayTestimonials.length === 0) return null;
 

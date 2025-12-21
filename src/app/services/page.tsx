@@ -10,6 +10,17 @@ const SERVICE_SCHEMA = {
     "@type": "RealEstateAgent",
     name: "RE/MAX Westside Realty",
     url: "https://www.westsiderealty.in",
+    logo: "https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/brand-assets/remax-logo.jpg",
+    image: "https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/brand-assets/remax-logo.jpg",
+    telephone: "+91 9866085831",
+    address: {
+      "@type": "PostalAddress",
+      streetAddress: "415, 4th Floor, Kokapet Terminal, Kokapet, Hyderabad – 500075",
+      addressLocality: "Hyderabad",
+      addressRegion: "Telangana",
+      postalCode: "500075",
+      addressCountry: "IN",
+    },
   },
   areaServed: [
     {
@@ -74,6 +85,3 @@ export default function Page() {
     </>
   );
 }
-
-
-

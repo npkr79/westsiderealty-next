@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import {
   Award,
   Users,
@@ -17,20 +16,16 @@ import {
   Star,
   Clock,
 } from "lucide-react";
-import { siteImagesService, locationSettingsService } from "@/services/adminService";
 import { convertYouTubeToEmbed } from "@/utils/urlConverters";
+import TestimonialsSection from "@/components/home/TestimonialsSection";
 
 const fallbackImage = "/placeholder.svg";
 
-export default function AboutPage() {
-  const [siteImages, setSiteImages] = useState<any>({});
-  const [locationSettings, setLocationSettings] = useState<any>({});
+interface AboutPageProps {
+  testimonials?: any[];
+}
 
-  useEffect(() => {
-    setSiteImages(siteImagesService.getSiteImages());
-    setLocationSettings(locationSettingsService.getLocationSettings());
-  }, []);
-
+export default function AboutPage({ testimonials = [] }: AboutPageProps) {
   const values = [
     {
       icon: Handshake,
@@ -73,12 +68,17 @@ export default function AboutPage() {
 
   const videoUrl = convertYouTubeToEmbed("https://www.youtube.com/watch?v=ZOfoEr-D04k");
 
+  // Default office image
+  const aboutImage = "https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/service-images//remax-office.jpg";
+
   return (
     <div className="min-h-screen bg-background">
       {/* Hero Section */}
       <section className="py-20 px-4 bg-gradient-to-r from-remax-blue/10 to-remax-red/10">
         <div className="container mx-auto text-center">
-          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">About Us</h1>
+          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
+            About RE/MAX Westside Realty: Hyderabad's Premium Real Estate Advisors
+          </h1>
           <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
             Discover our story, values, and commitment to excellence in real estate.
           </p>
@@ -129,15 +129,18 @@ export default function AboutPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {values.map((value, index) => (
-              <Card key={index} className="hover:shadow-lg transition-shadow">
-                <CardContent className="p-8 text-center">
-                  <value.icon className="h-12 w-12 text-remax-red mx-auto mb-6" />
-                  <h3 className="text-xl font-bold mb-4">{value.title}</h3>
-                  <p className="text-gray-700">{value.description}</p>
-                </CardContent>
-              </Card>
-            ))}
+            {values.map((value, index) => {
+              const IconComponent = value.icon;
+              return (
+                <Card key={index} className="hover:shadow-lg transition-shadow">
+                  <CardContent className="p-8 text-center">
+                    <IconComponent className="h-12 w-12 text-remax-red mx-auto mb-6" />
+                    <h3 className="text-xl font-bold mb-4">{value.title}</h3>
+                    <p className="text-gray-700">{value.description}</p>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         </div>
       </section>
@@ -153,18 +156,26 @@ export default function AboutPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {achievements.map((achievement, index) => (
-              <Card key={index} className="hover:shadow-lg transition-shadow">
-                <CardContent className="p-8 text-center">
-                  <achievement.icon className="h-12 w-12 text-remax-red mx-auto mb-6" />
-                  <h3 className="text-xl font-bold mb-4">{achievement.title}</h3>
-                  <p className="text-gray-700">{achievement.value}</p>
-                </CardContent>
-              </Card>
-            ))}
+            {achievements.map((achievement, index) => {
+              const IconComponent = achievement.icon;
+              return (
+                <Card key={index} className="hover:shadow-lg transition-shadow">
+                  <CardContent className="p-8 text-center">
+                    <IconComponent className="h-12 w-12 text-remax-red mx-auto mb-6" />
+                    <h3 className="text-xl font-bold mb-4">{achievement.title}</h3>
+                    <p className="text-gray-700">{achievement.value}</p>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         </div>
       </section>
+
+      {/* Testimonials Section - Server-Side Rendered Data Passed as Props */}
+      {testimonials && testimonials.length > 0 && (
+        <TestimonialsSection testimonials={testimonials} />
+      )}
 
       {/* Visit Our Office */}
       <section className="py-16 px-4 bg-gray-50">
@@ -172,9 +183,20 @@ export default function AboutPage() {
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold mb-4">Visit Our Office</h2>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              {locationSettings.locationDescription ||
-                "Located in the heart of Kokapet, Hyderabad - easily accessible from all major areas"}
+              Located in the heart of Kokapet, Hyderabad - easily accessible from all major areas
             </p>
+          </div>
+
+          {/* Office Image */}
+          <div className="rounded-lg overflow-hidden shadow-lg mb-8">
+            <Image
+              src={aboutImage}
+              alt="RE/MAX Westside Realty team at our Kokapet office in Hyderabad"
+              width={1200}
+              height={600}
+              className="w-full h-auto object-cover"
+              priority
+            />
           </div>
 
           <div className="rounded-lg overflow-hidden shadow-lg mb-8">
@@ -244,5 +266,3 @@ export default function AboutPage() {
     </div>
   );
 }
-
-

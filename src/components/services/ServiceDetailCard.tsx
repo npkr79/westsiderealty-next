@@ -42,7 +42,7 @@ export default function ServiceDetailCard({ service, flip }: ServiceDetailCardPr
             <Icon className="h-5 w-5" />
           </div>
         )}
-        <h3 className="text-xl md:text-2xl font-semibold text-foreground">{title}</h3>
+        <h2 className="text-xl md:text-2xl font-semibold text-foreground">{title}</h2>
       </div>
       <p className="text-sm md:text-base text-muted-foreground mb-4 leading-relaxed">
         {description}

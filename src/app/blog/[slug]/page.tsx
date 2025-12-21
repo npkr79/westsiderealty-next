@@ -96,26 +96,44 @@ export default async function BlogArticlePage({ params }: PageProps) {
     .select("id, slug, title, category, topic_cluster, is_pillar_article")
     .eq("status", "published");
 
-  const canonicalUrl = `https://www.westsiderealty.in/blog/${slug}`;
+  const baseUrl = "https://www.westsiderealty.in";
+  const canonicalUrl = `${baseUrl}/blog/${slug}`;
   const ogImage = article.image_url 
     ? (article.image_url.startsWith("http") 
         ? article.image_url 
-        : `https://www.westsiderealty.in${article.image_url}`)
-    : "https://www.westsiderealty.in/placeholder.svg";
+        : `${baseUrl}${article.image_url}`)
+    : `${baseUrl}/placeholder.svg`;
 
-  // Article structured data
+  // Format dates to ISO 8601
+  const datePublished = article.date ? new Date(article.date).toISOString() : new Date(article.created_at).toISOString();
+  const dateModified = article.updated_at ? new Date(article.updated_at).toISOString() : datePublished;
+
+  // Determine author type for E-E-A-T
+  const authorName = article.author || "RE/MAX Westside Realty Team";
+  const isTeamAuthor = authorName.toLowerCase().includes("team") || 
+                       authorName.toLowerCase().includes("westside realty team") ||
+                       authorName === "RE/MAX Westside Realty Team";
+
+  // Article structured data with refined author for E-E-A-T
   const articleSchema = {
     "@context": "https://schema.org",
     "@type": "Article",
     headline: article.seo_title || article.title,
     description: article.seo_description || article.description.substring(0, 160),
     image: ogImage,
-    datePublished: article.date || article.created_at,
-    dateModified: article.updated_at || article.date || article.created_at,
-    author: {
-      "@type": "Person",
-      name: article.author || "RE/MAX Westside Realty Team",
-    },
+    datePublished: datePublished,
+    dateModified: dateModified,
+    author: isTeamAuthor
+      ? {
+          "@type": "Organization",
+          name: "RE/MAX Westside Realty",
+          url: `${baseUrl}/about`,
+        }
+      : {
+          "@type": "Person",
+          name: authorName,
+          url: `${baseUrl}/about`,
+        },
     publisher: {
       "@type": "Organization",
       name: "RE/MAX Westside Realty",
@@ -130,9 +148,35 @@ export default async function BlogArticlePage({ params }: PageProps) {
     },
   };
 
+  // BreadcrumbList schema
+  const breadcrumbSchema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Home",
+        item: `${baseUrl}/`,
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: "Blog",
+        item: `${baseUrl}/blog`,
+      },
+      {
+        "@type": "ListItem",
+        position: 3,
+        name: article.title,
+        item: canonicalUrl,
+      },
+    ],
+  };
+
   return (
     <>
-      <JsonLd jsonLd={articleSchema} />
+      <JsonLd jsonLd={[articleSchema, breadcrumbSchema]} />
       <ReadingProgressBar />
       <ArticleHero
         title={article.title}
@@ -214,10 +258,10 @@ export default async function BlogArticlePage({ params }: PageProps) {
           </div>
         )}
 
-        {/* Related Articles */}
+        {/* Related Articles - Using semantic <aside> tag */}
         {relatedArticles && relatedArticles.length > 0 && (
-          <div className="mb-16">
-            <h3 className="font-bold text-xl mb-6 text-gray-800">Related Articles</h3>
+          <aside className="mb-16">
+            <h2 className="font-bold text-xl mb-6 text-gray-800">Related Articles</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               {relatedArticles.map((relatedArticle) => (
                 <Card key={relatedArticle.id} className="hover:shadow-lg transition-shadow">
@@ -259,7 +303,7 @@ export default async function BlogArticlePage({ params }: PageProps) {
                 </Card>
               ))}
             </div>
-          </div>
+          </aside>
         )}
 
         {/* CTA Section */}

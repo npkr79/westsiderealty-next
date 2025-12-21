@@ -1,6 +1,7 @@
 import { Metadata } from "next";
 import { JsonLd, buildMetadata } from "@/components/common/SEO";
 import AboutPage from "@/components/pages/AboutPage";
+import { supabaseTestimonialService } from "@/services/admin/supabaseTestimonialService";
 
 const ABOUT_PAGE_SCHEMA = {
   "@context": "https://schema.org",
@@ -35,6 +36,11 @@ const ABOUT_PAGE_SCHEMA = {
       reviewCount: "150",
       bestRating: "5",
     },
+    founder: {
+      "@type": "Person",
+      name: "N. P. K. Reddy",
+      jobTitle: "Founder",
+    },
   },
 };
 
@@ -56,6 +62,11 @@ const ORG_SCHEMA = {
   },
   description:
     "Award-winning property agents for Hyderabad, Goa, and Dubai. Specializing in resale, investment & holiday homes with a focus on trust, service, and global expertise.",
+  founder: {
+    "@type": "Person",
+    name: "N. P. K. Reddy",
+    jobTitle: "Founder",
+  },
 };
 
 export const metadata: Metadata = buildMetadata({
@@ -67,13 +78,14 @@ export const metadata: Metadata = buildMetadata({
     "about remax hyderabad, real estate agents, resale properties hyderabad, goa investment homes, dubai realty, trusted property advisor",
 });
 
-export default function Page() {
+export default async function Page() {
+  // Fetch testimonials server-side for SEO
+  const testimonials = await supabaseTestimonialService.getTestimonials(true);
+
   return (
     <>
       <JsonLd jsonLd={[ABOUT_PAGE_SCHEMA, ORG_SCHEMA]} />
-      <AboutPage />
+      <AboutPage testimonials={testimonials} />
     </>
   );
 }
-
-

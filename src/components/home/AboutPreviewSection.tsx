@@ -19,7 +19,7 @@ export default function AboutPreviewSection({ aboutImage }: AboutPreviewSectionP
               <div className="relative h-64 w-full lg:h-auto lg:min-h-[400px]">
                 <Image
                   src={aboutImage}
-                  alt="About RE/MAX Westside Realty"
+                  alt="RE/MAX Westside Realty team at our Kokapet office in Hyderabad"
                   fill
                   style={{ objectFit: "cover" }}
                   sizes="(max-width: 1024px) 100vw, 50vw"

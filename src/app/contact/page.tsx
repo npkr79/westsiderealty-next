@@ -1,4 +1,3 @@
-
 import { Metadata } from "next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MapPin, Phone, Mail, Clock } from "lucide-react";
@@ -13,6 +12,21 @@ const CONTACT_SCHEMA = {
   description:
     "Contact RE/MAX Westside Realty for expert property advice, resale apartments, investment opportunities, and more.",
   url: "https://www.westsiderealty.in/contact",
+  mainEntity: {
+    "@type": "RealEstateAgent",
+    name: "RE/MAX Westside Realty",
+    image: "https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/brand-assets/remax-logo.jpg",
+    telephone: "+91 9866085831",
+    address: {
+      "@type": "PostalAddress",
+      streetAddress: "415, 4th Floor, Kokapet Terminal, Kokapet, Hyderabad – 500075",
+      addressLocality: "Hyderabad",
+      addressRegion: "Telangana",
+      postalCode: "500075",
+      addressCountry: "IN",
+    },
+    priceRange: "₹₹₹",
+  },
 };
 
 export const metadata: Metadata = buildMetadata({
@@ -30,6 +44,7 @@ export const metadata: Metadata = buildMetadata({
 
 export default function Contact() {
   // Use default values for server-side rendering (localStorage is not available)
+  // Contact details remain hardcoded in JSX for SSR - DO NOT move to client-side fetch
   const defaultContactInfo = {
     address: "415, 4th Floor, Kokapet Terminal\nKokapet, Hyderabad – 500075",
     phone: "+91 9866085831",
