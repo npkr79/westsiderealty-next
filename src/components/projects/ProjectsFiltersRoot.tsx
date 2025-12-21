@@ -92,8 +92,8 @@ export default function ProjectsFiltersRoot({
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="all">All Status</SelectItem>
-          <SelectItem value="published">Published</SelectItem>
           <SelectItem value="under-construction">Under Construction</SelectItem>
+          <SelectItem value="ready">Ready to Move</SelectItem>
         </SelectContent>
       </Select>
     </div>
