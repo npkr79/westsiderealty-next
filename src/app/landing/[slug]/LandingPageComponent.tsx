@@ -63,6 +63,14 @@ import FloorPlansSlider from "@/components/landing/FloorPlansSlider";
 import AnimatedCounter from "@/components/landing/AnimatedCounter";
 import ProjectHighlightsTable from "@/components/landing/ProjectHighlightsTable";
 import ExpertReview from "@/components/landing/ExpertReview";
+// Aerocidade custom components
+import AerocidadeHero from "@/components/landing/goa/AerocidadeHero";
+import InvestmentHighlights from "@/components/landing/goa/InvestmentHighlights";
+import PricePaymentTable from "@/components/landing/goa/PricePaymentTable";
+import LocationAdvantages from "@/components/landing/goa/LocationAdvantages";
+import AmenitiesGrid from "@/components/landing/goa/AmenitiesGrid";
+import AerocidadeFAQ from "@/components/landing/goa/AerocidadeFAQ";
+import GoaLeadForm from "@/components/landing/goa/GoaLeadForm";
 
 
 // Icon mapping for highlights
@@ -174,6 +182,37 @@ const LandingPageComponent = ({
 
   // Extract location for display
   const extractedLocation = landingPage.location_info?.split(',')[0]?.trim() || 'Hyderabad';
+
+  // Aerocidade Custom Template Component
+  const AerocidadeTemplate = () => (
+    <div className="min-h-screen bg-background">
+      {/* Hero Section */}
+      <AerocidadeHero landingPage={landingPage} configurations={configurations} />
+
+      {/* Investment Highlights */}
+      <InvestmentHighlights highlights={highlights} />
+
+      {/* Price & Payment Plan */}
+      <PricePaymentTable configurations={configurations} />
+
+      {/* Location Advantages */}
+      <LocationAdvantages landingPage={landingPage} locationPoints={locationPoints} />
+
+      {/* Amenities Grid */}
+      <AmenitiesGrid amenities={amenities} />
+
+      {/* FAQ Section */}
+      <AerocidadeFAQ faqs={faqs} />
+
+      {/* Lead Form & WhatsApp CTA */}
+      <GoaLeadForm landingPage={landingPage} />
+    </div>
+  );
+
+  // Check if this is the Aerocidade page - render custom template
+  if (landingPage.uri === 'aerocidade-studio-apartments-dabolim') {
+    return <AerocidadeTemplate />;
+  }
 
   return (
     <div className="min-h-screen bg-background">
