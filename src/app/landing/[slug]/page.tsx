@@ -108,6 +108,99 @@ export async function generateStaticParams() {
   return pages?.map((page) => ({ slug: page.uri })) || [];
 }
 
+// Generate Organization/RealEstateAgent Schema
+function generateOrganizationSchema() {
+  return {
+    "@context": "https://schema.org",
+    "@type": "RealEstateAgent",
+    "@id": "https://www.westsiderealty.in/#organization",
+    "name": "RE/MAX Westside Realty",
+    "url": "https://www.westsiderealty.in",
+    "logo": "https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/brand-assets/remax-logo.jpg",
+    "image": "https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/brand-assets/remax-logo.jpg",
+    "telephone": "+919866085831",
+    "email": "info@westsiderealty.in",
+    "address": {
+      "@type": "PostalAddress",
+      "streetAddress": "415, 4th Floor, Kokapet Terminal, Kokapet",
+      "addressLocality": "Hyderabad",
+      "addressRegion": "Telangana",
+      "postalCode": "500075",
+      "addressCountry": "IN"
+    },
+    "geo": {
+      "@type": "GeoCoordinates",
+      "latitude": 17.3851,
+      "longitude": 78.3270
+    },
+    "areaServed": [
+      {
+        "@type": "City",
+        "name": "Hyderabad"
+      },
+      {
+        "@type": "City",
+        "name": "Goa"
+      },
+      {
+        "@type": "City",
+        "name": "Dubai"
+      }
+    ],
+    "openingHours": "Mo-Sa 09:00-18:00",
+    "priceRange": "₹₹₹",
+    "sameAs": [
+      "https://www.facebook.com/remaxwestsiderealty",
+      "https://www.instagram.com/remaxwestsiderealty",
+      "https://www.linkedin.com/company/remax-westside"
+    ],
+    "description": "Leading real estate agency in Hyderabad specializing in luxury properties, villas, and apartments. Expert guidance for resale properties, investment opportunities & holiday homes."
+  };
+}
+
+// Generate LocalBusiness Schema
+function generateLocalBusinessSchema() {
+  return {
+    "@context": "https://schema.org",
+    "@type": "LocalBusiness",
+    "@id": "https://www.westsiderealty.in/#localbusiness",
+    "name": "RE/MAX Westside Realty",
+    "description": "Leading real estate agency in Hyderabad specializing in luxury properties, villas, and apartments.",
+    "url": "https://www.westsiderealty.in",
+    "telephone": "+919866085831",
+    "email": "info@westsiderealty.in",
+    "address": {
+      "@type": "PostalAddress",
+      "streetAddress": "415, 4th Floor, Kokapet Terminal, Kokapet",
+      "addressLocality": "Hyderabad",
+      "addressRegion": "Telangana",
+      "postalCode": "500075",
+      "addressCountry": "IN"
+    },
+    "geo": {
+      "@type": "GeoCoordinates",
+      "latitude": 17.3851,
+      "longitude": 78.3270
+    },
+    "openingHoursSpecification": [
+      {
+        "@type": "OpeningHoursSpecification",
+        "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+        "opens": "09:00",
+        "closes": "18:00"
+      }
+    ],
+    "image": "https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/brand-assets/remax-logo.jpg",
+    "logo": "https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/brand-assets/remax-logo.jpg",
+    "priceRange": "₹₹₹",
+    "aggregateRating": {
+      "@type": "AggregateRating",
+      "ratingValue": "4.8",
+      "reviewCount": "150"
+    }
+  };
+}
+
 // Generate JSON-LD structured data
 function generateStructuredData(
   page: LandingPage,
@@ -116,6 +209,9 @@ function generateStructuredData(
 ) {
   const extractedLocation = page.location_info?.split(',')[0]?.trim() || 'Hyderabad';
   const seoDescription = page.seo_description || `${page.headline}. ${page.subheadline || ''} Exclusive luxury real estate opportunity.`;
+  
+  // URL-encode location for breadcrumb (replace spaces with hyphens, lowercase)
+  const locationSlug = extractedLocation.toLowerCase().replace(/\s+/g, '-');
 
   // RealEstateListing Schema
   const realEstateListing = {
@@ -163,11 +259,34 @@ function generateStructuredData(
         }],
     "provider": {
       "@type": "RealEstateAgent",
+      "@id": "https://www.westsiderealty.in/#organization",
       "name": "RE/MAX Westside Realty",
       "url": "https://www.westsiderealty.in",
-      "logo": "https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/brand-assets//remax-favicon.png",
+      "logo": "https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/brand-assets/remax-logo.jpg",
+      "image": "https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/brand-assets/remax-logo.jpg",
       "telephone": "+919866085831",
-      "email": "info@westsiderealty.in"
+      "email": "info@westsiderealty.in",
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": "415, 4th Floor, Kokapet Terminal, Kokapet",
+        "addressLocality": "Hyderabad",
+        "addressRegion": "Telangana",
+        "postalCode": "500075",
+        "addressCountry": "IN"
+      },
+      "geo": {
+        "@type": "GeoCoordinates",
+        "latitude": 17.3851,
+        "longitude": 78.3270
+      },
+      "areaServed": [
+        {
+          "@type": "City",
+          "name": "Hyderabad"
+        }
+      ],
+      "openingHours": "Mo-Sa 09:00-18:00",
+      "priceRange": "₹₹₹"
     }
   };
 
@@ -185,7 +304,7 @@ function generateStructuredData(
     }))
   } : null;
 
-  // Breadcrumb Schema
+  // Breadcrumb Schema with URL-encoded paths
   const breadcrumbSchema = {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
@@ -206,7 +325,7 @@ function generateStructuredData(
         "@type": "ListItem",
         "position": 3,
         "name": extractedLocation,
-        "item": `https://www.westsiderealty.in/properties/${extractedLocation.toLowerCase()}`
+        "item": `https://www.westsiderealty.in/properties/${locationSlug}`
       },
       {
         "@type": "ListItem",
@@ -240,10 +359,21 @@ export default async function LandingPageWrapper({ params }: PageProps) {
 
   // Generate structured data
   const structuredData = generateStructuredData(page, configurations, faqs);
+  
+  // Generate Organization and LocalBusiness schemas
+  const organizationSchema = generateOrganizationSchema();
+  const localBusinessSchema = generateLocalBusinessSchema();
 
   return (
     <>
       {/* JSON-LD Structured Data */}
+      {/* Standalone Organization Schema */}
+      <JsonLd jsonLd={organizationSchema} />
+      
+      {/* Standalone LocalBusiness Schema */}
+      <JsonLd jsonLd={localBusinessSchema} />
+      
+      {/* Page-specific schemas */}
       {structuredData.map((schema, index) => (
         <JsonLd key={index} jsonLd={schema} />
       ))}
