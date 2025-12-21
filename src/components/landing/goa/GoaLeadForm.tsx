@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { MessageCircle, CheckCircle2 } from "lucide-react";
-import type { LandingPage } from "@/services/admin/supabaseLandingPagesService";
+import type { LandingPage } from "@/types/landingPage";
 
 interface GoaLeadFormProps {
   landingPage: LandingPage;

@@ -13,7 +13,7 @@ import {
   Sofa,
   Shield
 } from "lucide-react";
-import type { LandingPageHighlight } from "@/services/admin/supabaseLandingPagesService";
+import type { LandingPageHighlight } from "@/types/landingPage";
 
 interface InvestmentHighlightsProps {
   highlights: LandingPageHighlight[];

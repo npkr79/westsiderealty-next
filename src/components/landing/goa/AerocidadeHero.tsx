@@ -5,7 +5,7 @@ import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Shield, MessageCircle, TrendingUp } from "lucide-react";
-import type { LandingPage, LandingPageConfiguration } from "@/services/admin/supabaseLandingPagesService";
+import type { LandingPage, LandingPageConfiguration } from "@/types/landingPage";
 
 interface AerocidadeHeroProps {
   landingPage: LandingPage;

@@ -3,7 +3,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { IndianRupee, Calendar, TrendingUp } from "lucide-react";
-import type { LandingPageConfiguration } from "@/services/admin/supabaseLandingPagesService";
+import type { LandingPageConfiguration } from "@/types/landingPage";
 
 interface PricePaymentTableProps {
   configurations: LandingPageConfiguration[];

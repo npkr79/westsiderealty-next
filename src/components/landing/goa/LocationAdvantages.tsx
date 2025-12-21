@@ -12,7 +12,7 @@ import {
   Train,
   MapPin
 } from "lucide-react";
-import type { LandingPage, LandingPageLocationPoint } from "@/services/admin/supabaseLandingPagesService";
+import type { LandingPage, LandingPageLocationPoint } from "@/types/landingPage";
 
 interface LocationAdvantagesProps {
   landingPage: LandingPage;

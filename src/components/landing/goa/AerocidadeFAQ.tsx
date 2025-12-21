@@ -6,7 +6,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import type { LandingPageFAQ } from "@/services/admin/supabaseLandingPagesService";
+import type { LandingPageFAQ } from "@/types/landingPage";
 
 interface AerocidadeFAQProps {
   faqs: LandingPageFAQ[];
