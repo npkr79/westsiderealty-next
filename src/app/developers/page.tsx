@@ -16,20 +16,25 @@ import { DevelopersHubClient } from "@/components/developers/DevelopersHubClient
 export async function generateMetadata(): Promise<Metadata> {
   const supabase = await createClient();
   
-  // Fetch developer count without filters first
+  // Fetch published developers to get accurate count
   const { data: allDevelopers } = await supabase
     .from("developers")
-    .select("id, developer_name")
-    .limit(50);
+    .select("id, developer_name, is_published")
+    .limit(100);
   
-  const developerCount = allDevelopers?.length || 0;
-  const topDeveloperNames = allDevelopers
-    ?.slice(0, 3)
+  // Filter for published developers (same logic as main component)
+  const publishedDevelopers = allDevelopers?.filter((dev: any) => {
+    return dev.is_published === true || dev.is_published === undefined || dev.is_published === null;
+  }) || [];
+  
+  const developerCount = publishedDevelopers.length;
+  const topDeveloperNames = publishedDevelopers
+    .slice(0, 3)
     .map((d: any) => d.developer_name)
     .join(", ") || "My Home, Rajapushpa, Prestige";
   
   return buildMetadata({
-    title: `Top ${developerCount > 0 ? developerCount + "+ " : ""}Real Estate Developers in Hyderabad 2026 | Westside Realty`,
+    title: `Top ${developerCount} Real Estate Developers in Hyderabad | Westside Realty`,
     description: `Browse our curated list of ${developerCount} trusted builders like ${topDeveloperNames}. Verified track records and active projects.`,
     canonicalUrl: "https://www.westsiderealty.in/developers",
   });
@@ -153,23 +158,60 @@ export default async function DevelopersHubPage() {
   console.log(`[DevelopersHub] Server fetched developers: ${developersWithProjects.length}`);
 
   // Calculate market stats from developersWithProjects
-  const totalProjects = developersWithProjects.reduce((sum, dev) => sum + (dev.total_projects || 0), 0);
+  const totalProjects = developersWithProjects.reduce((sum, dev) => {
+    const projects = dev.total_projects;
+    // Handle number format (most common)
+    if (typeof projects === 'number' && !isNaN(projects)) {
+      return sum + projects;
+    }
+    // Handle string format if present
+    if (projects != null) {
+      const projectsStr = String(projects);
+      const num = parseInt(projectsStr.replace(/,/g, ''), 10);
+      if (!isNaN(num)) {
+        return sum + num;
+      }
+    }
+    return sum;
+  }, 0);
+
   const totalSftDelivered = developersWithProjects.reduce((sum, dev) => {
     if (!dev.total_sft_delivered) return sum;
-    // Handle various formats: "1,234.56", "1234.56", "1.23M", etc.
-    const cleaned = dev.total_sft_delivered.replace(/,/g, "").replace(/[^\d.]/g, "");
-    const sft = parseFloat(cleaned) || 0;
-    return sum + sft;
+    const sftStr = dev.total_sft_delivered.toString();
+    
+    // Handle various formats: "37 Million SFT", "1,234.56", "1234.56", "1.23M", "10 million sq. ft.", etc.
+    // Extract numbers and multipliers
+    const lowerStr = sftStr.toLowerCase();
+    let multiplier = 1;
+    
+    if (lowerStr.includes('billion') || lowerStr.includes('b')) {
+      multiplier = 1000000000;
+    } else if (lowerStr.includes('million') || lowerStr.includes('m')) {
+      multiplier = 1000000;
+    } else if (lowerStr.includes('lakh') || lowerStr.includes('lac')) {
+      multiplier = 100000;
+    } else if (lowerStr.includes('thousand') || lowerStr.includes('k')) {
+      multiplier = 1000;
+    }
+    
+    // Extract numeric value
+    const cleaned = sftStr.replace(/,/g, '').replace(/[^\d.]/g, '');
+    const num = parseFloat(cleaned) || 0;
+    
+    return sum + (num * multiplier);
   }, 0);
   
   console.log(`[DevelopersHub] Stats: ${totalProjects} projects, ${totalSftDelivered} sqft`);
+  
   const totalSftFormatted = totalSftDelivered >= 1000000000
     ? `${(totalSftDelivered / 1000000000).toFixed(1)}B`
     : totalSftDelivered >= 1000000
     ? `${(totalSftDelivered / 1000000).toFixed(1)}M`
     : totalSftDelivered >= 1000
     ? `${(totalSftDelivered / 1000).toFixed(1)}K`
-    : totalSftDelivered.toString();
+    : totalSftDelivered > 0
+    ? totalSftDelivered.toLocaleString()
+    : "0";
 
   // Get unique specializations
   const specializations = [
@@ -180,41 +222,19 @@ export default async function DevelopersHubPage() {
     ),
   ].sort();
 
-  // ItemList Schema for SEO - only if we have developers
+  // ItemList Schema for SEO - simplified format to avoid validation errors
   const itemListSchema = developersWithProjects.length > 0 ? {
     "@context": "https://schema.org",
     "@type": "ItemList",
-    name: `Top ${developersWithProjects.length}+ Real Estate Developers in Hyderabad 2026`,
+    name: `Top ${developersWithProjects.length} Real Estate Developers in Hyderabad 2026`,
     description: `Browse our curated directory of ${developersWithProjects.length} trusted real estate builders in Hyderabad. Compare track records, RERA status, and active projects.`,
     url: "https://www.westsiderealty.in/developers",
     numberOfItems: developersWithProjects.length,
     itemListElement: developersWithProjects.map((developer, index) => ({
       "@type": "ListItem",
       position: index + 1,
-      item: {
-        "@type": "RealEstateAgent",
-        "@id": `https://www.westsiderealty.in/developers/${developer.url_slug}`,
-        name: developer.developer_name,
-        url: `https://www.westsiderealty.in/developers/${developer.url_slug}`,
-        ...(developer.logo_url && { logo: developer.logo_url }),
-        ...(developer.tagline && { description: developer.tagline }),
-        ...(developer.founding_date && {
-          foundingDate: developer.founding_date,
-        }),
-        ...(developer.years_in_business && {
-          // Calculate founding date from years_in_business if founding_date not available
-          ...(!developer.founding_date && {
-            foundingDate: new Date().getFullYear() - developer.years_in_business,
-          }),
-        }),
-        ...(developer.notable_projects.length > 0 && {
-          makesOffer: developer.notable_projects.slice(0, 3).map((project) => ({
-            "@type": "Offer",
-            name: project.project_name,
-            url: `https://www.westsiderealty.in/${project.city_slug}/projects/${project.url_slug}`,
-          })),
-        }),
-      },
+      url: `https://www.westsiderealty.in/developers/${developer.url_slug}`,
+      name: developer.developer_name,
     })),
   } : null;
 
