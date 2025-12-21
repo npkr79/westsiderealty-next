@@ -1,10 +1,12 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Flame } from "lucide-react";
-import { Suspense } from "react";
 
 interface LandingPage {
   id: string;
@@ -45,24 +47,49 @@ function FeaturedProjectsSkeleton() {
   );
 }
 
-async function FeaturedProjectsContent() {
-  const supabase = await createClient();
+export default function FeaturedProjects() {
+  const [projects, setProjects] = useState<LandingPage[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const { data: landingPages, error } = await supabase
-    .from("landing_pages")
-    .select("id, uri, title, headline, location_info, hero_image_url, template_type")
-    .eq("status", "published")
-    .order("created_at", { ascending: false })
-    .limit(6);
+  useEffect(() => {
+    const fetchProjects = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const supabase = createClient();
+        const { data: landingPages, error: fetchError } = await supabase
+          .from("landing_pages")
+          .select("id, uri, title, headline, location_info, hero_image_url, template_type")
+          .eq("status", "published")
+          .order("created_at", { ascending: false })
+          .limit(6);
 
-  if (error) {
-    console.error("Error fetching featured projects:", error);
+        if (fetchError) {
+          console.error("Error fetching featured projects:", fetchError);
+          setError(fetchError.message);
+          setProjects([]);
+        } else {
+          setProjects((landingPages || []) as LandingPage[]);
+        }
+      } catch (err) {
+        console.error("Error fetching featured projects:", err);
+        setError(err instanceof Error ? err.message : "Failed to load projects");
+        setProjects([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProjects();
+  }, []);
+
+  if (loading) {
+    return <FeaturedProjectsSkeleton />;
   }
 
-  const projects = (landingPages || []) as LandingPage[];
-
-  if (projects.length === 0) {
-    return null; // Don't render section if no projects
+  if (error || projects.length === 0) {
+    return null; // Don't render section if no projects or error
   }
 
   return (
@@ -127,14 +154,6 @@ async function FeaturedProjectsContent() {
         </div>
       </div>
     </section>
-  );
-}
-
-export default function FeaturedProjects() {
-  return (
-    <Suspense fallback={<FeaturedProjectsSkeleton />}>
-      <FeaturedProjectsContent />
-    </Suspense>
   );
 }
 
