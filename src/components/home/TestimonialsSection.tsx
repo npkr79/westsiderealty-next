@@ -21,6 +21,9 @@ interface TestimonialsSectionProps {
 export default function TestimonialsSection({ testimonials: propTestimonials }: TestimonialsSectionProps = {}) {
   const [internalTestimonials, setInternalTestimonials] = useState<Testimonial[]>([]);
 
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
   // If testimonials are provided as props (from server), use them immediately - no useEffect needed
   // This ensures testimonials are in the initial HTML for SEO
   // Only fetch client-side if no props provided (fallback for pages that don't pass props)
@@ -28,21 +31,64 @@ export default function TestimonialsSection({ testimonials: propTestimonials }: 
     // Only fetch if no server-provided testimonials
     if (!propTestimonials || propTestimonials.length === 0) {
       const load = async () => {
+        setLoading(true);
+        setError(null);
         try {
           const data = await supabaseTestimonialClientService.getTestimonials(true);
-          setInternalTestimonials(data as any);
+          if (data && Array.isArray(data) && data.length > 0) {
+            setInternalTestimonials(data as any);
+          } else {
+            setInternalTestimonials([]);
+            setError("No testimonials available");
+          }
         } catch (error) {
           console.error("Error loading testimonials:", error);
+          setError("Failed to load testimonials");
           setInternalTestimonials([]);
+        } finally {
+          setLoading(false);
         }
       };
       load();
+    } else {
+      setLoading(false);
     }
   }, [propTestimonials]);
 
   // Prioritize server-provided testimonials for SEO (rendered in initial HTML)
   // These are available immediately without waiting for useEffect
   const displayTestimonials = (propTestimonials && propTestimonials.length > 0) ? propTestimonials : internalTestimonials;
+
+  // Show loading state
+  if (loading && (!displayTestimonials || displayTestimonials.length === 0)) {
+    return (
+      <section className="py-20 px-4 relative overflow-hidden bg-gradient-to-br from-primary/5 via-background to-secondary/10">
+        <div className="container mx-auto max-w-7xl relative z-10">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4 text-foreground">
+              What Our Clients Say
+            </h2>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
+            {[...Array(3)].map((_, i) => (
+              <Card key={i} className="animate-pulse">
+                <CardContent className="p-6 lg:p-8">
+                  <div className="h-4 bg-gray-200 rounded mb-4"></div>
+                  <div className="h-4 bg-gray-200 rounded mb-4"></div>
+                  <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  // Show error state
+  if (error && (!displayTestimonials || displayTestimonials.length === 0)) {
+    return null; // Don't show error, just hide section
+  }
 
   if (!displayTestimonials || displayTestimonials.length === 0) return null;
 

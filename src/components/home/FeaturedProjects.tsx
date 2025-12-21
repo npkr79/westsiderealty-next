@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Flame } from "lucide-react";
+import { Suspense } from "react";
 
 interface LandingPage {
   id: string;
@@ -15,7 +16,36 @@ interface LandingPage {
   template_type: string | null;
 }
 
-export default async function FeaturedProjects() {
+// Loading skeleton component
+function FeaturedProjectsSkeleton() {
+  return (
+    <section className="py-16 px-4 bg-gradient-to-b from-background to-primary/5">
+      <div className="container mx-auto max-w-7xl">
+        <div className="text-center mb-12">
+          <div className="flex items-center justify-center gap-2 mb-4">
+            <div className="h-6 w-6 bg-gray-200 rounded animate-pulse"></div>
+            <div className="h-10 w-64 bg-gray-200 rounded animate-pulse"></div>
+          </div>
+          <div className="h-6 w-96 mx-auto bg-gray-200 rounded animate-pulse"></div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[...Array(6)].map((_, i) => (
+            <Card key={i} className="h-full overflow-hidden animate-pulse">
+              <div className="relative h-48 w-full bg-gray-200"></div>
+              <CardContent className="p-5">
+                <div className="h-6 bg-gray-200 rounded mb-2"></div>
+                <div className="h-4 bg-gray-200 rounded w-3/4 mb-4"></div>
+                <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+async function FeaturedProjectsContent() {
   const supabase = await createClient();
 
   const { data: landingPages, error } = await supabase
@@ -97,6 +127,14 @@ export default async function FeaturedProjects() {
         </div>
       </div>
     </section>
+  );
+}
+
+export default function FeaturedProjects() {
+  return (
+    <Suspense fallback={<FeaturedProjectsSkeleton />}>
+      <FeaturedProjectsContent />
+    </Suspense>
   );
 }
 

@@ -30,15 +30,20 @@ const Header = () => {
   useEffect(() => {
     const defaultLogo = "https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/brand-assets//REMAX%20WR%20Logo%20with%20no%20background.jpg";
     
-    try {
-      const imgs = siteImagesService.getSiteImages();
-      // Use the logo from service, or fallback to default
-      const logoUrl = imgs?.headerLogo || defaultLogo;
-      setHeaderLogo(logoUrl);
-    } catch (error) {
-      // If service fails, use default logo
-      setHeaderLogo(defaultLogo);
-    }
+    const loadLogo = async () => {
+      try {
+        // First try to get from siteImagesService
+        const imgs = siteImagesService.getSiteImages();
+        const logoUrl = imgs?.headerLogo || defaultLogo;
+        setHeaderLogo(logoUrl);
+      } catch (error) {
+        // If service fails, use default logo
+        console.error("Error loading logo from service:", error);
+        setHeaderLogo(defaultLogo);
+      }
+    };
+    
+    loadLogo();
   }, []);
 
   const isActive = (href: string) => {
