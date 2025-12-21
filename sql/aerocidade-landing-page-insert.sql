@@ -136,10 +136,26 @@ BEGIN
 END $$;
 
 -- Verification Queries (run after the DO block to verify data)
--- SELECT * FROM landing_pages WHERE uri = 'aerocidade-studio-apartments-dabolim';
--- SELECT * FROM landing_page_highlights WHERE landing_page_id IN (SELECT id FROM landing_pages WHERE uri = 'aerocidade-studio-apartments-dabolim');
--- SELECT * FROM landing_page_configurations WHERE landing_page_id IN (SELECT id FROM landing_pages WHERE uri = 'aerocidade-studio-apartments-dabolim');
--- SELECT * FROM landing_page_location_points WHERE landing_page_id IN (SELECT id FROM landing_pages WHERE uri = 'aerocidade-studio-apartments-dabolim');
--- SELECT * FROM landing_page_faqs WHERE landing_page_id IN (SELECT id FROM landing_pages WHERE uri = 'aerocidade-studio-apartments-dabolim');
--- SELECT * FROM landing_page_amenities WHERE landing_page_id IN (SELECT id FROM landing_pages WHERE uri = 'aerocidade-studio-apartments-dabolim');
+-- Quick check: Verify the page exists and is published
+SELECT 
+  id, 
+  uri, 
+  title, 
+  status, 
+  created_at 
+FROM landing_pages 
+WHERE uri = 'aerocidade-studio-apartments-dabolim';
+
+-- Full data verification
+SELECT 'landing_pages' as table_name, COUNT(*) as count FROM landing_pages WHERE uri = 'aerocidade-studio-apartments-dabolim'
+UNION ALL
+SELECT 'landing_page_highlights', COUNT(*) FROM landing_page_highlights WHERE landing_page_id IN (SELECT id FROM landing_pages WHERE uri = 'aerocidade-studio-apartments-dabolim')
+UNION ALL
+SELECT 'landing_page_configurations', COUNT(*) FROM landing_page_configurations WHERE landing_page_id IN (SELECT id FROM landing_pages WHERE uri = 'aerocidade-studio-apartments-dabolim')
+UNION ALL
+SELECT 'landing_page_location_points', COUNT(*) FROM landing_page_location_points WHERE landing_page_id IN (SELECT id FROM landing_pages WHERE uri = 'aerocidade-studio-apartments-dabolim')
+UNION ALL
+SELECT 'landing_page_faqs', COUNT(*) FROM landing_page_faqs WHERE landing_page_id IN (SELECT id FROM landing_pages WHERE uri = 'aerocidade-studio-apartments-dabolim')
+UNION ALL
+SELECT 'landing_page_amenities', COUNT(*) FROM landing_page_amenities WHERE landing_page_id IN (SELECT id FROM landing_pages WHERE uri = 'aerocidade-studio-apartments-dabolim');
 

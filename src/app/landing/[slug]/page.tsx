@@ -13,14 +13,21 @@ interface PageProps {
 
 // Fetch all landing page data server-side
 async function fetchLandingPageData(slug: string) {
-  const supabase = await createClient();
+  try {
+    const supabase = await createClient();
 
-  // Fetch main landing page
-  const pageData = await supabaseLandingPagesService.getLandingPageByUri(slug);
+    // Fetch main landing page
+    const pageData = await supabaseLandingPagesService.getLandingPageByUri(slug);
 
-  if (!pageData || pageData.status !== 'published') {
-    return null;
-  }
+    if (!pageData) {
+      console.warn(`[LandingPage] No landing page found with URI: ${slug}`);
+      return null;
+    }
+
+    if (pageData.status !== 'published') {
+      console.warn(`[LandingPage] Landing page found but status is '${pageData.status}', expected 'published'. URI: ${slug}`);
+      return null;
+    }
 
   // Fetch all related data in parallel
   const [
@@ -45,18 +52,22 @@ async function fetchLandingPageData(slug: string) {
     supabaseLandingPagesService.getFAQs(pageData.id)
   ]);
 
-  return {
-    page: pageData,
-    images,
-    highlights,
-    amenities,
-    contentBlocks,
-    floorPlans,
-    configurations,
-    specifications,
-    locationPoints,
-    faqs
-  };
+    return {
+      page: pageData,
+      images,
+      highlights,
+      amenities,
+      contentBlocks,
+      floorPlans,
+      configurations,
+      specifications,
+      locationPoints,
+      faqs
+    };
+  } catch (error) {
+    console.error(`[LandingPage] Error fetching landing page data for slug: ${slug}`, error);
+    return null;
+  }
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -98,14 +109,30 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
-export async function generateStaticParams() {
-  const supabase = await createClient();
-  const { data: pages } = await supabase
-    .from("landing_pages")
-    .select("uri")
-    .eq("status", "published");
+// Allow dynamic routes not in generateStaticParams
+export const dynamicParams = true;
 
-  return pages?.map((page) => ({ slug: page.uri })) || [];
+// Revalidate pages every 60 seconds (ISR)
+export const revalidate = 60;
+
+export async function generateStaticParams() {
+  try {
+    const supabase = await createClient();
+    const { data: pages, error } = await supabase
+      .from("landing_pages")
+      .select("uri")
+      .eq("status", "published");
+
+    if (error) {
+      console.error("Error fetching landing pages for static params:", error);
+      return [];
+    }
+
+    return pages?.map((page) => ({ slug: page.uri })) || [];
+  } catch (error) {
+    console.error("Error in generateStaticParams:", error);
+    return [];
+  }
 }
 
 // Generate Organization/RealEstateAgent Schema
