@@ -15,6 +15,7 @@ interface DeveloperWithProjects {
   developer_name: string;
   url_slug: string;
   logo_url: string | null;
+  banner_image_url?: string | null;
   tagline: string | null;
   specialization: string | null;
   years_in_business: number | null;
@@ -25,6 +26,7 @@ interface DeveloperWithProjects {
     project_name: string;
     url_slug: string;
     city_slug: string;
+    hero_image_url?: string | null;
   }>;
 }
 
@@ -39,6 +41,9 @@ export function DevelopersHubClient({
 }: DevelopersHubClientProps) {
   const [search, setSearch] = useState("");
   const [specialization, setSpecialization] = useState<string>("all");
+
+  // Debug: Log initial data
+  console.log(`[DevelopersHubClient] Received ${initialDevelopers.length} developers`);
 
   // Filter developers
   const filteredDevelopers = useMemo(() => {
@@ -59,15 +64,23 @@ export function DevelopersHubClient({
     if (specialization !== "all") {
       filtered = filtered.filter((dev) => {
         const devSpecialization = dev.specialization?.toLowerCase() || "";
+        const filterSpecialization = specialization.toLowerCase();
+        
+        // If developer has no specialization, only show in "All" tab
+        if (!devSpecialization) {
+          return false;
+        }
+        
         // Match exact or contains the specialization keyword
         return (
-          devSpecialization === specialization.toLowerCase() ||
-          devSpecialization.includes(specialization.toLowerCase()) ||
-          specialization.toLowerCase().includes(devSpecialization)
+          devSpecialization === filterSpecialization ||
+          devSpecialization.includes(filterSpecialization) ||
+          filterSpecialization.includes(devSpecialization)
         );
       });
     }
 
+    console.log(`[DevelopersHubClient] Filtered to ${filtered.length} developers (specialization: ${specialization}, search: "${search}")`);
     return filtered;
   }, [initialDevelopers, search, specialization]);
 
@@ -118,101 +131,127 @@ export function DevelopersHubClient({
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredDevelopers.map((developer) => (
-            <Card
-              key={developer.id}
-              className="group overflow-hidden hover:shadow-xl transition-all duration-300 border-l-4 border-l-primary/50"
-            >
-              {/* Header with Logo and Verified Badge */}
-              <CardContent className="p-6 space-y-4">
-                <div className="flex items-start gap-4">
-                  {developer.logo_url ? (
-                    <div className="relative h-20 w-20 flex-shrink-0">
-                      <Image
-                        src={developer.logo_url}
-                        alt={`${developer.developer_name} logo`}
-                        fill
-                        className="object-contain rounded-lg bg-white p-2 border"
-                      />
-                    </div>
-                  ) : (
-                    <div className="h-20 w-20 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <Building2 className="h-10 w-10 text-primary" />
-                    </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-2">
-                      <h3 className="font-bold text-lg text-foreground group-hover:text-primary transition-colors">
-                        {developer.developer_name}
-                      </h3>
-                      <Badge
-                        variant="secondary"
-                        className="flex items-center gap-1 bg-green-50 text-green-700 border-green-200"
-                      >
-                        <CheckCircle2 className="h-3 w-3" />
-                        Verified
-                      </Badge>
-                    </div>
-                    {developer.tagline && (
-                      <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                        {developer.tagline}
-                      </p>
+          {filteredDevelopers.map((developer) => {
+            // Get banner image: use developer banner_image_url or first project's hero_image_url
+            const bannerImage =
+              developer.banner_image_url ||
+              developer.notable_projects.find((p) => p.hero_image_url)?.hero_image_url ||
+              null;
+
+            return (
+              <Card
+                key={developer.id}
+                className="group overflow-hidden hover:shadow-xl transition-all duration-300"
+              >
+                {/* Banner Image Header */}
+                {bannerImage && (
+                  <div className="relative h-40 w-full overflow-hidden">
+                    <Image
+                      src={bannerImage}
+                      alt={`${developer.developer_name} banner`}
+                      fill
+                      className="object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
+                    {/* Logo overlapping banner and body */}
+                    {developer.logo_url && (
+                      <div className="absolute -bottom-10 left-6 z-10">
+                        <div className="relative h-20 w-20 rounded-full bg-white p-2 shadow-lg border-4 border-white">
+                          <Image
+                            src={developer.logo_url}
+                            alt={`${developer.developer_name} logo`}
+                            fill
+                            className="object-contain rounded-full"
+                          />
+                        </div>
+                      </div>
                     )}
-                  </div>
-                </div>
-
-                {/* Key Stats Grid */}
-                <div className="grid grid-cols-3 gap-3 pt-4 border-t">
-                  <div className="text-center p-3 bg-slate-50 rounded-lg">
-                    <p className="text-lg font-bold text-primary">
-                      {developer.years_in_business || "-"}
-                    </p>
-                    <p className="text-xs text-muted-foreground">Years</p>
-                  </div>
-                  <div className="text-center p-3 bg-slate-50 rounded-lg">
-                    <p className="text-lg font-bold text-primary">
-                      {developer.total_projects || "-"}
-                    </p>
-                    <p className="text-xs text-muted-foreground">Projects</p>
-                  </div>
-                  <div className="text-center p-3 bg-slate-50 rounded-lg">
-                    <p className="text-lg font-bold text-primary">
-                      {formatSft(developer.total_sft_delivered)}
-                    </p>
-                    <p className="text-xs text-muted-foreground">Sq.Ft</p>
-                  </div>
-                </div>
-
-                {/* Notable Projects */}
-                {developer.notable_projects.length > 0 && (
-                  <div className="pt-4 border-t">
-                    <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">
-                      Notable Projects
-                    </p>
-                    <ul className="space-y-1">
-                      {developer.notable_projects.slice(0, 3).map((project, idx) => (
-                        <li key={idx} className="text-sm text-foreground">
-                          • {project.project_name}
-                        </li>
-                      ))}
-                    </ul>
                   </div>
                 )}
 
-                {/* CTA Button */}
-                <Button
-                  asChild
-                  className="w-full mt-4 bg-slate-900 hover:bg-slate-800 text-white"
-                  size="lg"
-                >
-                  <Link href={`/developers/${developer.url_slug}`}>
-                    View Developer Profile
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Link>
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
+                <CardContent className={`p-6 space-y-4 ${bannerImage ? "pt-16" : ""}`}>
+                  {/* Header with Name and Verified Badge */}
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="font-bold text-xl text-foreground group-hover:text-primary transition-colors">
+                      {developer.developer_name}
+                    </h3>
+                    <Badge
+                      variant="secondary"
+                      className="flex items-center gap-1 bg-green-50 text-green-700 border-green-200 flex-shrink-0"
+                    >
+                      <CheckCircle2 className="h-3 w-3" />
+                      Verified
+                    </Badge>
+                  </div>
+
+                  {/* Tagline */}
+                  {developer.tagline && (
+                    <p className="text-sm text-muted-foreground line-clamp-2">
+                      {developer.tagline}
+                    </p>
+                  )}
+
+                  {/* Notable Projects */}
+                  {developer.notable_projects.length > 0 && (
+                    <div>
+                      <p className="text-xs font-semibold text-muted-foreground mb-1 uppercase tracking-wide">
+                        Known for:
+                      </p>
+                      <p className="text-sm text-foreground">
+                        {developer.notable_projects
+                          .slice(0, 2)
+                          .map((p) => p.project_name)
+                          .join(", ")}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Specialization Badge */}
+                  {developer.specialization && (
+                    <div>
+                      <Badge variant="outline" className="text-xs">
+                        {developer.specialization}
+                      </Badge>
+                    </div>
+                  )}
+
+                  {/* Key Stats Grid */}
+                  <div className="grid grid-cols-3 gap-3 pt-4 border-t">
+                    <div className="text-center p-3 bg-slate-50 rounded-lg">
+                      <p className="text-lg font-bold text-primary">
+                        {developer.years_in_business || "-"}
+                      </p>
+                      <p className="text-xs text-muted-foreground">Years</p>
+                    </div>
+                    <div className="text-center p-3 bg-slate-50 rounded-lg">
+                      <p className="text-lg font-bold text-primary">
+                        {developer.total_projects || "-"}
+                      </p>
+                      <p className="text-xs text-muted-foreground">Projects</p>
+                    </div>
+                    <div className="text-center p-3 bg-slate-50 rounded-lg">
+                      <p className="text-lg font-bold text-primary">
+                        {formatSft(developer.total_sft_delivered)}
+                      </p>
+                      <p className="text-xs text-muted-foreground">Sq.Ft</p>
+                    </div>
+                  </div>
+
+                  {/* CTA Button */}
+                  <Button
+                    asChild
+                    className="w-full mt-4 bg-slate-900 hover:bg-slate-800 text-white"
+                    size="lg"
+                  >
+                    <Link href={`/developers/${developer.url_slug}`}>
+                      View Profile
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Link>
+                  </Button>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
     </section>

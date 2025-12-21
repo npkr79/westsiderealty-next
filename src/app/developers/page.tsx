@@ -14,9 +14,17 @@ import { Building2, Search, CheckCircle2, Award, TrendingUp, ArrowRight } from "
 import { DevelopersHubClient } from "@/components/developers/DevelopersHubClient";
 
 export async function generateMetadata(): Promise<Metadata> {
+  const supabase = await createClient();
+  const { data: developersData } = await supabase
+    .from("developers")
+    .select("id")
+    .eq("is_published", true);
+  
+  const developerCount = developersData?.length || 0;
+  
   return buildMetadata({
     title: "Top Real Estate Developers in Hyderabad 2026 | Reviews & Projects",
-    description: "Compare Hyderabad's best real estate builders like My Home, Rajapushpa, Prestige, and Aparna. View track records, RERA status, and latest launches.",
+    description: `Browse ${developerCount}+ top real estate developers in Hyderabad. Compare builders like My Home, Rajapushpa, Prestige, and Aparna. View track records, RERA status, and latest launches.`,
     canonicalUrl: "https://www.westsiderealty.in/developers",
   });
 }
@@ -26,6 +34,7 @@ interface DeveloperWithProjects {
   developer_name: string;
   url_slug: string;
   logo_url: string | null;
+  banner_image_url?: string | null;
   tagline: string | null;
   specialization: string | null;
   years_in_business: number | null;
@@ -37,6 +46,7 @@ interface DeveloperWithProjects {
     project_name: string;
     url_slug: string;
     city_slug: string;
+    hero_image_url?: string | null;
   }>;
 }
 
@@ -51,6 +61,7 @@ export default async function DevelopersHubPage() {
       developer_name,
       url_slug,
       logo_url,
+      banner_image_url,
       tagline,
       specialization,
       years_in_business,
@@ -62,11 +73,39 @@ export default async function DevelopersHubPage() {
     .eq("is_published", true)
     .order("display_order", { ascending: true });
 
+  // Debug logging
+  console.log(`[DevelopersHub] Fetched ${developersData?.length || 0} developers`);
   if (devError) {
-    console.error("Error fetching developers:", devError);
+    console.error("[DevelopersHub] Error fetching developers:", devError);
   }
 
-  const developers = (developersData || []) as Array<Omit<DeveloperWithProjects, "notable_projects">>;
+  // Fallback: if no results with is_published, try without filter
+  let developers: Array<Omit<DeveloperWithProjects, "notable_projects"> & { banner_image_url?: string | null }>;
+  if (!developersData || developersData.length === 0) {
+    console.log("[DevelopersHub] No results with is_published=true, trying fallback...");
+    const { data: fallbackData } = await supabase
+      .from("developers")
+      .select(`
+        id,
+        developer_name,
+        url_slug,
+        logo_url,
+        banner_image_url,
+        tagline,
+        specialization,
+        years_in_business,
+        total_projects,
+        total_sft_delivered,
+        primary_city_focus,
+        founding_date
+      `)
+      .order("display_order", { ascending: true })
+      .limit(50);
+    console.log(`[DevelopersHub] Fallback: Fetched ${fallbackData?.length || 0} developers`);
+    developers = (fallbackData || []) as Array<Omit<DeveloperWithProjects, "notable_projects"> & { banner_image_url?: string | null }>;
+  } else {
+    developers = (developersData || []) as Array<Omit<DeveloperWithProjects, "notable_projects"> & { banner_image_url?: string | null }>;
+  }
 
   // Fetch top 2-3 projects for each developer
   const developersWithProjects: DeveloperWithProjects[] = await Promise.all(
@@ -76,6 +115,7 @@ export default async function DevelopersHubPage() {
         .select(`
           project_name,
           url_slug,
+          hero_image_url,
           city:cities!projects_city_id_fkey(url_slug)
         `)
         .eq("developer_id", developer.id)
@@ -87,6 +127,7 @@ export default async function DevelopersHubPage() {
         project_name: p.project_name,
         url_slug: p.url_slug,
         city_slug: (p.city as any)?.url_slug || "hyderabad",
+        hero_image_url: p.hero_image_url || null,
       }));
 
       return {
@@ -96,12 +137,19 @@ export default async function DevelopersHubPage() {
     })
   );
 
-  // Calculate market stats
-  const totalProjects = developers.reduce((sum, dev) => sum + (dev.total_projects || 0), 0);
-  const totalSftDelivered = developers.reduce((sum, dev) => {
-    const sft = dev.total_sft_delivered ? parseFloat(dev.total_sft_delivered.replace(/,/g, "")) : 0;
+  console.log(`[DevelopersHub] Processed ${developersWithProjects.length} developers with projects`);
+
+  // Calculate market stats from developersWithProjects
+  const totalProjects = developersWithProjects.reduce((sum, dev) => sum + (dev.total_projects || 0), 0);
+  const totalSftDelivered = developersWithProjects.reduce((sum, dev) => {
+    if (!dev.total_sft_delivered) return sum;
+    // Handle various formats: "1,234.56", "1234.56", "1.23M", etc.
+    const cleaned = dev.total_sft_delivered.replace(/,/g, "").replace(/[^\d.]/g, "");
+    const sft = parseFloat(cleaned) || 0;
     return sum + sft;
   }, 0);
+  
+  console.log(`[DevelopersHub] Stats: ${totalProjects} projects, ${totalSftDelivered} sqft`);
   const totalSftFormatted = totalSftDelivered >= 1000000000
     ? `${(totalSftDelivered / 1000000000).toFixed(1)}B`
     : totalSftDelivered >= 1000000
