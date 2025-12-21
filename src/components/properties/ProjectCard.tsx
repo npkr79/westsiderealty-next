@@ -29,7 +29,10 @@ export default function ProjectCard({ project, citySlug }: ProjectCardProps) {
     );
   }
   
-  const href = `/${citySlug}/projects/${project.url_slug}`;
+  // For Goa properties, use /goa/buy/ URL format
+  const href = (project as any)._isGoaProperty 
+    ? `/goa/buy/${project.url_slug}`
+    : `/${citySlug}/projects/${project.url_slug}`;
   const image = getProjectPrimaryImage(project);
   const isFeatured = project.is_featured || project.show_on_city_page;
   const developerName = project.developer?.developer_name;

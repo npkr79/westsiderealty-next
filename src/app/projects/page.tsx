@@ -67,85 +67,140 @@ export default async function ProjectsHubPage({ searchParams }: PageProps) {
     city_slug: mm.city?.url_slug || "",
   }));
 
-  // Get city ID if city filter is applied (and it's not "all" or empty)
-  let cityId: string | null = null;
+  // Check if filtering by Goa
   const cityFilter = resolvedSearchParams.city;
-  if (cityFilter && cityFilter !== "all" && cityFilter.trim() !== "") {
-    const { data: cityData, error: cityLookupError } = await supabase
-      .from("cities")
-      .select("id, city_name")
-      .eq("url_slug", cityFilter)
-      .single();
+  const isGoaFilter = cityFilter === "goa";
 
-    if (!cityLookupError && cityData) cityId = cityData.id;
+  let projectsList: Project[] = [];
+  let error: any = null;
+
+  if (isGoaFilter) {
+    // Fetch from goa_holiday_properties table
+    let goaQuery = supabase
+      .from("goa_holiday_properties")
+      .select("id, title, description, price, price_display, hero_image_url, location_area, district, type, bedrooms, bathrooms, area_sqft, seo_slug, status, created_at")
+      .eq("status", "Active");
+
+    // Apply search filter
+    if (resolvedSearchParams.search && resolvedSearchParams.search.trim() !== "") {
+      goaQuery = goaQuery.or(`title.ilike.%${resolvedSearchParams.search}%,description.ilike.%${resolvedSearchParams.search}%,location_area.ilike.%${resolvedSearchParams.search}%`);
+    }
+
+    // Apply status filter (for Goa, we can filter by type or other fields)
+    const statusFilter = resolvedSearchParams.status;
+    if (statusFilter && statusFilter !== "all" && statusFilter.trim() !== "" && statusFilter !== "published") {
+      // Map status filters to Goa property types if needed
+      if (statusFilter === "ready") {
+        // For Goa, "ready" might mean properties that are ready to move in
+        // This would need to be based on your actual data structure
+      }
+    }
+
+    goaQuery = goaQuery.order("created_at", { ascending: false });
+
+    const { data: goaProperties, error: goaError } = await goaQuery;
+
+    if (goaError) {
+      console.error("Goa properties error:", goaError);
+      error = goaError;
+    }
+
+    // Transform to match project card format
+    projectsList = (goaProperties || []).map((prop: any) => ({
+      id: prop.id,
+      project_name: prop.title,
+      url_slug: prop.seo_slug || prop.id,
+      hero_image_url: prop.hero_image_url,
+      price_range_text: prop.price_display || (prop.price ? `₹${(prop.price / 10000000).toFixed(2)} Cr` : null),
+      status: prop.status,
+      city: { city_name: "Goa", url_slug: "goa" },
+      micro_market: prop.location_area ? { micro_market_name: prop.location_area, url_slug: prop.location_area.toLowerCase().replace(/\s+/g, "-") } : null,
+      developer: null,
+      // Add special flag for Goa properties to use different URL
+      _isGoaProperty: true,
+    }));
+  } else {
+    // Existing projects table query for Hyderabad/other cities
+    // Get city ID if city filter is applied (and it's not "all" or empty)
+    let cityId: string | null = null;
+    if (cityFilter && cityFilter !== "all" && cityFilter.trim() !== "") {
+      const { data: cityData, error: cityLookupError } = await supabase
+        .from("cities")
+        .select("id, city_name")
+        .eq("url_slug", cityFilter)
+        .single();
+
+      if (!cityLookupError && cityData) cityId = cityData.id;
+    }
+
+    // Build query (ONLY use page_status for publish)
+    let query = supabase
+      .from("projects")
+      .select(`
+        id,
+        project_name,
+        url_slug,
+        hero_image_url,
+        price_range_text,
+        status,
+        completion_status,
+        page_status,
+        city:cities!projects_city_id_fkey(city_name, url_slug),
+        micro_market:micro_markets!projects_micromarket_id_fkey(micro_market_name, url_slug),
+        developer:developers!projects_developer_id_fkey(developer_name, url_slug)
+      `)
+      .eq("page_status", "published");
+
+    // Apply city filter
+    if (cityId) query = query.eq("city_id", cityId);
+
+    // Apply micro-market filter (by slug -> id)
+    const microMarketSlug = resolvedSearchParams.microMarket;
+    if (microMarketSlug && microMarketSlug !== "all" && microMarketSlug.trim() !== "") {
+      const { data: mm } = await supabase
+        .from("micro_markets")
+        .select("id")
+        .eq("url_slug", microMarketSlug)
+        .maybeSingle();
+
+      if (mm?.id) query = query.eq("micro_market_id", mm.id);
+    }
+
+    // Apply status filter (use completion_status; ignore "published" because we already filter page_status)
+    const statusFilter = resolvedSearchParams.status;
+    if (statusFilter && statusFilter !== "all" && statusFilter.trim() !== "" && statusFilter !== "published") {
+      const map: Record<string, string> = {
+        "under-construction": "Under Construction",
+        "ready-to-move": "Ready",
+        "new-launch": "New Launch",
+      };
+      const needle = map[statusFilter] ?? statusFilter.replace(/-/g, " ");
+      query = query.ilike("completion_status", `%${needle}%`);
+    }
+
+    // Apply search filter
+    if (resolvedSearchParams.search && resolvedSearchParams.search.trim() !== "") {
+      query = query.ilike("project_name", `%${resolvedSearchParams.search}%`);
+    }
+
+    query = query.order("created_at", { ascending: false });
+
+    const { data: projects, error: projectsError } = await query;
+    error = projectsError;
+
+    // Normalize relations + map status shown on cards
+    projectsList = (projects || []).map((p: any) => ({
+      id: p.id,
+      project_name: p.project_name,
+      url_slug: p.url_slug,
+      hero_image_url: p.hero_image_url,
+      price_range_text: p.price_range_text,
+      status: p.completion_status ?? p.status ?? null,
+      city: Array.isArray(p.city) ? (p.city[0] || null) : (p.city || null),
+      micro_market: Array.isArray(p.micro_market) ? (p.micro_market[0] || null) : (p.micro_market || null),
+      developer: Array.isArray(p.developer) ? (p.developer[0] || null) : (p.developer || null),
+    }));
   }
-
-  // Build query (ONLY use page_status for publish)
-  let query = supabase
-    .from("projects")
-    .select(`
-      id,
-      project_name,
-      url_slug,
-      hero_image_url,
-      price_range_text,
-      status,
-      completion_status,
-      page_status,
-      city:cities!projects_city_id_fkey(city_name, url_slug),
-      micro_market:micro_markets!projects_micromarket_id_fkey(micro_market_name, url_slug),
-      developer:developers!projects_developer_id_fkey(developer_name, url_slug)
-    `)
-    .eq("page_status", "published");
-
-  // Apply city filter
-  if (cityId) query = query.eq("city_id", cityId);
-
-  // Apply micro-market filter (by slug -> id)
-  const microMarketSlug = resolvedSearchParams.microMarket;
-  if (microMarketSlug && microMarketSlug !== "all" && microMarketSlug.trim() !== "") {
-    const { data: mm } = await supabase
-      .from("micro_markets")
-      .select("id")
-      .eq("url_slug", microMarketSlug)
-      .maybeSingle();
-
-    if (mm?.id) query = query.eq("micro_market_id", mm.id);
-  }
-
-  // Apply status filter (use completion_status; ignore "published" because we already filter page_status)
-  const statusFilter = resolvedSearchParams.status;
-  if (statusFilter && statusFilter !== "all" && statusFilter.trim() !== "" && statusFilter !== "published") {
-    const map: Record<string, string> = {
-      "under-construction": "Under Construction",
-      "ready-to-move": "Ready",
-      "new-launch": "New Launch",
-    };
-    const needle = map[statusFilter] ?? statusFilter.replace(/-/g, " ");
-    query = query.ilike("completion_status", `%${needle}%`);
-  }
-
-  // Apply search filter
-  if (resolvedSearchParams.search && resolvedSearchParams.search.trim() !== "") {
-    query = query.ilike("project_name", `%${resolvedSearchParams.search}%`);
-  }
-
-  query = query.order("created_at", { ascending: false });
-
-  const { data: projects, error } = await query;
-
-  // Normalize relations + map status shown on cards
-  const projectsList: Project[] = (projects || []).map((p: any) => ({
-    id: p.id,
-    project_name: p.project_name,
-    url_slug: p.url_slug,
-    hero_image_url: p.hero_image_url,
-    price_range_text: p.price_range_text,
-    status: p.completion_status ?? p.status ?? null,
-    city: Array.isArray(p.city) ? (p.city[0] || null) : (p.city || null),
-    micro_market: Array.isArray(p.micro_market) ? (p.micro_market[0] || null) : (p.micro_market || null),
-    developer: Array.isArray(p.developer) ? (p.developer[0] || null) : (p.developer || null),
-  }));
 
   // JSON-LD structured data
   const jsonLd = {
