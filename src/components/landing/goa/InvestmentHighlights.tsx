@@ -9,7 +9,7 @@ import {
   Sparkles, 
   Home,
   Plane,
-  PalmTree,
+  Palmtree as PalmTree,
   Sofa,
   Shield
 } from "lucide-react";
