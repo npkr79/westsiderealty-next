@@ -4,7 +4,7 @@ import { projectService, ProjectWithRelations } from "@/services/projectService"
 import { findBrochureByProjectName } from "@/services/brochureService";
 import { createClient } from "@/lib/supabase/server";
 import { buildMetadata } from "@/components/common/SEO";
-import { JsonLd } from "@/components/seo/JsonLd";
+import { JsonLd } from "@/components/common/SEO";
 import { Breadcrumbs } from "@/components/seo/Breadcrumbs";
 import CityHubBacklink from "@/components/seo/CityHubBacklink";
 import ProjectSEO from "@/components/project-details/ProjectSEO";
@@ -170,6 +170,16 @@ export default async function ProjectDetailPage({ params }: PageProps) {
       addressRegion: project.micro_market?.micro_market_name || "",
       addressCountry: "IN",
     },
+    provider: {
+      "@type": "RealEstateAgent",
+      name: "RE/MAX Westside Realty",
+      image: "https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/brand-assets/remax-logo.jpg",
+      address: {
+        "@type": "PostalAddress",
+        addressLocality: "Hyderabad",
+        addressCountry: "IN",
+      },
+    },
     ...(project.price_range_text && {
       offers: {
         "@type": "AggregateOffer",
@@ -178,6 +188,47 @@ export default async function ProjectDetailPage({ params }: PageProps) {
       },
     }),
   };
+
+  // FAQPage Schema for SEO
+  const faqSchema = (() => {
+    const faqs = (project as any).faqs_json;
+    if (!faqs || !Array.isArray(faqs) || faqs.length === 0) {
+      return null;
+    }
+
+    // Normalize FAQ items to handle different formats
+    const normalizedFaqs = faqs
+      .map((faq: any) => {
+        const question = faq.question || faq.q || faq.title || '';
+        const answer = faq.answer || faq.a || faq.description || faq.content || '';
+        
+        // Only include if both question and answer exist
+        if (question && answer) {
+          return {
+            "@type": "Question",
+            name: question,
+            acceptedAnswer: {
+              "@type": "Answer",
+              text: typeof answer === 'string' 
+                ? answer.replace(/<[^>]*>/g, '') // Strip HTML tags for schema
+                : String(answer),
+            },
+          };
+        }
+        return null;
+      })
+      .filter(Boolean); // Remove null entries
+
+    if (normalizedFaqs.length === 0) {
+      return null;
+    }
+
+    return {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      mainEntity: normalizedFaqs,
+    };
+  })();
 
   // Debug: Log image data in development
   if (process.env.NODE_ENV === 'development') {
@@ -193,7 +244,8 @@ export default async function ProjectDetailPage({ params }: PageProps) {
   return (
     <>
       <DebugClient citySlug={citySlug} projectSlug={projectSlug} />
-      <JsonLd data={realEstateSchema} />
+      <JsonLd jsonLd={realEstateSchema} />
+      {faqSchema && <JsonLd jsonLd={faqSchema} />}
       <ProjectSEO project={project} citySlug={citySlug} projectSlug={projectSlug} />
       <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-4">

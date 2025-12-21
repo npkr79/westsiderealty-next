@@ -17,6 +17,8 @@ interface MasterPlanData {
 interface MasterPlanSectionProps {
   data: MasterPlanData | string;
   microMarketName?: string;
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 // Icon mapping for different zone types
@@ -34,7 +36,7 @@ const getZoneIcon = (zone: string): typeof Building2 => {
   return Building2;
 };
 
-export default function MasterPlanSection({ data, microMarketName = "Neopolis" }: MasterPlanSectionProps) {
+export default function MasterPlanSection({ data, microMarketName = "Neopolis", latitude, longitude }: MasterPlanSectionProps) {
   // Parse data if it's a string
   let masterPlanData: MasterPlanData = {};
   
@@ -70,6 +72,14 @@ export default function MasterPlanSection({ data, microMarketName = "Neopolis" }
     })),
     ...(fsi_policy && { "additionalProperty": { "@type": "PropertyValue", "name": "FSI Policy", "value": fsi_policy } }),
     ...(total_area && { "areaServed": { "@type": "City", "name": microMarketName, "area": total_area } }),
+    // Add geo coordinates if available
+    ...(latitude && longitude && !isNaN(latitude) && !isNaN(longitude) && {
+      "geo": {
+        "@type": "GeoCoordinates",
+        "latitude": latitude,
+        "longitude": longitude,
+      },
+    }),
   };
 
   return (

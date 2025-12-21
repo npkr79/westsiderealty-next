@@ -20,7 +20,7 @@ import MarketTrendsSection from "@/components/city/MarketTrendsSection";
 import WhyInvestSection from "@/components/city/WhyInvestSection";
 import HyderabadInvestmentGuide from "@/components/city/HyderabadInvestmentGuide";
 import MicroMarketGrid from "@/components/city/MicroMarketGrid";
-import HyderabadFAQSchema from "@/components/seo/HyderabadFAQSchema";
+import CityFAQSchema from "@/components/seo/CityFAQSchema";
 import CityFAQSection from "@/components/city/CityFAQSection";
 import MarketPulseBanner from "@/components/city/MarketPulseBanner";
 import MarketUpdateBanner from "@/components/city/MarketUpdateBanner";
@@ -179,8 +179,8 @@ export default async function CityPage({ params }: PageProps) {
 
   return (
     <>
-      {/* FAQ Schema for Hyderabad SEO */}
-      {slug === "hyderabad" && <HyderabadFAQSchema faqData={faqs} />}
+      {/* FAQ Schema for all cities */}
+      {Array.isArray(faqs) && faqs.length > 0 && <CityFAQSchema faqData={faqs} />}
 
       <JsonLd jsonLd={[cityJsonLd, breadcrumbJsonLd]} />
 

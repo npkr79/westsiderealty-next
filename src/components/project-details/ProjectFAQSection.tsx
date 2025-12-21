@@ -24,9 +24,9 @@ export default function ProjectFAQSection({ faqs, projectName }: ProjectFAQSecti
     <section className="mb-12">
       <Card>
         <CardHeader>
-          <CardTitle>
+          <h2 className="text-2xl font-bold text-foreground">
             {projectName ? `Frequently Asked Questions about ${projectName}` : 'Frequently Asked Questions'}
-          </CardTitle>
+          </h2>
         </CardHeader>
         <CardContent>
           <Accordion type="single" collapsible className="w-full">

@@ -113,12 +113,31 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     ? `https://www.westsiderealty.in/${citySlug}/neopolis`
     : getCanonicalUrl(pageData, citySlug, microMarketSlug);
 
+  // Priority order for OG image:
+  // 1. Micro-market hero image
+  // 2. Connectivity map image
+  // 3. City hero image (high-quality banner)
+  // 4. Fallback to default (only if none available)
+  let ogImageUrl: string | undefined;
+  if (pageData.hero_image_url) {
+    ogImageUrl = pageData.hero_image_url;
+  } else if (pageData.connectivity_map_url) {
+    ogImageUrl = pageData.connectivity_map_url;
+  } else {
+    // Fetch city hero image as fallback
+    const { cityService } = await import("@/services/cityService");
+    const city = await cityService.getCityBySlug(citySlug);
+    if (city?.hero_image_url) {
+      ogImageUrl = city.hero_image_url;
+    }
+  }
+
   return buildMetadata({
     title: seoTitle,
     description: seoDescription,
     canonicalUrl,
     keywords: pageData.seo_keywords?.join(", "),
-    imageUrl: pageData.hero_image_url || undefined,
+    imageUrl: ogImageUrl, // Use prioritized image URL
   });
 }
 
@@ -219,6 +238,16 @@ export default async function MicroMarketPage({ params }: PageProps) {
       addressRegion: citySlug.charAt(0).toUpperCase() + citySlug.slice(1),
       addressCountry: "IN",
       ...(pageData.locality_pincode && { postalCode: pageData.locality_pincode }),
+    },
+    provider: {
+      "@type": "RealEstateAgent",
+      name: "RE/MAX Westside Realty",
+      image: "https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/brand-assets/remax-logo.jpg",
+      address: {
+        "@type": "PostalAddress",
+        addressLocality: "Hyderabad",
+        addressCountry: "IN",
+      },
     },
     ...(pageData.price_per_sqft_min &&
       pageData.price_per_sqft_max && {
@@ -415,6 +444,8 @@ export default async function MicroMarketPage({ params }: PageProps) {
             <MasterPlanSection 
               data={pageData.master_plan_json} 
               microMarketName={pageData.micro_market_name}
+              latitude={(pageData as any).latitude}
+              longitude={(pageData as any).longitude}
             />
           )}
 

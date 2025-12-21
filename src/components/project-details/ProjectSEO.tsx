@@ -38,6 +38,15 @@ export default function ProjectSEO({
       addressRegion: project.city?.city_name,
       addressCountry: "IN",
     },
+    // Add geo coordinates if available
+    ...(project.latitude && project.longitude && 
+        !isNaN(project.latitude) && !isNaN(project.longitude) && {
+      geo: {
+        "@type": "GeoCoordinates",
+        latitude: project.latitude,
+        longitude: project.longitude,
+      },
+    }),
   };
 
   return <JsonLd jsonLd={schema} />;
