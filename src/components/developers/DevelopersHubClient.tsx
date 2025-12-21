@@ -39,15 +39,23 @@ export function DevelopersHubClient({
   initialDevelopers,
   specializations,
 }: DevelopersHubClientProps) {
+  // Initialize state directly with initialDevelopers prop
   const [search, setSearch] = useState("");
   const [specialization, setSpecialization] = useState<string>("all");
 
   // Debug: Log initial data
-  console.log(`[DevelopersHubClient] Received ${initialDevelopers.length} developers`);
+  console.log(`[DevelopersHubClient] Received ${initialDevelopers?.length || 0} developers`);
+  console.log(`[DevelopersHubClient] Initial developers:`, initialDevelopers?.slice(0, 3).map(d => d.developer_name));
 
-  // Filter developers
+  // Filter developers - use initialDevelopers directly, no useEffect needed
   const filteredDevelopers = useMemo(() => {
-    let filtered = initialDevelopers;
+    // Ensure we have data
+    if (!initialDevelopers || initialDevelopers.length === 0) {
+      console.warn("[DevelopersHubClient] No initial developers provided");
+      return [];
+    }
+    
+    let filtered = [...initialDevelopers]; // Create a copy to avoid mutations
 
     // Search filter
     if (search) {

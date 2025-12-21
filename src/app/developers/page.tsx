@@ -15,16 +15,22 @@ import { DevelopersHubClient } from "@/components/developers/DevelopersHubClient
 
 export async function generateMetadata(): Promise<Metadata> {
   const supabase = await createClient();
-  const { data: developersData } = await supabase
-    .from("developers")
-    .select("id")
-    .eq("is_published", true);
   
-  const developerCount = developersData?.length || 0;
+  // Fetch developer count without filters first
+  const { data: allDevelopers } = await supabase
+    .from("developers")
+    .select("id, developer_name")
+    .limit(50);
+  
+  const developerCount = allDevelopers?.length || 0;
+  const topDeveloperNames = allDevelopers
+    ?.slice(0, 3)
+    .map((d: any) => d.developer_name)
+    .join(", ") || "My Home, Rajapushpa, Prestige";
   
   return buildMetadata({
-    title: "Top Real Estate Developers in Hyderabad 2026 | Reviews & Projects",
-    description: `Browse ${developerCount}+ top real estate developers in Hyderabad. Compare builders like My Home, Rajapushpa, Prestige, and Aparna. View track records, RERA status, and latest launches.`,
+    title: `Top ${developerCount > 0 ? developerCount + "+ " : ""}Real Estate Developers in Hyderabad 2026 | Westside Realty`,
+    description: `Browse our curated list of ${developerCount} trusted builders like ${topDeveloperNames}. Verified track records and active projects.`,
     canonicalUrl: "https://www.westsiderealty.in/developers",
   });
 }
@@ -53,91 +59,98 @@ interface DeveloperWithProjects {
 export default async function DevelopersHubPage() {
   const supabase = await createClient();
 
-  // Fetch all published developers
-  const { data: developersData, error: devError } = await supabase
+  // Step 1: Fetch ALL developers without filters to rule out data mismatches
+  console.log("[DevelopersHub] Starting data fetch...");
+  
+  const { data: allDevelopersData, error: allDevError } = await supabase
     .from("developers")
-    .select(`
-      id,
-      developer_name,
-      url_slug,
-      logo_url,
-      banner_image_url,
-      tagline,
-      specialization,
-      years_in_business,
-      total_projects,
-      total_sft_delivered,
-      primary_city_focus,
-      founding_date
-    `)
-    .eq("is_published", true)
-    .order("display_order", { ascending: true });
+    .select("*")
+    .order("display_order", { ascending: true })
+    .limit(100);
 
-  // Debug logging
-  console.log(`[DevelopersHub] Fetched ${developersData?.length || 0} developers`);
-  if (devError) {
-    console.error("[DevelopersHub] Error fetching developers:", devError);
+  console.log(`[DevelopersHub] Server fetched developers (no filters): ${allDevelopersData?.length || 0}`);
+  
+  if (allDevError) {
+    console.error("[DevelopersHub] Error fetching all developers:", allDevError);
   }
 
-  // Fallback: if no results with is_published, try without filter
+  // Step 2: Filter for published developers (if we have data)
   let developers: Array<Omit<DeveloperWithProjects, "notable_projects"> & { banner_image_url?: string | null }>;
-  if (!developersData || developersData.length === 0) {
-    console.log("[DevelopersHub] No results with is_published=true, trying fallback...");
-    const { data: fallbackData } = await supabase
-      .from("developers")
-      .select(`
-        id,
-        developer_name,
-        url_slug,
-        logo_url,
-        banner_image_url,
-        tagline,
-        specialization,
-        years_in_business,
-        total_projects,
-        total_sft_delivered,
-        primary_city_focus,
-        founding_date
-      `)
-      .order("display_order", { ascending: true })
-      .limit(50);
-    console.log(`[DevelopersHub] Fallback: Fetched ${fallbackData?.length || 0} developers`);
-    developers = (fallbackData || []) as Array<Omit<DeveloperWithProjects, "notable_projects"> & { banner_image_url?: string | null }>;
+  
+  if (!allDevelopersData || allDevelopersData.length === 0) {
+    console.error("[DevelopersHub] CRITICAL: No developers found in database. Check RLS policies and data.");
+    developers = [];
   } else {
-    developers = (developersData || []) as Array<Omit<DeveloperWithProjects, "notable_projects"> & { banner_image_url?: string | null }>;
+    // Filter for published developers if is_published field exists
+    const publishedDevelopers = allDevelopersData.filter((dev: any) => {
+      // If is_published field exists, use it; otherwise include all
+      return dev.is_published === true || dev.is_published === undefined || dev.is_published === null;
+    });
+    
+    console.log(`[DevelopersHub] Filtered to ${publishedDevelopers.length} published developers`);
+    
+    developers = publishedDevelopers.map((dev: any) => ({
+      id: dev.id,
+      developer_name: dev.developer_name,
+      url_slug: dev.url_slug,
+      logo_url: dev.logo_url,
+      banner_image_url: dev.banner_image_url,
+      tagline: dev.tagline,
+      specialization: dev.specialization,
+      years_in_business: dev.years_in_business,
+      total_projects: dev.total_projects,
+      total_sft_delivered: dev.total_sft_delivered,
+      primary_city_focus: dev.primary_city_focus,
+      founding_date: dev.founding_date,
+    })) as Array<Omit<DeveloperWithProjects, "notable_projects"> & { banner_image_url?: string | null }>;
   }
 
   // Fetch top 2-3 projects for each developer
   const developersWithProjects: DeveloperWithProjects[] = await Promise.all(
     developers.map(async (developer) => {
-      const { data: projectsData } = await supabase
-        .from("projects")
-        .select(`
-          project_name,
-          url_slug,
-          hero_image_url,
-          city:cities!projects_city_id_fkey(url_slug)
-        `)
-        .eq("developer_id", developer.id)
-        .eq("status", "published")
-        .order("display_order", { ascending: true })
-        .limit(3);
+      try {
+        const { data: projectsData, error: projectsError } = await supabase
+          .from("projects")
+          .select(`
+            project_name,
+            url_slug,
+            hero_image_url,
+            city:cities!projects_city_id_fkey(url_slug)
+          `)
+          .eq("developer_id", developer.id)
+          .eq("status", "published")
+          .order("display_order", { ascending: true })
+          .limit(3);
 
-      const notableProjects = (projectsData || []).map((p) => ({
-        project_name: p.project_name,
-        url_slug: p.url_slug,
-        city_slug: (p.city as any)?.url_slug || "hyderabad",
-        hero_image_url: p.hero_image_url || null,
-      }));
+        if (projectsError) {
+          console.warn(`[DevelopersHub] Error fetching projects for ${developer.developer_name}:`, projectsError);
+        }
 
-      return {
-        ...developer,
-        notable_projects: notableProjects,
-      };
+        const notableProjects = (projectsData || []).map((p) => ({
+          project_name: p.project_name,
+          url_slug: p.url_slug,
+          city_slug: (p.city as any)?.url_slug || "hyderabad",
+          hero_image_url: p.hero_image_url || null,
+        }));
+
+        return {
+          ...developer,
+          notable_projects: notableProjects,
+        };
+      } catch (error) {
+        console.error(`[DevelopersHub] Error processing developer ${developer.developer_name}:`, error);
+        return {
+          ...developer,
+          notable_projects: [],
+        };
+      }
     })
   );
 
   console.log(`[DevelopersHub] Processed ${developersWithProjects.length} developers with projects`);
+  
+  // Final debug log before returning JSX
+  console.log(`[DevelopersHub] Server fetched developers: ${developersWithProjects.length}`);
 
   // Calculate market stats from developersWithProjects
   const totalProjects = developersWithProjects.reduce((sum, dev) => sum + (dev.total_projects || 0), 0);
@@ -167,12 +180,12 @@ export default async function DevelopersHubPage() {
     ),
   ].sort();
 
-  // ItemList Schema for SEO
-  const itemListSchema = {
+  // ItemList Schema for SEO - only if we have developers
+  const itemListSchema = developersWithProjects.length > 0 ? {
     "@context": "https://schema.org",
     "@type": "ItemList",
-    name: "Top Real Estate Developers in Hyderabad 2026",
-    description: "Compare Hyderabad's best real estate builders with track records, RERA status, and latest launches",
+    name: `Top ${developersWithProjects.length}+ Real Estate Developers in Hyderabad 2026`,
+    description: `Browse our curated directory of ${developersWithProjects.length} trusted real estate builders in Hyderabad. Compare track records, RERA status, and active projects.`,
     url: "https://www.westsiderealty.in/developers",
     numberOfItems: developersWithProjects.length,
     itemListElement: developersWithProjects.map((developer, index) => ({
@@ -203,7 +216,7 @@ export default async function DevelopersHubPage() {
         }),
       },
     })),
-  };
+  } : null;
 
   const breadcrumbItems = [
     { name: "Home", href: "/" },
@@ -212,7 +225,7 @@ export default async function DevelopersHubPage() {
 
   return (
     <>
-      <JsonLd jsonLd={itemListSchema} />
+      {itemListSchema && <JsonLd jsonLd={itemListSchema} />}
 
       <div className="min-h-screen bg-background">
         {/* Breadcrumbs */}
@@ -255,10 +268,27 @@ export default async function DevelopersHubPage() {
         </section>
 
         {/* Developers Grid with Filters */}
-        <DevelopersHubClient
-          initialDevelopers={developersWithProjects}
-          specializations={specializations}
-        />
+        {developersWithProjects.length === 0 ? (
+          <section className="container mx-auto px-4 py-12">
+            <Card>
+              <CardContent className="p-12 text-center">
+                <Building2 className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                <h2 className="text-2xl font-bold text-foreground mb-2">No developers found</h2>
+                <p className="text-muted-foreground mb-4">
+                  Please check Database RLS Policies and ensure developers are published.
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Server logs show: {developers.length === 0 ? "No developers in database" : `${developers.length} developers found, but none are published`}
+                </p>
+              </CardContent>
+            </Card>
+          </section>
+        ) : (
+          <DevelopersHubClient
+            initialDevelopers={developersWithProjects}
+            specializations={specializations}
+          />
+        )}
 
         {/* How to Choose a Builder Section */}
         <section className="container mx-auto px-4 py-16 bg-slate-50/50">
