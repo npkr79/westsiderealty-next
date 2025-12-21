@@ -3,10 +3,11 @@ import { createClient } from "@/lib/supabase/server";
 import { buildMetadata } from "@/components/common/SEO";
 import { JsonLd } from "@/components/common/SEO";
 import { Breadcrumbs } from "@/components/seo/Breadcrumbs";
+import { getLandownerInvestorProjects } from "@/lib/supabase/landowner-projects";
 import { HeroSection } from "./components/HeroSection";
 import { ExplanationSection } from "./components/ExplanationSection";
 import { BenefitsGrid } from "./components/BenefitsGrid";
-import { ProjectsGrid } from "./components/ProjectsGrid";
+import { LandownerProjectsGrid } from "@/components/landowner/LandownerProjectsGrid";
 import { FAQSection } from "./components/FAQSection";
 import { SEOContent } from "./components/SEOContent";
 import { CTASection } from "./components/CTASection";
@@ -34,19 +35,6 @@ export async function generateMetadata(): Promise<Metadata> {
   });
 }
 
-interface LandownerProject {
-  id: string;
-  project_name: string;
-  developer_name: string | null;
-  micro_market: string | null;
-  share_type: string;
-  available_units: number | null;
-  price_range_text: string | null;
-  discount_percentage: number | null;
-  bhk_configurations: string[] | null;
-  hero_image_url: string | null;
-}
-
 interface PageContent {
   h1_title: string | null;
   hero_description: string | null;
@@ -60,19 +48,10 @@ interface PageContent {
 export default async function LandownerInvestorSharePage() {
   const supabase = await createClient();
 
-  // Fetch projects
-  const { data: projectsData, error: projectsError } = await supabase
-    .from("landowner_share_projects")
-    .select("*")
-    .eq("is_active", true)
-    .order("display_order", { ascending: true })
-    .order("project_name", { ascending: true });
-
-  if (projectsError) {
-    console.error("Error fetching landowner share projects:", projectsError);
-  }
-
-  const projects = (projectsData || []) as LandownerProject[];
+  // Fetch projects from projects table with has_landowner_investor_share = true
+  const projects = await getLandownerInvestorProjects();
+  
+  console.log(`[LandownerSharePage] Fetched ${projects.length} projects with landowner/investor share`);
 
   // Fetch page content
   const { data: contentData, error: contentError } = await supabase
@@ -127,7 +106,6 @@ export default async function LandownerInvestorSharePage() {
 
   // Calculate stats
   const totalProjects = projects.length;
-  const totalUnits = projects.reduce((sum, p) => sum + (p.available_units || 0), 0);
 
   // Schema markup
   const schemaMarkup = {
@@ -146,9 +124,10 @@ export default async function LandownerInvestorSharePage() {
         item: {
           "@type": "Residence",
           name: project.project_name,
+          url: `https://www.westsiderealty.in/hyderabad/${project.micro_market?.url_slug || 'projects'}/${project.url_slug}`,
           address: {
             "@type": "PostalAddress",
-            addressLocality: project.micro_market || "Hyderabad",
+            addressLocality: project.micro_market?.micro_market_name || "Hyderabad",
             addressRegion: "Telangana",
             addressCountry: "IN",
           },
@@ -188,7 +167,7 @@ export default async function LandownerInvestorSharePage() {
           <Breadcrumbs items={breadcrumbItems} />
         </div>
 
-        <HeroSection title={h1Title} description={heroDescription} totalProjects={totalProjects} totalUnits={totalUnits} />
+        <HeroSection title={h1Title} description={heroDescription} totalProjects={totalProjects} totalUnits={0} />
 
         <ExplanationSection
           landownerShare={whatIsLandownerShare}
@@ -197,7 +176,7 @@ export default async function LandownerInvestorSharePage() {
 
         <BenefitsGrid benefits={benefits} whyBuyContent={whyBuyContent} />
 
-        <ProjectsGrid projects={projects} />
+        <LandownerProjectsGrid projects={projects} />
 
         <FAQSection faqs={faqs} />
 
