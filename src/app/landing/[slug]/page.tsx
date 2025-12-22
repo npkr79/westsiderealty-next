@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import LandingPageComponent from "./LandingPageComponent";
 import { JsonLd } from "@/components/common/SEO";
+import { optimizeSupabaseImage } from "@/utils/imageOptimization";
 import { supabaseLandingPagesService, type LandingPage, type LandingPageImage, type LandingPageHighlight, type LandingPageConfiguration, type LandingPageSpecification, type LandingPageLocationPoint, type LandingPageFAQ, type LandingPageFloorPlan } from "@/services/admin/supabaseLandingPagesService";
 import { supabaseLandingPagesContentService } from "@/services/admin/supabaseLandingPagesContentService";
 import type { Amenity, ContentBlock } from "@/types/landingPageTemplate";
@@ -119,7 +120,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { page, configurations } = data;
   const extractedLocation = page.location_info?.split(',')[0]?.trim() || 'Hyderabad';
   const canonicalUrl = `https://www.westsiderealty.in/landing/${slug}`;
-  const ogImage = page.hero_image_url || "https://www.westsiderealty.in/placeholder.svg";
+  const rawOgImage = page.hero_image_url || "https://www.westsiderealty.in/placeholder.svg";
+  const ogImage = optimizeSupabaseImage(rawOgImage, {
+    width: 1200,
+    height: 630,
+    quality: 80,
+    format: "webp",
+  });
   
   // Get starting price (lowest from configurations)
   const startingPrice = configurations && configurations.length > 0
@@ -149,7 +156,14 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     openGraph: {
       title: seoTitle,
       description: seoDescription,
-      images: [ogImage],
+      images: [
+        {
+          url: ogImage,
+          width: 1200,
+          height: 630,
+          alt: page.title,
+        },
+      ],
       type: "website",
       url: canonicalUrl,
     },

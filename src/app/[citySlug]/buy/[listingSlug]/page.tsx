@@ -1,6 +1,7 @@
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { optimizeSupabaseImage } from '@/utils/imageOptimization';
 import PropertyDetailsClient from '@/components/property/PropertyDetailsClient';
 import { microMarketService } from '@/services/microMarketService';
 import { getPropertyFAQsFromProject } from '@/services/propertyFAQService';
@@ -111,7 +112,14 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const keywords = `${property.title}, ${microMarket}, ${cityName}, ${property.bhk_config || ''}, ${developer}, real estate, ${amenities}, ${locationHighlights}`.slice(0, 255);
 
   const canonicalUrl = `https://www.westsiderealty.in/${citySlug}/buy/${property.seo_slug || listingSlug}`;
-  const imageUrl = property.main_image_url || property.image_gallery?.[0] || 'https://www.westsiderealty.in/placeholder.svg';
+  const rawImageUrl =
+    property.main_image_url || property.image_gallery?.[0] || 'https://www.westsiderealty.in/placeholder.svg';
+  const imageUrl = optimizeSupabaseImage(rawImageUrl, {
+    width: 1200,
+    height: 630,
+    quality: 80,
+    format: 'webp',
+  });
 
   return {
     title,
