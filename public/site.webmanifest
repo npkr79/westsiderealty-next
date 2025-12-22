@@ -1,0 +1,30 @@
+{
+  "name": "RE/MAX Westside Realty",
+  "short_name": "Westside Realty",
+  "description": "Expert real estate advisory for premium properties in Hyderabad, Goa holiday homes, and Dubai investments.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1a365d",
+  "icons": [
+    {
+      "src": "/android-chrome-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/android-chrome-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ],
+  "categories": ["business", "finance", "lifestyle"],
+  "lang": "en-IN",
+  "dir": "ltr",
+  "orientation": "portrait-primary"
+}
