@@ -27,7 +27,7 @@ const ORGANIZATION_SCHEMA = {
   ],
   sameAs: [
     "https://www.facebook.com/remaxwestsiderealty",
-    "https://www.instagram.com/remaxwestsiderealty",
+    "https://www.instagram.com/remax.westsiderealty/",
   ],
 };
 
