@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
@@ -162,9 +162,56 @@ export default async function MicroMarketPage({ params }: PageProps) {
   const citySlug = Array.isArray(citySlugParam) ? citySlugParam[0] : citySlugParam;
   const microMarketSlug = Array.isArray(microMarketSlugParam) ? microMarketSlugParam[0] : microMarketSlugParam;
 
+  // Try to resolve as a micro-market first
   const pageData = await microMarketPagesService.getMicroMarketPageBySlug(microMarketSlug);
 
   if (!pageData) {
+    // If no micro-market page found, this might be an old or direct property URL like:
+    // /hyderabad/3bhk-apartment-for-sale-in-hallmark-treasor-kokapet
+    // Try to find a matching property slug and redirect to /[citySlug]/buy/[listingSlug]
+    try {
+      const { createClient } = await import("@/lib/supabase/server");
+      const supabase = await createClient();
+
+      // Determine property table based on city
+      const tableName =
+        citySlug === "hyderabad"
+          ? "hyderabad_properties"
+          : citySlug === "goa"
+          ? "goa_holiday_properties"
+          : citySlug === "dubai"
+          ? "dubai_properties"
+          : null;
+
+      if (tableName) {
+        // Check direct match in current properties (seo_slug or slug)
+        const { data: property } = await supabase
+          .from(tableName)
+          .select("seo_slug, slug")
+          .or(`seo_slug.eq.${microMarketSlug},slug.eq.${microMarketSlug}`)
+          .maybeSingle();
+
+        if (property) {
+          redirect(`/${citySlug}/buy/${microMarketSlug}`);
+        }
+
+        // Check redirects table for legacy slugs
+        const { data: redirectRow } = await supabase
+          .from("property_slug_redirects")
+          .select("new_slug")
+          .eq("old_slug", microMarketSlug)
+          .eq("location", citySlug)
+          .maybeSingle();
+
+        if (redirectRow?.new_slug) {
+          redirect(`/${citySlug}/buy/${redirectRow.new_slug}`);
+        }
+      }
+    } catch (error) {
+      console.error("[MicroMarketPage] Error checking property redirect for slug:", microMarketSlug, error);
+    }
+
+    // If still unresolved, return a 404
     notFound();
   }
 
