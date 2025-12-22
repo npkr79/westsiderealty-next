@@ -15,6 +15,10 @@ export { projectService, type ProjectInfo, type ProjectWithRelations } from "./p
 export { cityService, type CityInfo } from "./cityService";
 export { developerService, type Developer } from "./developerService";
 
+// New UserProfileService exports
+export { userProfileService } from "./userProfileService";
+export * from "../types/userProfile";
+
 // Only initialize services with an .init() method.
 // blogService does not have an init() (yet).
 import { propertyService } from "./propertyService";
