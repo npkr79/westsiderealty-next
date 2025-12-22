@@ -1,7 +1,6 @@
 "use client";
 
 import { Card, CardContent } from "@/components/ui/card";
-import GoogleMapEmbed from "@/components/common/GoogleMapEmbed";
 import { 
   Plane, 
   Waves, 
@@ -52,24 +51,17 @@ export default function LocationAdvantages({ landingPage, locationPoints }: Loca
           {/* Map Section */}
           <Card className="border-2 border-teal-200 shadow-xl overflow-hidden">
             <CardContent className="p-0">
-              {landingPage.show_google_map && landingPage.map_latitude && landingPage.map_longitude ? (
-                <GoogleMapEmbed
-                  lat={landingPage.map_latitude}
-                  lng={landingPage.map_longitude}
-                  zoom={landingPage.map_zoom || 14}
-                  mapType={
-                    landingPage.map_type === 'roadmap' || landingPage.map_type === 'satellite'
-                      ? landingPage.map_type
-                      : 'satellite'
-                  }
-                  businessName={landingPage.title}
-                  address={landingPage.location_info}
-                />
-              ) : (
-                <div className="h-96 bg-gray-200 flex items-center justify-center">
-                  <p className="text-gray-500">Map not available</p>
-                </div>
-              )}
+              <iframe
+                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3596.3977255808963!2d73.85186357481032!3d15.384967185199686!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3bbfb908ad4ac3ed%3A0x7baa5bb1a0bddb29!2sAerocidade%20Goa!5e1!3m2!1sen!2sin!4v1766374069017!5m2!1sen!2sin"
+                width="100%"
+                height="450"
+                style={{ border: 0 }}
+                allowFullScreen
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                className="rounded-xl w-full"
+                title="Aerocidade Location Map"
+              />
             </CardContent>
           </Card>
 

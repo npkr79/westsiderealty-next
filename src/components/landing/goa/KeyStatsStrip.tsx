@@ -18,20 +18,21 @@ export default function KeyStatsStrip({ configurations }: KeyStatsStripProps) {
   const stats = [
     {
       icon: IndianRupee,
-      label: "Starting Price",
+      label: "Price",
       value: priceDisplay,
       color: "text-teal-600"
     },
     {
       icon: Ruler,
       label: "Unit Size",
-      value: sizeDisplay,
+      value: "582 sq.ft",
       color: "text-cyan-600"
     },
     {
       icon: TrendingUp,
-      label: "Monthly Rental",
-      value: "Up to ₹26,000/month",
+      label: "Rental Yield",
+      value: "12%",
+      subtitle: "Starting from Day 1",
       color: "text-green-600"
     },
     {
@@ -54,6 +55,9 @@ export default function KeyStatsStrip({ configurations }: KeyStatsStripProps) {
                   <Icon className={`h-6 w-6 mx-auto mb-2 ${stat.color}`} />
                   <p className="text-xs font-medium text-gray-600 mb-1">{stat.label}</p>
                   <p className={`text-lg font-bold ${stat.color}`}>{stat.value}</p>
+                  {stat.subtitle && (
+                    <p className="text-xs text-gray-500 mt-1">{stat.subtitle}</p>
+                  )}
                 </CardContent>
               </Card>
             );

@@ -19,7 +19,7 @@ export default function PricePaymentTable({ configurations }: PricePaymentTableP
 
   const paymentPlan = [
     { stage: "Booking", percentage: "50%", description: "On booking" },
-    { stage: "On Construction", percentage: "25%", description: "During construction" },
+    { stage: "After 1 Year", percentage: "25%", description: "After 1 year", note: "after 1 year" },
     { stage: "On Possession", percentage: "25%", description: "On possession" }
   ];
 
@@ -53,9 +53,7 @@ export default function PricePaymentTable({ configurations }: PricePaymentTableP
                 </div>
                 <div className="flex justify-between items-center pb-4 border-b">
                   <span className="text-gray-600">Size</span>
-                  <span className="font-semibold text-gray-900">
-                    {sizeMin === sizeMax ? `${sizeMin} sq.ft` : `${sizeMin} - ${sizeMax} sq.ft`}
-                  </span>
+                  <span className="font-semibold text-gray-900">582 sq.ft</span>
                 </div>
                 <div className="flex justify-between items-center pb-4 border-b">
                   <span className="text-gray-600">Rate</span>
@@ -70,7 +68,7 @@ export default function PricePaymentTable({ configurations }: PricePaymentTableP
                 <div className="pt-2">
                   <Badge className="bg-green-100 text-green-800 border-0">
                     <TrendingUp className="h-4 w-4 mr-1" />
-                    Rental Income: Up to ₹26,000/month
+                    12% Yield
                   </Badge>
                 </div>
               </div>
@@ -96,14 +94,17 @@ export default function PricePaymentTable({ configurations }: PricePaymentTableP
                       </div>
                     </div>
                     <div className="flex-1">
-                      <p className="font-semibold text-gray-900">{plan.stage}</p>
+                      <p className="font-semibold text-gray-900">
+                        {plan.stage}
+                        {plan.note && <span className="text-xs font-normal text-gray-500 ml-2">({plan.note})</span>}
+                      </p>
                       <p className="text-sm text-gray-600">{plan.description}</p>
                     </div>
                   </div>
                 ))}
                 <div className="pt-4 bg-cyan-50 rounded-lg p-4">
                   <p className="text-sm text-gray-600 mb-1">Flexible Payment Schedule</p>
-                  <p className="text-xs text-gray-500">50% | 25% | 25%</p>
+                  <p className="text-xs text-gray-500">50% Booking | 25% (after 1 year) | 25% On Possession</p>
                 </div>
               </div>
             </CardContent>

@@ -72,6 +72,7 @@ import PricePaymentTable from "@/components/landing/goa/PricePaymentTable";
 import LocationAdvantages from "@/components/landing/goa/LocationAdvantages";
 import SouthGoaComparison from "@/components/landing/goa/SouthGoaComparison";
 import AmenitiesGrid from "@/components/landing/goa/AmenitiesGrid";
+import ClarksHotelsManagement from "@/components/landing/goa/ClarksHotelsManagement";
 import DeveloperSection from "@/components/landing/goa/DeveloperSection";
 import AerocidadeFAQ from "@/components/landing/goa/AerocidadeFAQ";
 import GoaLeadForm from "@/components/landing/goa/GoaLeadForm";
@@ -200,7 +201,7 @@ const LandingPageComponent = ({
       <InvestmentHighlights highlights={highlights} />
 
       {/* Project Overview */}
-      <ProjectOverview landingPage={landingPage} />
+      <ProjectOverview />
 
       {/* Price & Payment Plan */}
       <PricePaymentTable configurations={configurations} />
@@ -213,6 +214,9 @@ const LandingPageComponent = ({
 
       {/* Amenities Grid */}
       <AmenitiesGrid amenities={amenities} />
+
+      {/* Clarks Hotels Management Section */}
+      <ClarksHotelsManagement />
 
       {/* Developer Section */}
       <DeveloperSection />
