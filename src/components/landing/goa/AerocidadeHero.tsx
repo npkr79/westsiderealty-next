@@ -67,8 +67,8 @@ export default function AerocidadeHero({ landingPage, configurations }: Aerocida
               <div className="flex items-center gap-3">
                 <TrendingUp className="h-6 w-6 text-teal-600" />
                 <div className="text-left">
-                  <p className="text-sm text-gray-600 font-medium">Starting from</p>
-                  <p className="text-3xl font-bold text-gray-900">{priceDisplay}</p>
+                  <p className="text-sm text-gray-600 font-medium">Price</p>
+                  <p className="text-3xl font-bold text-gray-900">₹55.29L</p>
                 </div>
               </div>
             </div>
@@ -101,13 +101,13 @@ export default function AerocidadeHero({ landingPage, configurations }: Aerocida
             <Button
               size="lg"
               variant="outline"
-              className="border-2 border-white/90 !text-white hover:bg-white/20 hover:!text-white backdrop-blur-sm px-10 py-6 text-lg font-semibold inline-flex items-center"
+              className="border-2 border-white/90 text-white hover:bg-white/20 hover:text-white backdrop-blur-sm px-10 py-6 text-lg font-semibold inline-flex items-center gap-2"
               onClick={() => {
                 window.open(`https://wa.me/${landingPage.whatsapp_number}?text=${whatsappMessage}`, "_blank");
               }}
             >
-              <MessageCircle className="h-5 w-5 mr-2 flex-shrink-0" />
-              <span className="whitespace-nowrap inline-block">WhatsApp Us</span>
+              <MessageCircle className="h-5 w-5 flex-shrink-0" />
+              <span className="whitespace-nowrap">WhatsApp Us</span>
             </Button>
           </div>
         </div>
