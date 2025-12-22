@@ -1,5 +1,5 @@
-import { createClient } from '@/lib/supabase/server';
-const supabase = await createClient();
+import { createClient } from '@/lib/supabase/client';
+const supabase = createClient();
 
 
 export interface UploadedImage {
