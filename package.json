@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "check:routes": "tsx scripts/check-routes.ts"
+    "check:routes": "tsx scripts/check-routes.ts",
+    "submit-sitemap": "tsx scripts/submit-sitemap.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

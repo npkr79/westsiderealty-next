@@ -1,0 +1,9 @@
+{
+  "crons": [
+    {
+      "path": "/api/sitemap/regenerate",
+      "schedule": "0 2 * * *"
+    }
+  ]
+}
+
