@@ -5,7 +5,7 @@ import { Phone, Mail, MapPin, Facebook, Instagram, Youtube, Linkedin, Twitter } 
 
 const socialLinks = [
   { icon: Facebook, href: "https://www.facebook.com/remaxwestsiderealty", label: "Facebook" },
-  { icon: Instagram, href: "https://www.instagram.com/remaxwestsiderealty", label: "Instagram" },
+  { icon: Instagram, href: "https://www.instagram.com/remax.westsiderealty/", label: "Instagram" },
   { icon: Youtube, href: "https://www.youtube.com/@REMAXWestsideRealty", label: "YouTube" },
   { icon: Linkedin, href: "https://www.linkedin.com/company/remaxwestsiderealty", label: "LinkedIn" },
   { icon: Twitter, href: "https://x.com/remaxwestside", label: "X" },
