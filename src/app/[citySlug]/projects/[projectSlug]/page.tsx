@@ -182,6 +182,18 @@ export default async function ProjectDetailPage({ params }: PageProps) {
     notFound();
   }
 
+  // Derive SEO helpers for schema (mirror generateMetadata logic)
+  const cityName = project.city?.city_name || citySlug;
+  const canonicalUrl = microMarketSlug
+    ? `https://www.westsiderealty.in/${citySlug}/${microMarketSlug}/projects/${projectSlug}`
+    : `https://www.westsiderealty.in/${citySlug}/projects/${projectSlug}`;
+  const seoTitle =
+    project.seo_title ||
+    `${project.project_name} ${cityName}: Price, Floor Plans & Reviews | RE/MAX`;
+  const seoDescription =
+    project.meta_description ||
+    `Explore ${project.project_name} - Premium residential project in ${cityName}`;
+
   const breadcrumbItems = [
     { name: "Home", href: "/" },
     { name: project.city?.city_name || citySlug, href: `/${citySlug}` },
