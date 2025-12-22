@@ -19,6 +19,7 @@ interface MasterPlanSectionProps {
   microMarketName?: string;
   latitude?: number | null;
   longitude?: number | null;
+  skipSchema?: boolean; // If true, don't generate JSON-LD schema (for unified graph pages)
 }
 
 // Icon mapping for different zone types
@@ -36,7 +37,7 @@ const getZoneIcon = (zone: string): typeof Building2 => {
   return Building2;
 };
 
-export default function MasterPlanSection({ data, microMarketName = "Neopolis", latitude, longitude }: MasterPlanSectionProps) {
+export default function MasterPlanSection({ data, microMarketName = "Neopolis", latitude, longitude, skipSchema = false }: MasterPlanSectionProps) {
   // Parse data if it's a string
   let masterPlanData: MasterPlanData = {};
   
@@ -84,11 +85,13 @@ export default function MasterPlanSection({ data, microMarketName = "Neopolis", 
 
   return (
     <>
-      {/* JSON-LD Structured Data */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(masterPlanSchema) }}
-      />
+      {/* JSON-LD Structured Data - Only render if not skipped (for unified graph pages) */}
+      {!skipSchema && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(masterPlanSchema) }}
+        />
+      )}
 
       <section className="mb-12" itemScope itemType="https://schema.org/Place">
         <Card className="border-2 border-primary/20 shadow-lg">

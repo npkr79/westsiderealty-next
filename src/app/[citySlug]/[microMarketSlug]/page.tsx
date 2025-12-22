@@ -608,6 +608,7 @@ export default async function MicroMarketPage({ params }: PageProps) {
               microMarketName={pageData.micro_market_name}
               latitude={(pageData as any).latitude}
               longitude={(pageData as any).longitude}
+              skipSchema={isNeopolis} // Skip schema for Neopolis (included in unified graph)
             />
           )}
 
