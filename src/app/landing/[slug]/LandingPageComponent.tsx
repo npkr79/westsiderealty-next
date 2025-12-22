@@ -65,10 +65,14 @@ import ProjectHighlightsTable from "@/components/landing/ProjectHighlightsTable"
 import ExpertReview from "@/components/landing/ExpertReview";
 // Aerocidade custom components
 import AerocidadeHero from "@/components/landing/goa/AerocidadeHero";
+import KeyStatsStrip from "@/components/landing/goa/KeyStatsStrip";
 import InvestmentHighlights from "@/components/landing/goa/InvestmentHighlights";
+import ProjectOverview from "@/components/landing/goa/ProjectOverview";
 import PricePaymentTable from "@/components/landing/goa/PricePaymentTable";
 import LocationAdvantages from "@/components/landing/goa/LocationAdvantages";
+import SouthGoaComparison from "@/components/landing/goa/SouthGoaComparison";
 import AmenitiesGrid from "@/components/landing/goa/AmenitiesGrid";
+import DeveloperSection from "@/components/landing/goa/DeveloperSection";
 import AerocidadeFAQ from "@/components/landing/goa/AerocidadeFAQ";
 import GoaLeadForm from "@/components/landing/goa/GoaLeadForm";
 
@@ -189,8 +193,14 @@ const LandingPageComponent = ({
       {/* Hero Section */}
       <AerocidadeHero landingPage={landingPage} configurations={configurations} />
 
+      {/* Key Stats Strip */}
+      <KeyStatsStrip configurations={configurations} />
+
       {/* Investment Highlights */}
       <InvestmentHighlights highlights={highlights} />
+
+      {/* Project Overview */}
+      <ProjectOverview landingPage={landingPage} />
 
       {/* Price & Payment Plan */}
       <PricePaymentTable configurations={configurations} />
@@ -198,8 +208,14 @@ const LandingPageComponent = ({
       {/* Location Advantages */}
       <LocationAdvantages landingPage={landingPage} locationPoints={locationPoints} />
 
+      {/* South Goa vs North Goa Comparison */}
+      <SouthGoaComparison />
+
       {/* Amenities Grid */}
       <AmenitiesGrid amenities={amenities} />
+
+      {/* Developer Section */}
+      <DeveloperSection />
 
       {/* FAQ Section */}
       <AerocidadeFAQ faqs={faqs} />
