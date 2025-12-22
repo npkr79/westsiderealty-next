@@ -104,10 +104,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   // Neopolis-specific metadata overrides
   const isNeopolis = microMarketSlug.toLowerCase() === "neopolis";
   const seoTitle = isNeopolis
-    ? "Neopolis, Kokapet: Ultra-Luxury Apartments & Investment Guide | RE/MAX Westside"
+    ? "Neopolis Hyderabad: Kokapet Projects, Prices & Master Plan | RE/MAX"
     : pageData.seo_title;
   const seoDescription = isNeopolis
-    ? "Discover Neopolis, Hyderabad's premier ultra-luxury hub. Find high-rise apartments and sky-villas near the Financial District with expert market analysis and RERA-verified listings."
+    ? "The ultimate guide to Neopolis Hyderabad. Explore master plans, record-breaking auction prices, and luxury project listings (Prestige, My Home) by RE/MAX."
     : pageData.meta_description;
   const canonicalUrl = isNeopolis
     ? `https://www.westsiderealty.in/${citySlug}/neopolis`
@@ -183,14 +183,19 @@ export default async function MicroMarketPage({ params }: PageProps) {
   // Neopolis-specific metadata overrides
   const isNeopolis = microMarketSlug.toLowerCase() === "neopolis";
   const seoTitle = isNeopolis
-    ? "Neopolis, Kokapet: Ultra-Luxury Apartments & Investment Guide | RE/MAX Westside"
+    ? "Neopolis Hyderabad: Kokapet Projects, Prices & Master Plan | RE/MAX"
     : pageData.seo_title;
   const seoDescription = isNeopolis
-    ? "Discover Neopolis, Hyderabad's premier ultra-luxury hub. Find high-rise apartments and sky-villas near the Financial District with expert market analysis and RERA-verified listings."
+    ? "The ultimate guide to Neopolis Hyderabad. Explore master plans, record-breaking auction prices, and luxury project listings (Prestige, My Home) by RE/MAX."
     : pageData.meta_description;
   const canonicalUrl = isNeopolis
     ? `https://www.westsiderealty.in/${citySlug}/neopolis`
     : getCanonicalUrl(pageData, citySlug, microMarketSlug);
+  
+  // Neopolis-specific H1 override
+  const h1Title = isNeopolis
+    ? "Neopolis Hyderabad: The Ultra-Luxury Hub of Kokapet"
+    : pageData.h1_title;
 
   const breadcrumbItems = [
     { label: "Home", href: "/" },
@@ -199,83 +204,234 @@ export default async function MicroMarketPage({ params }: PageProps) {
     { label: pageData.micro_market_name, href: "" },
   ];
 
-  // Generate JSON-LD schemas
-  const breadcrumbSchema = {
-    "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
-    itemListElement: [
-      {
-        "@type": "ListItem",
-        position: 1,
-        name: "Home",
-        item: "https://www.westsiderealty.in",
-      },
-      {
-        "@type": "ListItem",
-        position: 2,
-        name: citySlug.charAt(0).toUpperCase() + citySlug.slice(1),
-        item: `https://www.westsiderealty.in/${citySlug}`,
-      },
-      {
-        "@type": "ListItem",
-        position: 3,
-        name: pageData.micro_market_name,
-        item: canonicalUrl,
-      },
-    ],
-  };
-
-  const realEstateListingSchema = {
-    "@context": "https://schema.org",
-    "@type": "RealEstateListing",
-    name: `Properties in ${pageData.micro_market_name}, ${citySlug.charAt(0).toUpperCase() + citySlug.slice(1)}`,
-    description: seoDescription,
-    url: canonicalUrl,
-    image: pageData.hero_image_url || pageData.connectivity_map_url,
-    address: {
-      "@type": "PostalAddress",
-      addressLocality: pageData.micro_market_name,
-      addressRegion: citySlug.charAt(0).toUpperCase() + citySlug.slice(1),
-      addressCountry: "IN",
-      ...(pageData.locality_pincode && { postalCode: pageData.locality_pincode }),
-    },
-    provider: {
-      "@type": "RealEstateAgent",
-      name: "RE/MAX Westside Realty",
-      image: "https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/brand-assets/remax-logo.jpg",
-      address: {
-        "@type": "PostalAddress",
-        addressLocality: "Hyderabad",
-        addressCountry: "IN",
-      },
-    },
-    ...(pageData.price_per_sqft_min &&
-      pageData.price_per_sqft_max && {
-        offers: {
-          "@type": "AggregateOffer",
-          priceCurrency: "INR",
-          lowPrice: pageData.price_per_sqft_min,
-          highPrice: pageData.price_per_sqft_max,
-          priceSpecification: {
-            "@type": "UnitPriceSpecification",
-            priceCurrency: "INR",
-            unitText: "per sq.ft.",
+  // Generate unified @graph schema for Neopolis, or separate schemas for others
+  let jsonLdSchemas: any[];
+  
+  if (isNeopolis) {
+    // Unified @graph schema for Neopolis
+    const baseUrl = "https://www.westsiderealty.in";
+    const pageUrl = canonicalUrl;
+    
+    // Parse master plan data for Place schema
+    let masterPlanData: any = {};
+    if (pageData.master_plan_json) {
+      try {
+        masterPlanData = typeof pageData.master_plan_json === "string" 
+          ? JSON.parse(pageData.master_plan_json) 
+          : pageData.master_plan_json;
+      } catch (e) {
+        console.error("Error parsing master plan JSON:", e);
+      }
+    }
+    
+    // Parse FAQ schema
+    let faqData: any = null;
+    const faqSchemaString = getFaqSchemaJsonString(pageData);
+    if (faqSchemaString) {
+      try {
+        faqData = JSON.parse(faqSchemaString);
+      } catch (e) {
+        // Ignore parse errors
+      }
+    }
+    
+    const unifiedGraphSchema = {
+      "@context": "https://schema.org",
+      "@graph": [
+        // Organization
+        {
+          "@type": "Organization",
+          "@id": `${baseUrl}/#organization`,
+          "name": "RE/MAX Westside Realty",
+          "url": baseUrl,
+          "logo": {
+            "@type": "ImageObject",
+            "url": "https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/brand-assets/remax-logo.jpg",
+          },
+          "image": "https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/brand-assets/remax-logo.jpg",
+          "telephone": "+919866085831",
+          "email": "info@westsiderealty.in",
+          "address": {
+            "@type": "PostalAddress",
+            "addressLocality": "Hyderabad",
+            "addressRegion": "Telangana",
+            "postalCode": "500075",
+            "addressCountry": "IN",
           },
         },
-      }),
-    areaServed: {
-      "@type": "City",
-      name: citySlug.charAt(0).toUpperCase() + citySlug.slice(1),
-    },
-  };
+        // Website
+        {
+          "@type": "WebSite",
+          "@id": `${baseUrl}/#website`,
+          "url": baseUrl,
+          "name": "RE/MAX Westside Realty",
+          "publisher": { "@id": `${baseUrl}/#organization` },
+        },
+        // WebPage
+        {
+          "@type": "WebPage",
+          "@id": `${pageUrl}#webpage`,
+          "url": pageUrl,
+          "name": seoTitle,
+          "description": seoDescription,
+          "isPartOf": { "@id": `${baseUrl}/#website` },
+          "about": { "@id": `${pageUrl}#place` },
+          "publisher": { "@id": `${baseUrl}/#organization` },
+          "breadcrumb": {
+            "@type": "BreadcrumbList",
+            "itemListElement": [
+              {
+                "@type": "ListItem",
+                "position": 1,
+                "name": "Home",
+                "item": baseUrl,
+              },
+              {
+                "@type": "ListItem",
+                "position": 2,
+                "name": citySlug.charAt(0).toUpperCase() + citySlug.slice(1),
+                "item": `${baseUrl}/${citySlug}`,
+              },
+              {
+                "@type": "ListItem",
+                "position": 3,
+                "name": pageData.micro_market_name,
+                "item": pageUrl,
+              },
+            ],
+          },
+          ...(pageData.hero_image_url && {
+            "image": {
+              "@type": "ImageObject",
+              "url": pageData.hero_image_url,
+            },
+          }),
+        },
+        // Place (Master Plan)
+        {
+          "@type": "Place",
+          "@id": `${pageUrl}#place`,
+          "name": `${pageData.micro_market_name} Master Plan & Zoning`,
+          "description": `Master Plan and Zoning information for ${pageData.micro_market_name}, Hyderabad. ${masterPlanData.zones?.map((zone: any) => `${zone.zone}: ${zone.purpose} - ${zone.description}`).join(". ") || ""}${masterPlanData.fsi_policy ? ` FSI Policy: ${masterPlanData.fsi_policy}.` : ""}${masterPlanData.total_area ? ` Total Area: ${masterPlanData.total_area}.` : ""}`,
+          "address": {
+            "@type": "PostalAddress",
+            "addressLocality": pageData.micro_market_name,
+            "addressRegion": "Hyderabad",
+            "addressCountry": "IN",
+            ...(pageData.locality_pincode && { postalCode: pageData.locality_pincode }),
+          },
+          ...(masterPlanData.zones && masterPlanData.zones.length > 0 && {
+            "containsPlace": masterPlanData.zones.map((zone: any) => ({
+              "@type": "Place",
+              "name": zone.zone,
+              "description": `${zone.purpose}: ${zone.description}`,
+            })),
+          }),
+          ...(masterPlanData.fsi_policy && {
+            "additionalProperty": {
+              "@type": "PropertyValue",
+              "name": "FSI Policy",
+              "value": masterPlanData.fsi_policy,
+            },
+          }),
+          ...((pageData as any).latitude && (pageData as any).longitude && {
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": (pageData as any).latitude,
+              "longitude": (pageData as any).longitude,
+            },
+          }),
+        },
+        // FAQPage (if available)
+        ...(faqData && faqData.mainEntity ? [{
+          "@type": "FAQPage",
+          "@id": `${pageUrl}#faq`,
+          "mainEntity": faqData.mainEntity,
+          "isPartOf": { "@id": `${pageUrl}#webpage` },
+        }] : []),
+      ],
+    };
+    
+    jsonLdSchemas = [unifiedGraphSchema];
+  } else {
+    // Separate schemas for non-Neopolis pages (backward compatibility)
+    const breadcrumbSchema = {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        {
+          "@type": "ListItem",
+          position: 1,
+          name: "Home",
+          item: "https://www.westsiderealty.in",
+        },
+        {
+          "@type": "ListItem",
+          position: 2,
+          name: citySlug.charAt(0).toUpperCase() + citySlug.slice(1),
+          item: `https://www.westsiderealty.in/${citySlug}`,
+        },
+        {
+          "@type": "ListItem",
+          position: 3,
+          name: pageData.micro_market_name,
+          item: canonicalUrl,
+        },
+      ],
+    };
 
-  const faqSchema = getFaqSchemaJsonString(pageData);
-  const jsonLdSchemas = [breadcrumbSchema, realEstateListingSchema];
-  if (faqSchema) {
-    try {
-      jsonLdSchemas.push(JSON.parse(faqSchema));
-    } catch (e) {
-      // Ignore parse errors
+    const realEstateListingSchema = {
+      "@context": "https://schema.org",
+      "@type": "RealEstateListing",
+      name: `Properties in ${pageData.micro_market_name}, ${citySlug.charAt(0).toUpperCase() + citySlug.slice(1)}`,
+      description: seoDescription,
+      url: canonicalUrl,
+      image: pageData.hero_image_url || pageData.connectivity_map_url,
+      address: {
+        "@type": "PostalAddress",
+        addressLocality: pageData.micro_market_name,
+        addressRegion: citySlug.charAt(0).toUpperCase() + citySlug.slice(1),
+        addressCountry: "IN",
+        ...(pageData.locality_pincode && { postalCode: pageData.locality_pincode }),
+      },
+      provider: {
+        "@type": "RealEstateAgent",
+        name: "RE/MAX Westside Realty",
+        image: "https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/brand-assets/remax-logo.jpg",
+        address: {
+          "@type": "PostalAddress",
+          addressLocality: "Hyderabad",
+          addressCountry: "IN",
+        },
+      },
+      ...(pageData.price_per_sqft_min &&
+        pageData.price_per_sqft_max && {
+          offers: {
+            "@type": "AggregateOffer",
+            priceCurrency: "INR",
+            lowPrice: pageData.price_per_sqft_min,
+            highPrice: pageData.price_per_sqft_max,
+            priceSpecification: {
+              "@type": "UnitPriceSpecification",
+              priceCurrency: "INR",
+              unitText: "per sq.ft.",
+            },
+          },
+        }),
+      areaServed: {
+        "@type": "City",
+        name: citySlug.charAt(0).toUpperCase() + citySlug.slice(1),
+      },
+    };
+
+    const faqSchema = getFaqSchemaJsonString(pageData);
+    jsonLdSchemas = [breadcrumbSchema, realEstateListingSchema];
+    if (faqSchema) {
+      try {
+        jsonLdSchemas.push(JSON.parse(faqSchema));
+      } catch (e) {
+        // Ignore parse errors
+      }
     }
   }
 
@@ -304,11 +460,17 @@ export default async function MicroMarketPage({ params }: PageProps) {
               </div>
             )}
 
-            <h1 className="text-4xl font-bold mb-6 text-foreground">{pageData.h1_title}</h1>
-            <p
-              className="text-lg text-muted-foreground leading-relaxed"
-              dangerouslySetInnerHTML={{ __html: pageData.hero_hook || "" }}
-            />
+            <h1 className="text-4xl font-bold mb-6 text-foreground">{h1Title}</h1>
+            {isNeopolis ? (
+              <p className="text-lg text-muted-foreground leading-relaxed">
+                <strong>Neopolis Hyderabad</strong> is the pinnacle of Hyderabad's luxury real estate and the premier destination for apartments for sale in the city. Located adjacent to the already established Kokapet area, this exclusive, designated zone was created by the HMDA following record-breaking land auctions. Neopolis offers an investment opportunity in ultra-luxury high-rise apartments where land values are secured by the highest auction prices in Hyderabad's history.
+              </p>
+            ) : (
+              <p
+                className="text-lg text-muted-foreground leading-relaxed"
+                dangerouslySetInnerHTML={{ __html: pageData.hero_hook || "" }}
+              />
+            )}
 
             {/* Key Stats Badges */}
             {pageData.price_per_sqft_min && (
