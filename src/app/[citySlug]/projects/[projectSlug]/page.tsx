@@ -280,7 +280,12 @@ export default async function ProjectDetailPage({ params }: PageProps) {
       <JsonLd jsonLd={unifiedSchema} />
       <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-4">
-          <BreadcrumbNav items={breadcrumbItems} />
+          <BreadcrumbNav
+            items={breadcrumbItems.map((item) => ({
+              label: item.name,
+              href: item.href,
+            }))}
+          />
         </div>
 
         {/* Hero Gallery */}
