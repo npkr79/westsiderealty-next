@@ -51,6 +51,7 @@ import { GeneratePagesTab } from "@/components/admin/GeneratePagesTab";
 import { BulkDeveloperGeneration } from "@/components/admin/BulkDeveloperGeneration";
 import { BulkProjectSEOTool } from "@/components/admin/BulkProjectSEOTool";
 import { BulkFAQPopulationTool } from "@/components/admin/BulkFAQPopulationTool";
+import { SampleResponseGenerator } from "@/components/admin/SampleResponseGenerator";
 
 interface AdminDashboardProps {
   onLogout: () => void;
@@ -252,6 +253,15 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
               </Button>
               
               <Button
+                variant={activeTab === "sample-responses" ? "default" : "ghost"}
+                className="w-full justify-start"
+                onClick={() => setActiveTab("sample-responses")}
+              >
+                <Wand2 className="mr-2 h-4 w-4" />
+                Sample Responses
+              </Button>
+              
+              <Button
                 variant={activeTab === "sitemap" ? "default" : "ghost"}
                 className="w-full justify-start"
                 onClick={() => setActiveTab("sitemap")}
@@ -447,6 +457,13 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
 
             <TabsContent value="bulk-faqs">
               <BulkFAQPopulationTool />
+            </TabsContent>
+
+            <TabsContent value="sample-responses">
+              <SampleResponseGenerator 
+                showAdvancedOptions={true}
+                enableSaveToHistory={true}
+              />
             </TabsContent>
 
             <TabsContent value="settings">
