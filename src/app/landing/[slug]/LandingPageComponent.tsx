@@ -75,6 +75,7 @@ import AmenitiesGrid from "@/components/landing/goa/AmenitiesGrid";
 import ClarksHotelsManagement from "@/components/landing/goa/ClarksHotelsManagement";
 import DeveloperSection from "@/components/landing/goa/DeveloperSection";
 import AerocidadeFAQ from "@/components/landing/goa/AerocidadeFAQ";
+import AerocidadeFAQs from "@/components/landing/goa/AerocidadeFAQs";
 import GoaLeadForm from "@/components/landing/goa/GoaLeadForm";
 
 
@@ -208,6 +209,9 @@ const LandingPageComponent = ({
 
       {/* Location Advantages */}
       <LocationAdvantages landingPage={landingPage} locationPoints={locationPoints} />
+
+      {/* Comprehensive FAQs Section */}
+      <AerocidadeFAQs />
 
       {/* South Goa vs North Goa Comparison */}
       <SouthGoaComparison />
