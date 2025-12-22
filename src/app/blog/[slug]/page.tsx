@@ -153,6 +153,18 @@ export default async function BlogArticlePage({ params }: PageProps) {
                        authorName.toLowerCase().includes("westside realty team") ||
                        authorName === "RE/MAX Westside Realty Team";
 
+  // Derive SEO title/description to mirror generateMetadata
+  const seoTitle = article.seo_title || article.title || "Real Estate Insights";
+  const seoDescription = article.seo_description || article.description || "";
+
+  // Optimize OG image for schema usage
+  const optimizedOgImage = optimizeSupabaseImage(ogImage, {
+    width: 1200,
+    height: 630,
+    quality: 80,
+    format: "webp",
+  });
+
   // Build primary entity (Article)
   const primaryEntity: Record<string, any> = {
     "@type": "Article",
