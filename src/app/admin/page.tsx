@@ -20,7 +20,8 @@ import {
   Target,
   Wand2,
   Building,
-  Search
+  Search,
+  Sparkles
 } from "lucide-react";
 import Dashboard from "./Dashboard";
 import Properties from "./Properties";
@@ -51,6 +52,7 @@ import { GeneratePagesTab } from "@/components/admin/GeneratePagesTab";
 import { BulkDeveloperGeneration } from "@/components/admin/BulkDeveloperGeneration";
 import { BulkProjectSEOTool } from "@/components/admin/BulkProjectSEOTool";
 import { BulkFAQPopulationTool } from "@/components/admin/BulkFAQPopulationTool";
+import { EnhancedTextResponseDemo } from "@/components/admin/EnhancedTextResponseDemo";
 
 interface AdminDashboardProps {
   onLogout: () => void;
@@ -315,6 +317,15 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
               </Button>
 
               <Button
+                variant={activeTab === "text-response-demo" ? "default" : "ghost"}
+                className="w-full justify-start"
+                onClick={() => setActiveTab("text-response-demo")}
+              >
+                <Sparkles className="mr-2 h-4 w-4" />
+                Text Response Demo
+              </Button>
+
+              <Button
                 variant={activeTab === "settings" ? "default" : "ghost"}
                 className="w-full justify-start"
                 onClick={() => setActiveTab("settings")}
@@ -447,6 +458,10 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
 
             <TabsContent value="bulk-faqs">
               <BulkFAQPopulationTool />
+            </TabsContent>
+
+            <TabsContent value="text-response-demo">
+              <EnhancedTextResponseDemo />
             </TabsContent>
 
             <TabsContent value="settings">

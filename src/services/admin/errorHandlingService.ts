@@ -9,6 +9,10 @@ export type ErrorType =
   | 'not_found'
   | 'server'
   | 'timeout'
+  | 'text_processing'
+  | 'quality_validation'
+  | 'template_error'
+  | 'enhancement_error'
   | 'unknown';
 
 export interface AppError {
@@ -17,6 +21,8 @@ export interface AppError {
   originalError?: any;
   retryable: boolean;
   userMessage: string;
+  suggestions?: string[];
+  context?: Record<string, any>;
 }
 
 /**
@@ -104,6 +110,70 @@ export const errorHandlingService = {
       };
     }
 
+    // Text processing errors
+    if (error.message?.includes('text processing') || error.message?.includes('enhancement')) {
+      return {
+        type: 'text_processing',
+        message: 'Text processing failed',
+        originalError: error,
+        retryable: true,
+        userMessage: 'Text processing failed. Please try again with different content.',
+        suggestions: [
+          'Check text format and encoding',
+          'Reduce text length if too long',
+          'Remove special characters that might cause issues'
+        ]
+      };
+    }
+
+    // Quality validation errors
+    if (error.message?.includes('quality') || error.message?.includes('validation')) {
+      return {
+        type: 'quality_validation',
+        message: 'Quality validation failed',
+        originalError: error,
+        retryable: false,
+        userMessage: 'Content quality validation failed. Please review and improve the content.',
+        suggestions: [
+          'Review content structure and formatting',
+          'Ensure all required elements are present',
+          'Check grammar and readability'
+        ]
+      };
+    }
+
+    // Template errors
+    if (error.message?.includes('template')) {
+      return {
+        type: 'template_error',
+        message: 'Template processing failed',
+        originalError: error,
+        retryable: true,
+        userMessage: 'Template processing failed. Please check template configuration.',
+        suggestions: [
+          'Verify template exists and is valid',
+          'Check template parameters',
+          'Try with a different template'
+        ]
+      };
+    }
+
+    // Enhancement errors
+    if (error.message?.includes('enhance') || error.message?.includes('improvement')) {
+      return {
+        type: 'enhancement_error',
+        message: 'Content enhancement failed',
+        originalError: error,
+        retryable: true,
+        userMessage: 'Content enhancement failed. Proceeding with original content.',
+        suggestions: [
+          'Try with simpler content',
+          'Check content length and complexity',
+          'Disable enhancement if issues persist'
+        ]
+      };
+    }
+
     // API errors
     if (error.message) {
       return {
@@ -140,9 +210,10 @@ export const errorHandlingService = {
       message: appError.message,
       retryable: appError.retryable,
       originalError: appError.originalError,
+      suggestions: appError.suggestions,
     });
 
-    // Show toast notification
+    // Show toast notification with enhanced options
     if (appError.type === 'payment_required') {
       toast.error(fullMessage, {
         duration: 5000,
@@ -150,6 +221,12 @@ export const errorHandlingService = {
           label: 'Add Credits',
           onClick: () => window.open('https://docs.lovable.dev/features/ai', '_blank'),
         },
+      });
+    } else if (appError.suggestions && appError.suggestions.length > 0) {
+      // Show error with first suggestion as description
+      toast.error(fullMessage, {
+        duration: 6000,
+        description: appError.suggestions[0],
       });
     } else if (appError.retryable) {
       toast.error(fullMessage, {
@@ -160,6 +237,84 @@ export const errorHandlingService = {
         duration: 3000,
       });
     }
+
+    return appError;
+  },
+
+  /**
+   * Handle text response specific errors
+   */
+  handleTextResponseError(error: any, context: {
+    operation: string;
+    textLength?: number;
+    provider?: string;
+    section?: string;
+  }): AppError {
+    const appError = this.parseError(error);
+    
+    // Add context-specific information
+    appError.context = {
+      ...context,
+      category: 'text_response_generation',
+      textMetrics: context.textLength ? {
+        length: context.textLength,
+        estimatedWords: Math.round(context.textLength / 5),
+        complexity: context.textLength > 1000 ? 'high' : context.textLength > 500 ? 'medium' : 'low'
+      } : undefined
+    };
+
+    // Enhanced error messages for text processing
+    const contextMessage = `Text ${context.operation}`;
+    const fullMessage = `${contextMessage}: ${appError.userMessage}`;
+
+    console.error(`[Text Response Error] ${contextMessage}`, {
+      ...appError,
+      context: appError.context
+    });
+
+    // Show enhanced toast with context
+    toast.error(fullMessage, {
+      duration: 5000,
+      description: appError.suggestions?.[0] || 'Check the content and try again',
+    });
+
+    return appError;
+  },
+
+  /**
+   * Handle quality validation errors with detailed feedback
+   */
+  handleQualityValidationError(error: any, context: {
+    validationRules?: string[];
+    contentType?: string;
+    qualityScore?: number;
+  }): AppError {
+    const appError = this.parseError(error);
+    
+    // Add quality-specific context
+    appError.context = {
+      ...context,
+      category: 'quality_validation',
+      validationMetrics: {
+        rulesApplied: context.validationRules?.length || 0,
+        score: context.qualityScore || 0,
+        contentType: context.contentType || 'unknown'
+      }
+    };
+
+    const contextMessage = `Quality Validation (Score: ${context.qualityScore || 0})`;
+    const fullMessage = `${contextMessage}: ${appError.userMessage}`;
+
+    console.error(`[Quality Validation Error] ${contextMessage}`, {
+      ...appError,
+      context: appError.context
+    });
+
+    // Show quality-specific toast
+    toast.error(fullMessage, {
+      duration: 6000,
+      description: `Content needs improvement. ${appError.suggestions?.[0] || 'Review quality guidelines'}`,
+    });
 
     return appError;
   },
