@@ -7,28 +7,57 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   try {
     // Fetch all URLs from database
-    const [citiesResult, projectsResult, landingPagesResult, blogsResult, developersResult] =
-      await Promise.all([
-        supabase.from("cities").select("url_slug, updated_at").eq("page_status", "published"),
-        supabase
-          .from("projects")
-          .select(
-            "url_slug, city:cities(url_slug), micro_market:micro_markets(url_slug), updated_at"
-          )
-          .eq("is_published", true),
-        supabase
-          .from("landing_pages")
-          .select("uri, updated_at")
-          .eq("status", "published"),
-        supabase
-          .from("blog_articles")
-          .select("slug, updated_at")
-          .eq("status", "published"),
-        supabase
-          .from("developers")
-          .select("url_slug, updated_at")
-          .eq("is_published", true),
-      ]);
+    const [
+      citiesResult,
+      microMarketsResult,
+      projectsResult,
+      landingPagesResult,
+      blogsResult,
+      developersResult,
+      hyderabadPropertiesResult,
+      goaPropertiesResult,
+      dubaiPropertiesResult,
+    ] = await Promise.all([
+      supabase.from("cities").select("url_slug, updated_at").eq("page_status", "published"),
+      supabase
+        .from("micro_markets")
+        .select("url_slug, updated_at, city_id, cities!inner(url_slug)")
+        .eq("status", "published"),
+      supabase
+        .from("projects")
+        .select(
+          "url_slug, updated_at, city:cities(url_slug), micro_market:micro_markets(url_slug)"
+        )
+        .eq("is_published", true),
+      supabase
+        .from("landing_pages")
+        .select("uri, updated_at")
+        .eq("status", "published"),
+      supabase
+        .from("blog_articles")
+        .select("slug, updated_at")
+        .eq("status", "published"),
+      supabase
+        .from("developers")
+        .select("url_slug, updated_at")
+        .eq("is_published", true),
+      // Property listings
+      supabase
+        .from("hyderabad_properties")
+        .select("seo_slug, slug, updated_at")
+        .eq("status", "active")
+        .not("seo_slug", "is", null),
+      supabase
+        .from("goa_holiday_properties")
+        .select("seo_slug, slug, updated_at")
+        .eq("status", "Active")
+        .not("seo_slug", "is", null),
+      supabase
+        .from("dubai_properties")
+        .select("seo_slug, slug, updated_at")
+        .eq("status", "published")
+        .not("seo_slug", "is", null),
+    ]);
 
     const urls: MetadataRoute.Sitemap = [
       {
@@ -102,6 +131,31 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         changeFrequency: "weekly",
         priority: 0.7,
       });
+      urls.push({
+        url: `${baseUrl}/${c.url_slug}/buy`,
+        lastModified: c.updated_at ? new Date(c.updated_at) : new Date(),
+        changeFrequency: "daily",
+        priority: 0.9,
+      });
+      urls.push({
+        url: `${baseUrl}/${c.url_slug}/micro-markets`,
+        lastModified: c.updated_at ? new Date(c.updated_at) : new Date(),
+        changeFrequency: "weekly",
+        priority: 0.8,
+      });
+    });
+
+    // Micro-markets
+    microMarketsResult.data?.forEach((mm: any) => {
+      const citySlug = mm.cities?.url_slug;
+      if (citySlug && mm.url_slug) {
+        urls.push({
+          url: `${baseUrl}/${citySlug}/${mm.url_slug}`,
+          lastModified: mm.updated_at ? new Date(mm.updated_at) : new Date(),
+          changeFrequency: "weekly",
+          priority: 0.8,
+        });
+      }
     });
 
     // Projects
@@ -110,14 +164,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       const microMarketSlug = p.micro_market?.url_slug;
       
       if (citySlug && microMarketSlug) {
+        // Micro-market level project route (preferred)
         urls.push({
           url: `${baseUrl}/${citySlug}/${microMarketSlug}/projects/${p.url_slug}`,
           lastModified: p.updated_at ? new Date(p.updated_at) : new Date(),
           changeFrequency: "weekly",
           priority: 0.8,
         });
-      } else if (citySlug) {
-        // Fallback to city-level project route
+      }
+      
+      if (citySlug) {
+        // City-level project route (fallback or alternative)
         urls.push({
           url: `${baseUrl}/${citySlug}/projects/${p.url_slug}`,
           lastModified: p.updated_at ? new Date(p.updated_at) : new Date(),
@@ -155,6 +212,45 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         changeFrequency: "weekly",
         priority: 0.7,
       });
+    });
+
+    // Property Listings - Hyderabad
+    hyderabadPropertiesResult.data?.forEach((p) => {
+      const slug = p.seo_slug || p.slug;
+      if (slug) {
+        urls.push({
+          url: `${baseUrl}/hyderabad/buy/${slug}`,
+          lastModified: p.updated_at ? new Date(p.updated_at) : new Date(),
+          changeFrequency: "weekly",
+          priority: 0.7,
+        });
+      }
+    });
+
+    // Property Listings - Goa
+    goaPropertiesResult.data?.forEach((p) => {
+      const slug = p.seo_slug || p.slug;
+      if (slug) {
+        urls.push({
+          url: `${baseUrl}/goa/buy/${slug}`,
+          lastModified: p.updated_at ? new Date(p.updated_at) : new Date(),
+          changeFrequency: "weekly",
+          priority: 0.7,
+        });
+      }
+    });
+
+    // Property Listings - Dubai
+    dubaiPropertiesResult.data?.forEach((p) => {
+      const slug = p.seo_slug || p.slug;
+      if (slug) {
+        urls.push({
+          url: `${baseUrl}/dubai/buy/${slug}`,
+          lastModified: p.updated_at ? new Date(p.updated_at) : new Date(),
+          changeFrequency: "weekly",
+          priority: 0.7,
+        });
+      }
     });
 
     return urls;
