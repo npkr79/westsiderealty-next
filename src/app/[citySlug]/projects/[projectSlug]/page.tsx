@@ -5,11 +5,10 @@ import { findBrochureByProjectName } from "@/services/brochureService";
 import { createClient } from "@/lib/supabase/server";
 import { buildMetadata } from "@/components/common/SEO";
 import { JsonLd } from "@/components/common/SEO";
-import { Breadcrumbs } from "@/components/seo/Breadcrumbs";
 import { generateUnifiedSchema } from "@/lib/seo-utils";
 import { optimizeSupabaseImage } from "@/utils/imageOptimization";
 import CityHubBacklink from "@/components/seo/CityHubBacklink";
-import ProjectSEO from "@/components/project-details/ProjectSEO";
+import BreadcrumbNav from "@/components/layout/BreadcrumbNav";
 import ProjectHeroGallery from "@/components/project-details/ProjectHeroGallery";
 import ProjectOverviewSection from "@/components/project-details/ProjectOverviewSection";
 import ProjectPriceTable from "@/components/project-details/ProjectPriceTable";
@@ -279,10 +278,9 @@ export default async function ProjectDetailPage({ params }: PageProps) {
     <>
       <DebugClient citySlug={citySlug} projectSlug={projectSlug} />
       <JsonLd jsonLd={unifiedSchema} />
-      <ProjectSEO project={project} citySlug={citySlug} projectSlug={projectSlug} />
       <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-4">
-          <Breadcrumbs items={breadcrumbItems} />
+          <BreadcrumbNav items={breadcrumbItems} />
         </div>
 
         {/* Hero Gallery */}
