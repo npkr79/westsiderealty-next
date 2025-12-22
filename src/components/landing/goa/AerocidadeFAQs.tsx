@@ -56,7 +56,7 @@ const faqs: FAQ[] = [
   },
   {
     question: "What makes Dabolim location strategic?",
-    answer: "Dabolim offers proximity to both North and South Goa beaches, the international airport, major highways, and is an emerging tourism hub with year-round demand."
+    answer: "Dabolim offers proximity to both North and Goa beaches, the international airport, major highways, and is an emerging tourism hub with year-round demand."
   },
   {
     question: "Can I use the apartment for personal stays?",

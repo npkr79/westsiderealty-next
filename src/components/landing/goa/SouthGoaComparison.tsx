@@ -17,10 +17,10 @@ export default function SouthGoaComparison() {
       <div className="container mx-auto max-w-6xl">
         <div className="text-center mb-12">
           <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-            Why Invest in South Goa?
+            Why Invest in Goa?
           </h2>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            South Goa offers premium investment opportunities with better returns and lifestyle benefits compared to North Goa
+            Goa offers premium investment opportunities with better returns and lifestyle benefits
           </p>
         </div>
 
@@ -29,7 +29,7 @@ export default function SouthGoaComparison() {
             <div className="flex items-center gap-3 mb-6">
               <MapPin className="h-8 w-8 text-teal-600" />
               <h3 className="text-2xl font-bold text-gray-900">
-                South Goa Investment Advantages
+                Goa Investment Advantages
               </h3>
             </div>
 
@@ -50,7 +50,7 @@ export default function SouthGoaComparison() {
 
             <div className="mt-8 pt-6 border-t-2 border-teal-200">
               <p className="text-center text-gray-600 italic">
-                "South Goa combines premium lifestyle with strong investment potential, making it ideal for discerning investors seeking both returns and tranquility."
+                "Goa combines premium lifestyle with strong investment potential, making it ideal for discerning investors seeking both returns and tranquility."
               </p>
             </div>
           </CardContent>

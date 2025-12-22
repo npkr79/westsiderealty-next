@@ -106,8 +106,8 @@ export default function AerocidadeHero({ landingPage, configurations }: Aerocida
                 window.open(`https://wa.me/${landingPage.whatsapp_number}?text=${whatsappMessage}`, "_blank");
               }}
             >
-              <MessageCircle className="h-5 w-5 mr-2" />
-              WhatsApp Us
+              <MessageCircle className="h-5 w-5 mr-2 flex-shrink-0" />
+              <span className="whitespace-nowrap">WhatsApp Us</span>
             </Button>
           </div>
         </div>

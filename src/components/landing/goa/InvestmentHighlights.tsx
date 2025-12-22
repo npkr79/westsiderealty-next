@@ -45,7 +45,7 @@ export default function InvestmentHighlights({ highlights }: InvestmentHighlight
             Investment Highlights
           </h2>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Why Aerocidade is the perfect investment opportunity in South Goa
+            Why Aerocidade is the perfect investment opportunity in Goa
           </p>
         </div>
 

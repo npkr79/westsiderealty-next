@@ -40,8 +40,8 @@ BEGIN
     'Invest Where the World Vacations – A blend of holiday comfort & profitable investment',
     '<div class="prose prose-lg max-w-none">
       <h2>Vive la Goa - Aerocidade</h2>
-      <p>Aerocidade by Devika Group offers premium studio apartments in the heart of South Goa, just 2.7 km from Dabolim International Airport. This resort-style development combines holiday comfort with profitable investment potential, featuring fully furnished units designed for self-use, Airbnb rentals, or long-term leasing.</p>
-      <p>With South Goa''s tourism growth at 10.5% and backed by the ''Goa Beyond Beaches'' transformation plan, Aerocidade presents a unique opportunity to invest where the world vacations. Experience the serenity of pristine beaches, wellness lifestyle, and premium rental yields of 8-10%.</p>
+      <p>Aerocidade by Devika Group offers premium studio apartments in the heart of Goa, just 2.7 km from Dabolim International Airport. This resort-style development combines holiday comfort with profitable investment potential, featuring fully furnished units designed for self-use, Airbnb rentals, or long-term leasing.</p>
+      <p>With Goa''s tourism growth at 10.5% and backed by the ''Goa Beyond Beaches'' transformation plan, Aerocidade presents a unique opportunity to invest where the world vacations. Experience the serenity of pristine beaches, wellness lifestyle, and premium rental yields of 8-10%.</p>
       <h3>Project Specifications</h3>
       <ul>
         <li>Exclusive 12-unit per floor resort-style apartments</li>
@@ -50,7 +50,7 @@ BEGIN
         <li>Modern eco-friendly construction</li>
       </ul>
     </div>',
-    'Dabolim, South Goa, Goa',
+    'Dabolim, Goa',
     '919866085831',
     'Hi, I''m interested in Aerocidade Studio Apartments in Dabolim, Goa. Please share more details.',
     true,
@@ -78,7 +78,7 @@ BEGIN
     (landing_page_id_var, 'TrendingUp', '10.5% Tourism Growth', 'Goa tourism up by 10.5% in 2025 – booming footfall', 1, NOW(), NOW()),
     (landing_page_id_var, 'Building2', '₹350 Cr Investment', 'Backed by ''Goa Beyond Beaches'' tourism transformation plan', 2, NOW(), NOW()),
     (landing_page_id_var, 'MapPin', 'Prime Airport Proximity', 'Just 2.7 km from Dabolim International Airport', 3, NOW(), NOW()),
-    (landing_page_id_var, 'Wallet', 'Strong ROI Potential', '8-10% rental yield in South Goa region', 4, NOW(), NOW()),
+    (landing_page_id_var, 'Wallet', 'Strong ROI Potential', '8-10% rental yield in Goa region', 4, NOW(), NOW()),
     (landing_page_id_var, 'Sparkles', 'Fully Furnished', 'Resort-style maintenance = zero hassle investment', 5, NOW(), NOW()),
     (landing_page_id_var, 'Home', 'Multiple Use Cases', 'Perfect for Self Use | Airbnb | Long-term Rental', 6, NOW(), NOW());
 
@@ -91,7 +91,7 @@ BEGIN
   INSERT INTO landing_page_location_points (landing_page_id, landmark_name, landmark_type, distance, description, icon_name, display_order, created_at, updated_at)
   VALUES
     (landing_page_id_var, 'Dabolim International Airport', 'Airport', '2.7 km', 'Nearest international airport', 'Plane', 1, NOW(), NOW()),
-    (landing_page_id_var, 'Bogmalo Beach', 'Beach', '2.6 km', 'Pristine South Goa beach', 'Waves', 2, NOW(), NOW()),
+    (landing_page_id_var, 'Bogmalo Beach', 'Beach', '2.6 km', 'Pristine Goa beach', 'Waves', 2, NOW(), NOW()),
     (landing_page_id_var, 'Vasco Market & City Centre', 'Shopping', '2.5 km', 'Local market and city center', 'ShoppingBag', 3, NOW(), NOW()),
     (landing_page_id_var, 'Cansaulim Beach', 'Beach', '5.8 km', 'Popular beach destination', 'Umbrella', 4, NOW(), NOW()),
     (landing_page_id_var, 'Naval Aviation Museum', 'Museum', '3.8 km', 'Aviation history museum', 'Landmark', 5, NOW(), NOW()),
@@ -104,11 +104,11 @@ BEGIN
     (landing_page_id_var, 'Pricing', 'What is the starting price of studio apartments at Aerocidade?', 'Studio apartments at Aerocidade start at ₹55.29 Lakhs (582 sq.ft at ₹9,500/sq.ft). The project offers a flexible 50-25-25 payment plan.', 1, NOW(), NOW()),
     (landing_page_id_var, 'Legal', 'Is Aerocidade RERA approved?', 'Yes, Aerocidade is fully RERA registered with registration number PRGO07242254, valid until 31-Dec-2027 under Goa Real Estate Regulatory Authority.', 2, NOW(), NOW()),
     (landing_page_id_var, 'Location', 'How far is Aerocidade from Dabolim Airport?', 'Aerocidade is strategically located just 2.7 km from Dabolim International Airport, making it ideal for holiday home investors and frequent travelers.', 3, NOW(), NOW()),
-    (landing_page_id_var, 'Investment', 'What is the rental income potential at Aerocidade?', 'Studio apartments at Aerocidade can generate rental income up to ₹26,000/month through Airbnb or long-term rentals, with South Goa offering 8-10% rental yields.', 4, NOW(), NOW()),
+    (landing_page_id_var, 'Investment', 'What is the rental income potential at Aerocidade?', 'Studio apartments at Aerocidade can generate rental income up to ₹26,000/month through Airbnb or long-term rentals, with Goa offering 8-10% rental yields.', 4, NOW(), NOW()),
     (landing_page_id_var, 'Features', 'Are the apartments fully furnished?', 'Yes, all studio apartments come fully furnished with modern fitouts, resort-style design, and comprehensive maintenance support for hassle-free investment.', 5, NOW(), NOW()),
     (landing_page_id_var, 'Amenities', 'What amenities are available at Aerocidade?', 'Aerocidade features premium amenities including swimming pool, gym, cafeteria, landscaped courtyards, kids'' play zone, 24x7 security, and power backup.', 6, NOW(), NOW()),
     (landing_page_id_var, 'Developer', 'Who is the developer of Aerocidade?', 'Aerocidade is developed by Devika Group, a trusted developer with 70+ years of legacy since 1954, having delivered 46+ projects across 6+ million sq.ft.', 7, NOW(), NOW()),
-    (landing_page_id_var, 'Location', 'What are the nearby beaches?', 'Aerocidade is close to Bogmalo Beach (2.6 km), Cansaulim Beach (5.8 km), and Majorda Beach (8.0 km) – all pristine South Goa beaches.', 8, NOW(), NOW());
+    (landing_page_id_var, 'Location', 'What are the nearby beaches?', 'Aerocidade is close to Bogmalo Beach (2.6 km), Cansaulim Beach (5.8 km), and Majorda Beach (8.0 km) – all pristine Goa beaches.', 8, NOW(), NOW());
 
   -- Step 6: Insert Specifications
   INSERT INTO landing_page_specifications (landing_page_id, category, specification_key, specification_value, display_order, created_at, updated_at)

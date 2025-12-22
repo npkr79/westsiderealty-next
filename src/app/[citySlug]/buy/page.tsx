@@ -34,13 +34,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   const descriptions = {
     hyderabad: "Find premium resale properties in Hyderabad. Browse apartments, villas, farmhouses & plots in Gachibowli, Kondapur, Madhapur & other prime locations.",
-    goa: "Discover luxury holiday homes and investment properties in Goa. Beachside villas, rental-ready apartments in North & South Goa.",
+    goa: "Discover luxury holiday homes and investment properties in Goa. Beachside villas, rental-ready apartments in North & Goa.",
     dubai: "Explore premium investment properties in Dubai. High-ROI apartments, luxury villas, and studio units in prime UAE locations.",
   };
 
   const keywords = {
     hyderabad: "hyderabad properties, resale properties hyderabad, apartments hyderabad, villas hyderabad, gachibowli properties, kondapur real estate, madhapur homes",
-    goa: "goa properties, holiday homes goa, investment properties goa, goa villas, north goa properties, south goa real estate, beach properties",
+    goa: "goa properties, holiday homes goa, investment properties goa, goa villas, north goa properties, goa real estate, beach properties",
     dubai: "dubai properties, investment properties dubai, dubai apartments, dubai villas, uae real estate, dubai studios, emirates properties",
   };
 

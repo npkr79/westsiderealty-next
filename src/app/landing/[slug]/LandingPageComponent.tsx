@@ -213,7 +213,7 @@ const LandingPageComponent = ({
       {/* Comprehensive FAQs Section */}
       <AerocidadeFAQs />
 
-      {/* South Goa vs North Goa Comparison */}
+      {/* Goa vs North Goa Comparison */}
       <SouthGoaComparison />
 
       {/* Amenities Grid */}

@@ -44,7 +44,7 @@ export default function ProjectOverview() {
     { icon: Plane, text: "10 min from Dabolim International Airport" },
     { icon: Waves, text: "Close to Bogmalo & Hollant Beaches" },
     { icon: Coffee, text: "Surrounded by 5-star resorts, cafés & nightlife" },
-    { icon: MapPin, text: "Easy access to South Goa's scenic coastal belt" }
+    { icon: MapPin, text: "Easy access to Goa's scenic coastal belt" }
   ];
 
   // Section 4: Premium Amenities
