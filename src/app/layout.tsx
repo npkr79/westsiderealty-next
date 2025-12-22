@@ -13,17 +13,21 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const BASE_URL = "https://www.westsiderealty.in";
+
 const DEFAULT_OG_IMAGE =
   "https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/brand-assets/remax-logo-banner-1200x630.jpg";
 
 export const metadata: Metadata = {
   title: "RE/MAX Westside Realty | Premium Real Estate in Hyderabad, Goa & Dubai",
-  description: "Expert real estate advisory for premium properties in Hyderabad, Goa holiday homes, and Dubai investments. RE/MAX Westside Realty.",
+  description:
+    "Expert real estate advisory for premium properties in Hyderabad, Goa holiday homes, and Dubai investments. RE/MAX Westside Realty.",
+  metadataBase: new URL(BASE_URL),
   openGraph: {
     title: "RE/MAX Westside Realty | Premium Real Estate in Hyderabad, Goa & Dubai",
     description:
       "Expert real estate advisory for premium properties in Hyderabad, Goa holiday homes, and Dubai investments. RE/MAX Westside Realty.",
-    url: "https://www.westsiderealty.in",
+    url: BASE_URL,
     siteName: "RE/MAX Westside Realty",
     images: [
       {
@@ -60,3 +64,4 @@ export default function RootLayout({
     </html>
   );
 }
+

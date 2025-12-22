@@ -26,6 +26,8 @@ import MarketPulseBanner from "@/components/city/MarketPulseBanner";
 import MarketUpdateBanner from "@/components/city/MarketUpdateBanner";
 import { buildMetadata } from "@/components/common/SEO";
 import { JsonLd } from "@/components/common/SEO";
+import { generateUnifiedSchema } from "@/lib/seo-utils";
+import { optimizeSupabaseImage } from "@/utils/imageOptimization";
 
 interface PageProps {
   params: Promise<{ citySlug: string }>;
@@ -44,12 +46,48 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   const canonicalUrl = city.canonical_url || `https://www.westsiderealty.in/${citySlug}`;
 
-  return buildMetadata({
-    title: city.seo_title,
-    description: city.meta_description,
-    canonicalUrl,
-    imageUrl: city.hero_image_url || undefined,
+  // Standardized title format: "Real Estate in {City}: Top Projects & Investment Hotspots | RE/MAX"
+  const seoTitle = city.seo_title || `Real Estate in ${city.city_name}: Top Projects & Investment Hotspots | RE/MAX`;
+  const seoDescription = city.meta_description || `Explore premium real estate opportunities in ${city.city_name}. Discover top projects, investment hotspots, and luxury properties.`;
+  
+  // Optimize OG image
+  const rawOgImage = city.hero_image_url || "https://www.westsiderealty.in/placeholder.svg";
+  const optimizedOgImage = optimizeSupabaseImage(rawOgImage, {
+    width: 1200,
+    height: 630,
+    quality: 80,
+    format: "webp",
   });
+
+  return {
+    title: seoTitle,
+    description: seoDescription,
+    alternates: {
+      canonical: canonicalUrl,
+    },
+    openGraph: {
+      title: seoTitle,
+      description: seoDescription,
+      url: canonicalUrl,
+      siteName: "RE/MAX Westside Realty",
+      type: "website",
+      locale: "en_IN",
+      images: [
+        {
+          url: optimizedOgImage,
+          width: 1200,
+          height: 630,
+          alt: `Real Estate in ${city.city_name}`,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: seoTitle,
+      description: seoDescription,
+      images: [optimizedOgImage],
+    },
+  };
 }
 
 export async function generateStaticParams() {
@@ -134,55 +172,59 @@ export default async function CityPage({ params }: PageProps) {
   // Generate canonical URL
   const canonicalUrl = city.canonical_url || `https://www.westsiderealty.in/${slug}`;
 
-  // Generate JSON-LD structured data
-  const cityJsonLd = {
-    "@context": "https://schema.org",
-    "@type": "RealEstateListing",
+  // Extract FAQs
+  const faqItems: { question: string; answer: string }[] = [];
+  if (Array.isArray(faqs) && faqs.length > 0) {
+    faqs.forEach((faq: any) => {
+      const question = faq.question || faq.q || faq.title || '';
+      const answer = faq.answer || faq.a || faq.description || faq.content || '';
+      if (question && answer) {
+        faqItems.push({
+          question,
+          answer: typeof answer === 'string' 
+            ? answer.replace(/<[^>]*>/g, '') // Strip HTML tags for schema
+            : String(answer),
+        });
+      }
+    });
+  }
+
+  // Build primary entity (CollectionPage or Place)
+  const primaryEntity: Record<string, any> = {
+    "@type": "CollectionPage",
     name: city.h1_title || `Real Estate in ${city.city_name}`,
-    description: city.meta_description,
+    description: city.meta_description || `Explore premium real estate opportunities in ${city.city_name}`,
     url: canonicalUrl,
-    areaServed: Array.isArray(microMarkets) ? microMarkets.map((m) => m.micro_market_name) : [],
-    provider: {
-      "@type": "RealEstateAgent",
-      name: "RE/MAX Westside Realty",
-      url: "https://www.westsiderealty.in",
-      address: {
-        "@type": "PostalAddress",
-        addressLocality: city.city_name,
-        addressCountry: city.country || "IN",
-      },
-    },
+    ...(Array.isArray(microMarkets) && microMarkets.length > 0 && {
+      areaServed: microMarkets.map((m) => ({
+        "@type": "City",
+        name: m.micro_market_name,
+      })),
+    }),
   };
 
-  // Breadcrumb structured data
-  const breadcrumbJsonLd = {
-    "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
-    itemListElement: [
-      {
-        "@type": "ListItem",
-        position: 1,
-        name: "Home",
-        item: "https://www.westsiderealty.in",
-      },
-      {
-        "@type": "ListItem",
-        position: 2,
-        name: city.city_name,
-        item: canonicalUrl,
-      },
+  // Generate unified schema
+  const unifiedSchema = generateUnifiedSchema({
+    pageUrl: canonicalUrl,
+    title: city.h1_title || `Real Estate in ${city.city_name}`,
+    description: city.meta_description || `Explore premium real estate opportunities in ${city.city_name}`,
+    heroImageUrl: city.hero_image_url || undefined,
+    primaryEntityType: "CollectionPage",
+    primaryEntity,
+    faqItems,
+    breadcrumbs: [
+      { name: "Home", item: "https://www.westsiderealty.in" },
+      { name: city.city_name, item: canonicalUrl },
     ],
-  };
+  });
 
   const safeImageSrc = (src: string | null | undefined) =>
     src && src.trim() ? src : "/fallback-hero.jpg";
 
   return (
     <>
-      {/* FAQ Schema for all cities */}
-      {Array.isArray(faqs) && faqs.length > 0 && <CityFAQSchema faqData={faqs} />}
-
-      <JsonLd jsonLd={[cityJsonLd, breadcrumbJsonLd]} />
+      {/* Unified JSON-LD schema (includes FAQ) */}
+      <JsonLd jsonLd={unifiedSchema} />
 
       {/* Hero Section */}
       <section className="relative py-0 overflow-hidden">

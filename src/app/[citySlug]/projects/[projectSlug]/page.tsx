@@ -6,6 +6,8 @@ import { createClient } from "@/lib/supabase/server";
 import { buildMetadata } from "@/components/common/SEO";
 import { JsonLd } from "@/components/common/SEO";
 import { Breadcrumbs } from "@/components/seo/Breadcrumbs";
+import { generateUnifiedSchema } from "@/lib/seo-utils";
+import { optimizeSupabaseImage } from "@/utils/imageOptimization";
 import CityHubBacklink from "@/components/seo/CityHubBacklink";
 import ProjectSEO from "@/components/project-details/ProjectSEO";
 import ProjectHeroGallery from "@/components/project-details/ProjectHeroGallery";
@@ -79,15 +81,49 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     ? `https://www.westsiderealty.in/${citySlug}/${microMarketSlug}/projects/${projectSlug}`
     : `https://www.westsiderealty.in/${citySlug}/projects/${projectSlug}`;
 
-  return buildMetadata({
-    title:
-      project.seo_title ||
-      `${project.project_name} | Price, Floor Plans & Details | RE/MAX Westside Realty`,
-    description: project.meta_description || `Explore ${project.project_name} - Premium residential project`,
-    canonicalUrl,
-    imageUrl: project.hero_image_url || undefined,
-    type: "website",
+  // Standardized title format: "{Project Name} {Location}: Price, Floor Plans & Reviews | RE/MAX"
+  const cityName = project.city?.city_name || citySlug;
+  const seoTitle = project.seo_title || `${project.project_name} ${cityName}: Price, Floor Plans & Reviews | RE/MAX`;
+  const seoDescription = project.meta_description || `Explore ${project.project_name} - Premium residential project in ${cityName}`;
+  
+  // Optimize OG image
+  const rawOgImage = project.hero_image_url || "https://www.westsiderealty.in/placeholder.svg";
+  const optimizedOgImage = optimizeSupabaseImage(rawOgImage, {
+    width: 1200,
+    height: 630,
+    quality: 80,
+    format: "webp",
   });
+
+  return {
+    title: seoTitle,
+    description: seoDescription,
+    alternates: {
+      canonical: canonicalUrl,
+    },
+    openGraph: {
+      title: seoTitle,
+      description: seoDescription,
+      url: canonicalUrl,
+      siteName: "RE/MAX Westside Realty",
+      type: "website",
+      locale: "en_IN",
+      images: [
+        {
+          url: optimizedOgImage,
+          width: 1200,
+          height: 630,
+          alt: project.project_name,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: seoTitle,
+      description: seoDescription,
+      images: [optimizedOgImage],
+    },
+  };
 }
 
 export default async function ProjectDetailPage({ params }: PageProps) {
@@ -156,29 +192,36 @@ export default async function ProjectDetailPage({ params }: PageProps) {
     { name: project.project_name, href: `/${citySlug}/projects/${projectSlug}` },
   ];
 
-  // Real Estate Listing Schema for SEO
-  const realEstateSchema = {
-    "@context": "https://schema.org",
+  // Extract FAQs
+  const faqs = (project as any).faqs_json;
+  const faqItems: { question: string; answer: string }[] = [];
+  if (faqs && Array.isArray(faqs)) {
+    faqs.forEach((faq: any) => {
+      const question = faq.question || faq.q || faq.title || '';
+      const answer = faq.answer || faq.a || faq.description || faq.content || '';
+      if (question && answer) {
+        faqItems.push({
+          question,
+          answer: typeof answer === 'string' 
+            ? answer.replace(/<[^>]*>/g, '') // Strip HTML tags for schema
+            : String(answer),
+        });
+      }
+    });
+  }
+
+  // Build primary entity (RealEstateListing)
+  const primaryEntity: Record<string, any> = {
     "@type": "RealEstateListing",
     name: project.project_name,
-    description: project.meta_description || `Premium residential project in ${project.city?.city_name || citySlug}`,
-    image: project.hero_image_url,
-    url: `https://www.westsiderealty.in/${citySlug}${microMarketSlug ? `/${microMarketSlug}` : ""}/projects/${projectSlug}`,
+    description: seoDescription,
+    image: project.hero_image_url || undefined,
+    url: canonicalUrl,
     address: {
       "@type": "PostalAddress",
       addressLocality: project.city?.city_name || citySlug,
       addressRegion: project.micro_market?.micro_market_name || "",
       addressCountry: "IN",
-    },
-    provider: {
-      "@type": "RealEstateAgent",
-      name: "RE/MAX Westside Realty",
-      image: "https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/brand-assets/remax-logo.jpg",
-      address: {
-        "@type": "PostalAddress",
-        addressLocality: "Hyderabad",
-        addressCountry: "IN",
-      },
     },
     ...(project.price_range_text && {
       offers: {
@@ -189,46 +232,25 @@ export default async function ProjectDetailPage({ params }: PageProps) {
     }),
   };
 
-  // FAQPage Schema for SEO
-  const faqSchema = (() => {
-    const faqs = (project as any).faqs_json;
-    if (!faqs || !Array.isArray(faqs) || faqs.length === 0) {
-      return null;
-    }
-
-    // Normalize FAQ items to handle different formats
-    const normalizedFaqs = faqs
-      .map((faq: any) => {
-        const question = faq.question || faq.q || faq.title || '';
-        const answer = faq.answer || faq.a || faq.description || faq.content || '';
-        
-        // Only include if both question and answer exist
-        if (question && answer) {
-          return {
-            "@type": "Question",
-            name: question,
-            acceptedAnswer: {
-              "@type": "Answer",
-              text: typeof answer === 'string' 
-                ? answer.replace(/<[^>]*>/g, '') // Strip HTML tags for schema
-                : String(answer),
-            },
-          };
-        }
-        return null;
-      })
-      .filter(Boolean); // Remove null entries
-
-    if (normalizedFaqs.length === 0) {
-      return null;
-    }
-
-    return {
-      "@context": "https://schema.org",
-      "@type": "FAQPage",
-      mainEntity: normalizedFaqs,
-    };
-  })();
+  // Generate unified schema
+  const unifiedSchema = generateUnifiedSchema({
+    pageUrl: canonicalUrl,
+    title: seoTitle,
+    description: seoDescription,
+    heroImageUrl: project.hero_image_url || undefined,
+    primaryEntityType: "RealEstateListing",
+    primaryEntity,
+    faqItems,
+    breadcrumbs: [
+      { name: "Home", item: "https://www.westsiderealty.in" },
+      { name: cityName, item: `https://www.westsiderealty.in/${citySlug}` },
+      ...(microMarketSlug
+        ? [{ name: project.micro_market?.micro_market_name || microMarketSlug, item: `https://www.westsiderealty.in/${citySlug}/${microMarketSlug}` }]
+        : []),
+      { name: "Projects", item: `https://www.westsiderealty.in/${citySlug}/projects` },
+      { name: project.project_name, item: canonicalUrl },
+    ],
+  });
 
   // Debug: Log image data in development
   if (process.env.NODE_ENV === 'development') {
@@ -244,8 +266,7 @@ export default async function ProjectDetailPage({ params }: PageProps) {
   return (
     <>
       <DebugClient citySlug={citySlug} projectSlug={projectSlug} />
-      <JsonLd jsonLd={realEstateSchema} />
-      {faqSchema && <JsonLd jsonLd={faqSchema} />}
+      <JsonLd jsonLd={unifiedSchema} />
       <ProjectSEO project={project} citySlug={citySlug} projectSlug={projectSlug} />
       <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-4">

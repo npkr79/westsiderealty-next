@@ -5,6 +5,8 @@ import Image from "next/image";
 import { createClient } from "@/lib/supabase/server";
 import { buildMetadata } from "@/components/common/SEO";
 import { JsonLd } from "@/components/common/SEO";
+import { generateUnifiedSchema } from "@/lib/seo-utils";
+import { optimizeSupabaseImage } from "@/utils/imageOptimization";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -37,18 +39,55 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   }
 
   const canonicalUrl = `https://www.westsiderealty.in/blog/${slug}`;
-  const ogImage = article.image_url 
+  const rawOgImage = article.image_url 
     ? (article.image_url.startsWith("http") 
         ? article.image_url 
         : `https://www.westsiderealty.in${article.image_url}`)
     : "https://www.westsiderealty.in/placeholder.svg";
-
-  return buildMetadata({
-    title: article.seo_title || article.title,
-    description: article.seo_description || article.description,
-    canonicalUrl,
-    imageUrl: ogImage,
+  
+  // Optimize OG image
+  const optimizedOgImage = optimizeSupabaseImage(rawOgImage, {
+    width: 1200,
+    height: 630,
+    quality: 80,
+    format: "webp",
   });
+
+  // Standardized title format: "{Article Title} | Real Estate Insights"
+  const seoTitle = article.seo_title || article.title || "Real Estate Insights";
+  const seoDescription = article.seo_description || article.description || "";
+
+  return {
+    title: seoTitle,
+    description: seoDescription,
+    alternates: {
+      canonical: canonicalUrl,
+    },
+    openGraph: {
+      title: seoTitle,
+      description: seoDescription,
+      url: canonicalUrl,
+      siteName: "RE/MAX Westside Realty",
+      type: "article",
+      locale: "en_IN",
+      images: [
+        {
+          url: optimizedOgImage,
+          width: 1200,
+          height: 630,
+          alt: article.title,
+        },
+      ],
+      publishedTime: article.date ? new Date(article.date).toISOString() : undefined,
+      modifiedTime: article.updated_at ? new Date(article.updated_at).toISOString() : undefined,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: seoTitle,
+      description: seoDescription,
+      images: [optimizedOgImage],
+    },
+  };
 }
 
 export async function generateStaticParams() {
@@ -114,13 +153,12 @@ export default async function BlogArticlePage({ params }: PageProps) {
                        authorName.toLowerCase().includes("westside realty team") ||
                        authorName === "RE/MAX Westside Realty Team";
 
-  // Article structured data with refined author for E-E-A-T
-  const articleSchema = {
-    "@context": "https://schema.org",
+  // Build primary entity (Article)
+  const primaryEntity: Record<string, any> = {
     "@type": "Article",
     headline: article.seo_title || article.title,
     description: article.seo_description || article.description.substring(0, 160),
-    image: ogImage,
+    image: optimizedOgImage,
     datePublished: datePublished,
     dateModified: dateModified,
     author: isTeamAuthor
@@ -142,41 +180,26 @@ export default async function BlogArticlePage({ params }: PageProps) {
         url: "https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/brand-assets/remax-logo.jpg",
       },
     },
-    mainEntityOfPage: {
-      "@type": "WebPage",
-      "@id": canonicalUrl,
-    },
   };
 
-  // BreadcrumbList schema
-  const breadcrumbSchema = {
-    "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
-    itemListElement: [
-      {
-        "@type": "ListItem",
-        position: 1,
-        name: "Home",
-        item: `${baseUrl}/`,
-      },
-      {
-        "@type": "ListItem",
-        position: 2,
-        name: "Blog",
-        item: `${baseUrl}/blog`,
-      },
-      {
-        "@type": "ListItem",
-        position: 3,
-        name: article.title,
-        item: canonicalUrl,
-      },
+  // Generate unified schema
+  const unifiedSchema = generateUnifiedSchema({
+    pageUrl: canonicalUrl,
+    title: seoTitle,
+    description: seoDescription,
+    heroImageUrl: optimizedOgImage,
+    primaryEntityType: "Article",
+    primaryEntity,
+    breadcrumbs: [
+      { name: "Home", item: `${baseUrl}/` },
+      { name: "Blog", item: `${baseUrl}/blog` },
+      { name: article.title, item: canonicalUrl },
     ],
-  };
+  });
 
   return (
     <>
-      <JsonLd jsonLd={[articleSchema, breadcrumbSchema]} />
+      <JsonLd jsonLd={unifiedSchema} />
       <ReadingProgressBar />
       <ArticleHero
         title={article.title}

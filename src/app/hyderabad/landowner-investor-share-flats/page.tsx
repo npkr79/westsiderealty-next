@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
-import { buildMetadata } from "@/components/common/SEO";
 import { JsonLd } from "@/components/common/SEO";
 import { Breadcrumbs } from "@/components/seo/Breadcrumbs";
 import { getLandownerInvestorProjects } from "@/lib/supabase/landowner-projects";
+import { generateUnifiedSchema } from "@/lib/seo-utils";
 import { HeroSection } from "./components/HeroSection";
 import { ExplanationSection } from "./components/ExplanationSection";
 import { BenefitsGrid } from "./components/BenefitsGrid";
@@ -12,10 +12,21 @@ import { FAQSection } from "./components/FAQSection";
 import { SEOContent } from "./components/SEOContent";
 import { CTASection } from "./components/CTASection";
 
+const LANDOWNER_CANONICAL_URL =
+  "https://www.westsiderealty.in/hyderabad/landowner-investor-share-flats";
+
+// Hero / social preview banner (1200x630 recommended)
+const LANDOWNER_OG_IMAGE =
+  "https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/brand-assets/landowner-share-banner-1200x630.jpg";
+
 export async function generateMetadata(): Promise<Metadata> {
-  return buildMetadata({
-    title: "Landowner Share Flats in Hyderabad | 15% Cheaper than Builder Price",
-    description: "Buy landowner share & investor share apartments in Hyderabad at 10-15% below market rates. RERA approved projects in Gachibowli, Kokapet, Narsingi. Direct from landowners.",
+  const title = "Landowner Share Flats in Hyderabad | 15% Cheaper than Builder Price";
+  const description =
+    "Buy landowner share & investor share apartments in Hyderabad at 10-15% below market rates. RERA approved projects in Gachibowli, Kokapet, Narsingi. Direct from landowners.";
+
+  return {
+    title,
+    description,
     keywords: [
       "landowner share flats hyderabad",
       "investor share apartments hyderabad",
@@ -31,8 +42,32 @@ export async function generateMetadata(): Promise<Metadata> {
       "pre-launch investor flats",
       "landowner share vs builder flats",
     ].join(", "),
-    canonicalUrl: "https://www.westsiderealty.in/hyderabad/landowner-investor-share-flats",
-  });
+    alternates: {
+      canonical: LANDOWNER_CANONICAL_URL,
+    },
+    openGraph: {
+      title,
+      description,
+      url: LANDOWNER_CANONICAL_URL,
+      siteName: "RE/MAX Westside Realty",
+      type: "website",
+      locale: "en_IN",
+      images: [
+        {
+          url: LANDOWNER_OG_IMAGE,
+          width: 1200,
+          height: 630,
+          alt: "Landowner & Investor Share Flats in Hyderabad",
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [LANDOWNER_OG_IMAGE],
+    },
+  };
 }
 
 interface PageContent {
@@ -126,40 +161,55 @@ export default async function LandownerInvestorSharePage() {
   // Combine high-value FAQs with database FAQs (if any)
   const allFAQs = [...highValueFAQs, ...faqs];
 
-  // Schema markup
-  const schemaMarkup = {
-    "@context": "https://schema.org",
-    "@type": "WebPage",
-    name: "Landowner & Investor Share Flats in Hyderabad",
-    description: "Buy landowner share & investor share apartments in Hyderabad at 10-15% below market rates.",
-    url: "https://www.westsiderealty.in/hyderabad/landowner-investor-share-flats",
-    mainEntity: {
-      "@type": "ItemList",
-      name: "Landowner Share Projects in Hyderabad",
-      numberOfItems: totalProjects,
-      itemListElement: projects.map((project, index) => ({
-        "@type": "ListItem",
-        position: index + 1,
-        item: {
-          "@type": "RealEstateListing",
-          name: project.project_name,
-          url: `https://www.westsiderealty.in/hyderabad/projects/${project.url_slug}`,
-          address: {
-            "@type": "PostalAddress",
-            addressLocality: project.micro_market?.micro_market_name || "Hyderabad",
-            addressRegion: "Telangana",
-            addressCountry: "IN",
-          },
-          offers: {
-            "@type": "Offer",
-            priceCurrency: "INR",
-            price: "Check Price",
-            description: "10-15% Discount on Market Price",
-          },
+  const pageUrl = LANDOWNER_CANONICAL_URL;
+
+  // Build ItemList primary entity
+  const primaryEntity = {
+    "@type": "ItemList",
+    name: "Landowner Share Projects in Hyderabad",
+    numberOfItems: totalProjects,
+    itemListElement: projects.map((project, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      item: {
+        "@type": "RealEstateListing",
+        name: project.project_name,
+        url: `https://www.westsiderealty.in/hyderabad/projects/${project.url_slug}`,
+        address: {
+          "@type": "PostalAddress",
+          addressLocality: project.micro_market?.micro_market_name || "Hyderabad",
+          addressRegion: "Telangana",
+          addressCountry: "IN",
         },
-      })),
-    },
+        offers: {
+          "@type": "Offer",
+          priceCurrency: "INR",
+          price: "Check Price",
+          description: "10-15% Discount on Market Price",
+        },
+      },
+    })),
   };
+
+  // Generate unified schema using the utility
+  const unifiedSchema = generateUnifiedSchema({
+    pageUrl,
+    title: "Landowner Share Flats in Hyderabad | 15% Cheaper than Builder Price",
+    description:
+      "Buy landowner share & investor share apartments in Hyderabad at 10-15% below market rates. RERA approved projects in Gachibowli, Kokapet, Narsingi. Direct from landowners.",
+    heroImageUrl: LANDOWNER_OG_IMAGE,
+    primaryEntityType: "ItemList",
+    primaryEntity,
+    faqItems: allFAQs.map((faq: any) => ({
+      question: faq.question || faq.q || "",
+      answer: faq.answer || faq.a || "",
+    })),
+    breadcrumbs: [
+      { name: "Home", item: "https://www.westsiderealty.in" },
+      { name: "Hyderabad", item: "https://www.westsiderealty.in/hyderabad" },
+      { name: "Landowner & Investor Share Flats", item: pageUrl },
+    ],
+  });
 
   const breadcrumbItems = [
     { name: "Home", href: "/" },
@@ -169,22 +219,8 @@ export default async function LandownerInvestorSharePage() {
 
   return (
     <>
-      <JsonLd jsonLd={schemaMarkup} />
-      {/* FAQPage Schema - Always include high-value FAQs */}
-      <JsonLd
-        jsonLd={{
-          "@context": "https://schema.org",
-          "@type": "FAQPage",
-          mainEntity: allFAQs.map((faq: any) => ({
-            "@type": "Question",
-            name: faq.question,
-            acceptedAnswer: {
-              "@type": "Answer",
-              text: faq.answer,
-            },
-          })),
-        }}
-      />
+      {/* Unified JSON-LD graph: Organization, WebSite, WebPage, ItemList, FAQPage */}
+      <JsonLd jsonLd={unifiedSchema} />
 
       <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-4">

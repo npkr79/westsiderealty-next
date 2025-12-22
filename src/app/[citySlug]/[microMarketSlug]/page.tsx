@@ -21,6 +21,8 @@ import StrategicInfrastructureSection from "@/components/micro-market/StrategicI
 import { buildMetadata } from "@/components/common/SEO";
 import { JsonLd } from "@/components/common/SEO";
 import { getHeroImageUrl } from "@/utils/imageOptimization";
+import { generateUnifiedSchema } from "@/lib/seo-utils";
+import { optimizeSupabaseImage } from "@/utils/imageOptimization";
 
 interface PageProps {
   params: Promise<{ citySlug: string; microMarketSlug: string }>;
@@ -103,12 +105,17 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   // Neopolis-specific metadata overrides
   const isNeopolis = microMarketSlug.toLowerCase() === "neopolis";
+  const cityName = citySlug.charAt(0).toUpperCase() + citySlug.slice(1);
+  
+  // Standardized title format: "{Locality} {City}: Real Estate Prices, Trends & Master Plan"
   const seoTitle = isNeopolis
     ? "Neopolis Hyderabad: Kokapet Projects, Prices & Master Plan | RE/MAX"
-    : pageData.seo_title;
+    : pageData.seo_title || `${pageData.micro_market_name} ${cityName}: Real Estate Prices, Trends & Master Plan | RE/MAX`;
+  
   const seoDescription = isNeopolis
     ? "The ultimate guide to Neopolis Hyderabad. Explore master plans, record-breaking auction prices, and luxury project listings (Prestige, My Home) by RE/MAX."
     : pageData.meta_description;
+  
   const canonicalUrl = isNeopolis
     ? `https://www.westsiderealty.in/${citySlug}/neopolis`
     : getCanonicalUrl(pageData, citySlug, microMarketSlug);
@@ -132,13 +139,41 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     }
   }
 
-  return buildMetadata({
+  // Optimize OG image
+  const optimizedOgImage = ogImageUrl
+    ? optimizeSupabaseImage(ogImageUrl, { width: 1200, height: 630, quality: 80, format: "webp" })
+    : "https://www.westsiderealty.in/placeholder.svg";
+
+  return {
     title: seoTitle,
     description: seoDescription,
-    canonicalUrl,
     keywords: pageData.seo_keywords?.join(", "),
-    imageUrl: ogImageUrl, // Use prioritized image URL
-  });
+    alternates: {
+      canonical: canonicalUrl,
+    },
+    openGraph: {
+      title: seoTitle,
+      description: seoDescription,
+      url: canonicalUrl,
+      siteName: "RE/MAX Westside Realty",
+      type: "website",
+      locale: "en_IN",
+      images: [
+        {
+          url: optimizedOgImage,
+          width: 1200,
+          height: 630,
+          alt: `${pageData.micro_market_name} ${cityName}`,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: seoTitle,
+      description: seoDescription,
+      images: [optimizedOgImage],
+    },
+  };
 }
 
 export async function generateStaticParams() {
@@ -251,15 +286,31 @@ export default async function MicroMarketPage({ params }: PageProps) {
     { label: pageData.micro_market_name, href: "" },
   ];
 
-  // Generate unified @graph schema for Neopolis, or separate schemas for others
-  let jsonLdSchemas: any[];
-  
+  // Parse FAQ data
+  let faqItems: { question: string; answer: string }[] = [];
+  const faqSchemaString = getFaqSchemaJsonString(pageData);
+  if (faqSchemaString) {
+    try {
+      const faqData = JSON.parse(faqSchemaString);
+      if (faqData.mainEntity && Array.isArray(faqData.mainEntity)) {
+        faqItems = faqData.mainEntity.map((item: any) => ({
+          question: item.name || "",
+          answer: item.acceptedAnswer?.text || "",
+        }));
+      }
+    } catch (e) {
+      // Ignore parse errors
+    }
+  }
+
+  // Build primary entity based on page type
+  let primaryEntity: Record<string, any> | null = null;
+  let primaryEntityType: "Place" | "RealEstateListing" = "RealEstateListing";
+  const cityName = citySlug.charAt(0).toUpperCase() + citySlug.slice(1);
+
   if (isNeopolis) {
-    // Unified @graph schema for Neopolis
-    const baseUrl = "https://www.westsiderealty.in";
-    const pageUrl = canonicalUrl;
-    
-    // Parse master plan data for Place schema
+    // For Neopolis, use Place schema with master plan data
+    primaryEntityType = "Place";
     let masterPlanData: any = {};
     if (pageData.master_plan_json) {
       try {
@@ -270,186 +321,54 @@ export default async function MicroMarketPage({ params }: PageProps) {
         console.error("Error parsing master plan JSON:", e);
       }
     }
-    
-    // Parse FAQ schema
-    let faqData: any = null;
-    const faqSchemaString = getFaqSchemaJsonString(pageData);
-    if (faqSchemaString) {
-      try {
-        faqData = JSON.parse(faqSchemaString);
-      } catch (e) {
-        // Ignore parse errors
-      }
-    }
-    
-    const unifiedGraphSchema = {
-      "@context": "https://schema.org",
-      "@graph": [
-        // Organization
-        {
-          "@type": "Organization",
-          "@id": `${baseUrl}/#organization`,
-          "name": "RE/MAX Westside Realty",
-          "url": baseUrl,
-          "logo": {
-            "@type": "ImageObject",
-            "url": "https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/brand-assets/remax-logo.jpg",
-          },
-          "image": "https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/brand-assets/remax-logo.jpg",
-          "telephone": "+919866085831",
-          "email": "info@westsiderealty.in",
-          "address": {
-            "@type": "PostalAddress",
-            "addressLocality": "Hyderabad",
-            "addressRegion": "Telangana",
-            "postalCode": "500075",
-            "addressCountry": "IN",
-          },
-        },
-        // Website
-        {
-          "@type": "WebSite",
-          "@id": `${baseUrl}/#website`,
-          "url": baseUrl,
-          "name": "RE/MAX Westside Realty",
-          "publisher": { "@id": `${baseUrl}/#organization` },
-        },
-        // WebPage
-        {
-          "@type": "WebPage",
-          "@id": `${pageUrl}#webpage`,
-          "url": pageUrl,
-          "name": seoTitle,
-          "description": seoDescription,
-          "isPartOf": { "@id": `${baseUrl}/#website` },
-          "about": { "@id": `${pageUrl}#place` },
-          "publisher": { "@id": `${baseUrl}/#organization` },
-          "breadcrumb": {
-            "@type": "BreadcrumbList",
-            "itemListElement": [
-              {
-                "@type": "ListItem",
-                "position": 1,
-                "name": "Home",
-                "item": baseUrl,
-              },
-              {
-                "@type": "ListItem",
-                "position": 2,
-                "name": citySlug.charAt(0).toUpperCase() + citySlug.slice(1),
-                "item": `${baseUrl}/${citySlug}`,
-              },
-              {
-                "@type": "ListItem",
-                "position": 3,
-                "name": pageData.micro_market_name,
-                "item": pageUrl,
-              },
-            ],
-          },
-          ...(pageData.hero_image_url && {
-            "image": {
-              "@type": "ImageObject",
-              "url": pageData.hero_image_url,
-            },
-          }),
-        },
-        // Place (Master Plan)
-        {
-          "@type": "Place",
-          "@id": `${pageUrl}#place`,
-          "name": `${pageData.micro_market_name} Master Plan & Zoning`,
-          "description": `Master Plan and Zoning information for ${pageData.micro_market_name}, Hyderabad. ${masterPlanData.zones?.map((zone: any) => `${zone.zone}: ${zone.purpose} - ${zone.description}`).join(". ") || ""}${masterPlanData.fsi_policy ? ` FSI Policy: ${masterPlanData.fsi_policy}.` : ""}${masterPlanData.total_area ? ` Total Area: ${masterPlanData.total_area}.` : ""}`,
-          "address": {
-            "@type": "PostalAddress",
-            "addressLocality": pageData.micro_market_name,
-            "addressRegion": "Hyderabad",
-            "addressCountry": "IN",
-            ...(pageData.locality_pincode && { postalCode: pageData.locality_pincode }),
-          },
-          ...(masterPlanData.zones && masterPlanData.zones.length > 0 && {
-            "containsPlace": masterPlanData.zones.map((zone: any) => ({
-              "@type": "Place",
-              "name": zone.zone,
-              "description": `${zone.purpose}: ${zone.description}`,
-            })),
-          }),
-          ...(masterPlanData.fsi_policy && {
-            "additionalProperty": {
-              "@type": "PropertyValue",
-              "name": "FSI Policy",
-              "value": masterPlanData.fsi_policy,
-            },
-          }),
-          ...((pageData as any).latitude && (pageData as any).longitude && {
-            "geo": {
-              "@type": "GeoCoordinates",
-              "latitude": (pageData as any).latitude,
-              "longitude": (pageData as any).longitude,
-            },
-          }),
-        },
-        // FAQPage (if available)
-        ...(faqData && faqData.mainEntity ? [{
-          "@type": "FAQPage",
-          "@id": `${pageUrl}#faq`,
-          "mainEntity": faqData.mainEntity,
-          "isPartOf": { "@id": `${pageUrl}#webpage` },
-        }] : []),
-      ],
-    };
-    
-    jsonLdSchemas = [unifiedGraphSchema];
-  } else {
-    // Separate schemas for non-Neopolis pages (backward compatibility)
-    const breadcrumbSchema = {
-      "@context": "https://schema.org",
-      "@type": "BreadcrumbList",
-      itemListElement: [
-        {
-          "@type": "ListItem",
-          position: 1,
-          name: "Home",
-          item: "https://www.westsiderealty.in",
-        },
-        {
-          "@type": "ListItem",
-          position: 2,
-          name: citySlug.charAt(0).toUpperCase() + citySlug.slice(1),
-          item: `https://www.westsiderealty.in/${citySlug}`,
-        },
-        {
-          "@type": "ListItem",
-          position: 3,
-          name: pageData.micro_market_name,
-          item: canonicalUrl,
-        },
-      ],
-    };
 
-    const realEstateListingSchema = {
-      "@context": "https://schema.org",
-      "@type": "RealEstateListing",
-      name: `Properties in ${pageData.micro_market_name}, ${citySlug.charAt(0).toUpperCase() + citySlug.slice(1)}`,
-      description: seoDescription,
-      url: canonicalUrl,
-      image: pageData.hero_image_url || pageData.connectivity_map_url,
+    primaryEntity = {
+      "@type": "Place",
+      name: `${pageData.micro_market_name} Master Plan & Zoning`,
+      description: `Master Plan and Zoning information for ${pageData.micro_market_name}, ${cityName}. ${masterPlanData.zones?.map((zone: any) => `${zone.zone}: ${zone.purpose} - ${zone.description}`).join(". ") || ""}${masterPlanData.fsi_policy ? ` FSI Policy: ${masterPlanData.fsi_policy}.` : ""}${masterPlanData.total_area ? ` Total Area: ${masterPlanData.total_area}.` : ""}`,
       address: {
         "@type": "PostalAddress",
         addressLocality: pageData.micro_market_name,
-        addressRegion: citySlug.charAt(0).toUpperCase() + citySlug.slice(1),
+        addressRegion: cityName,
         addressCountry: "IN",
         ...(pageData.locality_pincode && { postalCode: pageData.locality_pincode }),
       },
-      provider: {
-        "@type": "RealEstateAgent",
-        name: "RE/MAX Westside Realty",
-        image: "https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/brand-assets/remax-logo.jpg",
-        address: {
-          "@type": "PostalAddress",
-          addressLocality: "Hyderabad",
-          addressCountry: "IN",
+      ...(masterPlanData.zones && masterPlanData.zones.length > 0 && {
+        containsPlace: masterPlanData.zones.map((zone: any) => ({
+          "@type": "Place",
+          name: zone.zone,
+          description: `${zone.purpose}: ${zone.description}`,
+        })),
+      }),
+      ...(masterPlanData.fsi_policy && {
+        additionalProperty: {
+          "@type": "PropertyValue",
+          name: "FSI Policy",
+          value: masterPlanData.fsi_policy,
         },
+      }),
+      ...((pageData as any).latitude && (pageData as any).longitude && {
+        geo: {
+          "@type": "GeoCoordinates",
+          latitude: (pageData as any).latitude,
+          longitude: (pageData as any).longitude,
+        },
+      }),
+    };
+  } else {
+    // For other micro-markets, use RealEstateListing
+    primaryEntity = {
+      "@type": "RealEstateListing",
+      name: `Properties in ${pageData.micro_market_name}, ${cityName}`,
+      description: seoDescription,
+      url: canonicalUrl,
+      image: pageData.hero_image_url || pageData.connectivity_map_url || undefined,
+      address: {
+        "@type": "PostalAddress",
+        addressLocality: pageData.micro_market_name,
+        addressRegion: cityName,
+        addressCountry: "IN",
+        ...(pageData.locality_pincode && { postalCode: pageData.locality_pincode }),
       },
       ...(pageData.price_per_sqft_min &&
         pageData.price_per_sqft_max && {
@@ -467,26 +386,32 @@ export default async function MicroMarketPage({ params }: PageProps) {
         }),
       areaServed: {
         "@type": "City",
-        name: citySlug.charAt(0).toUpperCase() + citySlug.slice(1),
+        name: cityName,
       },
     };
-
-    const faqSchema = getFaqSchemaJsonString(pageData);
-    jsonLdSchemas = [breadcrumbSchema, realEstateListingSchema];
-    if (faqSchema) {
-      try {
-        jsonLdSchemas.push(JSON.parse(faqSchema));
-      } catch (e) {
-        // Ignore parse errors
-      }
-    }
   }
+
+  // Generate unified schema using the utility
+  const unifiedSchema = generateUnifiedSchema({
+    pageUrl: canonicalUrl,
+    title: seoTitle,
+    description: seoDescription,
+    heroImageUrl: pageData.hero_image_url || pageData.connectivity_map_url || undefined,
+    primaryEntityType,
+    primaryEntity,
+    faqItems,
+    breadcrumbs: [
+      { name: "Home", item: "https://www.westsiderealty.in" },
+      { name: cityName, item: `https://www.westsiderealty.in/${citySlug}` },
+      { name: pageData.micro_market_name, item: canonicalUrl },
+    ],
+  });
 
   const safeImageSrc = (src: string | null | undefined) => (src && src.trim() ? src : "/placeholder.svg");
 
   return (
     <>
-      <JsonLd jsonLd={jsonLdSchemas} />
+      <JsonLd jsonLd={unifiedSchema} />
 
       <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-8 max-w-6xl">

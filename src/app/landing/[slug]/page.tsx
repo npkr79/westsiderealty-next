@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import LandingPageComponent from "./LandingPageComponent";
 import { JsonLd } from "@/components/common/SEO";
 import { optimizeSupabaseImage } from "@/utils/imageOptimization";
+import { generateUnifiedSchema } from "@/lib/seo-utils";
 import { supabaseLandingPagesService, type LandingPage, type LandingPageImage, type LandingPageHighlight, type LandingPageConfiguration, type LandingPageSpecification, type LandingPageLocationPoint, type LandingPageFAQ, type LandingPageFloorPlan } from "@/services/admin/supabaseLandingPagesService";
 import { supabaseLandingPagesContentService } from "@/services/admin/supabaseLandingPagesContentService";
 import type { Amenity, ContentBlock } from "@/types/landingPageTemplate";
@@ -137,12 +138,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   // Get unit types
   const unitTypes = getUnitTypes(configurations || []);
   
-  // Build optimized title with price hook
-  const seoTitle = page.seo_title || (priceText && unitTypes
-    ? `${page.title}: ${unitTypes} Flats from ${priceText} | RE/MAX`
-    : `${page.title} - Luxury Property in ${extractedLocation} | RE/MAX Westside`);
+  // Standardized SEO title:
+  // "{Project Name} {Location}: Price & Review | RE/MAX"
+  const seoTitle =
+    page.seo_title || `${page.title} ${extractedLocation}: Price & Review | RE/MAX`;
   
-  // Build optimized description with location-first and 5% down payment hook
+  // Build optimized description with location-first and pricing hook when available
   const seoDescription = page.seo_description || (priceText && unitTypes
     ? `${extractedLocation}'s finest: ${page.title}. ${unitTypes} apartments from ${priceText}. Pay just 5% Down Payment. ${page.project_land_area ? `${page.project_land_area} Gated Community` : 'Premium Gated Community'} by ${page.title.includes('Godrej') ? 'Godrej Properties' : 'Leading Developer'}.`
     : `${page.headline}. ${page.subheadline || ''} Exclusive luxury real estate opportunity. Contact RE/MAX Westside Realty for details.`);
@@ -202,185 +203,66 @@ export async function generateStaticParams() {
   }
 }
 
-// Generate unified @graph JSON-LD structured data
+// Wrapper to build unified @graph schema for landing pages using the central utility
 function generateStructuredData(
   page: LandingPage,
   configurations: LandingPageConfiguration[],
   faqs: LandingPageFAQ[]
 ) {
-  const baseUrl = "https://www.westsiderealty.in";
   const pageUrl = `https://www.westsiderealty.in/landing/${page.uri}`;
-  const extractedLocation = page.location_info?.split(',')[0]?.trim() || 'Hyderabad';
-  const seoDescription = page.seo_description || `${page.headline}. ${page.subheadline || ''} Exclusive luxury real estate opportunity.`;
-  
-  // URL-encode location for breadcrumb (replace spaces with hyphens, lowercase)
-  const locationSlug = extractedLocation.toLowerCase().replace(/\s+/g, '-');
+  const extractedLocation = page.location_info?.split(",")[0]?.trim() || "Hyderabad";
+  const description =
+    page.seo_description ||
+    `${page.headline}. ${page.subheadline || ""} Exclusive luxury real estate opportunity.`;
 
-  // Get starting price (lowest from configurations)
-  const startingPrice = configurations && configurations.length > 0
-    ? Math.min(...configurations.map(c => c.starting_price || Infinity).filter(p => p !== Infinity))
-    : null;
-  
-  // Get unit types
-  const unitTypes = getUnitTypes(configurations || []);
-  
-  // Extract developer name from title (e.g., "Godrej Regal Pavilion" -> "Godrej Properties")
-  const developerName = page.title.includes('Godrej') ? 'Godrej Properties' 
-    : page.title.includes('Prestige') ? 'Prestige Group'
-    : page.title.includes('Brigade') ? 'Brigade Group'
-    : page.title.includes('My Home') ? 'My Home Group'
-    : 'Leading Developer';
+  // Build primary RealEstateListing entity
+  const startingPrice =
+    configurations && configurations.length > 0
+      ? Math.min(
+          ...configurations
+            .map((c) => c.starting_price || Infinity)
+            .filter((p) => p !== Infinity)
+        )
+      : null;
 
-  // Build unified @graph schema
-  const unifiedGraphSchema = {
-    "@context": "https://schema.org",
-    "@graph": [
-      // Organization
-      {
-        "@type": "Organization",
-        "@id": `${baseUrl}/#organization`,
-        "name": "RE/MAX Westside Realty",
-        "url": baseUrl,
-        "logo": {
-          "@type": "ImageObject",
-          "url": "https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/brand-assets/remax-logo.jpg",
-        },
-        "image": "https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/brand-assets/remax-logo.jpg",
-        "telephone": "+919866085831",
-        "email": "info@westsiderealty.in",
-        "address": {
-          "@type": "PostalAddress",
-          "streetAddress": "415, 4th Floor, Kokapet Terminal, Kokapet",
-          "addressLocality": "Hyderabad",
-          "addressRegion": "Telangana",
-          "postalCode": "500075",
-          "addressCountry": "IN",
-        },
-        "geo": {
-          "@type": "GeoCoordinates",
-          "latitude": 17.3851,
-          "longitude": 78.3270,
-        },
-        "areaServed": [
-          { "@type": "City", "name": "Hyderabad" },
-          { "@type": "City", "name": "Goa" },
-          { "@type": "City", "name": "Dubai" },
-        ],
-        "openingHours": "Mo-Sa 09:00-18:00",
-        "priceRange": "₹₹₹",
-      },
-      // Website
-      {
-        "@type": "WebSite",
-        "@id": `${baseUrl}/#website`,
-        "url": baseUrl,
-        "name": "RE/MAX Westside Realty",
-        "publisher": { "@id": `${baseUrl}/#organization` },
-      },
-      // WebPage
-      {
-        "@type": "WebPage",
-        "@id": `${pageUrl}#webpage`,
-        "url": pageUrl,
-        "name": page.seo_title || `${page.title}: ${unitTypes || ''} Flats from ${startingPrice ? formatPriceForTitle(startingPrice) : ''} | RE/MAX`,
-        "description": seoDescription,
-        "isPartOf": { "@id": `${baseUrl}/#website` },
-        "publisher": { "@id": `${baseUrl}/#organization` },
-        "breadcrumb": {
-          "@type": "BreadcrumbList",
-          "itemListElement": [
-            {
-              "@type": "ListItem",
-              "position": 1,
-              "name": "Home",
-              "item": baseUrl,
-            },
-            {
-              "@type": "ListItem",
-              "position": 2,
-              "name": "Properties",
-              "item": `${baseUrl}/properties`,
-            },
-            {
-              "@type": "ListItem",
-              "position": 3,
-              "name": extractedLocation,
-              "item": `${baseUrl}/properties/${locationSlug}`,
-            },
-            {
-              "@type": "ListItem",
-              "position": 4,
-              "name": page.title,
-              "item": pageUrl,
-            },
-          ],
-        },
-        ...(page.hero_image_url && {
-          "image": {
-            "@type": "ImageObject",
-            "url": page.hero_image_url,
-          },
-        }),
-      },
-      // Product
-      {
-        "@type": "Product",
-        "@id": `${pageUrl}#product`,
-        "name": page.title,
-        "description": seoDescription,
-        "image": page.hero_image_url || "https://www.westsiderealty.in/placeholder.svg",
-        "brand": {
-          "@type": "Brand",
-          "name": developerName,
-        },
-        "offers": startingPrice ? {
-          "@type": "AggregateOffer",
-          "priceCurrency": "INR",
-          "lowPrice": startingPrice.toString(),
-          "offerCount": configurations?.length?.toString() || "1",
-          "availability": "https://schema.org/InStock",
-        } : {
-          "@type": "AggregateOffer",
-          "priceCurrency": "INR",
-          "availability": "https://schema.org/InStock",
-        },
-        "category": "Real Estate",
-      },
-      // RealEstateListing
-      {
-        "@type": "RealEstateListing",
-        "@id": `${pageUrl}#listing`,
-        "name": page.title,
-        "description": seoDescription,
-        "url": pageUrl,
-        "image": page.hero_image_url || "https://www.westsiderealty.in/placeholder.svg",
-        "mainEntity": { "@id": `${pageUrl}#product` },
-        "address": {
-          "@type": "PostalAddress",
-          "addressLocality": extractedLocation,
-          "addressRegion": "Telangana",
-          "addressCountry": "IN",
-        },
-        "provider": { "@id": `${baseUrl}/#organization` },
-      },
-      // FAQPage (if available)
-      ...(faqs && faqs.length > 0 ? [{
-        "@type": "FAQPage",
-        "@id": `${pageUrl}#faq`,
-        "mainEntity": faqs.map(faq => ({
-          "@type": "Question",
-          "name": faq.question,
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": faq.answer,
-          },
-        })),
-        "isPartOf": { "@id": `${pageUrl}#webpage` },
-      }] : []),
-    ],
+  const primaryEntity: Record<string, any> = {
+    "@type": "RealEstateListing",
+    name: page.title,
+    url: pageUrl,
+    image: page.hero_image_url || "https://www.westsiderealty.in/placeholder.svg",
+    description,
+    address: {
+      "@type": "PostalAddress",
+      addressLocality: extractedLocation,
+      addressRegion: "Telangana",
+      addressCountry: "IN",
+    },
   };
 
-  return [unifiedGraphSchema];
+  if (startingPrice) {
+    primaryEntity.offers = {
+      "@type": "AggregateOffer",
+      priceCurrency: "INR",
+      lowPrice: startingPrice.toString(),
+      availability: "https://schema.org/InStock",
+    };
+  }
+
+  const faqItems =
+    faqs?.map((faq) => ({
+      question: faq.question,
+      answer: faq.answer,
+    })) || [];
+
+  return generateUnifiedSchema({
+    pageUrl,
+    title: page.title,
+    description,
+    heroImageUrl: page.hero_image_url || undefined,
+    primaryEntityType: "RealEstateListing",
+    primaryEntity,
+    faqItems,
+  });
 }
 
 export default async function LandingPageWrapper({ params }: PageProps) {
@@ -395,15 +277,13 @@ export default async function LandingPageWrapper({ params }: PageProps) {
 
   const { page, images, highlights, amenities, contentBlocks, floorPlans, configurations, specifications, locationPoints, faqs } = data;
 
-  // Generate unified structured data (includes Organization, Website, WebPage, Product, RealEstateListing, FAQPage)
-  const structuredData = generateStructuredData(page, configurations, faqs);
+  // Generate unified structured data via central SEO utility
+  const unifiedSchema = generateStructuredData(page, configurations, faqs);
 
   return (
     <>
       {/* Unified JSON-LD Structured Data (@graph) */}
-      {structuredData.map((schema, index) => (
-        <JsonLd key={index} jsonLd={schema} />
-      ))}
+      <JsonLd jsonLd={unifiedSchema} />
 
       {/* Server-rendered content - pass all data as props */}
       <LandingPageComponent
