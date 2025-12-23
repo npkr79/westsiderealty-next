@@ -9,6 +9,10 @@ import NewsletterCtaSection from "@/components/blog/NewsletterCtaSection";
 import { JsonLd } from "@/components/common/SEO";
 import { buildMetadata } from "@/components/common/SEO";
 
+// Always render this page dynamically so blog list reflects latest Supabase data
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 // Generate Blog schema markup
 function generateBlogSchema(articles: BlogArticle[]) {
   const baseUrl = "https://www.westsiderealty.in";
