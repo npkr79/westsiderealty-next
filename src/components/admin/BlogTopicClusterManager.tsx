@@ -23,7 +23,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { blogService, BlogArticle } from "@/services/blogService";
+import { blogServiceClient, BlogArticle } from "@/services/blogServiceClient";
 import { Link2, Star, Trash2, Edit, Plus, Save, X } from "lucide-react";
 import {
   Dialog,
@@ -58,12 +58,13 @@ export function BlogTopicClusterManager() {
 
   const loadArticles = async () => {
     try {
-      const allArticles = await blogService.getAllArticles();
-      setArticles(allArticles);
-    } catch (error) {
+      const allArticles = await blogServiceClient.getAllArticles();
+      setArticles(allArticles || []);
+    } catch (error: any) {
+      console.error('Error loading articles:', error);
       toast({
         title: "Error",
-        description: "Failed to load articles",
+        description: error?.message || "Failed to load articles",
         variant: "destructive"
       });
     }
@@ -75,16 +76,17 @@ export function BlogTopicClusterManager() {
 
   const handleUpdateCluster = async (articleId: string, cluster: string) => {
     try {
-      await blogService.updateArticle(articleId, { topic_cluster: cluster || null });
+      await blogServiceClient.updateArticle(articleId, { topic_cluster: cluster || null });
       await loadArticles();
       toast({
         title: "Success",
         description: "Topic cluster updated"
       });
     } catch (error: any) {
+      console.error('Error updating cluster:', error);
       toast({
         title: "Error",
-        description: error.message || "Failed to update cluster",
+        description: error?.message || "Failed to update cluster",
         variant: "destructive"
       });
     }
@@ -92,16 +94,17 @@ export function BlogTopicClusterManager() {
 
   const handleTogglePillar = async (articleId: string, isPillar: boolean) => {
     try {
-      await blogService.updateArticle(articleId, { is_pillar_article: isPillar });
+      await blogServiceClient.updateArticle(articleId, { is_pillar_article: isPillar });
       await loadArticles();
       toast({
         title: "Success",
         description: isPillar ? "Article marked as pillar" : "Pillar status removed"
       });
     } catch (error: any) {
+      console.error('Error updating pillar status:', error);
       toast({
         title: "Error",
-        description: "Failed to update pillar status",
+        description: error?.message || "Failed to update pillar status",
         variant: "destructive"
       });
     }
@@ -122,7 +125,7 @@ export function BlogTopicClusterManager() {
         return;
       }
 
-      await blogService.updateArticle(articleId, {
+      await blogServiceClient.updateArticle(articleId, {
         related_article_ids: [...currentRelated, relatedId]
       });
       await loadArticles();
@@ -131,9 +134,10 @@ export function BlogTopicClusterManager() {
         description: "Related article linked"
       });
     } catch (error: any) {
+      console.error('Error linking article:', error);
       toast({
         title: "Error",
-        description: "Failed to link article",
+        description: error?.message || "Failed to link article",
         variant: "destructive"
       });
     }
@@ -145,7 +149,7 @@ export function BlogTopicClusterManager() {
       if (!article) return;
 
       const currentRelated = article.related_article_ids || [];
-      await blogService.updateArticle(articleId, {
+      await blogServiceClient.updateArticle(articleId, {
         related_article_ids: currentRelated.filter(id => id !== relatedId)
       });
       await loadArticles();
@@ -154,9 +158,10 @@ export function BlogTopicClusterManager() {
         description: "Related article unlinked"
       });
     } catch (error: any) {
+      console.error('Error unlinking article:', error);
       toast({
         title: "Error",
-        description: "Failed to unlink article",
+        description: error?.message || "Failed to unlink article",
         variant: "destructive"
       });
     }
@@ -346,9 +351,9 @@ export function BlogTopicClusterManager() {
                   <TableRow key={article.id}>
                     <TableCell className="font-medium">
                       <div>
-                        <div>{article.title}</div>
+                        <div>{article?.title ?? "Untitled"}</div>
                         <div className="text-xs text-muted-foreground">
-                          {article.status === 'published' ? (
+                          {(article?.status ?? 'draft') === 'published' ? (
                             <Badge variant="default" className="text-xs">Published</Badge>
                           ) : (
                             <Badge variant="secondary" className="text-xs">Draft</Badge>
@@ -358,8 +363,8 @@ export function BlogTopicClusterManager() {
                     </TableCell>
                     <TableCell>
                       <Select
-                        value={article.topic_cluster || ""}
-                        onValueChange={(value) => handleUpdateCluster(article.id, value)}
+                        value={article?.topic_cluster || ""}
+                        onValueChange={(value) => article?.id && handleUpdateCluster(article.id, value)}
                       >
                         <SelectTrigger className="w-48">
                           <SelectValue placeholder="No cluster" />
@@ -377,17 +382,17 @@ export function BlogTopicClusterManager() {
                     <TableCell>
                       <div className="flex items-center space-x-2">
                         <Checkbox
-                          checked={article.is_pillar_article || false}
-                          onCheckedChange={(checked) => handleTogglePillar(article.id, checked as boolean)}
+                          checked={article?.is_pillar_article || false}
+                          onCheckedChange={(checked) => article?.id && handleTogglePillar(article.id, checked as boolean)}
                         />
-                        {article.is_pillar_article && (
+                        {article?.is_pillar_article && (
                           <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
                         )}
                       </div>
                     </TableCell>
                     <TableCell>
                       <div className="space-y-1">
-                        {article.related_article_ids && article.related_article_ids.length > 0 ? (
+                        {article?.related_article_ids && article.related_article_ids.length > 0 ? (
                           <div className="flex flex-wrap gap-1">
                             {article.related_article_ids.map(relatedId => {
                               const relatedArticle = articles.find(a => a.id === relatedId);
@@ -396,9 +401,9 @@ export function BlogTopicClusterManager() {
                                   key={relatedId}
                                   variant="outline"
                                   className="text-xs cursor-pointer hover:bg-destructive hover:text-destructive-foreground"
-                                  onClick={() => handleRemoveRelatedArticle(article.id, relatedId)}
+                                  onClick={() => article?.id && handleRemoveRelatedArticle(article.id, relatedId)}
                                 >
-                                  {relatedArticle.title.substring(0, 30)}...
+                                  {(relatedArticle?.title ?? "").substring(0, 30)}...
                                   <X className="h-3 w-3 ml-1" />
                                 </Badge>
                               ) : null;
@@ -407,7 +412,7 @@ export function BlogTopicClusterManager() {
                         ) : (
                           <span className="text-xs text-muted-foreground">None</span>
                         )}
-                        <Dialog open={dialogArticleId === article.id} onOpenChange={(open) => setDialogArticleId(open ? article.id : null)}>
+                        <Dialog open={dialogArticleId === article?.id} onOpenChange={(open) => setDialogArticleId(open ? article?.id ?? null : null)}>
                           <DialogTrigger asChild>
                             <Button variant="ghost" size="sm" className="h-6 text-xs">
                               <Link2 className="h-3 w-3 mr-1" />
@@ -418,26 +423,28 @@ export function BlogTopicClusterManager() {
                             <DialogHeader>
                               <DialogTitle>Link Related Article</DialogTitle>
                               <DialogDescription>
-                                Select an article to link to "{article.title}"
+                                Select an article to link to "{article?.title ?? "this article"}"
                               </DialogDescription>
                             </DialogHeader>
                             <div className="max-h-96 overflow-y-auto space-y-2">
                               {articles
-                                .filter(a => a.id !== article.id && !article.related_article_ids?.includes(a.id))
+                                .filter(a => a.id !== article?.id && !article?.related_article_ids?.includes(a.id))
                                 .map(a => (
                                   <div
                                     key={a.id}
                                     className="p-2 border rounded cursor-pointer hover:bg-muted"
                                     onClick={() => {
-                                      handleAddRelatedArticle(article.id, a.id);
-                                      setDialogArticleId(null);
+                                      if (article?.id) {
+                                        handleAddRelatedArticle(article.id, a.id);
+                                        setDialogArticleId(null);
+                                      }
                                     }}
                                   >
-                                    <div className="font-medium text-sm">{a.title}</div>
-                                    <div className="text-xs text-muted-foreground">{a.category}</div>
+                                    <div className="font-medium text-sm">{a?.title ?? "Untitled"}</div>
+                                    <div className="text-xs text-muted-foreground">{a?.category ?? "Uncategorized"}</div>
                                   </div>
                                 ))}
-                              {articles.filter(a => a.id !== article.id && !article.related_article_ids?.includes(a.id)).length === 0 && (
+                              {articles.filter(a => a.id !== article?.id && !article?.related_article_ids?.includes(a.id)).length === 0 && (
                                 <p className="text-sm text-muted-foreground text-center py-4">
                                   No available articles to link
                                 </p>
@@ -451,7 +458,7 @@ export function BlogTopicClusterManager() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => window.open(`/blog/${article.slug}`, '_blank')}
+                        onClick={() => window.open(`/blog/${article?.slug ?? article?.id}`, '_blank')}
                       >
                         <Edit className="h-4 w-4" />
                       </Button>

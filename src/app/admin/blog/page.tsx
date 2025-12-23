@@ -41,8 +41,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { supabaseImageService, UploadedImage } from "@/services/supabaseImageService";
-import { blogService, BlogArticle } from "@/services/blogService";
+import { supabaseImageServiceClient, UploadedImage } from "@/services/supabaseImageServiceClient";
+import { blogServiceClient, BlogArticle } from "@/services/blogServiceClient";
 import dynamic from 'next/dynamic';
 import {
   Table,
@@ -146,12 +146,13 @@ const BlogManagement = () => {
 
   const loadArticles = async () => {
     try {
-      const allArticles = await blogService.getAllArticles();
-      setArticles(allArticles);
-    } catch (error) {
+      const allArticles = await blogServiceClient.getAllArticles();
+      setArticles(allArticles || []);
+    } catch (error: any) {
+      console.error('Error loading articles:', error);
       toast({
         title: "Error",
-        description: "Failed to load articles from server.",
+        description: error?.message || "Failed to load articles from server.",
         variant: "destructive"
       });
     }
@@ -191,7 +192,7 @@ const BlogManagement = () => {
     setIsUploading(true);
     try {
       // Upload to blog-images bucket as specified
-      const uploaded = await supabaseImageService.uploadSingleImage(file, 'blog-images');
+      const uploaded = await supabaseImageServiceClient.uploadSingleImage(file, 'blog-images');
       setUploadedImage(uploaded);
       setFormData(prev => ({ ...prev, image_url: uploaded.url }));
       toast({
@@ -199,9 +200,10 @@ const BlogManagement = () => {
         description: "Image uploaded successfully to blog-images bucket"
       });
     } catch (error: any) {
+      console.error('Error uploading image:', error);
       toast({
         title: "Error",
-        description: error.message || "Failed to upload image",
+        description: error?.message || "Failed to upload image",
         variant: "destructive"
       });
     } finally {
@@ -209,30 +211,39 @@ const BlogManagement = () => {
     }
   };
 
-  const removeUploadedImage = () => {
+  const removeUploadedImage = async () => {
     if (uploadedImage) {
-      supabaseImageService.removeUploadedImage(uploadedImage.id);
-      setUploadedImage(null);
-      setFormData(prev => ({ ...prev, image_url: "" }));
+      try {
+        await supabaseImageServiceClient.removeUploadedImage(uploadedImage.id);
+        setUploadedImage(null);
+        setFormData(prev => ({ ...prev, image_url: "" }));
+      } catch (error) {
+        console.error('Error removing image:', error);
+        // Still remove from UI even if storage deletion fails
+        setUploadedImage(null);
+        setFormData(prev => ({ ...prev, image_url: "" }));
+      }
     }
   };
 
-  const handleEdit = (article: BlogArticle) => {
+  const handleEdit = (article: BlogArticle | null) => {
+    if (!article) return;
+    
     setEditingArticle(article);
     setFormData({
-      title: article.title,
-      description: article.description,
-      content: article.content,
-      category: article.category ?? "",
-      image_url: article.image_url ?? "",
-      read_time: article.read_time ?? "",
-      status: (article.status === "published" ? "published" : "draft"),
-      author: article.author || "Westside Realty Team",
-      seo_title: article.seo_title ?? "",
-      seo_description: article.seo_description ?? "",
-      topic_cluster: article.topic_cluster ?? "",
-      is_pillar_article: article.is_pillar_article ?? false,
-      related_article_ids: article.related_article_ids ?? [],
+      title: article?.title ?? "",
+      description: article?.description ?? "",
+      content: article?.content ?? "",
+      category: article?.category ?? "",
+      image_url: article?.image_url ?? "",
+      read_time: article?.read_time ?? "",
+      status: (article?.status === "published" ? "published" : "draft"),
+      author: article?.author ?? "Westside Realty Team",
+      seo_title: article?.seo_title ?? "",
+      seo_description: article?.seo_description ?? "",
+      topic_cluster: article?.topic_cluster ?? "",
+      is_pillar_article: article?.is_pillar_article ?? false,
+      related_article_ids: article?.related_article_ids ?? [],
     });
     setUploadedImage(null);
     setContentIntegrityCheck({ status: 'none' });
@@ -288,14 +299,14 @@ const BlogManagement = () => {
         date: editingArticle?.date || new Date().toISOString().split('T')[0],
       };
 
-      if (editingArticle) {
-        await blogService.updateArticle(editingArticle.id, articleData);
+      if (editingArticle?.id) {
+        await blogServiceClient.updateArticle(editingArticle.id, articleData);
         toast({
           title: "Success",
           description: `Article updated successfully.`
         });
       } else {
-        await blogService.addArticle(articleData);
+        await blogServiceClient.addArticle(articleData);
         toast({
           title: "Success",
           description: `Article created successfully.`
@@ -316,16 +327,17 @@ const BlogManagement = () => {
   const handleDelete = async (id: string) => {
     if (window.confirm("Are you sure you want to delete this article?")) {
       try {
-        await blogService.deleteArticle(id);
+        await blogServiceClient.deleteArticle(id);
         await loadArticles();
         toast({
           title: "Success",
           description: "Article deleted successfully"
         });
       } catch (error: any) {
+        console.error('Error deleting article:', error);
         toast({
           title: "Error",
-          description: "Failed to delete article",
+          description: error?.message || "Failed to delete article",
           variant: "destructive"
         });
       }
@@ -342,22 +354,24 @@ const BlogManagement = () => {
       return;
     }
 
-    if (window.confirm(`Are you sure you want to delete ${selectedArticles.size} article(s)?`)) {
+    const count = selectedArticles.size;
+    if (window.confirm(`Are you sure you want to delete ${count} article(s)?`)) {
       try {
         const deletePromises = Array.from(selectedArticles).map(id => 
-          blogService.deleteArticle(id)
+          blogServiceClient.deleteArticle(id)
         );
         await Promise.all(deletePromises);
         await loadArticles();
         setSelectedArticles(new Set());
         toast({
           title: "Success",
-          description: `${selectedArticles.size} article(s) deleted successfully`
+          description: `${count} article(s) deleted successfully`
         });
       } catch (error: any) {
+        console.error('Error deleting articles:', error);
         toast({
           title: "Error",
-          description: "Failed to delete articles",
+          description: error?.message || "Failed to delete articles",
           variant: "destructive"
         });
       }
@@ -374,21 +388,23 @@ const BlogManagement = () => {
       return;
     }
 
+    const count = selectedArticles.size;
     try {
       const updatePromises = Array.from(selectedArticles).map(id => 
-        blogService.updateArticle(id, { status: newStatus })
+        blogServiceClient.updateArticle(id, { status: newStatus })
       );
       await Promise.all(updatePromises);
       await loadArticles();
       setSelectedArticles(new Set());
       toast({
         title: "Success",
-        description: `${selectedArticles.size} article(s) updated to ${newStatus}`
+        description: `${count} article(s) updated to ${newStatus}`
       });
     } catch (error: any) {
+      console.error('Error updating articles:', error);
       toast({
         title: "Error",
-        description: "Failed to update articles",
+        description: error?.message || "Failed to update articles",
         variant: "destructive"
       });
     }
@@ -412,12 +428,17 @@ const BlogManagement = () => {
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
+  const formatDate = (dateString: string | null | undefined) => {
+    if (!dateString) return 'N/A';
+    try {
+      return new Date(dateString).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
+    } catch (error) {
+      return dateString;
+    }
   };
 
   const resetForm = () => {
@@ -921,27 +942,27 @@ const BlogManagement = () => {
                           </TableCell>
                           <TableCell className="font-medium">
                             <div>
-                              <div className="font-semibold">{article.title}</div>
+                              <div className="font-semibold">{article?.title ?? "Untitled"}</div>
                               <div className="text-xs text-muted-foreground line-clamp-1">
-                                {article.description}
+                                {article?.description ?? ""}
                               </div>
                             </div>
                           </TableCell>
                           <TableCell>
-                            <Badge variant="outline">{article.category || "Uncategorized"}</Badge>
+                            <Badge variant="outline">{article?.category || "Uncategorized"}</Badge>
                           </TableCell>
                           <TableCell>
-                            <Badge variant={article.status === 'published' ? 'default' : 'secondary'}>
-                              {article.status}
+                            <Badge variant={(article?.status ?? 'draft') === 'published' ? 'default' : 'secondary'}>
+                              {article?.status ?? 'draft'}
                             </Badge>
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center text-sm text-gray-500">
                               <Calendar className="h-4 w-4 mr-1" />
-                              {formatDate(article.date)}
+                              {formatDate(article?.date)}
                             </div>
                           </TableCell>
-                          <TableCell className="text-sm">{article.author}</TableCell>
+                          <TableCell className="text-sm">{article?.author ?? "Unknown"}</TableCell>
                           <TableCell className="text-right">
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
@@ -951,7 +972,7 @@ const BlogManagement = () => {
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
                                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                <DropdownMenuItem onClick={() => window.open(`/blog/${article.slug}`, '_blank')}>
+                                <DropdownMenuItem onClick={() => window.open(`/blog/${article?.slug ?? article?.id}`, '_blank')}>
                                   <Eye className="h-4 w-4 mr-2" />
                                   View
                                 </DropdownMenuItem>
@@ -961,7 +982,7 @@ const BlogManagement = () => {
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem
-                                  onClick={() => handleDelete(article.id)}
+                                  onClick={() => article?.id && handleDelete(article.id)}
                                   className="text-red-600"
                                 >
                                   <Trash2 className="h-4 w-4 mr-2" />
