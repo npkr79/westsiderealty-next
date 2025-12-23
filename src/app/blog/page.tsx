@@ -9,9 +9,10 @@ import NewsletterCtaSection from "@/components/blog/NewsletterCtaSection";
 import { JsonLd } from "@/components/common/SEO";
 import { buildMetadata } from "@/components/common/SEO";
 
-// Always render this page dynamically so blog list reflects latest Supabase data
+// Always render this page dynamically so the blog list reflects latest Supabase data.
+// Static metadata is fine here because the page-level SEO (title/description) does not
+// depend on the specific article list, only the content does.
 export const dynamic = "force-dynamic";
-export const revalidate = 0;
 
 // Generate Blog schema markup
 function generateBlogSchema(articles: BlogArticle[]) {
