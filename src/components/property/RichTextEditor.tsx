@@ -1,6 +1,5 @@
 "use client";
 
-import { useMemo } from "react";
 import QuillEditorClient from "@/components/blog/QuillEditorClient";
 
 interface RichTextEditorProps {
@@ -18,19 +17,6 @@ export default function RichTextEditor({
   placeholder,
   required,
 }: RichTextEditorProps) {
-  const modules = useMemo(
-    () => ({
-      toolbar: [
-        [{ header: [1, 2, 3, false] }],
-        ["bold", "italic", "underline", "strike"],
-        [{ list: "ordered" }, { list: "bullet" }],
-        ["link"],
-        ["clean"],
-      ],
-    }),
-    []
-  );
-
   return (
     <div className="space-y-2 prose-editor">
       {label && (
@@ -43,7 +29,6 @@ export default function RichTextEditor({
         value={value ?? ""}
         onChange={onChange}
         placeholder={placeholder}
-        modules={modules}
       />
     </div>
   );

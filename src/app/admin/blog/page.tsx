@@ -106,33 +106,6 @@ const BlogManagement = () => {
   });
   const { toast } = useToast();
 
-  const quillModules = {
-    toolbar: [
-      [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
-      ['bold', 'italic', 'underline', 'strike'],
-      [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-      [{ 'indent': '-1'}, { 'indent': '+1' }],
-      ['link', 'blockquote', 'code-block'],
-      [{ 'align': [] }],
-      [{ 'color': [] }, { 'background': [] }],
-      ['clean']
-    ],
-    clipboard: {
-      matchVisual: false,
-    },
-    history: {
-      delay: 1000,
-      maxStack: 100,
-      userOnly: false
-    }
-  };
-
-  const quillFormats = [
-    'header', 'bold', 'italic', 'underline', 'strike',
-    'list', 'bullet', 'indent', 'link', 'align', 'blockquote',
-    'code-block', 'color', 'background'
-  ];
-
   useEffect(() => {
     loadArticles();
   }, []);
@@ -614,9 +587,6 @@ const BlogManagement = () => {
                             value={formData.content ?? ""}
                             onChange={handleContentChange}
                             placeholder="Write or paste your article content here. Supports formatting and inline images."
-                            modules={quillModules}
-                            formats={quillFormats}
-                            style={{ minHeight: "400px", borderRadius: "0.5rem" }}
                             className="prose-editor"
                           />
                         </div>
