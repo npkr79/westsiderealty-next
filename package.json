@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "eslint",
     "check:routes": "tsx scripts/check-routes.ts",
-    "submit-sitemap": "tsx scripts/submit-sitemap.ts"
+    "submit-sitemap": "tsx scripts/submit-sitemap.ts",
+    "generate-favicons": "tsx scripts/generate-favicons.ts",
+    "validate-favicons": "tsx scripts/validate-favicons.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
