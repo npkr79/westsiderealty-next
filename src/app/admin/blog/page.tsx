@@ -16,9 +16,13 @@ import {
   BookOpen,
   Upload,
   X,
-  AlertCircle,
-  FileText,
-  CheckCircle
+  CheckCircle,
+  Filter,
+  MoreVertical,
+  ChevronLeft,
+  ChevronRight,
+  CheckSquare,
+  Square
 } from "lucide-react";
 import {
   Dialog,
@@ -40,35 +44,49 @@ import { useToast } from "@/hooks/use-toast";
 import { supabaseImageService, UploadedImage } from "@/services/supabaseImageService";
 import { blogService, BlogArticle } from "@/services/blogService";
 import dynamic from 'next/dynamic';
-
-// Dynamically import ReactQuill only on client side
-const ReactQuill = dynamic(() => import('react-quill'), { ssr: false });
-import 'react-quill/dist/quill.snow.css';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
-import { Dialog as UIDialog, DialogContent as UIDialogContent } from "@/components/ui/dialog";
 import { BlogTopicClusterManager } from "@/components/admin/BlogTopicClusterManager";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
-const LOVABLE_UPLOADS = [
-  "Article1-Resale-vs-new-launch.jpg",
-  "Article2-how-to-negotiate.jpg",
-  "Hyderabad Cover page.jpg",
-  "Goa Cover page.jpg",
-  "Dubai Cover page.jpg",
-];
+// Dynamically import ReactQuill only on client side
+const ReactQuill = dynamic(() => import('react-quill'), { ssr: false });
+import 'react-quill/dist/quill.snow.css';
+
+const ITEMS_PER_PAGE = 10;
 
 const BlogManagement = () => {
   const [articles, setArticles] = useState<BlogArticle[]>([]);
+  const [filteredArticles, setFilteredArticles] = useState<BlogArticle[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [selectedArticles, setSelectedArticles] = useState<Set<string>>(new Set());
+  const [currentPage, setCurrentPage] = useState(1);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingArticle, setEditingArticle] = useState<BlogArticle | null>(null);
   const [uploadedImage, setUploadedImage] = useState<UploadedImage | null>(null);
   const [isUploading, setIsUploading] = useState(false);
-  const [contentLength, setContentLength] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
   const [contentIntegrityCheck, setContentIntegrityCheck] = useState<{
     status: 'none' | 'checking' | 'valid' | 'invalid';
@@ -82,7 +100,12 @@ const BlogManagement = () => {
     image_url: "",
     read_time: "",
     status: "draft" as "published" | "draft",
-    author: "Westside Realty Team"
+    author: "Westside Realty Team",
+    seo_title: "",
+    seo_description: "",
+    topic_cluster: "",
+    is_pillar_article: false,
+    related_article_ids: [] as string[],
   });
   const { toast } = useToast();
 
@@ -114,19 +137,52 @@ const BlogManagement = () => {
   ];
 
   useEffect(() => {
-    (async () => {
-      try {
-        const allArticles = await blogService.getAllArticles();
-        setArticles(allArticles);
-      } catch (error) {
-        toast({
-          title: "Error",
-          description: "Failed to load articles from server.",
-          variant: "destructive"
-        });
-      }
-    })();
+    loadArticles();
   }, []);
+
+  useEffect(() => {
+    applyFilters();
+  }, [articles, searchQuery, statusFilter, categoryFilter]);
+
+  const loadArticles = async () => {
+    try {
+      const allArticles = await blogService.getAllArticles();
+      setArticles(allArticles);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to load articles from server.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const applyFilters = () => {
+    let filtered = [...articles];
+
+    // Search filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(article =>
+        article.title.toLowerCase().includes(query) ||
+        (article.category && article.category.toLowerCase().includes(query)) ||
+        (article.description && article.description.toLowerCase().includes(query))
+      );
+    }
+
+    // Status filter
+    if (statusFilter !== "all") {
+      filtered = filtered.filter(article => article.status === statusFilter);
+    }
+
+    // Category filter
+    if (categoryFilter !== "all") {
+      filtered = filtered.filter(article => article.category === categoryFilter);
+    }
+
+    setFilteredArticles(filtered);
+    setCurrentPage(1); // Reset to first page when filters change
+  };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -134,12 +190,13 @@ const BlogManagement = () => {
 
     setIsUploading(true);
     try {
-      const uploaded = await supabaseImageService.uploadSingleImage(file, 'blog-articles');
+      // Upload to blog-images bucket as specified
+      const uploaded = await supabaseImageService.uploadSingleImage(file, 'blog-images');
       setUploadedImage(uploaded);
       setFormData(prev => ({ ...prev, image_url: uploaded.url }));
       toast({
         title: "Success",
-        description: "Image uploaded successfully"
+        description: "Image uploaded successfully to blog-images bucket"
       });
     } catch (error: any) {
       toast({
@@ -170,25 +227,17 @@ const BlogManagement = () => {
       image_url: article.image_url ?? "",
       read_time: article.read_time ?? "",
       status: (article.status === "published" ? "published" : "draft"),
-      author: article.author || "Westside Realty Team"
+      author: article.author || "Westside Realty Team",
+      seo_title: article.seo_title ?? "",
+      seo_description: article.seo_description ?? "",
+      topic_cluster: article.topic_cluster ?? "",
+      is_pillar_article: article.is_pillar_article ?? false,
+      related_article_ids: article.related_article_ids ?? [],
     });
     setUploadedImage(null);
     setContentIntegrityCheck({ status: 'none' });
     setIsDialogOpen(true);
   };
-
-    const handleInsertImage = (url: string) => {
-      // Insert image URL into content
-      const imageHtml = `<img src="${url}" alt="Inserted image" />`;
-      setFormData(prev => ({
-        ...prev,
-        content: prev.content + imageHtml
-      }));
-      toast({
-        title: "Image Inserted",
-        description: "The image URL was added to the content.",
-      });
-    };
 
   const handleContentChange = (content: string) => {
     setFormData(prev => ({ ...prev, content }));
@@ -197,13 +246,6 @@ const BlogManagement = () => {
 
   const validateContentBeforeSave = (): boolean => {
     setContentIntegrityCheck({ status: 'checking', message: 'Validating content...' });
-
-    const contentLength = formData.content.length;
-    console.log('Pre-save validation:', {
-      title: formData.title,
-      contentLength,
-      hasRequiredFields: !!(formData.title && formData.description && formData.content)
-    });
 
     if (!formData.title || !formData.description || !formData.content) {
       setContentIntegrityCheck({ 
@@ -216,7 +258,7 @@ const BlogManagement = () => {
     if (formData.content.length < 100) {
       setContentIntegrityCheck({ 
         status: 'invalid', 
-        message: 'Content too short' 
+        message: 'Content too short (minimum 100 characters)' 
       });
       return false;
     }
@@ -239,30 +281,28 @@ const BlogManagement = () => {
     }
 
     setIsSaving(true);
-    const originalContentLength = formData.content.length;
 
     try {
+      const articleData = {
+        ...formData,
+        date: editingArticle?.date || new Date().toISOString().split('T')[0],
+      };
+
       if (editingArticle) {
-        await blogService.updateArticle(editingArticle.id, {
-          ...formData
-        });
+        await blogService.updateArticle(editingArticle.id, articleData);
         toast({
           title: "Success",
           description: `Article updated successfully.`
         });
       } else {
-        await blogService.addArticle({
-          ...formData,
-          date: new Date().toISOString().split('T')[0]
-        });
+        await blogService.addArticle(articleData);
         toast({
           title: "Success",
           description: `Article created successfully.`
         });
       }
 
-      const updatedList = await blogService.getAllArticles();
-      setArticles(updatedList);
+      await loadArticles();
       setIsDialogOpen(false);
       resetForm();
     } catch (error: any) {
@@ -277,8 +317,7 @@ const BlogManagement = () => {
     if (window.confirm("Are you sure you want to delete this article?")) {
       try {
         await blogService.deleteArticle(id);
-        const updatedList = await blogService.getAllArticles();
-        setArticles(updatedList);
+        await loadArticles();
         toast({
           title: "Success",
           description: "Article deleted successfully"
@@ -293,10 +332,85 @@ const BlogManagement = () => {
     }
   };
 
-  const filteredArticles = articles.filter(article =>
-    article.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (article.category && article.category.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  const handleBulkDelete = async () => {
+    if (selectedArticles.size === 0) {
+      toast({
+        title: "No Selection",
+        description: "Please select articles to delete",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (window.confirm(`Are you sure you want to delete ${selectedArticles.size} article(s)?`)) {
+      try {
+        const deletePromises = Array.from(selectedArticles).map(id => 
+          blogService.deleteArticle(id)
+        );
+        await Promise.all(deletePromises);
+        await loadArticles();
+        setSelectedArticles(new Set());
+        toast({
+          title: "Success",
+          description: `${selectedArticles.size} article(s) deleted successfully`
+        });
+      } catch (error: any) {
+        toast({
+          title: "Error",
+          description: "Failed to delete articles",
+          variant: "destructive"
+        });
+      }
+    }
+  };
+
+  const handleBulkStatusChange = async (newStatus: "published" | "draft") => {
+    if (selectedArticles.size === 0) {
+      toast({
+        title: "No Selection",
+        description: "Please select articles to update",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const updatePromises = Array.from(selectedArticles).map(id => 
+        blogService.updateArticle(id, { status: newStatus })
+      );
+      await Promise.all(updatePromises);
+      await loadArticles();
+      setSelectedArticles(new Set());
+      toast({
+        title: "Success",
+        description: `${selectedArticles.size} article(s) updated to ${newStatus}`
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: "Failed to update articles",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const toggleSelectArticle = (id: string) => {
+    const newSelected = new Set(selectedArticles);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedArticles(newSelected);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedArticles.size === paginatedArticles.length) {
+      setSelectedArticles(new Set());
+    } else {
+      setSelectedArticles(new Set(paginatedArticles.map(a => a.id)));
+    }
+  };
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -305,20 +419,6 @@ const BlogManagement = () => {
       day: 'numeric'
     });
   };
-
-  const getContentSizeInfo = () => {
-    if (contentLength > 25000) {
-      return { color: "text-red-600", message: "Very long article" };
-    } else if (contentLength > 10000) {
-      return { color: "text-yellow-600", message: "Long article" };
-    } else if (contentLength > 5000) {
-      return { color: "text-green-600", message: "Good length" };
-    } else {
-      return { color: "text-gray-600", message: "Short article" };
-    }
-  };
-
-  const sizeInfo = getContentSizeInfo();
 
   const resetForm = () => {
     setFormData({
@@ -329,13 +429,26 @@ const BlogManagement = () => {
       image_url: "",
       read_time: "",
       status: "draft",
-      author: "Westside Realty Team"
+      author: "Westside Realty Team",
+      seo_title: "",
+      seo_description: "",
+      topic_cluster: "",
+      is_pillar_article: false,
+      related_article_ids: [],
     });
     setEditingArticle(null);
     setUploadedImage(null);
-    setContentLength(0);
     setContentIntegrityCheck({ status: 'none' });
   };
+
+  // Pagination
+  const totalPages = Math.ceil(filteredArticles.length / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const endIndex = startIndex + ITEMS_PER_PAGE;
+  const paginatedArticles = filteredArticles.slice(startIndex, endIndex);
+
+  // Get unique categories for filter
+  const categories = Array.from(new Set(articles.map(a => a.category).filter(Boolean)));
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -360,213 +473,176 @@ const BlogManagement = () => {
                     {editingArticle ? "Edit Article" : "Add New Article"}
                   </DialogTitle>
                   <DialogDescription>
-                    {editingArticle ? "Update the article details below." : "Create a new blog article. You can paste large content from ChatGPT or any other source - there's no character limit!"}
+                    {editingArticle ? "Update the article details below." : "Create a new blog article with SEO optimization."}
                   </DialogDescription>
                 </DialogHeader>
                 <Tabs defaultValue="compose" className="w-full">
                   <TabsList className="mb-4">
                     <TabsTrigger value="compose">Compose</TabsTrigger>
                     <TabsTrigger value="preview">Preview</TabsTrigger>
+                    <TabsTrigger value="seo">SEO</TabsTrigger>
                   </TabsList>
 
                   <TabsContent value="compose">
                     <div className="grid gap-4 py-4">
+                      <div className="grid gap-2">
+                        <Label htmlFor="title">Title *</Label>
+                        <Input
+                          id="title"
+                          value={formData.title}
+                          onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                          placeholder="Enter article title"
+                        />
+                        {formData.title && (
+                          <p className="text-xs text-muted-foreground">
+                            Slug: {formData.title.toLowerCase().replace(/[^a-zA-Z0-9 ]/g, '').replace(/\s+/g, '-')}
+                          </p>
+                        )}
+                      </div>
                       
-                  <div className="grid gap-2">
-                    <Label htmlFor="title">Title *</Label>
-                    <Input
-                      id="title"
-                      value={formData.title}
-                      onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                      placeholder="Enter article title"
-                    />
-                  </div>
-                  
-                  <div className="grid gap-2">
-                    <Label htmlFor="description">Description *</Label>
-                    <Textarea
-                      id="description"
-                      value={formData.description}
-                      onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                      placeholder="Brief description of the article"
-                      rows={3}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="grid gap-2">
-                      <Label htmlFor="category">Category</Label>
-                      <Select
-                        value={formData.category}
-                        onValueChange={(value) => setFormData(prev => ({ ...prev, category: value }))}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select category" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Market Analysis">Market Analysis</SelectItem>
-                          <SelectItem value="Investment Guide">Investment Guide</SelectItem>
-                          <SelectItem value="Buyer's Guide">Buyer's Guide</SelectItem>
-                          <SelectItem value="Seller's Guide">Seller's Guide</SelectItem>
-                          <SelectItem value="Legal Guide">Legal Guide</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="grid gap-2">
-                      <Label htmlFor="readTime">Read Time</Label>
-                      <Input
-                        id="readTime"
-                        value={formData.read_time}
-                        onChange={(e) => setFormData(prev => ({ ...prev, read_time: e.target.value }))}
-                        placeholder="e.g., 5 min read"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid gap-2">
-                    <Label htmlFor="image">Featured Image</Label>
-                    
-                    {!uploadedImage && !formData.image_url && (
-                      <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                        <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                        <p className="text-gray-600 mb-2">Upload featured image</p>
-                        <p className="text-sm text-gray-500 mb-4">Maximum 5MB, JPG, PNG, or WebP</p>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={handleImageUpload}
-                          className="hidden"
-                          id="image-upload"
+                      <div className="grid gap-2">
+                        <Label htmlFor="description">Description *</Label>
+                        <Textarea
+                          id="description"
+                          value={formData.description}
+                          onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                          placeholder="Brief description of the article"
+                          rows={3}
                         />
-                        <Button 
-                          type="button" 
-                          variant="outline" 
-                          onClick={() => document.getElementById('image-upload')?.click()}
-                          disabled={isUploading}
-                        >
-                          {isUploading ? "Uploading..." : "Choose Image"}
-                        </Button>
                       </div>
-                    )}
 
-                    {(uploadedImage || formData.image_url) && (
-                      <div className="relative">
-                        <img
-                          src={uploadedImage?.preview || formData.image_url}
-                          alt="Featured image"
-                          className="w-full h-48 object-cover rounded-lg border"
-                        />
-                        <Button
-                          type="button"
-                          variant="destructive"
-                          size="icon"
-                          className="absolute top-2 right-2 h-8 w-8"
-                          onClick={removeUploadedImage}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-
-                      <div className="flex items-center justify-between pb-2">
-                        <Label htmlFor="content">Content * (Rich Text Editor)</Label>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() =>
-                              (document.getElementById("image-insert-dialog") as HTMLDialogElement)?.showModal()
-                            }
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="grid gap-2">
+                          <Label htmlFor="category">Category</Label>
+                          <Select
+                            value={formData.category}
+                            onValueChange={(value) => setFormData(prev => ({ ...prev, category: value }))}
                           >
-                            Insert Inline Image
-                          </Button>
-                          <UIDialog>
-                            <UIDialogContent>
-                              <div className="mb-4 text-lg font-bold" id="image-insert-dialog">Insert Image from /lovable-uploads</div>
-                              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                                {LOVABLE_UPLOADS.map((img) => (
-                                  <button
-                                    key={img}
-                                    type="button"
-                                    className="flex flex-col items-center group p-2 border rounded hover-scale"
-                                    onClick={() => {
-                                      handleInsertImage(`/lovable-uploads/${img}`);
-                                      (document.getElementById("image-insert-dialog") as HTMLDialogElement)?.close();
-                                    }}
-                                  >
-                                    <img
-                                      src={`/lovable-uploads/${img}`}
-                                      alt={img}
-                                      className="w-24 h-16 object-cover rounded shadow-md mb-2"
-                                    />
-                                    <span className="text-xs text-gray-500">{img}</span>
-                                  </button>
-                                ))}
-                              </div>
-                            </UIDialogContent>
-                          </UIDialog>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select category" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Market Analysis">Market Analysis</SelectItem>
+                              <SelectItem value="Investment Guide">Investment Guide</SelectItem>
+                              <SelectItem value="Buyer's Guide">Buyer's Guide</SelectItem>
+                              <SelectItem value="Seller's Guide">Seller's Guide</SelectItem>
+                              <SelectItem value="Legal Guide">Legal Guide</SelectItem>
+                              <SelectItem value="Real Estate Investment">Real Estate Investment</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="grid gap-2">
+                          <Label htmlFor="readTime">Read Time</Label>
+                          <Input
+                            id="readTime"
+                            value={formData.read_time}
+                            onChange={(e) => setFormData(prev => ({ ...prev, read_time: e.target.value }))}
+                            placeholder="e.g., 5 min read"
+                          />
                         </div>
                       </div>
-                      <div className="border rounded-lg bg-white">
-                        <ReactQuill
-                          theme="snow"
-                          value={formData.content}
-                          onChange={handleContentChange}
-                          modules={quillModules}
-                          formats={quillFormats}
-                          placeholder="Write or paste your article content here. Supports formatting and inline images."
-                          style={{ minHeight: "400px", borderRadius: "0.5rem" }}
-                          className="prose-editor"
-                        />
-                      </div>
-                      
-                  {contentLength > 0 && (
-                      <div className="flex items-center space-x-2 text-sm text-blue-600 bg-blue-50 p-2 rounded">
-                        <CheckCircle className="h-4 w-4" />
-                        <span>
-                          Content ready for save - {contentLength.toLocaleString()} characters will be preserved
-                        </span>
-                      </div>
-                    )}
-                  
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="grid gap-2">
-                      <Label htmlFor="status">Status</Label>
-                      <Select
-                        value={formData.status}
-                        onValueChange={(value: "published" | "draft") => setFormData(prev => ({ ...prev, status: value }))}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="draft">Draft</SelectItem>
-                          <SelectItem value="published">Published</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="image">Featured Image (blog-images bucket)</Label>
+                        
+                        {!uploadedImage && !formData.image_url && (
+                          <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                            <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                            <p className="text-gray-600 mb-2">Upload featured image</p>
+                            <p className="text-sm text-gray-500 mb-4">Maximum 5MB, JPG, PNG, or WebP</p>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={handleImageUpload}
+                              className="hidden"
+                              id="image-upload"
+                            />
+                            <Button 
+                              type="button" 
+                              variant="outline" 
+                              onClick={() => document.getElementById('image-upload')?.click()}
+                              disabled={isUploading}
+                            >
+                              {isUploading ? "Uploading..." : "Choose Image"}
+                            </Button>
+                          </div>
+                        )}
 
-                    <div className="grid gap-2">
-                      <Label htmlFor="author">Author</Label>
-                      <Input
-                        id="author"
-                        value={formData.author}
-                        onChange={(e) => setFormData(prev => ({ ...prev, author: e.target.value }))}
-                        placeholder="Author name"
-                      />
-                    </div>
-                  </div>
-                
+                        {(uploadedImage || formData.image_url) && (
+                          <div className="relative">
+                            <img
+                              src={uploadedImage?.preview || formData.image_url}
+                              alt="Featured image"
+                              className="w-full h-48 object-cover rounded-lg border"
+                            />
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              size="icon"
+                              className="absolute top-2 right-2 h-8 w-8"
+                              onClick={removeUploadedImage}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="grid gap-2">
+                        <Label htmlFor="content">Content * (Rich Text Editor)</Label>
+                        <div className="border rounded-lg bg-white">
+                          <ReactQuill
+                            theme="snow"
+                            value={formData.content}
+                            onChange={handleContentChange}
+                            modules={quillModules}
+                            formats={quillFormats}
+                            placeholder="Write or paste your article content here. Supports formatting and inline images."
+                            style={{ minHeight: "400px", borderRadius: "0.5rem" }}
+                            className="prose-editor"
+                          />
+                        </div>
+                        {formData.content && (
+                          <p className="text-xs text-muted-foreground">
+                            {formData.content.length.toLocaleString()} characters
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="grid gap-2">
+                          <Label htmlFor="status">Status</Label>
+                          <Select
+                            value={formData.status}
+                            onValueChange={(value: "published" | "draft") => setFormData(prev => ({ ...prev, status: value }))}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="draft">Draft</SelectItem>
+                              <SelectItem value="published">Published</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="grid gap-2">
+                          <Label htmlFor="author">Author</Label>
+                          <Input
+                            id="author"
+                            value={formData.author}
+                            onChange={(e) => setFormData(prev => ({ ...prev, author: e.target.value }))}
+                            placeholder="Author name"
+                          />
+                        </div>
+                      </div>
                     </div>
                   </TabsContent>
 
                   <TabsContent value="preview">
                     <div className="prose max-w-full bg-white p-4 rounded shadow border my-4 min-h-[300px]">
-                      <h2 className="font-bold">{formData.title}</h2>
+                      <h2 className="font-bold">{formData.title || "Untitled Article"}</h2>
                       {formData.image_url && (
                         <img
                           src={formData.image_url}
@@ -574,7 +650,65 @@ const BlogManagement = () => {
                           className="rounded shadow my-2 w-full max-h-60 object-cover"
                         />
                       )}
-                      <div dangerouslySetInnerHTML={{ __html: formData.content }} />
+                      <div dangerouslySetInnerHTML={{ __html: formData.content || "<p>No content yet.</p>" }} />
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="seo">
+                    <div className="grid gap-4 py-4">
+                      <div className="grid gap-2">
+                        <Label htmlFor="seo_title">SEO Title</Label>
+                        <Input
+                          id="seo_title"
+                          value={formData.seo_title}
+                          onChange={(e) => setFormData(prev => ({ ...prev, seo_title: e.target.value }))}
+                          placeholder="Optimized title for search engines (leave empty to use article title)"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Recommended: 50-60 characters. If empty, article title will be used.
+                        </p>
+                      </div>
+
+                      <div className="grid gap-2">
+                        <Label htmlFor="seo_description">SEO Description</Label>
+                        <Textarea
+                          id="seo_description"
+                          value={formData.seo_description}
+                          onChange={(e) => setFormData(prev => ({ ...prev, seo_description: e.target.value }))}
+                          placeholder="Meta description for search engines (leave empty to use article description)"
+                          rows={3}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Recommended: 150-160 characters. If empty, article description will be used.
+                        </p>
+                      </div>
+
+                      <div className="grid gap-2">
+                        <Label htmlFor="topic_cluster">Topic Cluster</Label>
+                        <Input
+                          id="topic_cluster"
+                          value={formData.topic_cluster}
+                          onChange={(e) => setFormData(prev => ({ ...prev, topic_cluster: e.target.value }))}
+                          placeholder="e.g., Real Estate Investment, Market Analysis"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Group related articles together for better SEO and internal linking.
+                        </p>
+                      </div>
+
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="is_pillar_article"
+                          checked={formData.is_pillar_article}
+                          onCheckedChange={(checked) => setFormData(prev => ({ ...prev, is_pillar_article: checked as boolean }))}
+                        />
+                        <Label htmlFor="is_pillar_article" className="cursor-pointer">
+                          Mark as Pillar Article
+                        </Label>
+                        <p className="text-xs text-muted-foreground ml-2">
+                          Pillar articles are comprehensive guides that link to cluster articles.
+                        </p>
+                      </div>
                     </div>
                   </TabsContent>
                 </Tabs>
@@ -613,13 +747,14 @@ const BlogManagement = () => {
           </TabsList>
 
           <TabsContent value="articles" className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-              <Card className="md:col-span-3">
+            {/* Filters and Search */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <Card className="md:col-span-2">
                 <CardContent className="p-4">
                   <div className="relative">
                     <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                     <Input
-                      placeholder="Search articles by title or category..."
+                      placeholder="Search articles by title, category, or description..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       className="pl-10"
@@ -630,80 +765,271 @@ const BlogManagement = () => {
 
               <Card>
                 <CardContent className="p-4">
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Filter by status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Status</SelectItem>
+                      <SelectItem value="published">Published</SelectItem>
+                      <SelectItem value="draft">Draft</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="p-4">
+                  <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Filter by category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Categories</SelectItem>
+                      {categories.map(cat => (
+                        <SelectItem key={cat} value={cat || ""}>{cat}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Bulk Actions */}
+            {selectedArticles.size > 0 && (
+              <Card className="bg-blue-50 border-blue-200">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-blue-900">
+                      {selectedArticles.size} article(s) selected
+                    </span>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleBulkStatusChange("published")}
+                      >
+                        Publish Selected
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleBulkStatusChange("draft")}
+                      >
+                        Draft Selected
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={handleBulkDelete}
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete Selected
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <Card>
+                <CardContent className="p-4">
                   <div className="text-center">
                     <div className="text-2xl font-bold text-blue-600">{articles.length}</div>
                     <div className="text-sm text-gray-600">Total Articles</div>
                   </div>
                 </CardContent>
               </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-green-600">
+                      {articles.filter(a => a.status === 'published').length}
+                    </div>
+                    <div className="text-sm text-gray-600">Published</div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-yellow-600">
+                      {articles.filter(a => a.status === 'draft').length}
+                    </div>
+                    <div className="text-sm text-gray-600">Drafts</div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-purple-600">{filteredArticles.length}</div>
+                    <div className="text-sm text-gray-600">Filtered Results</div>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
 
-            <div className="grid gap-6">
-              {filteredArticles.map((article) => (
-            <Card key={article.id}>
-              <CardContent className="p-6">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-2 mb-2">
-                      <Badge variant={article.status === 'published' ? 'default' : 'secondary'}>
-                        {article.status}
-                      </Badge>
-                      <Badge variant="outline">{article.category}</Badge>
-                      <div className="text-xs text-gray-500">
-                        {article.content.replace(/<[^>]*>/g, '').length.toLocaleString()} chars
-                      </div>
-                    </div>
-                    
-                    <h3 className="text-xl font-semibold mb-2">{article.title}</h3>
-                    <p className="text-gray-600 mb-3 line-clamp-2">{article.description}</p>
-                    
-                    <div className="flex items-center text-sm text-gray-500 space-x-4">
-                      <div className="flex items-center">
-                        <Calendar className="h-4 w-4 mr-1" />
-                        {formatDate(article.date)}
-                      </div>
-                      <span>{article.read_time}</span>
-                      <span>By {article.author}</span>
-                    </div>
-                  </div>
+            {/* Table View */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Articles</CardTitle>
+                <CardDescription>
+                  Manage your blog articles. Use checkboxes to select multiple articles for bulk actions.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-12">
+                        <Checkbox
+                          checked={selectedArticles.size === paginatedArticles.length && paginatedArticles.length > 0}
+                          onCheckedChange={toggleSelectAll}
+                        />
+                      </TableHead>
+                      <TableHead>Title</TableHead>
+                      <TableHead>Category</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Author</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedArticles.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center py-12">
+                          <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                          <p className="text-gray-500">
+                            {searchQuery || statusFilter !== "all" || categoryFilter !== "all"
+                              ? "No articles found matching your filters."
+                              : "No articles yet. Create your first article!"}
+                          </p>
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      paginatedArticles.map((article) => (
+                        <TableRow key={article.id}>
+                          <TableCell>
+                            <Checkbox
+                              checked={selectedArticles.has(article.id)}
+                              onCheckedChange={() => toggleSelectArticle(article.id)}
+                            />
+                          </TableCell>
+                          <TableCell className="font-medium">
+                            <div>
+                              <div className="font-semibold">{article.title}</div>
+                              <div className="text-xs text-muted-foreground line-clamp-1">
+                                {article.description}
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline">{article.category || "Uncategorized"}</Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={article.status === 'published' ? 'default' : 'secondary'}>
+                              {article.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center text-sm text-gray-500">
+                              <Calendar className="h-4 w-4 mr-1" />
+                              {formatDate(article.date)}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-sm">{article.author}</TableCell>
+                          <TableCell className="text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm">
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                <DropdownMenuItem onClick={() => window.open(`/blog/${article.slug}`, '_blank')}>
+                                  <Eye className="h-4 w-4 mr-2" />
+                                  View
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleEdit(article)}>
+                                  <Edit className="h-4 w-4 mr-2" />
+                                  Edit
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  onClick={() => handleDelete(article.id)}
+                                  className="text-red-600"
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
 
-                  <div className="flex items-center space-x-2 ml-4">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => window.open(`/blog/${article.id}`, '_blank')}
-                    >
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleEdit(article)}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDelete(article.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-between mt-4">
+                    <div className="text-sm text-muted-foreground">
+                      Showing {startIndex + 1} to {Math.min(endIndex, filteredArticles.length)} of {filteredArticles.length} articles
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                        disabled={currentPage === 1}
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                        Previous
+                      </Button>
+                      <div className="flex items-center gap-1">
+                        {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                          let pageNum;
+                          if (totalPages <= 5) {
+                            pageNum = i + 1;
+                          } else if (currentPage <= 3) {
+                            pageNum = i + 1;
+                          } else if (currentPage >= totalPages - 2) {
+                            pageNum = totalPages - 4 + i;
+                          } else {
+                            pageNum = currentPage - 2 + i;
+                          }
+                          return (
+                            <Button
+                              key={pageNum}
+                              variant={currentPage === pageNum ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => setCurrentPage(pageNum)}
+                            >
+                              {pageNum}
+                            </Button>
+                          );
+                        })}
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                        disabled={currentPage === totalPages}
+                      >
+                        Next
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
-                </div>
+                )}
               </CardContent>
-                </Card>
-              ))}
-            </div>
-
-            {filteredArticles.length === 0 && (
-              <div className="text-center py-12">
-                <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-500">
-                  {searchQuery ? "No articles found matching your search." : "No articles yet. Create your first article!"}
-                </p>
-              </div>
-            )}
+            </Card>
           </TabsContent>
 
           <TabsContent value="clusters">
