@@ -10,7 +10,9 @@
     "check:routes": "tsx scripts/check-routes.ts",
     "submit-sitemap": "tsx scripts/submit-sitemap.ts",
     "generate-favicons": "tsx scripts/generate-favicons.ts",
-    "validate-favicons": "tsx scripts/validate-favicons.ts"
+    "generate-favicons-sharp": "node scripts/favicon-with-sharp.js",
+    "validate-favicons": "tsx scripts/validate-favicons.ts",
+    "validate-favicon-implementation": "node scripts/validate-favicon-implementation.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -36,6 +38,7 @@
     "react-hook-form": "^7.68.0",
     "react-quill": "^2.0.0",
     "recharts": "^3.6.0",
+    "sharp": "^0.34.5",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.4.0",
     "zod": "^4.2.0"
