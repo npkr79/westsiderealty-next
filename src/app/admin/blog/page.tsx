@@ -43,7 +43,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { supabaseImageServiceClient, UploadedImage } from "@/services/supabaseImageServiceClient";
 import { blogServiceClient, BlogArticle } from "@/services/blogServiceClient";
-import dynamic from 'next/dynamic';
+import QuillEditorClient from "@/components/blog/QuillEditorClient";
 import {
   Table,
   TableBody,
@@ -69,9 +69,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-// Dynamically import ReactQuill only on client side
-const ReactQuill = dynamic(() => import('react-quill'), { ssr: false });
-import 'react-quill/dist/quill.snow.css';
 
 const ITEMS_PER_PAGE = 10;
 
@@ -613,13 +610,12 @@ const BlogManagement = () => {
                       <div className="grid gap-2">
                         <Label htmlFor="content">Content * (Rich Text Editor)</Label>
                         <div className="border rounded-lg bg-white">
-                          <ReactQuill
-                            theme="snow"
-                            value={formData.content}
+                          <QuillEditorClient
+                            value={formData.content ?? ""}
                             onChange={handleContentChange}
+                            placeholder="Write or paste your article content here. Supports formatting and inline images."
                             modules={quillModules}
                             formats={quillFormats}
-                            placeholder="Write or paste your article content here. Supports formatting and inline images."
                             style={{ minHeight: "400px", borderRadius: "0.5rem" }}
                             className="prose-editor"
                           />

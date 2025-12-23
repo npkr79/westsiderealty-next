@@ -1,12 +1,7 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import { useMemo } from "react";
-
-// Dynamically import ReactQuill only on the client to avoid SSR issues.
-const ReactQuill = dynamic(() => import("react-quill"), { ssr: false });
-
-import "react-quill/dist/quill.snow.css";
+import QuillEditorClient from "@/components/blog/QuillEditorClient";
 
 interface RichTextEditorProps {
   label?: string;
@@ -44,9 +39,8 @@ export default function RichTextEditor({
           {required && <span className="text-red-500 ml-0.5">*</span>}
         </label>
       )}
-      <ReactQuill
-        theme="snow"
-        value={value}
+      <QuillEditorClient
+        value={value ?? ""}
         onChange={onChange}
         placeholder={placeholder}
         modules={modules}
