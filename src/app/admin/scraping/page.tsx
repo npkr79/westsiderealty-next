@@ -35,22 +35,39 @@ export default function ProjectsScraperPage() {
   const [lastRun, setLastRun] = useState<LastRunResult | null>(null);
   const [runHistory, setRunHistory] = useState<ScrapeRun[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [isConfigured, setIsConfigured] = useState(true); // Assume configured by default
   const { toast } = useToast();
+
+  // Check if API secret is configured (only once on mount)
+  useEffect(() => {
+    const apiSecret = process.env.NEXT_PUBLIC_SCRAPE_API_SECRET;
+    if (!apiSecret) {
+      setIsConfigured(false);
+      console.warn('⚠️ NEXT_PUBLIC_SCRAPE_API_SECRET is not configured. Add it to .env.local and restart the dev server.');
+    } else {
+      setIsConfigured(true);
+      console.log('✅ Scraper API secret is configured');
+    }
+  }, []);
 
   const fetchHistory = async () => {
     setIsLoadingHistory(true);
     try {
-      // In a real implementation, you'd fetch from Google Sheets API
-      // For now, we'll fetch from our API which can read from Sheets
+      // Get API secret from window or env (runtime check)
+      const apiSecret = (window as any).__SCRAPE_API_SECRET__ || process.env.NEXT_PUBLIC_SCRAPE_API_SECRET || '';
+      
       const response = await fetch('/api/admin/scraper/history', {
         headers: {
-          'x-api-secret': process.env.NEXT_PUBLIC_SCRAPE_API_SECRET || '',
+          'x-api-secret': apiSecret,
         },
       });
       
       if (response.ok) {
         const data = await response.json();
         setRunHistory(data.runs || []);
+      } else if (response.status === 401) {
+        // Silently fail if unauthorized - credentials might not be set up yet
+        console.log('History API unauthorized - credentials may not be configured');
       }
     } catch (error) {
       console.error('Error fetching history:', error);
@@ -68,13 +85,16 @@ export default function ProjectsScraperPage() {
     setLastRun(null);
     
     try {
-      const apiSecret = process.env.NEXT_PUBLIC_SCRAPE_API_SECRET;
+      // Get API secret at runtime (check both window and env)
+      const apiSecret = (window as any).__SCRAPE_API_SECRET__ || process.env.NEXT_PUBLIC_SCRAPE_API_SECRET || '';
+      
       if (!apiSecret) {
         toast({
           title: "Configuration Error",
-          description: "SCRAPE_API_SECRET not configured in environment variables",
+          description: "NEXT_PUBLIC_SCRAPE_API_SECRET not configured. Please add it to your .env.local file.",
           variant: "destructive",
         });
+        setIsRunning(false);
         return;
       }
 
@@ -85,6 +105,11 @@ export default function ProjectsScraperPage() {
           'Content-Type': 'application/json',
         },
       });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(errorData.error || `HTTP ${response.status}`);
+      }
 
       const result: LastRunResult = await response.json();
 
@@ -120,6 +145,24 @@ export default function ProjectsScraperPage() {
 
   return (
     <div className="container mx-auto px-4 py-8 space-y-6">
+      {!isConfigured && (
+        <Card className="border-yellow-200 bg-yellow-50">
+          <CardContent className="pt-6">
+            <div className="flex items-start gap-3">
+              <div className="flex-1">
+                <h3 className="font-semibold text-yellow-800 mb-1">Configuration Required</h3>
+                <p className="text-sm text-yellow-700">
+                  Please add <code className="bg-yellow-100 px-1 rounded">NEXT_PUBLIC_SCRAPE_API_SECRET</code> to your <code className="bg-yellow-100 px-1 rounded">.env.local</code> file and restart the dev server.
+                </p>
+                <p className="text-xs text-yellow-600 mt-2">
+                  Also ensure these are set: <code className="bg-yellow-100 px-1 rounded">FIRECRAWL_API_KEY</code>, <code className="bg-yellow-100 px-1 rounded">GOOGLE_SHEETS_CREDENTIALS</code>, <code className="bg-yellow-100 px-1 rounded">GOOGLE_SHEET_ID</code>, <code className="bg-yellow-100 px-1 rounded">SCRAPE_API_SECRET</code>
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Projects Scraper</h1>
@@ -129,9 +172,10 @@ export default function ProjectsScraperPage() {
         </div>
         <Button
           onClick={runScraper}
-          disabled={isRunning}
+          disabled={isRunning || !isConfigured}
           size="lg"
           className="gap-2"
+          title={!isConfigured ? "Please configure NEXT_PUBLIC_SCRAPE_API_SECRET in .env.local" : ""}
         >
           {isRunning ? (
             <>

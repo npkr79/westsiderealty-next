@@ -2,9 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { google } from 'googleapis';
 
 export async function GET(req: NextRequest) {
-  // Verify API secret
+  // Verify API secret (allow empty for development)
   const apiSecret = req.headers.get('x-api-secret');
-  if (apiSecret !== process.env.SCRAPE_API_SECRET) {
+  const expectedSecret = process.env.SCRAPE_API_SECRET;
+  
+  // If secret is configured, validate it. Otherwise allow access (for development)
+  if (expectedSecret && apiSecret !== expectedSecret) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
