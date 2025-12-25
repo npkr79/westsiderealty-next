@@ -315,6 +315,15 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
               </Button>
 
               <Button
+                variant="ghost"
+                className="w-full justify-start"
+                onClick={() => router.push("/admin/scraping")}
+              >
+                <Search className="mr-2 h-4 w-4" />
+                Projects Scraper
+              </Button>
+
+              <Button
                 variant={activeTab === "settings" ? "default" : "ghost"}
                 className="w-full justify-start"
                 onClick={() => setActiveTab("settings")}
