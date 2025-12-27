@@ -231,6 +231,9 @@ export const projectService = {
     
     console.log(`[getCityLevelProjectBySlug] Fetching project: citySlug=${citySlug}, projectSlug=${projectSlug}`);
     
+    // Handle spelling correction: sumachura -> sumadhura
+    const correctedSlug = projectSlug === 'sumachura-the-olympus' ? 'sumadhura-the-olympus' : projectSlug;
+    
     // First, get the city ID to avoid complex joins
     const { data: cityData, error: cityError } = await supabase
       .from('cities')
@@ -250,7 +253,7 @@ export const projectService = {
 
     console.log(`[getCityLevelProjectBySlug] Found city ID: ${cityData.id}`);
 
-    // Query project by city_id and url_slug
+    // Query project by city_id and url_slug (using corrected slug)
     // Try with status filter first, then without filter
     let { data, error } = await supabase
       .from('projects')
@@ -261,7 +264,7 @@ export const projectService = {
         developer:developers(*),
         micro_market:micro_markets!projects_micromarket_id_fkey(*)
       `)
-      .eq('url_slug', projectSlug)
+      .eq('url_slug', correctedSlug)
       .eq('city_id', cityData.id)
       .or('status.ilike.published,status.ilike.%under construction%,page_status.eq.published')
       .maybeSingle();
@@ -278,7 +281,7 @@ export const projectService = {
           developer:developers(*),
           micro_market:micro_markets!projects_micromarket_id_fkey(*)
         `)
-        .eq('url_slug', projectSlug)
+        .eq('url_slug', correctedSlug)
         .eq('city_id', cityData.id)
         .maybeSingle();
       data = result.data;
@@ -307,7 +310,7 @@ export const projectService = {
           developer:developers(*),
           micro_market:micro_markets!projects_micromarket_id_fkey(*)
         `)
-        .eq('url_slug', projectSlug)
+        .eq('url_slug', correctedSlug)
         .eq('city_id', cityData.id)
         .maybeSingle();
       

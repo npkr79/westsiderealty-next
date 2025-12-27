@@ -16,7 +16,16 @@ export default function GoaPropertyCard({
   location = "goa",
   viewMode = "grid",
 }: GoaPropertyCardProps) {
-  const href = `/${location}/buy/${property.slug}`;
+  // Use seo_slug if available (preferred), otherwise fall back to slug
+  // The property detail page looks for seo_slug first, then slug, so we should prioritize seo_slug
+  // UnifiedPropertyService already maps seo_slug to slug field, but we check seo_slug explicitly first
+  const propertySlug = property.seo_slug || property.slug;
+  
+  if (!propertySlug) {
+    console.warn('[GoaPropertyCard] Property missing slug:', property.id, property.title);
+  }
+  
+  const href = `/${location}/buy/${propertySlug}`;
   const image = property.main_image_url || (property.image_gallery && property.image_gallery[0]) || "/placeholder.svg";
 
   return (

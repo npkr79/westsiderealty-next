@@ -59,12 +59,24 @@ export async function generateStaticParams() {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { citySlug: citySlugParam, projectSlug: projectSlugParam } = await params;
   const citySlug = Array.isArray(citySlugParam) ? citySlugParam[0] : citySlugParam;
-  const projectSlug = Array.isArray(projectSlugParam) ? projectSlugParam[0] : projectSlugParam;
+  let projectSlug = Array.isArray(projectSlugParam) ? projectSlugParam[0] : projectSlugParam;
 
   if (!citySlug || !projectSlug) {
     return {
       title: "Project Not Found",
     };
+  }
+
+  // Handle spelling correction: sumachura -> sumadhura
+  if (projectSlug === 'sumachura-the-olympus') {
+    projectSlug = 'sumadhura-the-olympus';
+  }
+
+  // Handle spelling correction: sumachura -> sumadhura
+  // If old slug is used, redirect to new one
+  if (projectSlug === 'sumachura-the-olympus') {
+    const { redirect } = await import('next/navigation');
+    redirect(`/${citySlug}/projects/sumadhura-the-olympus`);
   }
 
   const project = await projectService.getCityLevelProjectBySlug(citySlug, projectSlug);
@@ -76,14 +88,18 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   }
 
   const microMarketSlug = project.micro_market?.url_slug;
+  // Use corrected slug for canonical URL
+  const correctedSlug = projectSlug === 'sumachura-the-olympus' ? 'sumadhura-the-olympus' : projectSlug;
   const canonicalUrl = microMarketSlug
-    ? `https://www.westsiderealty.in/${citySlug}/${microMarketSlug}/projects/${projectSlug}`
-    : `https://www.westsiderealty.in/${citySlug}/projects/${projectSlug}`;
+    ? `https://www.westsiderealty.in/${citySlug}/${microMarketSlug}/projects/${correctedSlug}`
+    : `https://www.westsiderealty.in/${citySlug}/projects/${correctedSlug}`;
 
   // Standardized title format: "{Project Name} {Location}: Price, Floor Plans & Reviews | RE/MAX"
   const cityName = project.city?.city_name || citySlug;
-  const seoTitle = project.seo_title || `${project.project_name} ${cityName}: Price, Floor Plans & Reviews | RE/MAX`;
-  const seoDescription = project.meta_description || `Explore ${project.project_name} - Premium residential project in ${cityName}`;
+  // Fix project name spelling
+  const correctedProjectName = project.project_name?.replace(/sumachura/gi, 'sumadhura') || project.project_name;
+  const seoTitle = (project.seo_title?.replace(/sumachura/gi, 'sumadhura')) || `${correctedProjectName} ${cityName}: Price, Floor Plans & Reviews | RE/MAX`;
+  const seoDescription = (project.meta_description?.replace(/sumachura/gi, 'sumadhura')) || `Explore ${correctedProjectName} - Premium residential project in ${cityName}`;
   
   // Optimize OG image
   const rawOgImage = project.hero_image_url || "https://www.westsiderealty.in/placeholder.svg";
@@ -112,7 +128,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
           url: optimizedOgImage,
           width: 1200,
           height: 630,
-          alt: project.project_name,
+          alt: correctedProjectName,
         },
       ],
     },
@@ -133,7 +149,14 @@ export default async function ProjectDetailPage({ params }: PageProps) {
   
   // Normalize params from string | string[] to string
   const citySlug = Array.isArray(citySlugParam) ? citySlugParam[0] : citySlugParam;
-  const projectSlug = Array.isArray(projectSlugParam) ? projectSlugParam[0] : projectSlugParam;
+  let projectSlug = Array.isArray(projectSlugParam) ? projectSlugParam[0] : projectSlugParam;
+
+  // Handle spelling correction: sumachura -> sumadhura
+  // Redirect old URL to new one
+  if (projectSlug === 'sumachura-the-olympus') {
+    const { redirect } = await import('next/navigation');
+    redirect(`/${citySlug}/projects/sumadhura-the-olympus`);
+  }
 
   console.log('[ProjectDetailPage] 📝 Normalized params:', { citySlug, projectSlug });
 
@@ -181,17 +204,23 @@ export default async function ProjectDetailPage({ params }: PageProps) {
     notFound();
   }
 
+  // Fix project name spelling if it contains the incorrect spelling
+  // This must be defined early as it's used throughout the component
+  const correctedProjectName = project.project_name?.replace(/sumachura/gi, 'sumadhura') || project.project_name;
+
   // Derive SEO helpers for schema (mirror generateMetadata logic)
   const cityName = project.city?.city_name || citySlug;
+  // Use corrected slug for canonical URL if old slug was used
+  const finalProjectSlug = projectSlug === 'sumachura-the-olympus' ? 'sumadhura-the-olympus' : projectSlug;
   const canonicalUrl = microMarketSlug
-    ? `https://www.westsiderealty.in/${citySlug}/${microMarketSlug}/projects/${projectSlug}`
-    : `https://www.westsiderealty.in/${citySlug}/projects/${projectSlug}`;
+    ? `https://www.westsiderealty.in/${citySlug}/${microMarketSlug}/projects/${finalProjectSlug}`
+    : `https://www.westsiderealty.in/${citySlug}/projects/${finalProjectSlug}`;
   const seoTitle =
-    project.seo_title ||
-    `${project.project_name} ${cityName}: Price, Floor Plans & Reviews | RE/MAX`;
+    project.seo_title?.replace(/sumachura/gi, 'sumadhura') ||
+    `${correctedProjectName} ${cityName}: Price, Floor Plans & Reviews | RE/MAX`;
   const seoDescription =
-    project.meta_description ||
-    `Explore ${project.project_name} - Premium residential project in ${cityName}`;
+    project.meta_description?.replace(/sumachura/gi, 'sumadhura') ||
+    `Explore ${correctedProjectName} - Premium residential project in ${cityName}`;
 
   const breadcrumbItems = [
     { name: "Home", href: "/" },
@@ -200,7 +229,7 @@ export default async function ProjectDetailPage({ params }: PageProps) {
       ? [{ name: project.micro_market?.micro_market_name || microMarketSlug, href: `/${citySlug}/${microMarketSlug}` }]
       : []),
     { name: "Projects", href: `/${citySlug}/projects` },
-    { name: project.project_name, href: `/${citySlug}/projects/${projectSlug}` },
+    { name: correctedProjectName, href: `/${citySlug}/projects/${finalProjectSlug}` },
   ];
 
   // Extract FAQs
@@ -222,9 +251,10 @@ export default async function ProjectDetailPage({ params }: PageProps) {
   }
 
   // Build primary entity (RealEstateListing)
+  // correctedProjectName is already defined above
   const primaryEntity: Record<string, any> = {
     "@type": "RealEstateListing",
-    name: project.project_name,
+    name: correctedProjectName,
     description: seoDescription,
     image: project.hero_image_url || undefined,
     url: canonicalUrl,
@@ -259,7 +289,7 @@ export default async function ProjectDetailPage({ params }: PageProps) {
         ? [{ name: project.micro_market?.micro_market_name || microMarketSlug, item: `https://www.westsiderealty.in/${citySlug}/${microMarketSlug}` }]
         : []),
       { name: "Projects", item: `https://www.westsiderealty.in/${citySlug}/projects` },
-      { name: project.project_name, item: canonicalUrl },
+      { name: correctedProjectName, item: canonicalUrl },
     ],
   });
 
@@ -290,13 +320,13 @@ export default async function ProjectDetailPage({ params }: PageProps) {
 
         {/* Hero Gallery */}
         <ProjectHeroGallery
-          projectName={project.project_name || "Project"}
+          projectName={correctedProjectName || "Project"}
           images={getProjectImageUrls(project) || []}
         />
 
         {/* Client Actions Component - handles all interactive elements */}
         <ProjectDetailClientActions
-          projectName={project.project_name}
+          projectName={correctedProjectName}
           brochureUrl={brochureUrl || undefined}
           project={project}
           citySlug={citySlug}
@@ -423,7 +453,7 @@ export default async function ProjectDetailPage({ params }: PageProps) {
               <section>
                 <ProjectInvestmentAnalysis
                   investmentData={(project as any).investment_analysis_json}
-                  projectName={project.project_name}
+                  projectName={correctedProjectName}
                 />
               </section>
             )}
@@ -434,7 +464,7 @@ export default async function ProjectDetailPage({ params }: PageProps) {
               (project as any).faqs_json.length > 0 && (
                 <ProjectFAQSection
                   faqs={(project as any).faqs_json}
-                  projectName={project.project_name}
+                  projectName={correctedProjectName}
                 />
               )}
 
@@ -442,7 +472,7 @@ export default async function ProjectDetailPage({ params }: PageProps) {
             {(project as any).expert_review_json && (
               <ProjectExpertReview
                 review={(project as any).expert_review_json}
-                projectName={project.project_name}
+                projectName={correctedProjectName}
               />
             )}
 
@@ -458,7 +488,7 @@ export default async function ProjectDetailPage({ params }: PageProps) {
 
             {/* Bottom Lead Form */}
             <BottomLeadFormSection
-              projectName={project.project_name}
+              projectName={correctedProjectName}
               projectId={project.id}
               developerName={project.developer?.developer_name}
               brochureUrl={brochureUrl || undefined}
