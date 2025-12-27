@@ -28,29 +28,111 @@ async function getProperty(citySlug: string, listingSlug: string) {
   // Check if it's a UUID format
   const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(listingSlug);
 
+  // Determine status filter based on city
+  const statusFilter = citySlug === 'hyderabad' ? 'active' : citySlug === 'goa' ? 'Active' : 'published';
+
   // Select all fields including latitude and longitude for map embedding
   let query = supabase.from(tableName).select('*');
 
   if (isUUID) {
     query = query.eq('id', listingSlug);
   } else {
-    query = query.or(`seo_slug.eq.${listingSlug},slug.eq.${listingSlug}`);
+    // For Goa properties, only check seo_slug (there's no 'slug' field in goa_holiday_properties table)
+    if (citySlug === 'goa') {
+      query = query.eq('seo_slug', listingSlug);
+    } else {
+      // For other cities, check both seo_slug and slug
+      query = query.or(`seo_slug.eq.${listingSlug},slug.eq.${listingSlug}`);
+    }
   }
 
-  // Apply status filter based on city
-  if (citySlug === 'hyderabad') {
-    query = query.eq('status', 'active');
-  } else if (citySlug === 'goa') {
-    query = query.eq('status', 'Active');
-  } else if (citySlug === 'dubai') {
-    query = query.eq('status', 'published');
-  }
+  // Apply status filter
+  query = query.eq('status', statusFilter);
 
-  const { data, error } = await query.maybeSingle();
+  let { data, error } = await query.maybeSingle();
 
   if (error) {
     console.error('[PropertyDetailsPage] Error fetching property:', error);
     return null;
+  }
+
+  // If not found by exact slug match, try fuzzy matching for Goa properties
+  // This handles cases where the URL slug is auto-generated from title and doesn't match the database seo_slug
+  if (!data && !isUUID && citySlug === 'goa') {
+    // The long slug format is usually: project-name-description-location
+    // Extract key identifiers: project name (first 2-3 words) and location (last 2-3 words before "goa")
+    const slugParts = listingSlug.split('-');
+    
+    // Remove "goa" from the end if present
+    const partsWithoutGoa = slugParts[slugParts.length - 1] === 'goa' 
+      ? slugParts.slice(0, -1) 
+      : slugParts;
+    
+    // Try multiple strategies:
+    // 1. Extract project name (first 2-3 words)
+    const projectNameKeywords = partsWithoutGoa.slice(0, Math.min(3, partsWithoutGoa.length)).join(' ');
+    
+    // 2. Extract location (last 2-3 words before "goa")
+    const locationKeywords = partsWithoutGoa.slice(-3).join(' ');
+    
+    // Try to find by title match
+    if (projectNameKeywords.length >= 3) {
+      // First try with project name
+      let titleMatches: any[] = [];
+      const { data: matches1, error: err1 } = await supabase
+        .from(tableName)
+        .select('*')
+        .eq('status', statusFilter)
+        .ilike('title', `%${projectNameKeywords}%`)
+        .limit(20);
+      
+      if (!err1 && matches1) {
+        titleMatches = matches1;
+      }
+      
+      // If no matches, try with location
+      if (titleMatches.length === 0 && locationKeywords.length >= 3) {
+        const { data: matches2, error: err2 } = await supabase
+          .from(tableName)
+          .select('*')
+          .eq('status', statusFilter)
+          .ilike('title', `%${locationKeywords}%`)
+          .limit(20);
+        
+        if (!err2 && matches2) {
+          titleMatches = matches2;
+        }
+      }
+      
+      if (titleMatches.length > 0) {
+        // Find the best match by comparing title similarity
+        // The URL slug is likely generated from the full title, so try to match it
+        const titleFromSlug = slugParts
+          .filter(part => part !== 'goa' && part !== 'north' && part !== 'south' && part !== 'by')
+          .slice(0, 6) // First 6 words should cover project name
+          .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+          .join(' ');
+        
+        // Find the best match - prefer exact title match or close match
+        const bestMatch = titleMatches.find((item: any) => {
+          const itemTitleLower = (item.title || '').toLowerCase();
+          const slugTitleLower = titleFromSlug.toLowerCase();
+          // Check if title matches the slug-derived title
+          return itemTitleLower.includes(slugTitleLower) || 
+                 slugTitleLower.includes(itemTitleLower.split(' ').slice(0, 3).join(' ')) ||
+                 itemTitleLower.includes(projectNameKeywords.toLowerCase());
+        }) || titleMatches.find((item: any) => {
+          // Fallback: check if any key words match
+          const itemTitleLower = (item.title || '').toLowerCase();
+          return itemTitleLower.includes(projectNameKeywords.toLowerCase());
+        }) || titleMatches[0];
+        
+        if (bestMatch) {
+          console.log(`[PropertyDetailsPage] Found Goa property by title match: "${bestMatch.title}" (seo_slug: ${bestMatch.seo_slug || 'NULL'})`);
+          data = bestMatch;
+        }
+      }
+    }
   }
 
   if (!data) {
@@ -67,7 +149,7 @@ async function getProperty(citySlug: string, listingSlug: string) {
         .from(tableName)
         .select('*')
         .eq('seo_slug', redirectResult.data.new_slug)
-        .eq('status', citySlug === 'hyderabad' ? 'active' : citySlug === 'goa' ? 'Active' : 'published')
+        .eq('status', statusFilter)
         .maybeSingle();
       
       return redirectedData || null;

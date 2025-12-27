@@ -114,7 +114,9 @@ export class UnifiedPropertyService {
     return data.map((item) => ({
       id: item.id,
       title: item.title,
-      slug: item.seo_slug || item.slug || item.id,
+      // For Goa properties, ONLY use seo_slug if it exists, otherwise use ID
+      // Do NOT generate slugs from title as they won't match the database
+      slug: item.seo_slug || item.id,
       seo_slug: item.seo_slug,
       description: item.description || '',
       price: parseFloat(item.price) || 0,
