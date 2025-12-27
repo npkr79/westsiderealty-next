@@ -188,13 +188,15 @@ export default function PropertyDetailsClient({
           )}
           
           {/* Map - Show if location data exists (coordinates, URL, or property name + location) */}
-          {/* For Goa, also check location_area and district */}
-          {((property.latitude && property.longitude) || property.google_maps_url || (property.title && (property.micro_market || property.location || (citySlug === 'goa' ? (property.location_area || property.district) : '')))) ? (
+          {/* For Goa, prioritize google_maps_url if available, as it contains the embed URL */}
+          {((citySlug === 'goa' && property.google_maps_url) || (property.latitude && property.longitude) || property.google_maps_url || (property.title && (property.micro_market || property.location || (citySlug === 'goa' ? (property.location_area || property.district) : '')))) ? (
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
               <h3 className="text-xl font-semibold mb-4">Location</h3>
               <GoogleMapEmbed 
-                lat={property.latitude}
-                lng={property.longitude}
+                // For Goa properties, if google_maps_url exists, prioritize it over coordinates
+                // Pass undefined for lat/lng when URL is provided to ensure URL takes priority
+                lat={citySlug === 'goa' && property.google_maps_url ? undefined : property.latitude}
+                lng={citySlug === 'goa' && property.google_maps_url ? undefined : property.longitude}
                 url={property.google_maps_url}
                 title={property.title}
                 businessName={property.title}
