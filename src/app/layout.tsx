@@ -24,28 +24,18 @@ export const metadata: Metadata = {
     "Expert real estate advisory for premium properties in Hyderabad, Goa holiday homes, and Dubai investments. RE/MAX Westside Realty.",
   metadataBase: new URL(BASE_URL),
   
-  // Favicon configuration – using /public/favicon.png
+  // Favicon configuration – strictly using /favicon.png from public/favicon.png
+  // Path /favicon.png maps to public/favicon.png in Next.js
   icons: {
-    icon: [
-      { url: "/favicon.png", sizes: "any" },
-      { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
-      { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
-    ],
+    icon: {
+      url: "/favicon.png",
+      type: "image/png",
+    },
+    shortcut: {
+      url: "/favicon.png",
+      type: "image/png",
+    },
     apple: "/apple-touch-icon.png",
-    other: [
-      {
-        rel: "icon",
-        type: "image/png",
-        sizes: "192x192",
-        url: "/favicon-192x192.png",
-      },
-      {
-        rel: "icon",
-        type: "image/png",
-        sizes: "96x96",
-        url: "/favicon-96x96.png",
-      },
-    ],
   },
   
   // Web App Manifest
