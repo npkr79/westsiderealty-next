@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { GraduationCap, Hospital, Building2, ShoppingBag, Car, Plane } from "lucide-react";
+import { GraduationCap, Hospital, Building2, ShoppingBag, Car, Plane, MapPin } from "lucide-react";
 
 interface LocationDetailsDisplayProps {
   nearby_landmarks?: string[] | string | Array<{ name?: string; type?: string; distance?: string }> | { [key: string]: any };
@@ -150,7 +150,61 @@ export default function LocationDetailsDisplay({
     return null;
   }
 
-  // Try to parse as structured location data
+  // Handle Goa properties: nearby_places is often an array of strings or objects
+  // Handle array format (Goa properties often use this)
+  if (Array.isArray(nearby_landmarks) && nearby_landmarks.length > 0) {
+    // Check if it's an array of strings
+    if (typeof nearby_landmarks[0] === 'string') {
+      return (
+        <section className="space-y-4">
+          <h2 className="text-2xl font-semibold text-foreground">Location Highlights</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {nearby_landmarks.map((place, index) => (
+              <Card key={index} className="hover:shadow-md transition-shadow">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                    <MapPin className="h-5 w-5 text-primary" />
+                    <span className="text-sm text-foreground font-medium">{place}</span>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </section>
+      );
+    }
+    // Array of objects with name/distance
+    if (typeof nearby_landmarks[0] === 'object' && nearby_landmarks[0] !== null) {
+      return (
+        <section className="space-y-4">
+          <h2 className="text-2xl font-semibold text-foreground">Location Highlights</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {nearby_landmarks.map((place: any, index: number) => (
+              <Card key={index} className="hover:shadow-md transition-shadow">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <MapPin className="h-5 w-5 text-primary" />
+                      <span className="text-sm text-foreground font-medium">
+                        {place.name || place.place_name || place.landmark_name || String(place)}
+                      </span>
+                    </div>
+                    {place.distance && (
+                      <Badge variant="secondary" className="text-xs font-semibold">
+                        {place.distance}
+                      </Badge>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </section>
+      );
+    }
+  }
+
+  // Try to parse as structured location data (Hyderabad format)
   let locationData: any = null;
 
   try {

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 interface AboutDeveloperProps {
   developerName: string;
   developerSlug?: string;
+  citySlug?: string;
   description?: string;
   yearsInBusiness?: number;
   totalProjects?: number;
@@ -22,6 +23,7 @@ const stripHtml = (html: string | null | undefined): string => {
 export default function AboutDeveloper({ 
   developerName, 
   developerSlug,
+  citySlug = 'hyderabad',
   description,
   yearsInBusiness,
   totalProjects,
@@ -34,9 +36,10 @@ export default function AboutDeveloper({
     ? stripHtml(description)
     : `${developerName} is a reputed developer associated with premium projects in this micro-market.`;
 
+  // Link to city-specific developers page if citySlug is provided, otherwise generic developers page
   const developerUrl = developerSlug 
-    ? `/developers/${developerSlug}`
-    : "/developers";
+    ? `/${citySlug}/developers#${developerSlug}`
+    : `/${citySlug}/developers`;
 
   return (
     <div className="rounded-xl border border-gray-200 p-6 space-y-6 bg-white">

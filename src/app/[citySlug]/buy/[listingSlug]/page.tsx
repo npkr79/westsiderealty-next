@@ -172,30 +172,49 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     };
   }
 
-  const microMarket = property.micro_market || property.location || '';
+  const microMarket = citySlug === 'goa' 
+    ? (property.location_area || property.district || property.location || 'Goa')
+    : (property.micro_market || property.location || '');
   const cityName = citySlug === 'hyderabad' ? 'Hyderabad' : citySlug === 'goa' ? 'Goa' : 'Dubai';
   const developer = property.developer_name || '';
   const price = property.price_display || `₹${(property.price / 10000000).toFixed(2)} Cr`;
 
-  // Build comprehensive title and description
-  const title = `${property.title} in ${microMarket}, ${cityName}${property.bhk_config ? ` | ${property.bhk_config}` : ''}${developer ? ` by ${developer}` : ''} | RE/MAX Westside`;
-  const description = `${property.title} - ${property.bhk_config || 'Premium property'} for sale in ${microMarket}, ${cityName}. Price: ${price}. ${property.description?.substring(0, 100) || ''}`.slice(0, 160);
+  // Build comprehensive title and description - optimized for Goa
+  const title = citySlug === 'goa'
+    ? `${property.title}${property.bhk_config ? ` | ${property.bhk_config}` : ''} in ${microMarket}, ${cityName}${developer ? ` by ${developer}` : ''} | RE/MAX Westside`
+    : `${property.title} in ${microMarket}, ${cityName}${property.bhk_config ? ` | ${property.bhk_config}` : ''}${developer ? ` by ${developer}` : ''} | RE/MAX Westside`;
+  const description = citySlug === 'goa'
+    ? `${property.title} - ${property.bhk_config || 'Premium holiday property'} for sale in ${microMarket}, ${cityName}. Price: ${price}. ${property.description?.substring(0, 80) || 'Invest in Goa real estate with high rental yields and beach proximity.'}`.slice(0, 160)
+    : `${property.title} - ${property.bhk_config || 'Premium property'} for sale in ${microMarket}, ${cityName}. Price: ${price}. ${property.description?.substring(0, 100) || ''}`.slice(0, 160);
 
   // Extract amenities and location highlights for keywords
   const amenities = Array.isArray(property.amenities) 
     ? property.amenities.join(', ') 
     : '';
-  const locationHighlights = property.nearby_landmarks 
-    ? (typeof property.nearby_landmarks === 'string' 
-        ? property.nearby_landmarks 
-        : Object.keys(property.nearby_landmarks).join(', '))
-    : '';
+  // For Goa, check nearby_places as well
+  const locationHighlights = citySlug === 'goa'
+    ? (Array.isArray(property.nearby_places) 
+        ? property.nearby_places.map((p: any) => typeof p === 'string' ? p : (p.name || p.place_name || '')).join(', ')
+        : property.nearby_landmarks 
+        ? (typeof property.nearby_landmarks === 'string' 
+            ? property.nearby_landmarks 
+            : Object.keys(property.nearby_landmarks).join(', '))
+        : '')
+    : (property.nearby_landmarks 
+        ? (typeof property.nearby_landmarks === 'string' 
+            ? property.nearby_landmarks 
+            : Object.keys(property.nearby_landmarks).join(', '))
+        : '');
 
-  const keywords = `${property.title}, ${microMarket}, ${cityName}, ${property.bhk_config || ''}, ${developer}, real estate, ${amenities}, ${locationHighlights}`.slice(0, 255);
+  const keywords = citySlug === 'goa'
+    ? `${property.title}, ${microMarket}, ${cityName}, ${property.bhk_config || ''}, ${developer}, Goa real estate, holiday home, beach property, rental yield, investment property, ${amenities}, ${locationHighlights}`.slice(0, 255)
+    : `${property.title}, ${microMarket}, ${cityName}, ${property.bhk_config || ''}, ${developer}, real estate, ${amenities}, ${locationHighlights}`.slice(0, 255);
 
   const canonicalUrl = `https://www.westsiderealty.in/${citySlug}/buy/${property.seo_slug || listingSlug}`;
-  const rawImageUrl =
-    property.main_image_url || property.image_gallery?.[0] || 'https://www.westsiderealty.in/placeholder.svg';
+  // For Goa properties, check multiple image fields
+  const rawImageUrl = citySlug === 'goa'
+    ? (property.hero_image_url || property.main_image_url || (Array.isArray(property.images) && property.images[0]) || (Array.isArray(property.image_gallery) && property.image_gallery[0]) || 'https://www.westsiderealty.in/placeholder.svg')
+    : (property.main_image_url || property.image_gallery?.[0] || 'https://www.westsiderealty.in/placeholder.svg');
   const imageUrl = optimizeSupabaseImage(rawImageUrl, {
     width: 1200,
     height: 630,
@@ -271,10 +290,15 @@ export async function generateStaticParams() {
 
 // Helper functions for JSON-LD
 function generatePropertyJsonLd(property: any, citySlug: string) {
-  const microMarket = property.micro_market || property.location || '';
+  const microMarket = citySlug === 'goa' 
+    ? (property.location_area || property.district || property.location || '')
+    : (property.micro_market || property.location || '');
   const cityName = citySlug === 'hyderabad' ? 'Hyderabad' : citySlug === 'goa' ? 'Goa' : 'Dubai';
   const canonicalUrl = `https://www.westsiderealty.in/${citySlug}/buy/${property.seo_slug || property.slug}`;
-  const imageUrl = property.main_image_url || property.image_gallery?.[0] || 'https://www.westsiderealty.in/placeholder.svg';
+  // For Goa properties, check multiple image fields
+  const imageUrl = citySlug === 'goa'
+    ? (property.hero_image_url || property.main_image_url || (Array.isArray(property.images) && property.images[0]) || (Array.isArray(property.image_gallery) && property.image_gallery[0]) || 'https://www.westsiderealty.in/placeholder.svg')
+    : (property.main_image_url || property.image_gallery?.[0] || 'https://www.westsiderealty.in/placeholder.svg');
 
   return {
     '@context': 'https://schema.org',
@@ -282,9 +306,15 @@ function generatePropertyJsonLd(property: any, citySlug: string) {
     name: property.title,
     description: property.description?.substring(0, 160) || property.title,
     url: canonicalUrl,
-    image: Array.isArray(property.image_gallery) 
-      ? [imageUrl, ...property.image_gallery].filter(Boolean).slice(0, 5)
-      : [imageUrl],
+    image: citySlug === 'goa'
+      ? (Array.isArray(property.images) 
+          ? [imageUrl, ...property.images].filter(Boolean).slice(0, 5)
+          : Array.isArray(property.image_gallery)
+          ? [imageUrl, ...property.image_gallery].filter(Boolean).slice(0, 5)
+          : [imageUrl])
+      : (Array.isArray(property.image_gallery) 
+          ? [imageUrl, ...property.image_gallery].filter(Boolean).slice(0, 5)
+          : [imageUrl]),
     address: {
       '@type': 'PostalAddress',
       addressLocality: microMarket,
@@ -335,7 +365,9 @@ function generateFaqJsonLd(faqs: any[]) {
 }
 
 function generateBreadcrumbJsonLd(property: any, citySlug: string) {
-  const microMarket = property.micro_market || property.location || '';
+  const microMarket = citySlug === 'goa' 
+    ? (property.location_area || property.district || property.location || 'Goa')
+    : (property.micro_market || property.location || '');
   const cityName = citySlug === 'hyderabad' ? 'Hyderabad' : citySlug === 'goa' ? 'Goa' : 'Dubai';
 
   return {
@@ -344,7 +376,7 @@ function generateBreadcrumbJsonLd(property: any, citySlug: string) {
     itemListElement: [
       { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://www.westsiderealty.in' },
       { '@type': 'ListItem', position: 2, name: cityName, item: `https://www.westsiderealty.in/${citySlug}` },
-      { '@type': 'ListItem', position: 3, name: microMarket, item: `https://www.westsiderealty.in/${citySlug}/properties` },
+      { '@type': 'ListItem', position: 3, name: citySlug === 'goa' ? 'Properties' : microMarket, item: `https://www.westsiderealty.in/${citySlug}${citySlug === 'goa' ? '/buy' : '/properties'}` },
       { '@type': 'ListItem', position: 4, name: property.title, item: `https://www.westsiderealty.in/${citySlug}/buy/${property.seo_slug || property.slug}` },
     ],
   };
@@ -365,9 +397,12 @@ export default async function PropertyDetailsPage({ params }: PageProps) {
     microMarketData = await microMarketService.getMicroMarketByName(property.micro_market);
   }
 
-  // Fetch FAQs from projects table
+  // Fetch FAQs - for Goa properties, use dedicated FAQ service
   let faqs: any[] = [];
-  if (property.project_name) {
+  if (citySlug === 'goa') {
+    const { getGoaPropertyFAQs } = await import('@/services/goaPropertyFAQService');
+    faqs = await getGoaPropertyFAQs(property.id, property);
+  } else if (property.project_name) {
     faqs = await getPropertyFAQsFromProject(property.project_name);
   }
 
@@ -397,7 +432,9 @@ export default async function PropertyDetailsPage({ params }: PageProps) {
       {/* SEO-friendly content rendered server-side */}
       <article itemScope itemType="https://schema.org/RealEstateListing">
         <h1 itemProp="name" className="sr-only">
-          {property.title} in {property.micro_market || property.location || citySlug}
+          {property.title} in {citySlug === 'goa' 
+            ? (property.location_area || property.district || property.location || 'Goa')
+            : (property.micro_market || property.location || citySlug)}
         </h1>
         <meta itemProp="description" content={property.description?.substring(0, 160) || property.title} />
 

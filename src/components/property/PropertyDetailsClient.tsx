@@ -16,6 +16,7 @@ import PropertyDescription from "@/components/property-details/PropertyDescripti
 import { PropertyFAQs } from "@/components/property/PropertyFAQs";
 import { formatPriceWithCr } from "@/lib/priceFormatter";
 import CityHubBacklink from "@/components/seo/CityHubBacklink";
+import WhyInvestInGoa from "@/components/property/WhyInvestInGoa";
 import type { MicroMarketInfo } from "@/services/microMarketService";
 
 interface PropertyDetailsClientProps {
@@ -33,17 +34,34 @@ export default function PropertyDetailsClient({
 }: PropertyDetailsClientProps) {
   if (!property) return null;
 
-  const images = Array.isArray(property.image_gallery) 
-    ? property.image_gallery.filter(Boolean)
-    : [];
-  // Combine main image with gallery if not already included
-  const allImages = property.main_image_url && !images.includes(property.main_image_url)
-    ? [property.main_image_url, ...images]
-    : images.length > 0 
-    ? images 
-    : property.main_image_url 
-    ? [property.main_image_url]
-    : [];
+  // For Goa properties, check multiple image fields: images, image_gallery, hero_image_url, main_image_url
+  let images: string[] = [];
+  if (citySlug === 'goa') {
+    // Goa properties use 'images' field (array) or 'image_gallery' (array) or 'hero_image_url' (string)
+    images = Array.isArray(property.images) 
+      ? property.images.filter(Boolean)
+      : Array.isArray(property.image_gallery)
+      ? property.image_gallery.filter(Boolean)
+      : [];
+    
+    // Add hero_image_url or main_image_url if not already included
+    const heroImage = property.hero_image_url || property.main_image_url;
+    if (heroImage && !images.includes(heroImage)) {
+      images = [heroImage, ...images];
+    }
+  } else {
+    // For other cities, use existing logic
+    images = Array.isArray(property.image_gallery) 
+      ? property.image_gallery.filter(Boolean)
+      : [];
+    // Combine main image with gallery if not already included
+    const mainImage = property.main_image_url;
+    if (mainImage && !images.includes(mainImage)) {
+      images = [mainImage, ...images];
+    }
+  }
+  
+  const allImages = images.length > 0 ? images : [];
 
   const handleShare = () => {
     if (navigator.share) {
@@ -124,10 +142,18 @@ export default function PropertyDetailsClient({
           {/* Amenities */}
           <PropertyAmenities amenities={property?.amenities} />
           
-          {/* Location */}
+          {/* Location Highlights */}
           <LocationDetailsDisplay 
-            nearby_landmarks={property?.nearby_landmarks} 
+            nearby_landmarks={citySlug === 'goa' ? (property?.nearby_places || property?.nearby_landmarks) : property?.nearby_landmarks} 
           />
+          
+          {/* Why Invest in Goa - Only for Goa properties */}
+          {citySlug === 'goa' && (
+            <WhyInvestInGoa 
+              propertyTitle={property.title}
+              location={property.location_area || property.district || property.location}
+            />
+          )}
           
           {/* About Micro-Market */}
           {microMarketData && (
@@ -147,6 +173,7 @@ export default function PropertyDetailsClient({
             <AboutDeveloper 
               developerName={property.developer_name}
               developerSlug={property.developer_slug}
+              citySlug={citySlug}
               description={property.developer_description}
               yearsInBusiness={property.developer_years_in_business}
               totalProjects={property.developer_total_projects}
@@ -161,7 +188,8 @@ export default function PropertyDetailsClient({
           )}
           
           {/* Map - Show if location data exists (coordinates, URL, or property name + location) */}
-          {(property.latitude && property.longitude) || property.google_maps_url || (property.title && (property.micro_market || property.location)) ? (
+          {/* For Goa, also check location_area and district */}
+          {((property.latitude && property.longitude) || property.google_maps_url || (property.title && (property.micro_market || property.location || (citySlug === 'goa' ? (property.location_area || property.district) : '')))) ? (
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
               <h3 className="text-xl font-semibold mb-4">Location</h3>
               <GoogleMapEmbed 
@@ -170,7 +198,9 @@ export default function PropertyDetailsClient({
                 url={property.google_maps_url}
                 title={property.title}
                 businessName={property.title}
-                address={`${property.micro_market || property.location || ''}, ${citySlug === 'hyderabad' ? 'Hyderabad' : citySlug === 'goa' ? 'Goa' : 'Dubai'}`.trim()}
+                address={citySlug === 'goa' 
+                  ? `${property.location_area || property.district || property.location || ''}, Goa`.trim()
+                  : `${property.micro_market || property.location || ''}, ${citySlug === 'hyderabad' ? 'Hyderabad' : 'Dubai'}`.trim()}
                 mapType="satellite"
               />
             </div>
@@ -199,7 +229,7 @@ export default function PropertyDetailsClient({
         />
       </div>
 
-      <CityHubBacklink />
+      <CityHubBacklink citySlug={citySlug} />
     </div>
   );
 }
