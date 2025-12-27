@@ -18,13 +18,13 @@ export default function NeopolisEditorialContent({ citySlug }: NeopolisEditorial
           <strong>Neopolis Hyderabad</strong> represents a paradigm shift in how luxury residential development is conceived and executed in India's fastest-growing IT hub. Unlike traditional real estate projects that emerge organically, Neopolis was deliberately planned and auctioned by the <strong>Hyderabad Metropolitan Development Authority (HMDA)</strong> as a designated high-rise luxury corridor. This master-planned zone, located adjacent to the established <Link href={`/${citySlug}/kokapet`} className="text-primary underline">Kokapet</Link> area, was created following record-breaking land auctions that set new benchmarks for Hyderabad real estate values.
         </p>
         <p>
-          The HMDA's vision for Neopolis was clear: create an ultra-luxury residential enclave that would serve as Hyderabad's answer to premium high-rise living, similar to what <Link href={`/${citySlug}/financial-district`} className="text-primary underline">Financial District</Link> represents for commercial real estate. The zoning regulations specifically favor high-rise construction, with generous FSI (Floor Space Index) allocations that enable developers to build sky-scraping residential towers. This is fundamentally different from generic <Link href={`/${citySlug}/kokapet`} className="text-primary underline">Kokapet</Link> properties, which include a mix of plotted developments, mid-rise apartments, and independent villas.
+          The HMDA's vision for Neopolis was clear: create an ultra-luxury residential enclave that would serve as Hyderabad's answer to premium high-rise living, similar to what <Link href={`/${citySlug}/financial-district`} className="text-primary underline">Financial District</Link> represents for commercial real estate. The zoning regulations specifically favor high-rise construction, with significantly higher FSI (Floor Space Index) allocations than typical Hyderabad micro-markets, encouraging vertical growth and high-rise development. This enables developers to build sky-scraping residential towers. This is fundamentally different from generic <Link href={`/${citySlug}/kokapet`} className="text-primary underline">Kokapet</Link> properties, which include a mix of plotted developments, mid-rise apartments, and independent villas.
         </p>
         <p>
           The auction-based land allocation model ensures that only financially robust developers with proven track records can participate, creating a natural filter for quality. When HMDA auctioned plots in Neopolis, the winning bids reached unprecedented levels—some exceeding ₹1 lakh per square yard—making it the most expensive land acquisition in Hyderabad's history. This premium land cost translates directly into ultra-luxury positioning, with projects targeting high-net-worth individuals (HNIs), NRIs, and senior IT executives seeking capital preservation and lifestyle enhancement.
         </p>
         <p>
-          Neopolis is not a gated community in the traditional sense; rather, it's a <strong>master-planned layout</strong> where multiple developers build independently within a unified regulatory framework. Each project maintains its own security, amenities, and identity, but all adhere to HMDA's height norms, setback requirements, and infrastructure standards. This creates a cohesive luxury corridor while preserving individual project differentiation.
+          Neopolis is not a gated community in the traditional sense; rather, it's a <strong>master-planned layout</strong> spanning approximately <strong>1,200 acres</strong> where multiple developers build independently within a unified regulatory framework. Each project maintains its own security, amenities, and identity, but all adhere to HMDA's height norms, setback requirements, and infrastructure standards. This creates a cohesive luxury corridor while preserving individual project differentiation.
         </p>
       </section>
 
@@ -35,7 +35,7 @@ export default function NeopolisEditorialContent({ citySlug }: NeopolisEditorial
         </p>
         <h3>Transportation & Connectivity</h3>
         <ul>
-          <li><strong>Outer Ring Road (ORR):</strong> Direct access via multiple interchanges, connecting to <Link href={`/${citySlug}/gachibowli`} className="text-primary underline">Gachibowli</Link>, Financial District, and Hitec City within 15-20 minutes</li>
+          <li><strong>Outer Ring Road (ORR):</strong> Direct access via multiple interchanges including the Trumpet Interchange, connecting to <Link href={`/${citySlug}/gachibowli`} className="text-primary underline">Gachibowli</Link>, <Link href={`/${citySlug}/financial-district`} className="text-primary underline">Financial District</Link>, and Hitec City within 15-20 minutes</li>
           <li><strong>Metro Connectivity:</strong> The upcoming <strong>Metro Line extension</strong> will connect Neopolis to the city center, with proposed stations within 2-3 kilometers</li>
           <li><strong>Regional Ring Road (RRR):</strong> The planned RRR will further enhance connectivity to Shamshabad Airport and other growth corridors</li>
           <li><strong>Airport Access:</strong> Approximately 35-40 minutes drive to Rajiv Gandhi International Airport via ORR</li>
@@ -92,7 +92,7 @@ export default function NeopolisEditorialContent({ citySlug }: NeopolisEditorial
         </p>
         <h3>My Home Group</h3>
         <p>
-          My Home Group, one of Hyderabad's most trusted developers, has multiple projects in Neopolis including <Link href={`/${citySlug}/projects/my-home-99`} className="text-primary underline">My Home 99</Link> and other luxury high-rise developments. Known for timely delivery and quality construction, My Home projects typically feature 3-4 BHK configurations with premium specifications.
+          My Home Group, one of Hyderabad's most trusted developers, has multiple projects in Neopolis including <Link href={`/${citySlug}/projects/my-home-99`} className="text-primary underline">My Home 99</Link> and other luxury high-rise developments. Known for timely delivery and quality construction, My Home projects typically feature 3 BHK and 4 BHK configurations with premium specifications.
         </p>
         <h3>Rajapushpa Properties</h3>
         <p>
@@ -100,7 +100,7 @@ export default function NeopolisEditorialContent({ citySlug }: NeopolisEditorial
         </p>
         <h3>Prestige Group</h3>
         <p>
-          <Link href={`/${citySlug}/projects/prestige-clairemont`} className="text-primary underline">Prestige Clairemont</Link> brings the developer's pan-India luxury expertise to Neopolis, featuring ultra-luxury residences with resort-style amenities. Prestige projects typically target the premium segment with 4 BHK and sky villa configurations.
+          <Link href={`/${citySlug}/projects/prestige-clairemont`} className="text-primary underline">Prestige Clairemont</Link> brings the developer's pan-India luxury expertise to Neopolis, featuring ultra-luxury residences with resort-style amenities. Prestige projects typically offer 3 BHK and 4 BHK apartments in Neopolis, targeting the premium segment with sky villa configurations.
         </p>
         <h3>Other Notable Developers</h3>
         <ul>

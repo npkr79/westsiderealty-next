@@ -276,8 +276,9 @@ export default async function MicroMarketPage({ params }: PageProps) {
     : getCanonicalUrl(pageData, citySlug, microMarketSlug);
   
   // Neopolis-specific H1 override - single primary H1 for SEO
+  // Aligned with title tag for stronger topical alignment
   const h1Title = isNeopolis
-    ? "Neopolis Hyderabad – Kokapet's Ultra-Luxury High-Rise Corridor"
+    ? "Neopolis Hyderabad – Projects, Prices, Auctions & Buyer Guide"
     : pageData.h1_title;
 
   const breadcrumbItems = [
@@ -290,48 +291,49 @@ export default async function MicroMarketPage({ params }: PageProps) {
   // Parse FAQ data - include Neopolis-specific FAQs if applicable
   let faqItems: { question: string; answer: string }[] = [];
   
-  // For Neopolis, use dedicated FAQs; otherwise use pageData FAQs
+  // For Neopolis, use consolidated FAQs (8-12 strong questions)
+  // All FAQs here will appear in both visible section and JSON-LD schema
   if (isNeopolis) {
     faqItems = [
       {
-        question: "Is Neopolis a gated community or an HMDA layout?",
-        answer: "Neopolis is an HMDA-planned layout, not a single gated community. It's a master-planned zone where multiple developers build independently within unified regulatory framework. Each project maintains its own security and amenities, but all adhere to HMDA's height norms, setback requirements, and infrastructure standards."
+        question: "What is the difference between Neopolis and Kokapet?",
+        answer: "Neopolis is a designated ultra-luxury high-rise corridor created by HMDA through record-breaking land auctions, while Kokapet is a broader established area with mixed development (plotted, mid-rise, villas). Neopolis specifically favors high-rise construction with significantly higher FSI allocations than typical Hyderabad micro-markets, encouraging vertical growth and high-rise development, whereas Kokapet includes diverse property types and price points."
       },
       {
-        question: "What is the difference between Neopolis and Kokapet?",
-        answer: "Neopolis is a designated ultra-luxury high-rise corridor created by HMDA through record-breaking land auctions, while Kokapet is a broader established area with mixed development (plotted, mid-rise, villas). Neopolis specifically favors high-rise construction with generous FSI allocations, targeting ultra-luxury positioning, whereas Kokapet includes diverse property types and price points."
+        question: "Is Neopolis a gated community or an HMDA layout?",
+        answer: "Neopolis is an HMDA-planned layout, not a single gated community. It's a master-planned zone spanning approximately 1,200 acres where multiple developers build independently within a unified regulatory framework. Each project maintains its own security and amenities, but all adhere to HMDA's height norms, setback requirements, and infrastructure standards."
+      },
+      {
+        question: "What is the FSI policy and zoning in Neopolis?",
+        answer: "Neopolis features significantly higher FSI (Floor Space Index) allocations than typical Hyderabad micro-markets, encouraging vertical growth and high-rise development. The HMDA master plan designates specific zones for residential high-rise construction, with FSI policies that enable developers to build sky-scraping residential towers. This is part of HMDA's vision to create an ultra-luxury residential enclave with vertical density."
+      },
+      {
+        question: "What is the current price range per sq.ft. in Neopolis?",
+        answer: "Current price ranges are ₹8,500-12,000 per sq.ft. for ready-to-move and under-construction projects. Premium sky villas and penthouses command ₹12,000-18,000+ per sq.ft. Prices have appreciated 12-18% year-over-year since HMDA auctions (2021-2022), driven by limited supply, premium developer branding, and infrastructure momentum."
+      },
+      {
+        question: "How far is Neopolis from Financial District, Hitec City, and Airport?",
+        answer: "Neopolis is approximately 8-10 km from Financial District (15-20 min drive), 12-15 km from Hitec City (20-25 min), and 35-40 km from Rajiv Gandhi International Airport (35-40 min via ORR). The Outer Ring Road (ORR) provides seamless access with multiple entry points including the Trumpet Interchange, and upcoming metro connectivity will further reduce commute times."
       },
       {
         question: "Are there any environmental / GO 111 concerns still applicable?",
         answer: "HMDA has partially relaxed GO 111 restrictions for Neopolis, allowing development while maintaining environmental safeguards. Developers must implement sustainable practices including rainwater harvesting, sewage treatment plants, and green building certifications. Buffer zones and green belts protect nearby water bodies (Gandipet Lake, Osman Sagar). All projects require environmental clearances and pollution control board compliance."
       },
       {
-        question: "What are typical apartment and sky-villa sizes in Neopolis?",
-        answer: "Standard apartments range from 2,000-5,000 sq.ft. (3-4 BHK), priced ₹3-8 Crores. Sky villas are duplex/triplex units (4,000-7,000 sq.ft.) on higher floors, priced ₹8-15 Crores. Penthouses are ultra-luxury top-floor residences (6,000-10,000+ sq.ft.) with private terraces, priced above ₹15 Crores."
+        question: "What is the rental yield in Neopolis?",
+        answer: "Rental yields in Neopolis are typically 3-4%, which is lower than other areas but reflects the capital appreciation focus rather than rental income generation. The target buyer profile prioritizes long-term wealth preservation and lifestyle enhancement over immediate rental returns. Strong demand exists from expatriates, senior IT professionals, and corporate executives working in Financial District and Hitec City."
       },
       {
         question: "Are NRIs allowed to invest in Neopolis?",
-        answer: "Yes, NRIs are allowed to invest in Neopolis properties. In fact, NRIs represent a significant buyer segment, particularly those with roots in Hyderabad or Telangana. NRIs can purchase residential properties in India under FEMA regulations, and many developers offer NRI-friendly payment plans and documentation support."
-      },
-      {
-        question: "What is the current and expected price range per sq.ft. in Neopolis?",
-        answer: "Current price ranges are ₹8,500-12,000 per sq.ft. for ready-to-move and under-construction projects. Premium sky villas and penthouses command ₹12,000-18,000+ per sq.ft. Prices have appreciated 12-18% year-over-year since HMDA auctions (2021-2022), driven by limited supply, premium developer branding, and infrastructure momentum."
-      },
-      {
-        question: "How far is Neopolis from Financial District / Hitec City / Airport?",
-        answer: "Neopolis is approximately 8-10 km from Financial District (15-20 min drive), 12-15 km from Hitec City (20-25 min), and 35-40 km from Rajiv Gandhi International Airport (35-40 min via ORR). The Outer Ring Road provides seamless access with multiple entry points, and upcoming metro connectivity will further reduce commute times."
-      },
-      {
-        question: "What is the rental yield in Neopolis?",
-        answer: "Rental yields in Neopolis are typically 3-4%, which is lower than other areas but reflects the capital appreciation focus rather than rental income generation. The target buyer profile prioritizes long-term wealth preservation and lifestyle enhancement over immediate rental returns. Strong demand exists from expatriates, senior IT professionals, and corporate executives."
+        answer: "Yes, NRIs are allowed to invest in Neopolis properties under FEMA regulations. NRIs represent a significant buyer segment, particularly those with roots in Hyderabad or Telangana. Many developers offer NRI-friendly payment plans and documentation support, making the investment process streamlined for overseas buyers."
       },
       {
         question: "Which developers have projects in Neopolis?",
-        answer: "Neopolis has attracted Hyderabad's most prestigious developers including My Home Group (My Home 99), Rajapushpa Properties (Rajapushpa Skyra), Prestige Group (Prestige Clairemont), Sattva Group, Brigade Group (Brigade Gateway), MSN Group (MSN One), and Yula Globus (Neo by Yula Globus). The presence of these tier-1 developers ensures construction quality and timely delivery."
+        answer: "Neopolis has attracted Hyderabad's most prestigious developers including My Home Group (My Home 99), Rajapushpa Properties (Rajapushpa Skyra), Prestige Group (Prestige Clairemont), Sattva Group, Brigade Group (Brigade Gateway), MSN Group (MSN One), and Yula Globus (Neo by Yula Globus). The presence of these tier-1 developers ensures construction quality, timely delivery, and post-possession maintenance."
       },
       {
-        question: "What infrastructure developments are planned for Neopolis?",
-        answer: "Key infrastructure developments include: Metro Line extension with proposed stations within 2-3 km, Regional Ring Road (RRR) connecting to airport and growth corridors, improved road networks via ORR interchanges, and enhanced social infrastructure (schools, hospitals, retail) in adjacent areas. These developments enhance connectivity and property values."
+        question: "What are typical apartment and sky-villa sizes in Neopolis?",
+        answer: "Standard apartments range from 2,000-5,000 sq.ft. (3-4 BHK), priced ₹3-8 Crores. Sky villas are duplex/triplex units (4,000-7,000 sq.ft.) on higher floors, priced ₹8-15 Crores. Penthouses are ultra-luxury top-floor residences (6,000-10,000+ sq.ft.) with private terraces, priced above ₹15 Crores."
       }
     ];
   } else {
@@ -457,53 +459,10 @@ export default async function MicroMarketPage({ params }: PageProps) {
 
   const safeImageSrc = (src: string | null | undefined) => (src && src.trim() ? src : "/placeholder.svg");
 
-  // Neopolis-specific FAQ data
-  const neopolisFAQs = isNeopolis ? [
-    {
-      question: "Is Neopolis a gated community or an HMDA layout?",
-      answer: "Neopolis is an HMDA-planned layout, not a single gated community. It's a master-planned zone where multiple developers build independently within unified regulatory framework. Each project maintains its own security and amenities, but all adhere to HMDA's height norms, setback requirements, and infrastructure standards."
-    },
-    {
-      question: "What is the difference between Neopolis and Kokapet?",
-      answer: "Neopolis is a designated ultra-luxury high-rise corridor created by HMDA through record-breaking land auctions, while Kokapet is a broader established area with mixed development (plotted, mid-rise, villas). Neopolis specifically favors high-rise construction with generous FSI allocations, targeting ultra-luxury positioning, whereas Kokapet includes diverse property types and price points."
-    },
-    {
-      question: "Are there any environmental / GO 111 concerns still applicable?",
-      answer: "HMDA has partially relaxed GO 111 restrictions for Neopolis, allowing development while maintaining environmental safeguards. Developers must implement sustainable practices including rainwater harvesting, sewage treatment plants, and green building certifications. Buffer zones and green belts protect nearby water bodies (Gandipet Lake, Osman Sagar). All projects require environmental clearances and pollution control board compliance."
-    },
-    {
-      question: "What are typical apartment and sky-villa sizes in Neopolis?",
-      answer: "Standard apartments range from 2,000-5,000 sq.ft. (3-4 BHK), priced ₹3-8 Crores. Sky villas are duplex/triplex units (4,000-7,000 sq.ft.) on higher floors, priced ₹8-15 Crores. Penthouses are ultra-luxury top-floor residences (6,000-10,000+ sq.ft.) with private terraces, priced above ₹15 Crores."
-    },
-    {
-      question: "Are NRIs allowed to invest in Neopolis?",
-      answer: "Yes, NRIs are allowed to invest in Neopolis properties. In fact, NRIs represent a significant buyer segment, particularly those with roots in Hyderabad or Telangana. NRIs can purchase residential properties in India under FEMA regulations, and many developers offer NRI-friendly payment plans and documentation support."
-    },
-    {
-      question: "What is the current and expected price range per sq.ft. in Neopolis?",
-      answer: "Current price ranges are ₹8,500-12,000 per sq.ft. for ready-to-move and under-construction projects. Premium sky villas and penthouses command ₹12,000-18,000+ per sq.ft. Prices have appreciated 12-18% year-over-year since HMDA auctions (2021-2022), driven by limited supply, premium developer branding, and infrastructure momentum."
-    },
-    {
-      question: "How far is Neopolis from Financial District / Hitec City / Airport?",
-      answer: "Neopolis is approximately 8-10 km from Financial District (15-20 min drive), 12-15 km from Hitec City (20-25 min), and 35-40 km from Rajiv Gandhi International Airport (35-40 min via ORR). The Outer Ring Road provides seamless access with multiple entry points, and upcoming metro connectivity will further reduce commute times."
-    },
-    {
-      question: "What is the rental yield in Neopolis?",
-      answer: "Rental yields in Neopolis are typically 3-4%, which is lower than other areas but reflects the capital appreciation focus rather than rental income generation. The target buyer profile prioritizes long-term wealth preservation and lifestyle enhancement over immediate rental returns. Strong demand exists from expatriates, senior IT professionals, and corporate executives."
-    },
-    {
-      question: "Which developers have projects in Neopolis?",
-      answer: "Neopolis has attracted Hyderabad's most prestigious developers including My Home Group (My Home 99), Rajapushpa Properties (Rajapushpa Skyra), Prestige Group (Prestige Clairemont), Sattva Group, Brigade Group (Brigade Gateway), MSN Group (MSN One), and Yula Globus (Neo by Yula Globus). The presence of these tier-1 developers ensures construction quality and timely delivery."
-    },
-    {
-      question: "What infrastructure developments are planned for Neopolis?",
-      answer: "Key infrastructure developments include: Metro Line extension with proposed stations within 2-3 km, Regional Ring Road (RRR) connecting to airport and growth corridors, improved road networks via ORR interchanges, and enhanced social infrastructure (schools, hospitals, retail) in adjacent areas. These developments enhance connectivity and property values."
-    }
-  ] : null;
-
-  // Merge Neopolis FAQs with existing FAQs if available
-  const finalFAQs = isNeopolis && neopolisFAQs 
-    ? neopolisFAQs 
+  // For Neopolis, use the same FAQ items for both visible section and JSON-LD
+  // This ensures perfect synchronization between visible FAQs and schema markup
+  const finalFAQs = isNeopolis 
+    ? faqItems 
     : pageData.faqs || [];
 
   return (
@@ -546,52 +505,58 @@ export default async function MicroMarketPage({ params }: PageProps) {
 
             {/* Key Stats Badges */}
             {pageData.price_per_sqft_min && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8">
-                <Card>
-                  <CardContent className="pt-6">
-                    <div className="flex items-center gap-3">
-                      <TrendingUp className="h-8 w-8 text-primary" />
-                      <div>
-                        <p className="text-sm text-muted-foreground">Price Range</p>
-                        <p className="text-xl font-bold">
-                          ₹{pageData.price_per_sqft_min?.toLocaleString()} - ₹{pageData.price_per_sqft_max?.toLocaleString()}/sqft
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {pageData.annual_appreciation_min && (
+              <div className="mt-8">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <Card>
                     <CardContent className="pt-6">
                       <div className="flex items-center gap-3">
                         <TrendingUp className="h-8 w-8 text-primary" />
                         <div>
-                          <p className="text-sm text-muted-foreground">Annual Appreciation</p>
+                          <p className="text-sm text-muted-foreground">Price Range</p>
                           <p className="text-xl font-bold">
-                            {pageData.annual_appreciation_min}% - {pageData.annual_appreciation_max}%
+                            ₹{pageData.price_per_sqft_min?.toLocaleString()} - ₹{pageData.price_per_sqft_max?.toLocaleString()}/sqft
                           </p>
                         </div>
                       </div>
                     </CardContent>
                   </Card>
-                )}
 
-                {pageData.rental_yield_min && (
-                  <Card>
-                    <CardContent className="pt-6">
-                      <div className="flex items-center gap-3">
-                        <Building2 className="h-8 w-8 text-primary" />
-                        <div>
-                          <p className="text-sm text-muted-foreground">Rental Yield</p>
-                          <p className="text-xl font-bold">
-                            {pageData.rental_yield_min}% - {pageData.rental_yield_max}%
-                          </p>
+                  {pageData.annual_appreciation_min && (
+                    <Card>
+                      <CardContent className="pt-6">
+                        <div className="flex items-center gap-3">
+                          <TrendingUp className="h-8 w-8 text-primary" />
+                          <div>
+                            <p className="text-sm text-muted-foreground">Annual Appreciation</p>
+                            <p className="text-xl font-bold">
+                              {pageData.annual_appreciation_min}% - {pageData.annual_appreciation_max}%
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {pageData.rental_yield_min && (
+                    <Card>
+                      <CardContent className="pt-6">
+                        <div className="flex items-center gap-3">
+                          <Building2 className="h-8 w-8 text-primary" />
+                          <div>
+                            <p className="text-sm text-muted-foreground">Rental Yield</p>
+                            <p className="text-xl font-bold">
+                              {pageData.rental_yield_min}% - {pageData.rental_yield_max}%
+                            </p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
+                {/* Pricing Disclaimer */}
+                <p className="text-xs text-muted-foreground mt-4 text-center">
+                  Indicative values as of late 2025. Actual prices and returns vary by project, tower, floor, view and market conditions.
+                </p>
               </div>
             )}
 
