@@ -281,7 +281,10 @@ const LandingPageComponent = ({
         
         <div className="relative z-10 text-center text-white px-4 max-w-4xl mx-auto animate-fade-in">
           <h1 className="font-playfair text-4xl md:text-6xl font-bold mb-6 leading-tight drop-shadow-2xl">
-            {landingPage.title} | Premium {configurations.map(c => c.unit_type).join('/')} Flats in {extractedLocation}, Hyderabad
+            {landingPage.uri === 'godrej-regal-pavilion-rajendra-nagar-hyderabad'
+              ? "Godrej Regal Pavilion Hyderabad – 2, 3, 3.5 & 4 BHK Flats in Rajendra Nagar"
+              : `${landingPage.title} | Premium ${configurations.map(c => c.unit_type).join('/')} Flats in ${extractedLocation}, Hyderabad`
+            }
           </h1>
           <p className="text-xl md:text-2xl mb-8 opacity-90 animate-fade-in-up">
             {landingPage.subheadline}
@@ -327,7 +330,7 @@ const LandingPageComponent = ({
       <div className="container mx-auto max-w-6xl px-4">
         <ProjectHighlightsTable
           projectType="Luxury High-Rise Apartments"
-          landArea={landingPage.project_land_area}
+          landArea={landingPage.uri === 'godrej-regal-pavilion-rajendra-nagar-hyderabad' ? '13 acres' : landingPage.project_land_area}
           bhkConfig={configurations.map(c => c.unit_type).join(', ')}
           minSize={configurations.length > 0 ? Math.min(...configurations.map(c => c.size_min).filter((s): s is number => typeof s === 'number' && !isNaN(s))) : undefined}
           maxSize={configurations.length > 0 ? Math.max(...configurations.map(c => c.size_max || c.size_min).filter((s): s is number => typeof s === 'number' && !isNaN(s))) : undefined}
@@ -370,40 +373,89 @@ const LandingPageComponent = ({
             📊 Project at a Glance
           </h2>
           <div className="h-1 w-24 bg-gradient-luxury mx-auto mb-12 animate-slide-in"></div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {landingPage.project_total_flats && (
+          {landingPage.uri === 'godrej-regal-pavilion-rajendra-nagar-hyderabad' ? (
+            // 3x3 grid for Godrej Regal Pavilion with standardized values
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              <div className="text-center p-8 bg-white/10 backdrop-blur-sm rounded-lg border border-luxury-gold-light/20 hover:shadow-luxury transition-all duration-300 hover:scale-105">
+                <TrendingUp className="h-12 w-12 text-luxury-gold mx-auto mb-4" />
+                <div className="text-3xl font-bold mb-2 text-luxury-gold">
+                  ₹1.10 Cr onwards
+                </div>
+                <p className="text-lg opacity-90">Starting Price (2 BHK)</p>
+              </div>
               <div className="text-center p-8 bg-white/10 backdrop-blur-sm rounded-lg border border-luxury-gold-light/20 hover:shadow-luxury transition-all duration-300 hover:scale-105">
                 <Building2 className="h-12 w-12 text-luxury-gold mx-auto mb-4" />
                 <div className="text-5xl font-bold mb-2 text-luxury-gold">
-                  <AnimatedCounter end={parseInt(landingPage.project_total_flats) || 0} duration={2500} separator />
+                  ~2,000
                 </div>
-                <p className="text-lg opacity-90">Total Units</p>
+                <p className="text-lg opacity-90">Premium Residences</p>
               </div>
-            )}
-            {landingPage.project_land_area && (
               <div className="text-center p-8 bg-white/10 backdrop-blur-sm rounded-lg border border-luxury-gold-light/20 hover:shadow-luxury transition-all duration-300 hover:scale-105">
                 <Layers className="h-12 w-12 text-luxury-gold mx-auto mb-4" />
                 <div className="text-5xl font-bold mb-2 text-luxury-gold">
-                  <AnimatedCounter 
-                    end={parseFloat(landingPage.project_land_area) || 0} 
-                    duration={2500} 
-                    suffix=" Acres"
-                    decimals={1}
-                  />
+                  13
                 </div>
-                <p className="text-lg opacity-90">Project Area</p>
+                <p className="text-lg opacity-90">Acres</p>
               </div>
-            )}
-            {landingPage.project_total_towers && (
               <div className="text-center p-8 bg-white/10 backdrop-blur-sm rounded-lg border border-luxury-gold-light/20 hover:shadow-luxury transition-all duration-300 hover:scale-105">
                 <Building2 className="h-12 w-12 text-luxury-gold mx-auto mb-4" />
                 <div className="text-5xl font-bold mb-2 text-luxury-gold">
-                  <AnimatedCounter end={parseInt(landingPage.project_total_towers) || 0} duration={2500} />
+                  9
                 </div>
-                <p className="text-lg opacity-90">Towers</p>
+                <p className="text-lg opacity-90">High-Rise Towers</p>
               </div>
-            )}
-          </div>
+              <div className="text-center p-8 bg-white/10 backdrop-blur-sm rounded-lg border border-luxury-gold-light/20 hover:shadow-luxury transition-all duration-300 hover:scale-105">
+                <Calendar className="h-12 w-12 text-luxury-gold mx-auto mb-4" />
+                <div className="text-3xl font-bold mb-2 text-luxury-gold">
+                  July 2030
+                </div>
+                <p className="text-lg opacity-90">Possession</p>
+              </div>
+              <div className="text-center p-8 bg-white/10 backdrop-blur-sm rounded-lg border border-luxury-gold-light/20 hover:shadow-luxury transition-all duration-300 hover:scale-105">
+                <Shield className="h-12 w-12 text-luxury-gold mx-auto mb-4" />
+                <div className="text-sm font-bold mb-2 text-luxury-gold">
+                  P02400009910
+                </div>
+                <p className="text-lg opacity-90">RERA Number</p>
+              </div>
+            </div>
+          ) : (
+            // Standard 3-column grid for other projects
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              {landingPage.project_total_flats && (
+                <div className="text-center p-8 bg-white/10 backdrop-blur-sm rounded-lg border border-luxury-gold-light/20 hover:shadow-luxury transition-all duration-300 hover:scale-105">
+                  <Building2 className="h-12 w-12 text-luxury-gold mx-auto mb-4" />
+                  <div className="text-5xl font-bold mb-2 text-luxury-gold">
+                    <AnimatedCounter end={parseInt(landingPage.project_total_flats) || 0} duration={2500} separator />
+                  </div>
+                  <p className="text-lg opacity-90">Total Units</p>
+                </div>
+              )}
+              {landingPage.project_land_area && (
+                <div className="text-center p-8 bg-white/10 backdrop-blur-sm rounded-lg border border-luxury-gold-light/20 hover:shadow-luxury transition-all duration-300 hover:scale-105">
+                  <Layers className="h-12 w-12 text-luxury-gold mx-auto mb-4" />
+                  <div className="text-5xl font-bold mb-2 text-luxury-gold">
+                    <AnimatedCounter 
+                      end={parseFloat(landingPage.project_land_area) || 0} 
+                      duration={2500} 
+                      suffix=" Acres"
+                      decimals={1}
+                    />
+                  </div>
+                  <p className="text-lg opacity-90">Project Area</p>
+                </div>
+              )}
+              {landingPage.project_total_towers && (
+                <div className="text-center p-8 bg-white/10 backdrop-blur-sm rounded-lg border border-luxury-gold-light/20 hover:shadow-luxury transition-all duration-300 hover:scale-105">
+                  <Building2 className="h-12 w-12 text-luxury-gold mx-auto mb-4" />
+                  <div className="text-5xl font-bold mb-2 text-luxury-gold">
+                    <AnimatedCounter end={parseInt(landingPage.project_total_towers) || 0} duration={2500} />
+                  </div>
+                  <p className="text-lg opacity-90">Towers</p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </section>
 
@@ -497,6 +549,49 @@ const LandingPageComponent = ({
         </section>
       )}
 
+      {/* Payment Plan Section - Godrej Regal Pavilion */}
+      {landingPage.uri === 'godrej-regal-pavilion-rajendra-nagar-hyderabad' && (
+        <section className="py-16 px-4 bg-gradient-subtle">
+          <div className="container mx-auto max-w-6xl">
+            <div className="text-center mb-12">
+              <h2 className="font-playfair text-3xl md:text-4xl font-bold mb-4 text-luxury-navy">
+                Easy 5-90-5 Payment Plan
+              </h2>
+              <div className="h-1 w-24 bg-gradient-luxury mx-auto mb-4"></div>
+              <p className="text-lg text-luxury-slate max-w-3xl mx-auto">
+                Book Godrej Regal Pavilion with just <strong>5% down payment</strong>. Pay remaining <strong>5% after 18 months</strong> while enjoying <strong>90% bank loan</strong> flexibility. Perfect for salaried professionals and investors.
+              </p>
+            </div>
+            <Card className="max-w-2xl mx-auto border-2 border-luxury-gold/30">
+              <CardContent className="p-8">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="bg-primary/10">
+                      <th className="p-4 text-left font-bold text-luxury-navy">Milestone</th>
+                      <th className="p-4 text-left font-bold text-luxury-navy">Payment</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="border-b border-border">
+                      <td className="p-4 font-semibold">Booking</td>
+                      <td className="p-4 text-primary font-bold">5%</td>
+                    </tr>
+                    <tr className="border-b border-border">
+                      <td className="p-4 font-semibold">Construction-linked</td>
+                      <td className="p-4 text-primary font-bold">90%</td>
+                    </tr>
+                    <tr>
+                      <td className="p-4 font-semibold">Possession</td>
+                      <td className="p-4 text-primary font-bold">5%</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </CardContent>
+            </Card>
+          </div>
+        </section>
+      )}
+
       {/* Rich Text Description */}
       <section className="py-16 px-4 bg-gray-50">
             <div className="container mx-auto max-w-6xl">
@@ -519,6 +614,97 @@ const LandingPageComponent = ({
           </div>
         </div>
       </section>
+
+      {/* Locality Authority Sections - Godrej Regal Pavilion */}
+      {landingPage.uri === 'godrej-regal-pavilion-rajendra-nagar-hyderabad' && (
+        <>
+          <section className="py-16 px-4 bg-gradient-subtle">
+            <div className="container mx-auto max-w-6xl">
+              <h2 className="font-playfair text-3xl md:text-4xl font-bold mb-6 text-luxury-navy">
+                Rajendra Nagar – South Hyderabad's Growth Corridor
+              </h2>
+              <div className="h-1 w-24 bg-gradient-luxury mb-6"></div>
+              <div className="prose prose-lg max-w-none text-luxury-slate">
+                <p className="text-lg leading-relaxed mb-4">
+                  Rajendra Nagar offers unmatched connectivity via NH-44, PV Narasimha Rao Expressway, and ORR. Just 12 mins from RGIA airport and upcoming Airport Metro Express (Raidurg-RGIA via Rajendra Nagar). Key advantages:
+                </p>
+                <ul className="list-disc pl-6 space-y-2 mb-6">
+                  <li><strong>Financial District:</strong> 25-30 mins</li>
+                  <li><strong>Gachibowli IT Hub:</strong> 30 mins</li>
+                  <li><strong>HITEC City:</strong> 35 mins</li>
+                  <li><strong>Strong social infrastructure:</strong> DPS (6.5km), AIG Hospitals (15km), Mantra Mall (7km)</li>
+                </ul>
+                <p className="text-sm text-muted-foreground italic">
+                  Explore more <a href="/hyderabad" className="text-primary underline">Hyderabad real estate</a> opportunities.
+                </p>
+              </div>
+            </div>
+          </section>
+
+          <section className="py-16 px-4 bg-white">
+            <div className="container mx-auto max-w-6xl">
+              <h2 className="font-playfair text-3xl md:text-4xl font-bold mb-6 text-luxury-navy">
+                Gaganpahad – Airport Proximity Micro-Market
+              </h2>
+              <div className="h-1 w-24 bg-gradient-luxury mb-6"></div>
+              <div className="prose prose-lg max-w-none text-luxury-slate">
+                <p className="text-lg leading-relaxed mb-4">
+                  Located opposite McDonald's on Gaganpahad Main Road (Pin: 500077), this airport-adjacent locality benefits from:
+                </p>
+                <ul className="list-disc pl-6 space-y-2 mb-6">
+                  <li><strong>NH-44 Bangalore Highway</strong> direct access</li>
+                  <li><strong>Budvel Metro station</strong> (Phase 2, 5km)</li>
+                  <li><strong>GMR AeroCity & airport economy</strong> spillover</li>
+                  <li><strong>Lower entry prices</strong> vs ORR corridor with similar appreciation potential</li>
+                </ul>
+              </div>
+            </div>
+          </section>
+
+          <section className="py-16 px-4 bg-gradient-subtle">
+            <div className="container mx-auto max-w-6xl">
+              <h2 className="font-playfair text-3xl md:text-4xl font-bold mb-6 text-luxury-navy">
+                Why Godrej Regal Pavilion Excels
+              </h2>
+              <div className="h-1 w-24 bg-gradient-luxury mb-6"></div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <Card className="border-2 border-luxury-gold/30">
+                  <CardContent className="p-6">
+                    <ul className="space-y-3 text-luxury-slate">
+                      <li className="flex items-start gap-2">
+                        <span className="text-luxury-gold text-xl">✅</span>
+                        <span>India's largest <strong>75,000 sq.ft residential clubhouse</strong></span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-luxury-gold text-xl">✅</span>
+                        <span><strong>10ft clear floor height</strong> (3.05m) with Aluform RCC shear wall</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-luxury-gold text-xl">✅</span>
+                        <span><strong>Royal Nawaab theme</strong> across 13 acres, 9 towers</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-luxury-gold text-xl">✅</span>
+                        <span><strong>5-90-5 payment plan</strong> for early investors</span>
+                      </li>
+                    </ul>
+                  </CardContent>
+                </Card>
+                <Card className="border-2 border-luxury-gold/30">
+                  <CardContent className="p-6">
+                    <p className="text-sm text-muted-foreground italic">
+                      *Indicative pricing and timelines. Contact for latest updates.
+                    </p>
+                    <p className="text-sm text-luxury-slate mt-4">
+                      Explore <a href="/hyderabad/developers/godrej-properties" className="text-primary underline">Godrej projects</a> in Hyderabad and discover why <a href="/hyderabad" className="text-primary underline">South Hyderabad growth</a> makes this an ideal investment destination.
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          </section>
+        </>
+      )}
 
       {/* Project Overview Section - Between Rich Description and Amenities */}
       <ProjectOverviewSection 
@@ -838,10 +1024,16 @@ const LandingPageComponent = ({
                   <div className="space-y-2">
                     <h4 className="text-lg font-semibold text-luxury-charcoal flex items-start">
                       <span className="text-luxury-gold mr-2">Q:</span>
-                      Are there payment plans available for Godrej Regal Pavilion?
+                      {landingPage.uri === 'godrej-regal-pavilion-rajendra-nagar-hyderabad' 
+                        ? "What payment plans are available for Godrej Regal Pavilion?"
+                        : "Are there payment plans available for Godrej Regal Pavilion?"
+                      }
                     </h4>
                     <p className="text-luxury-slate ml-6 leading-relaxed">
-                      Yes, we have an exclusive Easy Payment Plan tailored for salaried professionals. You can book your home with just a 5% Down Payment, avail a 90% Home Loan, and pay the remaining 5% after 18 months. This minimizes your upfront capital requirement significantly.
+                      {landingPage.uri === 'godrej-regal-pavilion-rajendra-nagar-hyderabad'
+                        ? "Flexible 5-90-5 plans: 5% down payment, 90% bank loan, remaining 5% after 18 months."
+                        : "Yes, we have an exclusive Easy Payment Plan tailored for salaried professionals. You can book your home with just a 5% Down Payment, avail a 90% Home Loan, and pay the remaining 5% after 18 months. This minimizes your upfront capital requirement significantly."
+                      }
                     </p>
                   </div>
                 </div>
@@ -864,24 +1056,38 @@ const LandingPageComponent = ({
                       Godrej Regal Pavilion in Rajendra Nagar is strategically located just minutes away from Financial District, making it ideal for IT and corporate professionals.
                     </p>
                   </div>
-                  <div className="space-y-2">
-                    <h4 className="text-lg font-semibold text-luxury-charcoal flex items-start">
-                      <span className="text-luxury-gold mr-2">Q:</span>
-                      Is there metro connectivity to Rajendra Nagar?
-                    </h4>
-                    <p className="text-luxury-slate ml-6 leading-relaxed">
-                      There is no operational metro station in Rajendra Nagar right now. However, it is a primary station on the proposed/upcoming Airport Express Line (Metro Phase 2).
-                    </p>
-                  </div>
-                  <div className="space-y-2">
-                    <h4 className="text-lg font-semibold text-luxury-charcoal flex items-start">
-                      <span className="text-luxury-gold mr-2">Q:</span>
-                      What are the nearby landmarks to Godrej Regal Pavilion, Rajendra Nagar?
-                    </h4>
-                    <p className="text-luxury-slate ml-6 leading-relaxed">
-                      Key landmarks include Financial District, Gachibowli, HITEC City, DLF Cyber City, major IT parks, international schools, hospitals, and shopping malls - all within easy reach.
-                    </p>
-                  </div>
+                  {landingPage.uri === 'godrej-regal-pavilion-rajendra-nagar-hyderabad' ? (
+                    <div className="space-y-2">
+                      <h4 className="text-lg font-semibold text-luxury-charcoal flex items-start">
+                        <span className="text-luxury-gold mr-2">Q:</span>
+                        How far is Godrej Regal Pavilion from RGIA airport?
+                      </h4>
+                      <p className="text-luxury-slate ml-6 leading-relaxed">
+                        Just 12 minutes via NH-44, with upcoming Airport Metro Express connectivity.
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="space-y-2">
+                        <h4 className="text-lg font-semibold text-luxury-charcoal flex items-start">
+                          <span className="text-luxury-gold mr-2">Q:</span>
+                          Is there metro connectivity to Rajendra Nagar?
+                        </h4>
+                        <p className="text-luxury-slate ml-6 leading-relaxed">
+                          There is no operational metro station in Rajendra Nagar right now. However, it is a primary station on the proposed/upcoming Airport Express Line (Metro Phase 2).
+                        </p>
+                      </div>
+                      <div className="space-y-2">
+                        <h4 className="text-lg font-semibold text-luxury-charcoal flex items-start">
+                          <span className="text-luxury-gold mr-2">Q:</span>
+                          What are the nearby landmarks to Godrej Regal Pavilion, Rajendra Nagar?
+                        </h4>
+                        <p className="text-luxury-slate ml-6 leading-relaxed">
+                          Key landmarks include Financial District, Gachibowli, HITEC City, DLF Cyber City, major IT parks, international schools, hospitals, and shopping malls - all within easy reach.
+                        </p>
+                      </div>
+                    </>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -922,24 +1128,58 @@ const LandingPageComponent = ({
                   RERA & Legal Information
                 </h3>
                 <div className="space-y-5 ml-4">
-                  <div className="space-y-2">
-                    <h4 className="text-lg font-semibold text-luxury-charcoal flex items-start">
-                      <span className="text-luxury-gold mr-2">Q:</span>
-                      Is Godrej Regal Pavilion RERA approved?
-                    </h4>
-                    <p className="text-luxury-slate ml-6 leading-relaxed">
-                      Yes, Godrej Regal Pavilion is fully RERA registered (RERA No: P02400009910), ensuring complete transparency and timely project delivery as per government regulations.
-                    </p>
-                  </div>
-                  <div className="space-y-2">
-                    <h4 className="text-lg font-semibold text-luxury-charcoal flex items-start">
-                      <span className="text-luxury-gold mr-2">Q:</span>
-                      What is the possession timeline for Godrej Regal Pavilion?
-                    </h4>
-                    <p className="text-luxury-slate ml-6 leading-relaxed">
-                      Godrej Regal Pavilion is a new launch project with possession scheduled for July 2030. The project follows a transparent construction schedule. Contact our sales team for the latest construction progress updates.
-                    </p>
-                  </div>
+                  {landingPage.uri === 'godrej-regal-pavilion-rajendra-nagar-hyderabad' ? (
+                    <>
+                      <div className="space-y-2">
+                        <h4 className="text-lg font-semibold text-luxury-charcoal flex items-start">
+                          <span className="text-luxury-gold mr-2">Q:</span>
+                          What is the RERA number for Godrej Regal Pavilion Rajendra Nagar?
+                        </h4>
+                        <p className="text-luxury-slate ml-6 leading-relaxed">
+                          P02400009910, approved 16 July 2025, valid till 16 July 2030.
+                        </p>
+                      </div>
+                      <div className="space-y-2">
+                        <h4 className="text-lg font-semibold text-luxury-charcoal flex items-start">
+                          <span className="text-luxury-gold mr-2">Q:</span>
+                          Is Godrej Regal Pavilion RERA approved?
+                        </h4>
+                        <p className="text-luxury-slate ml-6 leading-relaxed">
+                          Yes, Godrej Regal Pavilion is fully RERA registered (RERA No: P02400009910), ensuring complete transparency and timely project delivery as per government regulations.
+                        </p>
+                      </div>
+                      <div className="space-y-2">
+                        <h4 className="text-lg font-semibold text-luxury-charcoal flex items-start">
+                          <span className="text-luxury-gold mr-2">Q:</span>
+                          What is the possession timeline for Godrej Regal Pavilion?
+                        </h4>
+                        <p className="text-luxury-slate ml-6 leading-relaxed">
+                          Godrej Regal Pavilion is a new launch project with possession scheduled for July 2030. The project follows a transparent construction schedule. Contact our sales team for the latest construction progress updates.
+                        </p>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="space-y-2">
+                        <h4 className="text-lg font-semibold text-luxury-charcoal flex items-start">
+                          <span className="text-luxury-gold mr-2">Q:</span>
+                          Is Godrej Regal Pavilion RERA approved?
+                        </h4>
+                        <p className="text-luxury-slate ml-6 leading-relaxed">
+                          Yes, Godrej Regal Pavilion is fully RERA registered (RERA No: P02400009910), ensuring complete transparency and timely project delivery as per government regulations.
+                        </p>
+                      </div>
+                      <div className="space-y-2">
+                        <h4 className="text-lg font-semibold text-luxury-charcoal flex items-start">
+                          <span className="text-luxury-gold mr-2">Q:</span>
+                          What is the possession timeline for Godrej Regal Pavilion?
+                        </h4>
+                        <p className="text-luxury-slate ml-6 leading-relaxed">
+                          Godrej Regal Pavilion is a new launch project with possession scheduled for July 2030. The project follows a transparent construction schedule. Contact our sales team for the latest construction progress updates.
+                        </p>
+                      </div>
+                    </>
+                  )}
                 </div>
               </CardContent>
             </Card>

@@ -138,15 +138,23 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   // Get unit types
   const unitTypes = getUnitTypes(configurations || []);
   
+  // Godrej Regal Pavilion specific overrides
+  const isGodrejRegalPavilion = slug === 'godrej-regal-pavilion-rajendra-nagar-hyderabad';
+  
   // Standardized SEO title:
   // "{Project Name} {Location}: Price & Review | RE/MAX"
-  const seoTitle =
-    page.seo_title || `${page.title} ${extractedLocation}: Price & Review | RE/MAX`;
+  // For Godrej Regal Pavilion: "Godrej Regal Pavilion Hyderabad – 2, 3, 3.5 & 4 BHK Flats in Rajendra Nagar"
+  const seoTitle = isGodrejRegalPavilion
+    ? "Godrej Regal Pavilion Hyderabad – 2, 3, 3.5 & 4 BHK Flats in Rajendra Nagar | RE/MAX"
+    : page.seo_title || `${page.title} ${extractedLocation}: Price & Review | RE/MAX`;
   
   // Build optimized description with location-first and pricing hook when available
-  const seoDescription = page.seo_description || (priceText && unitTypes
-    ? `${extractedLocation}'s finest: ${page.title}. ${unitTypes} apartments from ${priceText}. Pay just 5% Down Payment. ${page.project_land_area ? `${page.project_land_area} Gated Community` : 'Premium Gated Community'} by ${page.title.includes('Godrej') ? 'Godrej Properties' : 'Leading Developer'}.`
-    : `${page.headline}. ${page.subheadline || ''} Exclusive luxury real estate opportunity. Contact RE/MAX Westside Realty for details.`);
+  // For Godrej Regal Pavilion: specific meta description
+  const seoDescription = isGodrejRegalPavilion
+    ? "Godrej Regal Pavilion Rajendra Nagar: 2, 3, 3.5 & 4 BHK luxury flats near airport & ORR. RERA P02400009910. Starting ₹1.10 Cr. Book with 5% down payment."
+    : page.seo_description || (priceText && unitTypes
+      ? `${extractedLocation}'s finest: ${page.title}. ${unitTypes} apartments from ${priceText}. Pay just 5% Down Payment. ${page.project_land_area ? `${page.project_land_area} Gated Community` : 'Premium Gated Community'} by ${page.title.includes('Godrej') ? 'Godrej Properties' : 'Leading Developer'}.`
+      : `${page.headline}. ${page.subheadline || ''} Exclusive luxury real estate opportunity. Contact RE/MAX Westside Realty for details.`);
 
   return {
     title: seoTitle,
@@ -211,9 +219,12 @@ function generateStructuredData(
 ) {
   const pageUrl = `https://www.westsiderealty.in/landing/${page.uri}`;
   const extractedLocation = page.location_info?.split(",")[0]?.trim() || "Hyderabad";
-  const description =
-    page.seo_description ||
-    `${page.headline}. ${page.subheadline || ""} Exclusive luxury real estate opportunity.`;
+  const isGodrejRegalPavilion = page.uri === 'godrej-regal-pavilion-rajendra-nagar-hyderabad';
+  
+  const description = isGodrejRegalPavilion
+    ? "Godrej Regal Pavilion Rajendra Nagar: 2, 3, 3.5 & 4 BHK luxury flats near airport & ORR. RERA P02400009910. Starting ₹1.10 Cr. Book with 5% down payment."
+    : page.seo_description ||
+      `${page.headline}. ${page.subheadline || ""} Exclusive luxury real estate opportunity.`;
 
   // Build primary RealEstateListing entity
   const startingPrice =
@@ -225,12 +236,15 @@ function generateStructuredData(
         )
       : null;
 
+  // For Godrej Regal Pavilion: update description to include ~2,000 units
   const primaryEntity: Record<string, any> = {
     "@type": "RealEstateListing",
-    name: page.title,
+    name: isGodrejRegalPavilion ? "Godrej Regal Pavilion Hyderabad – 2, 3, 3.5 & 4 BHK Flats in Rajendra Nagar" : page.title,
     url: pageUrl,
     image: page.hero_image_url || "https://www.westsiderealty.in/placeholder.svg",
-    description,
+    description: isGodrejRegalPavilion 
+      ? "Godrej Regal Pavilion offers ~2,000 premium residences across 13 acres in Rajendra Nagar, Hyderabad. 2, 3, 3.5 & 4 BHK luxury flats with India's largest 75,000 sq.ft residential clubhouse. RERA P02400009910. Starting ₹1.10 Cr. 5-90-5 payment plan."
+      : description,
     address: {
       "@type": "PostalAddress",
       addressLocality: extractedLocation,
@@ -245,18 +259,58 @@ function generateStructuredData(
       priceCurrency: "INR",
       lowPrice: startingPrice.toString(),
       availability: "https://schema.org/InStock",
+      ...(isGodrejRegalPavilion && {
+        offerCount: "~2000",
+        highPrice: (startingPrice * 4).toString(), // Approximate high price
+      }),
     };
   }
 
+  // Filter FAQs for Godrej Regal Pavilion - remove legacy questions and ensure Rajendra Nagar-specific
+  let filteredFaqs = faqs || [];
+  if (isGodrejRegalPavilion) {
+    // Remove legacy questions about Nanakramguda, TSPA Hyderabad
+    filteredFaqs = filteredFaqs.filter(faq => 
+      !faq.question.toLowerCase().includes('nanakramguda') &&
+      !faq.question.toLowerCase().includes('tspa hyderabad')
+    );
+    
+    // Add/ensure Rajendra Nagar-specific FAQs
+    const requiredFaqs = [
+      {
+        question: "What is the RERA number for Godrej Regal Pavilion Rajendra Nagar?",
+        answer: "P02400009910, approved 16 July 2025, valid till 16 July 2030."
+      },
+      {
+        question: "What payment plans are available for Godrej Regal Pavilion?",
+        answer: "Flexible 5-90-5 plans: 5% down payment, 90% bank loan, remaining 5% after 18 months."
+      },
+      {
+        question: "How far is Godrej Regal Pavilion from RGIA airport?",
+        answer: "Just 12 minutes via NH-44, with upcoming Airport Metro Express connectivity."
+      }
+    ];
+    
+    // Check if these FAQs already exist, if not add them
+    requiredFaqs.forEach(reqFaq => {
+      const exists = filteredFaqs.some(f => 
+        f.question.toLowerCase().includes(reqFaq.question.toLowerCase().split(' ')[0].toLowerCase())
+      );
+      if (!exists) {
+        filteredFaqs.push(reqFaq as LandingPageFAQ);
+      }
+    });
+  }
+
   const faqItems =
-    faqs?.map((faq) => ({
+    filteredFaqs?.map((faq) => ({
       question: faq.question,
       answer: faq.answer,
     })) || [];
 
   return generateUnifiedSchema({
     pageUrl,
-    title: page.title,
+    title: isGodrejRegalPavilion ? "Godrej Regal Pavilion Hyderabad – 2, 3, 3.5 & 4 BHK Flats in Rajendra Nagar" : page.title,
     description,
     heroImageUrl: page.hero_image_url || undefined,
     primaryEntityType: "RealEstateListing",
