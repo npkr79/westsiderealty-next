@@ -31,188 +31,75 @@ export default function TrendingProjectsSlider() {
       try {
         const supabase = createClient();
 
-        // Fetch trending projects from projects table
-        // Try both is_trending and top_trending fields
-        const baseSelect = `
-          id,
-          project_name,
-          price_range_text,
-          hero_image_url,
-          url_slug,
-          city:cities(url_slug),
-          micro_market:micro_markets!projects_micromarket_id_fkey(url_slug, micro_market_name)
-        `;
-
-        let projectsData: any[] = [];
-        let projectsError: any = null;
-
-        // Try is_trending first
-        const { data: projectsDataWithIsTrending, error: isTrendingError } = await supabase
+        // Query projects WHERE is_trending = true
+        const { data: projectsData, error: projectsError } = await supabase
           .from("projects")
-          .select(baseSelect)
+          .select("id, project_name, price_range_text, hero_image_url, url_slug, micro_markets(micro_market_name)")
           .eq("is_trending", true)
-          .eq("is_published", true)
-          .order("created_at", { ascending: false })
           .limit(10);
-
-        if (isTrendingError) {
-          console.log("[TrendingProjectsSlider] is_trending field error (may not exist):", isTrendingError.message);
-        }
-
-        if (projectsDataWithIsTrending && projectsDataWithIsTrending.length > 0) {
-          projectsData = projectsDataWithIsTrending;
-          console.log("[TrendingProjectsSlider] Found", projectsData.length, "projects with is_trending=true");
-        } else {
-          // If no results, try top_trending
-          const { data: projectsDataWithTopTrending, error: topTrendingError } = await supabase
-            .from("projects")
-            .select(baseSelect)
-            .eq("top_trending", true)
-            .eq("is_published", true)
-            .order("created_at", { ascending: false })
-            .limit(10);
-
-          if (topTrendingError) {
-            console.log("[TrendingProjectsSlider] top_trending field error (may not exist):", topTrendingError.message);
-          }
-
-          if (projectsDataWithTopTrending && projectsDataWithTopTrending.length > 0) {
-            projectsData = projectsDataWithTopTrending;
-            console.log("[TrendingProjectsSlider] Found", projectsData.length, "projects with top_trending=true");
-          } else {
-            // Fallback: Get 3 most recent published projects
-            console.log("[TrendingProjectsSlider] No trending projects found, using fallback: recent published projects");
-            const { data: fallbackData, error: fallbackError } = await supabase
-              .from("projects")
-              .select(baseSelect)
-              .eq("is_published", true)
-              .order("created_at", { ascending: false })
-              .limit(3);
-            
-            if (fallbackError) {
-              console.error("[TrendingProjectsSlider] Fallback query error:", fallbackError);
-              projectsError = fallbackError;
-            } else {
-              projectsData = fallbackData || [];
-              console.log("[TrendingProjectsSlider] Using", projectsData.length, "fallback projects");
-            }
-          }
-        }
-
-        // Fetch trending projects from landing_pages table (optional)
-        // Try both is_trending and top_trending fields
-        const landingSelect = `
-          id,
-          title,
-          price_range,
-          hero_image_url,
-          url_slug,
-          micro_market
-        `;
-
-        let landingData: any[] = [];
-        let landingError: any = null;
-
-        // Try is_trending first
-        const { data: landingDataWithIsTrending, error: landingIsTrendingError } = await supabase
-          .from("landing_pages")
-          .select(landingSelect)
-          .eq("is_trending", true)
-          .order("created_at", { ascending: false })
-          .limit(10);
-
-        if (landingIsTrendingError) {
-          console.log("[TrendingProjectsSlider] landing_pages is_trending field error (may not exist):", landingIsTrendingError.message);
-        }
-
-        if (landingDataWithIsTrending && landingDataWithIsTrending.length > 0) {
-          landingData = landingDataWithIsTrending;
-        } else {
-          // If no results, try top_trending
-          const { data: landingDataWithTopTrending, error: landingTopTrendingError } = await supabase
-            .from("landing_pages")
-            .select(landingSelect)
-            .eq("top_trending", true)
-            .order("created_at", { ascending: false })
-            .limit(10);
-
-          if (landingTopTrendingError) {
-            console.log("[TrendingProjectsSlider] landing_pages top_trending field error (may not exist):", landingTopTrendingError.message);
-          }
-
-          if (landingDataWithTopTrending && landingDataWithTopTrending.length > 0) {
-            landingData = landingDataWithTopTrending;
-          }
-        }
 
         if (projectsError) {
-          console.error("[TrendingProjectsSlider] Error fetching trending projects:", projectsError);
+          console.error("[TrendingProjectsSlider] Error fetching projects:", projectsError);
         }
+
+        // Query landing_pages WHERE is_trending = true
+        const { data: landingData, error: landingError } = await supabase
+          .from("landing_pages")
+          .select("id, title, hero_image_url, url_slug, micro_market")
+          .eq("is_trending", true)
+          .limit(10);
+
         if (landingError) {
-          console.error("[TrendingProjectsSlider] Error fetching trending landing pages:", landingError);
+          console.error("[TrendingProjectsSlider] Error fetching landing pages:", landingError);
         }
 
-        console.log("[TrendingProjectsSlider] Final data:", {
-          projectsCount: projectsData?.length || 0,
-          landingCount: landingData?.length || 0
+        // Transform projects data
+        const transformedProjects: TrendingProject[] = (projectsData || []).map((p: any) => {
+          // Handle micro_markets relation (can be array or object)
+          const microMarket = Array.isArray(p.micro_markets) 
+            ? p.micro_markets[0] 
+            : p.micro_markets;
+
+          return {
+            id: p.id,
+            name: p.project_name,
+            price_range: p.price_range_text || null,
+            location: microMarket?.micro_market_name || null,
+            image_url: p.hero_image_url,
+            slug: p.url_slug,
+            source: "project" as const,
+            city_slug: "hyderabad", // Default to hyderabad
+            available_units: 12, // Default fallback
+          };
         });
-
-        // Transform projects data and get available units count
-        const transformedProjects: TrendingProject[] = await Promise.all(
-          (projectsData || []).map(async (p: any) => {
-            // Get available units count from hyderabad_properties table
-            let availableUnits = 12; // Default fallback
-            try {
-              const { count } = await supabase
-                .from("hyderabad_properties")
-                .select("*", { count: "exact", head: true })
-                .eq("project_name", p.project_name)
-                .eq("status", "active");
-              if (count && count > 0) {
-                availableUnits = count;
-              }
-            } catch (err) {
-              // Ignore errors, use default
-            }
-
-            return {
-              id: p.id,
-              name: p.project_name,
-              price_range: p.price_range_text,
-              location: Array.isArray(p.micro_market) 
-                ? p.micro_market[0]?.micro_market_name 
-                : p.micro_market?.micro_market_name || null,
-              image_url: p.hero_image_url,
-              slug: p.url_slug,
-              source: "project" as const,
-              city_slug: Array.isArray(p.city) ? p.city[0]?.url_slug : p.city?.url_slug || "hyderabad",
-              micro_market_slug: Array.isArray(p.micro_market) 
-                ? p.micro_market[0]?.url_slug 
-                : p.micro_market?.url_slug || null,
-              available_units: availableUnits,
-            };
-          })
-        );
 
         // Transform landing pages data
         const transformedLanding: TrendingProject[] = (landingData || []).map((l: any) => ({
           id: l.id,
           name: l.title,
-          price_range: l.price_range,
-          location: l.micro_market,
+          price_range: null, // landing_pages doesn't have price_range
+          location: l.micro_market || null,
           image_url: l.hero_image_url,
           slug: l.url_slug,
           source: "landing" as const,
         }));
 
-        // Combine and limit to 3
-        const combined = [...transformedProjects, ...transformedLanding]
-          .sort((a, b) => (b.id > a.id ? 1 : -1))
+        // Combine and randomly select 3 if more than 3
+        const allTrending = [...transformedProjects, ...transformedLanding];
+        const random3 = allTrending
+          .sort(() => 0.5 - Math.random())
           .slice(0, 3);
 
-        setProjects(combined);
+        console.log("[TrendingProjectsSlider] Found:", {
+          projects: transformedProjects.length,
+          landing: transformedLanding.length,
+          total: allTrending.length,
+          selected: random3.length,
+        });
+
+        setProjects(random3);
         
-        if (combined.length === 0) {
+        if (random3.length === 0) {
           setError("No trending projects found. Please mark projects as trending in the database.");
         }
       } catch (error: any) {
@@ -277,11 +164,8 @@ export default function TrendingProjectsSlider() {
               }}
             >
               {projects.map((project, index) => {
-                const projectUrl = project.source === "project"
-                  ? project.micro_market_slug
-                    ? `/${project.city_slug}/${project.micro_market_slug}/projects/${project.slug}`
-                    : `/${project.city_slug}/projects/${project.slug}`
-                  : `/landing/${project.slug}`;
+                // Link: /hyderabad/{url_slug} for both projects and landing pages
+                const projectUrl = `/hyderabad/${project.slug}`;
 
                 return (
                   <div
@@ -321,11 +205,8 @@ export default function TrendingProjectsSlider() {
           {/* Desktop: 3 cards grid */}
           <div className="hidden md:grid md:grid-cols-3 gap-6">
             {projects.map((project) => {
-              const projectUrl = project.source === "project"
-                ? project.micro_market_slug
-                  ? `/${project.city_slug}/${project.micro_market_slug}/projects/${project.slug}`
-                  : `/${project.city_slug}/projects/${project.slug}`
-                : `/landing/${project.slug}`;
+              // Link: /hyderabad/{url_slug} for both projects and landing pages
+              const projectUrl = `/hyderabad/${project.slug}`;
 
               return (
                 <TrendingCard key={project.id} project={project} url={projectUrl} />
@@ -368,10 +249,14 @@ function TrendingCard({ project, url }: { project: TrendingProject; url: string 
           </h3>
 
           {/* Price */}
-          {project.price_range && (
+          {project.price_range ? (
             <p className="text-2xl md:text-3xl font-bold text-blue-600 mb-3">
               {project.price_range.includes('₹') ? project.price_range : `₹${project.price_range}`}
               {!project.price_range.includes('+') && !project.price_range.includes('Cr') && ' Cr+'}
+            </p>
+          ) : (
+            <p className="text-lg md:text-xl font-semibold text-gray-600 mb-3">
+              Contact for price
             </p>
           )}
 
