@@ -71,7 +71,6 @@ export default function TrendingProjectsSlider() {
             cities(city_name, url_slug)
           `)
           .eq("is_trending", true)
-          .eq("is_published", true)
           .order("created_at", { ascending: false })
           .limit(10);
 
@@ -91,7 +90,6 @@ export default function TrendingProjectsSlider() {
             price_display
           `)
           .eq("is_trending", true)
-          .eq("is_published", true)
           .order("created_at", { ascending: false })
           .limit(10);
 
