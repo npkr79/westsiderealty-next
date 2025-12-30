@@ -121,6 +121,7 @@ export default function HeroSectionWithSearch({ onContactClick }: HeroSectionWit
       return;
     }
 
+    const fetchLocations = async () => {
       const supabase = createClient();
       const query = locationSearch.toLowerCase();
 
