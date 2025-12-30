@@ -23,6 +23,7 @@ interface TrendingProject {
 export default function TrendingProjectsSlider() {
   const [projects, setProjects] = useState<TrendingProject[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -42,8 +43,11 @@ export default function TrendingProjectsSlider() {
           micro_market:micro_markets!projects_micromarket_id_fkey(url_slug, micro_market_name)
         `;
 
+        let projectsData: any[] = [];
+        let projectsError: any = null;
+
         // Try is_trending first
-        const { data: projectsDataWithIsTrending } = await supabase
+        const { data: projectsDataWithIsTrending, error: isTrendingError } = await supabase
           .from("projects")
           .select(baseSelect)
           .eq("is_trending", true)
@@ -51,10 +55,15 @@ export default function TrendingProjectsSlider() {
           .order("created_at", { ascending: false })
           .limit(10);
 
-        // If no results, try top_trending
-        let projectsData = projectsDataWithIsTrending;
-        let projectsError = null;
-        if (!projectsData || projectsData.length === 0) {
+        if (isTrendingError) {
+          console.log("[TrendingProjectsSlider] is_trending field error (may not exist):", isTrendingError.message);
+        }
+
+        if (projectsDataWithIsTrending && projectsDataWithIsTrending.length > 0) {
+          projectsData = projectsDataWithIsTrending;
+          console.log("[TrendingProjectsSlider] Found", projectsData.length, "projects with is_trending=true");
+        } else {
+          // If no results, try top_trending
           const { data: projectsDataWithTopTrending, error: topTrendingError } = await supabase
             .from("projects")
             .select(baseSelect)
@@ -62,11 +71,35 @@ export default function TrendingProjectsSlider() {
             .eq("is_published", true)
             .order("created_at", { ascending: false })
             .limit(10);
-          projectsData = projectsDataWithTopTrending;
-          projectsError = topTrendingError;
+
+          if (topTrendingError) {
+            console.log("[TrendingProjectsSlider] top_trending field error (may not exist):", topTrendingError.message);
+          }
+
+          if (projectsDataWithTopTrending && projectsDataWithTopTrending.length > 0) {
+            projectsData = projectsDataWithTopTrending;
+            console.log("[TrendingProjectsSlider] Found", projectsData.length, "projects with top_trending=true");
+          } else {
+            // Fallback: Get 3 most recent published projects
+            console.log("[TrendingProjectsSlider] No trending projects found, using fallback: recent published projects");
+            const { data: fallbackData, error: fallbackError } = await supabase
+              .from("projects")
+              .select(baseSelect)
+              .eq("is_published", true)
+              .order("created_at", { ascending: false })
+              .limit(3);
+            
+            if (fallbackError) {
+              console.error("[TrendingProjectsSlider] Fallback query error:", fallbackError);
+              projectsError = fallbackError;
+            } else {
+              projectsData = fallbackData || [];
+              console.log("[TrendingProjectsSlider] Using", projectsData.length, "fallback projects");
+            }
+          }
         }
 
-        // Fetch trending projects from landing_pages table
+        // Fetch trending projects from landing_pages table (optional)
         // Try both is_trending and top_trending fields
         const landingSelect = `
           id,
@@ -77,34 +110,52 @@ export default function TrendingProjectsSlider() {
           micro_market
         `;
 
+        let landingData: any[] = [];
+        let landingError: any = null;
+
         // Try is_trending first
-        const { data: landingDataWithIsTrending } = await supabase
+        const { data: landingDataWithIsTrending, error: landingIsTrendingError } = await supabase
           .from("landing_pages")
           .select(landingSelect)
           .eq("is_trending", true)
           .order("created_at", { ascending: false })
           .limit(10);
 
-        // If no results, try top_trending
-        let landingData = landingDataWithIsTrending;
-        let landingError = null;
-        if (!landingData || landingData.length === 0) {
+        if (landingIsTrendingError) {
+          console.log("[TrendingProjectsSlider] landing_pages is_trending field error (may not exist):", landingIsTrendingError.message);
+        }
+
+        if (landingDataWithIsTrending && landingDataWithIsTrending.length > 0) {
+          landingData = landingDataWithIsTrending;
+        } else {
+          // If no results, try top_trending
           const { data: landingDataWithTopTrending, error: landingTopTrendingError } = await supabase
             .from("landing_pages")
             .select(landingSelect)
             .eq("top_trending", true)
             .order("created_at", { ascending: false })
             .limit(10);
-          landingData = landingDataWithTopTrending;
-          landingError = landingTopTrendingError;
+
+          if (landingTopTrendingError) {
+            console.log("[TrendingProjectsSlider] landing_pages top_trending field error (may not exist):", landingTopTrendingError.message);
+          }
+
+          if (landingDataWithTopTrending && landingDataWithTopTrending.length > 0) {
+            landingData = landingDataWithTopTrending;
+          }
         }
 
         if (projectsError) {
-          console.error("Error fetching trending projects:", projectsError);
+          console.error("[TrendingProjectsSlider] Error fetching trending projects:", projectsError);
         }
         if (landingError) {
-          console.error("Error fetching trending landing pages:", landingError);
+          console.error("[TrendingProjectsSlider] Error fetching trending landing pages:", landingError);
         }
+
+        console.log("[TrendingProjectsSlider] Final data:", {
+          projectsCount: projectsData?.length || 0,
+          landingCount: landingData?.length || 0
+        });
 
         // Transform projects data and get available units count
         const transformedProjects: TrendingProject[] = await Promise.all(
@@ -160,8 +211,13 @@ export default function TrendingProjectsSlider() {
           .slice(0, 3);
 
         setProjects(combined);
-      } catch (error) {
-        console.error("Error fetching trending projects:", error);
+        
+        if (combined.length === 0) {
+          setError("No trending projects found. Please mark projects as trending in the database.");
+        }
+      } catch (error: any) {
+        console.error("[TrendingProjectsSlider] Error fetching trending projects:", error);
+        setError(error?.message || "Failed to load trending projects");
       } finally {
         setLoading(false);
       }
@@ -191,7 +247,12 @@ export default function TrendingProjectsSlider() {
     );
   }
 
+  if (error) {
+    console.error("[TrendingProjectsSlider] Error state:", error);
+  }
+
   if (projects.length === 0) {
+    // Don't show section if no projects found
     return null;
   }
 
