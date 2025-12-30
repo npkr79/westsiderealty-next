@@ -13,7 +13,6 @@ import HeroSectionWithSearch from "@/components/home/HeroSectionWithSearch";
 import TrendingProjectsSlider from "@/components/home/TrendingProjectsSlider";
 import StatsSection from "@/components/home/StatsSection";
 import ServicesSection from "@/components/home/ServicesSection";
-import AboutPreviewSection from "@/components/home/AboutPreviewSection";
 import TestimonialsSection from "@/components/home/TestimonialsSection";
 import CtaSection from "@/components/home/CtaSection";
 import CityCardsSection from "@/components/home/CityCardsSection";
@@ -121,12 +120,6 @@ export default function IndexPageWithSearch() {
       <TrendingProjectsSlider />
       <StatsSection stats={stats} />
       <ServicesSection services={services} />
-      <AboutPreviewSection
-        aboutImage={
-          siteImages.aboutUsImage ||
-          "https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/service-images//remax-office.jpg"
-        }
-      />
       {/* Explore Cities Section */}
       <CityCardsSection />
 

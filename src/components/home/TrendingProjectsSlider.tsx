@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { MapPin, Home } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { MapPin, Home, ChevronLeft, ChevronRight } from "lucide-react";
+import useEmblaCarousel from "embla-carousel-react";
 import { createClient } from "@/lib/supabase/client";
 
 interface TrendingProject {
@@ -16,15 +16,42 @@ interface TrendingProject {
   slug: string;
   source: "project" | "landing";
   city_slug?: string;
-  micro_market_slug?: string;
-  available_units?: number;
+  city_name?: string;
 }
 
 export default function TrendingProjectsSlider() {
   const [projects, setProjects] = useState<TrendingProject[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const [emblaRef, emblaApi] = useEmblaCarousel({ 
+    loop: true,
+    align: "start",
+    slidesToScroll: 1,
+  });
+
+  // Auto-scroll functionality with pause on hover
+  const [isPaused, setIsPaused] = useState(false);
+
+  useEffect(() => {
+    if (!emblaApi || isPaused) return;
+
+    const autoplay = () => {
+      if (!isPaused) {
+        emblaApi.scrollNext();
+      }
+    };
+
+    const interval = setInterval(autoplay, 4000); // Auto-scroll every 4 seconds
+
+    return () => clearInterval(interval);
+  }, [emblaApi, isPaused]);
+
+  const scrollPrev = useCallback(() => {
+    if (emblaApi) emblaApi.scrollPrev();
+  }, [emblaApi]);
+
+  const scrollNext = useCallback(() => {
+    if (emblaApi) emblaApi.scrollNext();
+  }, [emblaApi]);
 
   useEffect(() => {
     const fetchTrendingProjects = async () => {
@@ -34,8 +61,18 @@ export default function TrendingProjectsSlider() {
         // Query projects WHERE is_trending = true
         const { data: projectsData, error: projectsError } = await supabase
           .from("projects")
-          .select("id, project_name, price_range_text, hero_image_url, url_slug, micro_markets(micro_market_name)")
+          .select(`
+            id,
+            project_name,
+            price_range_text,
+            hero_image_url,
+            url_slug,
+            micro_markets(micro_market_name),
+            cities(city_name, url_slug)
+          `)
           .eq("is_trending", true)
+          .eq("is_published", true)
+          .order("created_at", { ascending: false })
           .limit(10);
 
         if (projectsError) {
@@ -45,8 +82,17 @@ export default function TrendingProjectsSlider() {
         // Query landing_pages WHERE is_trending = true
         const { data: landingData, error: landingError } = await supabase
           .from("landing_pages")
-          .select("id, title, hero_image_url, url_slug, micro_market")
+          .select(`
+            id,
+            title,
+            hero_image_url,
+            url_slug,
+            micro_market,
+            price_display
+          `)
           .eq("is_trending", true)
+          .eq("is_published", true)
+          .order("created_at", { ascending: false })
           .limit(10);
 
         if (landingError) {
@@ -55,10 +101,12 @@ export default function TrendingProjectsSlider() {
 
         // Transform projects data
         const transformedProjects: TrendingProject[] = (projectsData || []).map((p: any) => {
-          // Handle micro_markets relation (can be array or object)
           const microMarket = Array.isArray(p.micro_markets) 
             ? p.micro_markets[0] 
             : p.micro_markets;
+          const city = Array.isArray(p.cities) 
+            ? p.cities[0] 
+            : p.cities;
 
           return {
             id: p.id,
@@ -68,43 +116,29 @@ export default function TrendingProjectsSlider() {
             image_url: p.hero_image_url,
             slug: p.url_slug,
             source: "project" as const,
-            city_slug: "hyderabad", // Default to hyderabad
-            available_units: 12, // Default fallback
+            city_slug: city?.url_slug || "hyderabad",
+            city_name: city?.city_name || null,
           };
         });
 
         // Transform landing pages data
         const transformedLanding: TrendingProject[] = (landingData || []).map((l: any) => ({
           id: l.id,
-          name: l.title,
-          price_range: null, // landing_pages doesn't have price_range
+          name: l.title || l.project_name,
+          price_range: l.price_display || null,
           location: l.micro_market || null,
           image_url: l.hero_image_url,
-          slug: l.url_slug,
+          slug: l.url_slug || l.slug,
           source: "landing" as const,
         }));
 
-        // Combine and randomly select 3 if more than 3
-        const allTrending = [...transformedProjects, ...transformedLanding];
-        const random3 = allTrending
-          .sort(() => 0.5 - Math.random())
-          .slice(0, 3);
+        // Combine and sort by created_at descending (already sorted in query)
+        const combined = [...transformedProjects, ...transformedLanding].slice(0, 10);
 
-        console.log("[TrendingProjectsSlider] Found:", {
-          projects: transformedProjects.length,
-          landing: transformedLanding.length,
-          total: allTrending.length,
-          selected: random3.length,
-        });
-
-        setProjects(random3);
-        
-        if (random3.length === 0) {
-          setError("No trending projects found. Please mark projects as trending in the database.");
-        }
+        console.log("[TrendingProjectsSlider] Loaded", combined.length, "trending projects");
+        setProjects(combined);
       } catch (error: any) {
         console.error("[TrendingProjectsSlider] Error fetching trending projects:", error);
-        setError(error?.message || "Failed to load trending projects");
       } finally {
         setLoading(false);
       }
@@ -112,17 +146,6 @@ export default function TrendingProjectsSlider() {
 
     fetchTrendingProjects();
   }, []);
-
-  const scroll = (direction: "left" | "right") => {
-    if (scrollRef.current) {
-      const cardWidth = 320; // Approximate card width + gap
-      const scrollAmount = cardWidth;
-      scrollRef.current.scrollBy({
-        left: direction === "left" ? -scrollAmount : scrollAmount,
-        behavior: "smooth",
-      });
-    }
-  };
 
   if (loading) {
     return (
@@ -134,85 +157,64 @@ export default function TrendingProjectsSlider() {
     );
   }
 
-  if (error) {
-    console.error("[TrendingProjectsSlider] Error state:", error);
-  }
-
   if (projects.length === 0) {
-    // Don't show section if no projects found
     return null;
   }
 
   return (
-    <section className="py-12 px-4 bg-white">
+    <section 
+      className="py-12 px-4 bg-white"
+      onMouseEnter={() => setIsPaused(true)}
+      onMouseLeave={() => setIsPaused(false)}
+    >
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <h2 className="text-center text-3xl md:text-4xl font-bold text-gray-900 mb-8">
-          🔥 TRENDING PROJECTS
-        </h2>
+        <div className="flex items-center justify-between mb-8">
+          <h2 className="text-3xl md:text-4xl font-bold text-gray-900">
+            🔥 Trending Projects
+          </h2>
+        </div>
 
-        {/* Desktop: 3 cards per row, Mobile: 1 card carousel */}
+        {/* Embla Carousel */}
         <div className="relative">
-          {/* Mobile: Carousel with scroll buttons */}
-          <div className="md:hidden relative">
-            <div
-              ref={scrollRef}
-              className="flex gap-4 overflow-x-auto scrollbar-hide snap-x snap-mandatory pb-4"
-              style={{
-                scrollSnapType: "x mandatory",
-                WebkitOverflowScrolling: "touch",
-              }}
-            >
-              {projects.map((project, index) => {
-                // Link: /hyderabad/{url_slug} for both projects and landing pages
-                const projectUrl = `/hyderabad/${project.slug}`;
+          <div className="overflow-hidden" ref={emblaRef}>
+            <div className="flex -ml-4">
+              {projects.map((project) => {
+                const projectUrl = project.source === "project"
+                  ? `/${project.city_slug}/projects/${project.slug}`
+                  : `/landing/${project.slug}`;
 
                 return (
                   <div
                     key={project.id}
-                    className="flex-shrink-0 w-[85vw] snap-start"
+                    className="flex-[0_0_100%] sm:flex-[0_0_50%] lg:flex-[0_0_33.333%] xl:flex-[0_0_25%] min-w-0 pl-4"
                   >
                     <TrendingCard project={project} url={projectUrl} />
                   </div>
                 );
               })}
             </div>
-            {/* Mobile scroll buttons */}
-            {projects.length > 1 && (
-              <>
-                <button
-                  onClick={() => scroll("left")}
-                  className="absolute left-2 top-1/2 -translate-y-1/2 z-10 p-2 rounded-full bg-white shadow-lg hover:bg-gray-50"
-                  aria-label="Scroll left"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                  </svg>
-                </button>
-                <button
-                  onClick={() => scroll("right")}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 z-10 p-2 rounded-full bg-white shadow-lg hover:bg-gray-50"
-                  aria-label="Scroll right"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </button>
-              </>
-            )}
           </div>
 
-          {/* Desktop: 3 cards grid */}
-          <div className="hidden md:grid md:grid-cols-3 gap-6">
-            {projects.map((project) => {
-              // Link: /hyderabad/{url_slug} for both projects and landing pages
-              const projectUrl = `/hyderabad/${project.slug}`;
-
-              return (
-                <TrendingCard key={project.id} project={project} url={projectUrl} />
-              );
-            })}
-          </div>
+          {/* Navigation Arrows */}
+          {projects.length > 1 && (
+            <>
+              <button
+                onClick={scrollPrev}
+                className="absolute left-0 top-1/2 -translate-y-1/2 z-10 p-3 rounded-full bg-white shadow-lg hover:bg-gray-50 transition-colors"
+                aria-label="Previous slide"
+              >
+                <ChevronLeft className="w-6 h-6 text-gray-700" />
+              </button>
+              <button
+                onClick={scrollNext}
+                className="absolute right-0 top-1/2 -translate-y-1/2 z-10 p-3 rounded-full bg-white shadow-lg hover:bg-gray-50 transition-colors"
+                aria-label="Next slide"
+              >
+                <ChevronRight className="w-6 h-6 text-gray-700" />
+              </button>
+            </>
+          )}
         </div>
       </div>
     </section>
@@ -222,7 +224,7 @@ export default function TrendingProjectsSlider() {
 function TrendingCard({ project, url }: { project: TrendingProject; url: string }) {
   return (
     <Link href={url} className="block group">
-      <div className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-300 hover:-translate-y-1">
+      <div className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 h-full">
         {/* Image - 16:9 aspect ratio */}
         <div className="relative w-full aspect-video bg-gradient-to-br from-blue-400 to-blue-600">
           {project.image_url ? (
@@ -231,7 +233,7 @@ function TrendingCard({ project, url }: { project: TrendingProject; url: string 
               alt={project.name}
               fill
               className="object-cover"
-              sizes="(max-width: 768px) 85vw, (max-width: 1024px) 33vw, 400px"
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
               unoptimized={project.image_url.includes('supabase.co/storage')}
             />
           ) : (
@@ -239,6 +241,10 @@ function TrendingCard({ project, url }: { project: TrendingProject; url: string 
               <Home className="w-12 h-12" />
             </div>
           )}
+          {/* Trending Badge */}
+          <div className="absolute top-3 right-3 bg-orange-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg">
+            🔥 TRENDING
+          </div>
         </div>
 
         {/* Content */}
@@ -267,14 +273,6 @@ function TrendingCard({ project, url }: { project: TrendingProject; url: string 
               <span className="text-sm md:text-base">{project.location}</span>
             </div>
           )}
-
-          {/* CTA Button */}
-          <Button
-            className="w-full bg-blue-700 hover:bg-blue-800 text-white font-semibold"
-            size="sm"
-          >
-            View {project.available_units || 12}+ units
-          </Button>
         </div>
       </div>
     </Link>
