@@ -1,114 +1,53 @@
 import { Metadata } from "next";
-import { createClient } from "@/lib/supabase/server";
-import { buildMetadata } from "@/components/common/SEO";
-import HomeTestClient from "./HomeTestClient";
+import { JsonLd, buildMetadata } from "@/components/common/SEO";
+import IndexPageWithSearch from "@/components/pages/IndexPageWithSearch";
+
+const ORGANIZATION_SCHEMA = {
+  "@context": "https://schema.org",
+  "@type": "RealEstateAgent",
+  name: "RE/MAX Westside Realty",
+  description:
+    "Premier real estate advisory for Hyderabad, Goa & Dubai. Expert guidance for resale properties, investment opportunities & holiday homes.",
+  url: "https://www.westsiderealty.in",
+  logo: "https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/brand-assets/remax-logo.jpg",
+  image: "https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/brand-assets/remax-logo.jpg",
+  telephone: "+91-9866085831",
+  email: "npkr79@gmail.com",
+  address: {
+    "@type": "PostalAddress",
+    addressLocality: "Hyderabad",
+    addressRegion: "Telangana",
+    addressCountry: "IN",
+  },
+  areaServed: [
+    { "@type": "City", name: "Hyderabad" },
+    { "@type": "City", name: "Goa" },
+    { "@type": "City", name: "Dubai" },
+  ],
+  sameAs: [
+    "https://www.facebook.com/remaxwestsiderealty",
+    "https://www.instagram.com/remaxwestsiderealty",
+  ],
+};
 
 export const metadata: Metadata = buildMetadata({
-  title: "RE/MAX Westside Realty - Find Your Dream Home | Hyderabad, Goa, Dubai",
+  title: "RE/MAX Westside Realty - Hyderabad, Goa, Dubai | Premium Real Estate Agents",
   description:
-    "Find your dream home in seconds. 1000+ RERA verified projects across Hyderabad, Goa & Dubai. Premium real estate advisory with expert guidance.",
+    "Find premium resale properties in Hyderabad, investment & holiday homes in Goa, and global real estate in Dubai. RE/MAX Westside Realty: Your local & global property expert.",
   canonicalUrl: "https://www.westsiderealty.in/home-test",
+  imageUrl:
+    "https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/brand-assets//remax-favicon.png",
+  type: "website",
+  siteName: "RE/MAX Westside Realty",
   keywords:
-    "hyderabad real estate, goa properties, dubai investment, RERA verified projects, buy property, real estate search",
+    "hyderabad resale property, goa holiday homes, dubai real estate, buy property hyderabad, investment property india",
 });
 
-// Fetch data server-side for SEO and performance
-async function getHomeTestData() {
-  const supabase = await createClient();
-
-  // Fetch trending projects (using is_featured as proxy, or projects with high listing_count)
-  const { data: trendingProjects } = await supabase
-    .from("projects")
-    .select(`
-      id,
-      project_name,
-      url_slug,
-      hero_image_url,
-      price_range_text,
-      status,
-      listing_count,
-      is_featured,
-      micro_market:micro_markets!projects_micromarket_id_fkey(micro_market_name, url_slug),
-      developer:developers(developer_name, url_slug),
-      city:cities(url_slug, city_name)
-    `)
-    .eq("is_published", true)
-    .or("status.ilike.published,status.ilike.%under construction%")
-    .order("listing_count", { ascending: false, nullsFirst: false })
-    .order("is_featured", { ascending: false })
-    .limit(3);
-
-  // Fetch featured projects
-  const { data: featuredProjects } = await supabase
-    .from("projects")
-    .select(`
-      id,
-      project_name,
-      url_slug,
-      hero_image_url,
-      price_range_text,
-      status,
-      listing_count,
-      is_featured,
-      rera_link,
-      micro_market:micro_markets!projects_micromarket_id_fkey(micro_market_name, url_slug),
-      developer:developers(developer_name, url_slug),
-      city:cities(url_slug, city_name)
-    `)
-    .eq("is_published", true)
-    .or("status.ilike.published,status.ilike.%under construction%")
-    .eq("is_featured", true)
-    .order("created_at", { ascending: false })
-    .limit(6);
-
-  // Fetch testimonials
-  const { data: testimonials } = await supabase
-    .from("testimonials")
-    .select("*")
-    .eq("status", "published")
-    .order("created_at", { ascending: false })
-    .limit(6);
-
-  // Fetch micro-markets with project counts for Hyderabad
-  const { data: hyderabadCity } = await supabase
-    .from("cities")
-    .select("id")
-    .eq("url_slug", "hyderabad")
-    .single();
-
-  let microMarkets: any[] = [];
-  if (hyderabadCity) {
-    const { data: markets } = await supabase
-      .from("micro_markets")
-      .select(`
-        id,
-        micro_market_name,
-        url_slug,
-        latitude,
-        longitude,
-        projects:projects!projects_micromarket_id_fkey(count)
-      `)
-      .eq("city_id", hyderabadCity.id)
-      .eq("status", "published")
-      .limit(10);
-
-    // Transform to include project count
-    microMarkets = (markets || []).map((mm: any) => ({
-      ...mm,
-      projectCount: Array.isArray(mm.projects) ? mm.projects.length : 0,
-    }));
-  }
-
-  return {
-    trendingProjects: trendingProjects || [],
-    featuredProjects: featuredProjects || [],
-    testimonials: testimonials || [],
-    microMarkets: microMarkets || [],
-  };
-}
-
-export default async function HomeTestPage() {
-  const data = await getHomeTestData();
-
-  return <HomeTestClient {...data} />;
+export default function HomeTest() {
+  return (
+    <>
+      <JsonLd jsonLd={ORGANIZATION_SCHEMA} />
+      <IndexPageWithSearch />
+    </>
+  );
 }
