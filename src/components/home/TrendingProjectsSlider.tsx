@@ -211,7 +211,7 @@ export default function TrendingProjectsSlider() {
         {/* Embla Carousel */}
         <div className="relative">
           <div className="overflow-hidden" ref={emblaRef}>
-            <div className="flex -ml-4">
+            <div className="flex gap-4">
               {projects.map((project) => {
                 const projectUrl = project.source === "project"
                   ? `/${project.city_slug}/projects/${project.slug}`
@@ -220,7 +220,7 @@ export default function TrendingProjectsSlider() {
                 return (
                   <div
                     key={project.id}
-                    className="flex-[0_0_100%] sm:flex-[0_0_50%] lg:flex-[0_0_33.333%] xl:flex-[0_0_25%] min-w-0 pl-4"
+                    className="flex-[0_0_100%] sm:flex-[0_0_calc(50%-0.5rem)] lg:flex-[0_0_calc(33.333%-1rem)] min-w-0"
                   >
                     <TrendingCard project={project} url={projectUrl} />
                   </div>
@@ -234,14 +234,14 @@ export default function TrendingProjectsSlider() {
             <>
               <button
                 onClick={scrollPrev}
-                className="absolute left-0 top-1/2 -translate-y-1/2 z-10 p-3 rounded-full bg-white shadow-lg hover:bg-gray-50 transition-colors"
+                className="absolute left-0 top-1/2 -translate-y-1/2 z-10 p-3 rounded-full bg-white shadow-lg hover:bg-gray-50 transition-colors -translate-x-4"
                 aria-label="Previous slide"
               >
                 <ChevronLeft className="w-6 h-6 text-gray-700" />
               </button>
               <button
                 onClick={scrollNext}
-                className="absolute right-0 top-1/2 -translate-y-1/2 z-10 p-3 rounded-full bg-white shadow-lg hover:bg-gray-50 transition-colors"
+                className="absolute right-0 top-1/2 -translate-y-1/2 z-10 p-3 rounded-full bg-white shadow-lg hover:bg-gray-50 transition-colors translate-x-4"
                 aria-label="Next slide"
               >
                 <ChevronRight className="w-6 h-6 text-gray-700" />
@@ -256,17 +256,17 @@ export default function TrendingProjectsSlider() {
 
 function TrendingCard({ project, url }: { project: TrendingProject; url: string }) {
   return (
-    <Link href={url} className="block group">
-      <div className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 h-full">
+    <Link href={url} className="block group h-full">
+      <div className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 h-full flex flex-col">
         {/* Image - 16:9 aspect ratio */}
-        <div className="relative w-full aspect-video bg-gradient-to-br from-blue-400 to-blue-600">
+        <div className="relative w-full aspect-video bg-gradient-to-br from-blue-400 to-blue-600 flex-shrink-0">
           {project.image_url ? (
             <Image
               src={project.image_url}
               alt={project.name}
               fill
               className="object-cover"
-              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
               unoptimized={project.image_url.includes('supabase.co/storage')}
             />
           ) : (
@@ -275,37 +275,41 @@ function TrendingCard({ project, url }: { project: TrendingProject; url: string 
             </div>
           )}
           {/* Trending Badge */}
-          <div className="absolute top-3 right-3 bg-orange-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg">
+          <div className="absolute top-3 right-3 bg-orange-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg z-10">
             🔥 TRENDING
           </div>
         </div>
 
-        {/* Content */}
-        <div className="p-5">
+        {/* Content - flex-grow to fill remaining space */}
+        <div className="p-5 flex-grow flex flex-col">
           {/* Title */}
-          <h3 className="text-lg md:text-xl font-bold text-gray-900 mb-2 line-clamp-2">
+          <h3 className="text-lg md:text-xl font-bold text-gray-900 mb-3 line-clamp-2 min-h-[3.5rem]">
             {project.name}
           </h3>
 
           {/* Price */}
-          {project.price_range ? (
-            <p className="text-2xl md:text-3xl font-bold text-blue-600 mb-3">
-              {project.price_range.includes('₹') ? project.price_range : `₹${project.price_range}`}
-              {!project.price_range.includes('+') && !project.price_range.includes('Cr') && ' Cr+'}
-            </p>
-          ) : (
-            <p className="text-lg md:text-xl font-semibold text-gray-600 mb-3">
-              Contact for price
-            </p>
-          )}
+          <div className="mb-3">
+            {project.price_range ? (
+              <p className="text-xl md:text-2xl font-bold text-blue-600">
+                {project.price_range.includes('₹') ? project.price_range : `₹${project.price_range}`}
+                {!project.price_range.includes('+') && !project.price_range.includes('Cr') && ' Cr+'}
+              </p>
+            ) : (
+              <p className="text-lg md:text-xl font-semibold text-gray-600">
+                Contact for price
+              </p>
+            )}
+          </div>
 
-          {/* Location */}
-          {project.location && (
-            <div className="flex items-center gap-2 text-gray-600 mb-4">
-              <MapPin className="w-4 h-4 flex-shrink-0" />
-              <span className="text-sm md:text-base">{project.location}</span>
-            </div>
-          )}
+          {/* Location - push to bottom */}
+          <div className="mt-auto">
+            {project.location && (
+              <div className="flex items-center gap-2 text-gray-600">
+                <MapPin className="w-4 h-4 flex-shrink-0" />
+                <span className="text-sm md:text-base line-clamp-1">{project.location}</span>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </Link>
