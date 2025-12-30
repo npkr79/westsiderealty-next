@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Search, X, MapPin, Building2, Tag, Layers, ChevronDown } from "lucide-react";
+import { Search, X, MapPin, Building2, Layers, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -27,7 +27,7 @@ interface SearchSuggestion {
 interface LocationOption {
   id: string;
   name: string;
-  type: "city" | "micro_market";
+  type: "city" | "micro_market" | "developer";
   slug: string;
   citySlug?: string;
 }
@@ -57,13 +57,10 @@ export default function HeroSectionWithSearch({ onContactClick }: HeroSectionWit
     commercial: [
       { value: "office", label: "Office" },
       { value: "retail", label: "Retail" },
-      { value: "coworking", label: "Co-working" },
-      { value: "warehouse", label: "Warehouse" },
     ],
     land: [
       { value: "residential-plot", label: "Residential Plot" },
       { value: "commercial-plot", label: "Commercial Plot" },
-      { value: "agricultural", label: "Agricultural" },
     ],
   };
 
@@ -71,11 +68,11 @@ export default function HeroSectionWithSearch({ onContactClick }: HeroSectionWit
   useEffect(() => {
     const loadInitialLocations = async () => {
       const supabase = createClient();
-      const [citiesResult, microMarketsResult] = await Promise.all([
+      const [citiesResult, microMarketsResult, developersResult] = await Promise.all([
         supabase
           .from("cities")
           .select("id, city_name, url_slug")
-          .in("url_slug", ["hyderabad", "goa", "dubai"])
+          .in("url_slug", ["hyderabad", "goa"])
           .eq("page_status", "published")
           .limit(5),
         supabase
@@ -84,6 +81,11 @@ export default function HeroSectionWithSearch({ onContactClick }: HeroSectionWit
           .eq("status", "published")
           .in("city:cities(url_slug)", ["hyderabad"])
           .limit(10),
+        supabase
+          .from("developers")
+          .select("id, developer_name, url_slug")
+          .eq("is_published", true)
+          .limit(5),
       ]);
 
       const options: LocationOption[] = [];
@@ -109,6 +111,16 @@ export default function HeroSectionWithSearch({ onContactClick }: HeroSectionWit
           });
         });
       }
+      if (developersResult.data) {
+        developersResult.data.forEach((dev: any) => {
+          options.push({
+            id: dev.id,
+            name: dev.developer_name,
+            type: "developer",
+            slug: dev.url_slug,
+          });
+        });
+      }
       setLocationOptions(options);
     };
     loadInitialLocations();
@@ -117,7 +129,6 @@ export default function HeroSectionWithSearch({ onContactClick }: HeroSectionWit
   // Fetch cities and micro-markets for location dropdown (when searching)
   useEffect(() => {
     if (locationSearch.length < 1) {
-      // Don't fetch if no search query - use initial locations
       return;
     }
 
@@ -125,7 +136,7 @@ export default function HeroSectionWithSearch({ onContactClick }: HeroSectionWit
       const supabase = createClient();
       const query = locationSearch.toLowerCase();
 
-      const [citiesResult, microMarketsResult] = await Promise.all([
+      const [citiesResult, microMarketsResult, developersResult] = await Promise.all([
         supabase
           .from("cities")
           .select("id, city_name, url_slug")
@@ -138,6 +149,12 @@ export default function HeroSectionWithSearch({ onContactClick }: HeroSectionWit
           .ilike("micro_market_name", `%${query}%`)
           .eq("status", "published")
           .limit(10),
+        supabase
+          .from("developers")
+          .select("id, developer_name, url_slug")
+          .ilike("developer_name", `%${query}%`)
+          .eq("is_published", true)
+          .limit(5),
       ]);
 
       const options: LocationOption[] = [];
@@ -160,6 +177,16 @@ export default function HeroSectionWithSearch({ onContactClick }: HeroSectionWit
             type: "micro_market",
             slug: mm.url_slug,
             citySlug: citySlug,
+          });
+        });
+      }
+      if (developersResult.data) {
+        developersResult.data.forEach((dev: any) => {
+          options.push({
+            id: dev.id,
+            name: dev.developer_name,
+            type: "developer",
+            slug: dev.url_slug,
           });
         });
       }
@@ -289,14 +316,12 @@ export default function HeroSectionWithSearch({ onContactClick }: HeroSectionWit
   const handleSearch = () => {
     const params = new URLSearchParams();
     
-    // Map purpose to transaction type
     if (purpose === "rent") {
       params.set("transaction", "rent");
     } else if (purpose === "invest") {
       params.set("transaction", "invest");
     }
     
-    // Map category to property type
     if (category === "residential") {
       params.set("type", "residential");
     } else if (category === "commercial") {
@@ -305,7 +330,6 @@ export default function HeroSectionWithSearch({ onContactClick }: HeroSectionWit
       params.set("type", "land");
     }
     
-    // Map context
     if (context) {
       if (category === "residential") {
         if (context === "resale") {
@@ -318,18 +342,17 @@ export default function HeroSectionWithSearch({ onContactClick }: HeroSectionWit
       }
     }
     
-    // Add search query
     if (searchQuery.trim()) {
       params.set("search", searchQuery.trim());
     }
     
-    // Determine city from location
     const selectedLoc = locationOptions.find(opt => opt.slug === location);
     const citySlug = selectedLoc?.type === "micro_market" 
       ? selectedLoc.citySlug || "hyderabad"
+      : selectedLoc?.type === "developer"
+      ? "hyderabad"
       : location || "hyderabad";
     
-    // Route to city buy page with params
     router.push(`/${citySlug}/buy?${params.toString()}`);
   };
 
@@ -346,11 +369,9 @@ export default function HeroSectionWithSearch({ onContactClick }: HeroSectionWit
     }
   };
 
-  // Get selected location display name
   const getLocationDisplayName = () => {
     const selected = locationOptions.find(opt => opt.slug === location);
     if (selected) return selected.name;
-    // Default to Hyderabad if not found
     if (location === "hyderabad" || !location) return "Hyderabad";
     return location.charAt(0).toUpperCase() + location.slice(1);
   };
@@ -366,68 +387,61 @@ export default function HeroSectionWithSearch({ onContactClick }: HeroSectionWit
           Discover premium resale homes, luxury villas, and investment properties with trusted experts by your side.
         </p>
 
-        {/* Purpose Tabs */}
-        <div className="flex gap-6 text-sm font-light uppercase tracking-wider">
-          <button
-            onClick={() => setPurpose("buy")}
-            className={`pb-2 transition-colors ${
-              purpose === "buy"
-                ? "text-blue-700 border-b-2 border-blue-700 font-medium"
-                : "text-gray-600 hover:text-gray-900"
-            }`}
-          >
-            Buy
-          </button>
-          <button
-            onClick={() => setPurpose("rent")}
-            className={`pb-2 transition-colors ${
-              purpose === "rent"
-                ? "text-blue-700 border-b-2 border-blue-700 font-medium"
-                : "text-gray-600 hover:text-gray-900"
-            }`}
-          >
-            Rent / Lease
-          </button>
-          <button
-            onClick={() => setPurpose("invest")}
-            className={`pb-2 transition-colors ${
-              purpose === "invest"
-                ? "text-blue-700 border-b-2 border-blue-700 font-medium"
-                : "text-gray-600 hover:text-gray-900"
-            }`}
-          >
-            Invest
-          </button>
-        </div>
+        {/* 99ACRES-STYLE: ONE GIANT SEARCH BAR */}
+        <div ref={searchRef} className="w-[95%] max-w-4xl mt-8 relative">
+          <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-4 md:p-6">
+            {/* Search Input - Full Width */}
+            <div className="relative mb-4">
+              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 z-10" />
+              <input
+                ref={inputRef}
+                type="text"
+                placeholder="Search projects, developers, micro markets..."
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setShowSuggestions(true);
+                }}
+                onFocus={() => setShowSuggestions(true)}
+                onKeyDown={handleKeyDown}
+                className="w-full h-12 md:h-14 pl-12 pr-4 bg-gray-50 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white text-base border border-gray-200"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => {
+                    setSearchQuery("");
+                    setShowSuggestions(false);
+                    inputRef.current?.focus();
+                  }}
+                  className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 z-10"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
 
-        {/* Main Search Bar - Single Pill */}
-        <div ref={searchRef} className="w-full max-w-5xl mt-4 relative">
-          <div className="bg-white rounded-full shadow-2xl border border-gray-200 overflow-hidden">
-            {/* Desktop: Single Row Layout */}
-            <div className="hidden md:flex items-stretch h-14">
-              {/* Segment 1: Location */}
-              <div ref={locationRef} className="relative flex-shrink-0 border-r border-gray-200">
-                  <button
-                    onClick={() => setShowLocationDropdown(!showLocationDropdown)}
-                    className="h-full px-6 flex items-center gap-2 hover:bg-gray-50 transition-colors min-w-[180px]"
-                  >
-                    <MapPin className="w-4 h-4 text-gray-500" />
-                    <span className="text-sm font-medium text-gray-900">
-                      {getLocationDisplayName()}
-                    </span>
-                    <ChevronDown className="w-4 h-4 text-gray-400 ml-auto" />
-                  </button>
+            {/* Dropdowns Row - INSIDE the bar */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+              {/* Location Dropdown */}
+              <div ref={locationRef} className="relative">
+                <button
+                  onClick={() => setShowLocationDropdown(!showLocationDropdown)}
+                  className="w-full h-12 px-4 flex items-center gap-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-sm"
+                >
+                  <MapPin className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                  <span className="text-gray-900 font-medium truncate text-left flex-1">
+                    {getLocationDisplayName()}
+                  </span>
+                  <ChevronDown className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                </button>
                 {showLocationDropdown && (
-                  <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-lg shadow-xl border border-gray-200 z-50 max-h-96 overflow-y-auto">
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-lg shadow-xl border border-gray-200 z-50 max-h-64 overflow-y-auto">
                     <div className="p-2">
                       <input
                         type="text"
                         placeholder="Search location..."
                         value={locationSearch}
-                        onChange={(e) => {
-                          setLocationSearch(e.target.value);
-                          setShowLocationDropdown(true);
-                        }}
+                        onChange={(e) => setLocationSearch(e.target.value)}
                         className="w-full px-3 py-2 text-sm border border-gray-200 rounded-md mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                         autoFocus
                       />
@@ -441,7 +455,7 @@ export default function HeroSectionWithSearch({ onContactClick }: HeroSectionWit
                         <div className="flex items-center gap-2">
                           <MapPin className="w-4 h-4 text-gray-400" />
                           <div>
-                            <p className="font-medium text-gray-900">{option.name}</p>
+                            <p className="font-medium text-gray-900 text-sm">{option.name}</p>
                             <p className="text-xs text-gray-500 capitalize">
                               {option.type.replace("_", " ")}
                             </p>
@@ -453,30 +467,37 @@ export default function HeroSectionWithSearch({ onContactClick }: HeroSectionWit
                 )}
               </div>
 
-              {/* Segment 2: Category */}
-              <div className="flex-shrink-0 border-r border-gray-200">
+              {/* Category Dropdown */}
+              <div>
                 <Select value={category} onValueChange={setCategory}>
-                  <SelectTrigger className="h-14 rounded-none border-0 focus:ring-0 min-w-[160px]">
-                    <div className="flex items-center gap-2">
-                      <Building2 className="w-4 h-4 text-gray-500" />
-                      <SelectValue placeholder="Residential" />
+                  <SelectTrigger className="h-12 border border-gray-200 focus:ring-2 focus:ring-blue-500">
+                    <div className="flex items-center gap-2 w-full">
+                      <Building2 className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                      <SelectValue placeholder="Residential" className="text-sm" />
                     </div>
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="residential">Residential</SelectItem>
                     <SelectItem value="commercial">Commercial</SelectItem>
-                    <SelectItem value="land">Open Plots/Land</SelectItem>
+                    <SelectItem value="land">Open Plots</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
-              {/* Segment 3: Context */}
-              <div className="flex-shrink-0 border-r border-gray-200">
+              {/* Context Dropdown */}
+              <div>
                 <Select value={context} onValueChange={setContext}>
-                  <SelectTrigger className="h-14 rounded-none border-0 focus:ring-0 min-w-[160px]">
-                    <div className="flex items-center gap-2">
-                      <Layers className="w-4 h-4 text-gray-500" />
-                      <SelectValue placeholder={category === "residential" ? "Resale" : category === "commercial" ? "Office" : "Residential Plot"} />
+                  <SelectTrigger className="h-12 border border-gray-200 focus:ring-2 focus:ring-blue-500">
+                    <div className="flex items-center gap-2 w-full">
+                      <Layers className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                      <SelectValue 
+                        placeholder={
+                          category === "residential" ? "Resale" : 
+                          category === "commercial" ? "Office" : 
+                          "Residential Plot"
+                        }
+                        className="text-sm"
+                      />
                     </div>
                   </SelectTrigger>
                   <SelectContent>
@@ -489,153 +510,71 @@ export default function HeroSectionWithSearch({ onContactClick }: HeroSectionWit
                 </Select>
               </div>
 
-              {/* Segment 4: Free Text Search */}
-              <div className="flex-1 relative">
-                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 z-10" />
-                <input
-                  ref={inputRef}
-                  type="text"
-                  placeholder="Search by project, developer, micro market..."
-                  value={searchQuery}
-                  onChange={(e) => {
-                    setSearchQuery(e.target.value);
-                    setShowSuggestions(true);
-                  }}
-                  onFocus={() => setShowSuggestions(true)}
-                  onKeyDown={handleKeyDown}
-                  className="w-full h-14 pl-12 pr-4 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                />
-                {searchQuery && (
-                  <button
-                    onClick={() => {
-                      setSearchQuery("");
-                      setShowSuggestions(false);
-                      inputRef.current?.focus();
-                    }}
-                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 z-10"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                )}
-                {showSuggestions && suggestions.length > 0 && (
-                  <div className="absolute z-50 left-0 right-0 mt-1 bg-white rounded-lg shadow-2xl border border-gray-200 max-h-96 overflow-y-auto">
-                    {suggestions.map((suggestion) => (
-                      <button
-                        key={`${suggestion.type}-${suggestion.id}`}
-                        onClick={() => handleSuggestionClick(suggestion)}
-                        className="w-full px-6 py-4 text-left hover:bg-gray-50 border-b border-gray-100 last:border-b-0 transition-colors"
-                      >
-                        <div className="flex items-center gap-3">
-                          <Search className="w-4 h-4 text-gray-400" />
-                          <div>
-                            <p className="font-medium text-gray-900">{suggestion.name}</p>
-                            <p className="text-sm text-gray-500 capitalize">
-                              {suggestion.type.replace("_", " ")}
-                            </p>
-                          </div>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Search Button */}
+              {/* Search Button - Right Side */}
               <Button
                 onClick={handleSearch}
-                className="h-14 px-8 bg-blue-700 hover:bg-blue-800 text-white rounded-none font-semibold text-base min-w-[120px]"
+                className="h-12 w-full bg-blue-700 hover:bg-blue-800 text-white font-semibold text-base rounded-lg"
               >
                 Search
               </Button>
             </div>
 
-            {/* Mobile: Two-Row Stacked Layout */}
-            <div className="md:hidden p-3 space-y-3">
-              {/* Row 1: Location + Category */}
-              <div className="flex gap-2">
-                <div ref={locationRef} className="flex-1 relative">
+            {/* Autocomplete Suggestions */}
+            {showSuggestions && suggestions.length > 0 && (
+              <div className="absolute z-50 left-0 right-0 mt-1 bg-white rounded-lg shadow-2xl border border-gray-200 max-h-96 overflow-y-auto">
+                {suggestions.map((suggestion) => (
                   <button
-                    onClick={() => setShowLocationDropdown(!showLocationDropdown)}
-                    className="w-full h-12 px-4 flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100"
+                    key={`${suggestion.type}-${suggestion.id}`}
+                    onClick={() => handleSuggestionClick(suggestion)}
+                    className="w-full px-6 py-4 text-left hover:bg-gray-50 border-b border-gray-100 last:border-b-0 transition-colors"
                   >
-                    <MapPin className="w-4 h-4 text-gray-500" />
-                    <span className="text-sm font-medium text-gray-900 flex-1 text-left">
-                      {getLocationDisplayName()}
-                    </span>
-                    <ChevronDown className="w-4 h-4 text-gray-400" />
-                  </button>
-                  {showLocationDropdown && (
-                    <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-lg shadow-xl border border-gray-200 z-50 max-h-64 overflow-y-auto">
-                      <div className="p-2">
-                        <input
-                          type="text"
-                          placeholder="Search location..."
-                          value={locationSearch}
-                          onChange={(e) => setLocationSearch(e.target.value)}
-                          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-md mb-2"
-                        />
+                    <div className="flex items-center gap-3">
+                      <Search className="w-4 h-4 text-gray-400" />
+                      <div>
+                        <p className="font-medium text-gray-900">{suggestion.name}</p>
+                        <p className="text-sm text-gray-500 capitalize">
+                          {suggestion.type.replace("_", " ")}
+                        </p>
                       </div>
-                      {locationOptions.map((option) => (
-                        <button
-                          key={`${option.type}-${option.id}`}
-                          onClick={() => handleLocationSelect(option)}
-                          className="w-full px-4 py-3 text-left hover:bg-gray-50 border-b border-gray-100"
-                        >
-                          {option.name}
-                        </button>
-                      ))}
                     </div>
-                  )}
-                </div>
-                <Select value={category} onValueChange={setCategory}>
-                  <SelectTrigger className="h-12 flex-1">
-                    <SelectValue placeholder="Residential" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="residential">Residential</SelectItem>
-                    <SelectItem value="commercial">Commercial</SelectItem>
-                    <SelectItem value="land">Open Plots/Land</SelectItem>
-                  </SelectContent>
-                </Select>
+                  </button>
+                ))}
               </div>
+            )}
+          </div>
 
-              {/* Row 2: Context + Search Input + Button */}
-              <div className="flex gap-2">
-                <Select value={context} onValueChange={setContext}>
-                  <SelectTrigger className="h-12 flex-1">
-                    <SelectValue placeholder="Resale" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {contextOptions[category as keyof typeof contextOptions]?.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <div className="flex-1 relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                  <input
-                    ref={inputRef}
-                    type="text"
-                    placeholder="Search..."
-                    value={searchQuery}
-                    onChange={(e) => {
-                      setSearchQuery(e.target.value);
-                      setShowSuggestions(true);
-                    }}
-                    onKeyDown={handleKeyDown}
-                    className="w-full h-12 pl-10 pr-4 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm border border-gray-200 rounded-lg"
-                  />
-                </div>
-                <Button
-                  onClick={handleSearch}
-                  className="h-12 px-6 bg-blue-700 hover:bg-blue-800 text-white font-semibold"
-                >
-                  Search
-                </Button>
-              </div>
-            </div>
+          {/* Bottom Chips: Buy | Rent/Lease | Invest */}
+          <div className="flex gap-4 justify-center mt-4">
+            <button
+              onClick={() => setPurpose("buy")}
+              className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${
+                purpose === "buy"
+                  ? "bg-blue-700 text-white shadow-md"
+                  : "bg-white text-gray-700 hover:bg-gray-50 border border-gray-200"
+              }`}
+            >
+              Buy
+            </button>
+            <button
+              onClick={() => setPurpose("rent")}
+              className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${
+                purpose === "rent"
+                  ? "bg-blue-700 text-white shadow-md"
+                  : "bg-white text-gray-700 hover:bg-gray-50 border border-gray-200"
+              }`}
+            >
+              Rent / Lease
+            </button>
+            <button
+              onClick={() => setPurpose("invest")}
+              className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${
+                purpose === "invest"
+                  ? "bg-blue-700 text-white shadow-md"
+                  : "bg-white text-gray-700 hover:bg-gray-50 border border-gray-200"
+              }`}
+            >
+              Invest
+            </button>
           </div>
         </div>
 
