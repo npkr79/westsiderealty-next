@@ -322,6 +322,8 @@ export default async function ProjectDetailPage({ params }: PageProps) {
         <ProjectHeroGallery
           projectName={correctedProjectName || "Project"}
           images={getProjectImageUrls(project) || []}
+          status={(project as any).completion_status}
+          reraId={(project as any).rera_id}
         />
 
         {/* Client Actions Component - handles all interactive elements */}

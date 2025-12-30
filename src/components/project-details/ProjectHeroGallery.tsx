@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Images, ShieldCheck } from "lucide-react";
@@ -16,6 +17,7 @@ interface ProjectHeroGalleryProps {
 export default function ProjectHeroGallery({ images, projectName, status, reraId }: ProjectHeroGalleryProps) {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [initialIndex, setInitialIndex] = useState(0);
+  const [imageError, setImageError] = useState(false);
 
   const displayImages = images.length > 0 ? images.slice(0, 3) : [
     "https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=800",
@@ -42,6 +44,10 @@ export default function ProjectHeroGallery({ images, projectName, status, reraId
     setLightboxOpen(true);
   };
 
+  // Ensure we have a valid image URL
+  const heroImageUrl = displayImages[0] || "/placeholder.svg";
+  const imageSrc = imageError ? "/placeholder.svg" : heroImageUrl;
+
   return (
     <>
       <div className="relative w-full h-[50vh] md:h-[70vh] bg-muted overflow-hidden">
@@ -50,11 +56,32 @@ export default function ProjectHeroGallery({ images, projectName, status, reraId
           onClick={() => openLightbox(0)}
           className="relative w-full h-full group"
         >
-          <img
-            src={displayImages[0]}
-            alt={projectName}
-            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-          />
+          {imageSrc.includes('supabase.co/storage') ? (
+            // Use regular img tag for Supabase URLs to avoid Next.js Image optimization issues
+            <img
+              src={imageSrc}
+              alt={projectName}
+              className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+              onError={() => {
+                if (!imageError) {
+                  setImageError(true);
+                }
+              }}
+            />
+          ) : (
+            <Image
+              src={imageSrc}
+              alt={projectName}
+              fill
+              className="object-cover transition-transform duration-300 group-hover:scale-105"
+              priority
+              onError={() => {
+                if (!imageError) {
+                  setImageError(true);
+                }
+              }}
+            />
+          )}
           
           {/* Bottom Gradient Overlay */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
