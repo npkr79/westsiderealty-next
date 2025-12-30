@@ -10,6 +10,7 @@ import {
   Landmark,
 } from "lucide-react";
 import HeroSectionWithSearch from "@/components/home/HeroSectionWithSearch";
+import TrendingProjectsSlider from "@/components/home/TrendingProjectsSlider";
 import StatsSection from "@/components/home/StatsSection";
 import ServicesSection from "@/components/home/ServicesSection";
 import AboutPreviewSection from "@/components/home/AboutPreviewSection";
@@ -118,6 +119,7 @@ export default function IndexPageWithSearch() {
   return (
     <div className="min-h-screen bg-white">
       <HeroSectionWithSearch onContactClick={handleContactClick} />
+      <TrendingProjectsSlider />
       <StatsSection stats={stats} />
       <ServicesSection services={services} />
       {/* Featured Projects Section */}

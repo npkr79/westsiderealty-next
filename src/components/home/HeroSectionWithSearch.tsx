@@ -22,17 +22,6 @@ export default function HeroSectionWithSearch({ onContactClick }: HeroSectionWit
 
         {/* Tabbed Search Component */}
         <TabbedSearch />
-
-        {/* Contact Button */}
-        <div className="flex flex-wrap gap-4 justify-center mt-4">
-          <Button
-            size="lg"
-            className="bg-blue-700 hover:bg-blue-800 text-white rounded-full px-8 py-6 text-lg"
-            onClick={onContactClick}
-          >
-            Talk to an Expert
-          </Button>
-        </div>
       </div>
     </section>
   );
