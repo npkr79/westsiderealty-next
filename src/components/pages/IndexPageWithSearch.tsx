@@ -17,7 +17,6 @@ import AboutPreviewSection from "@/components/home/AboutPreviewSection";
 import TestimonialsSection from "@/components/home/TestimonialsSection";
 import CtaSection from "@/components/home/CtaSection";
 import CityCardsSection from "@/components/home/CityCardsSection";
-import FeaturedProjects from "@/components/home/FeaturedProjects";
 import { supabaseTestimonialClientService } from "@/services/admin/supabaseTestimonialClientService";
 import { siteImagesService } from "@/services/adminService";
 
@@ -122,8 +121,6 @@ export default function IndexPageWithSearch() {
       <TrendingProjectsSlider />
       <StatsSection stats={stats} />
       <ServicesSection services={services} />
-      {/* Featured Projects Section */}
-      <FeaturedProjects />
       <AboutPreviewSection
         aboutImage={
           siteImages.aboutUsImage ||
