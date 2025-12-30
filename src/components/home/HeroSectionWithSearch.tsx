@@ -2,8 +2,15 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Search, X } from "lucide-react";
+import { Search, X, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { createClient } from "@/lib/supabase/client";
 
 interface HeroSectionWithSearchProps {
@@ -22,22 +29,20 @@ export default function HeroSectionWithSearch({ onContactClick }: HeroSectionWit
   const [searchQuery, setSearchQuery] = useState("");
   const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [selectedChips, setSelectedChips] = useState<Set<string>>(new Set());
+  const [transactionType, setTransactionType] = useState<string>("");
+  const [propertyType, setPropertyType] = useState<string>("");
+  const [listingType, setListingType] = useState<string>("");
   const searchRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Filter chips
-  const filterChips = [
-    { id: "residential", label: "Residential" },
-    { id: "commercial", label: "Commercial" },
-    { id: "buy", label: "Buy" },
-    { id: "rent", label: "Rent" },
-    { id: "new", label: "New" },
-    { id: "resale", label: "Resale" },
+  // Minimal chips (3-5 max)
+  const quickFilters = [
     { id: "rera", label: "RERA" },
     { id: "ready", label: "Ready" },
-    { id: "under-construction", label: "Under Construction" },
+    { id: "new", label: "New" },
   ];
+
+  const [selectedQuickFilters, setSelectedQuickFilters] = useState<Set<string>>(new Set());
 
   // Fetch autocomplete suggestions
   useEffect(() => {
@@ -145,47 +150,42 @@ export default function HeroSectionWithSearch({ onContactClick }: HeroSectionWit
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const toggleChip = (chipId: string) => {
-    const newSelected = new Set(selectedChips);
-    if (newSelected.has(chipId)) {
-      newSelected.delete(chipId);
+  const toggleQuickFilter = (filterId: string) => {
+    const newSelected = new Set(selectedQuickFilters);
+    if (newSelected.has(filterId)) {
+      newSelected.delete(filterId);
     } else {
-      newSelected.add(chipId);
+      newSelected.add(filterId);
     }
-    setSelectedChips(newSelected);
+    setSelectedQuickFilters(newSelected);
   };
 
   const handleSearch = () => {
-    if (!searchQuery.trim() && selectedChips.size === 0) return;
-
     // Build search URL with query params
     const params = new URLSearchParams();
     if (searchQuery.trim()) {
       params.set("q", searchQuery.trim());
     }
-    if (selectedChips.size > 0) {
-      const chipsArray = Array.from(selectedChips);
-      if (chipsArray.includes("residential") || chipsArray.includes("commercial")) {
-        params.set("type", chipsArray.find(c => c === "residential" || c === "commercial") || "");
-      }
-      if (chipsArray.includes("buy") || chipsArray.includes("rent")) {
-        params.set("transaction", chipsArray.find(c => c === "buy" || c === "rent") || "");
-      }
-      if (chipsArray.includes("new") || chipsArray.includes("resale")) {
-        params.set("listing_type", chipsArray.find(c => c === "new" || c === "resale") || "");
-      }
-      if (chipsArray.includes("rera")) {
-        params.set("rera", "true");
-      }
-      if (chipsArray.includes("ready")) {
-        params.set("status", "ready");
-      }
-      if (chipsArray.includes("under-construction")) {
-        params.set("status", "under-construction");
-      }
+    if (transactionType) {
+      params.set("transaction", transactionType);
+    }
+    if (propertyType) {
+      params.set("type", propertyType);
+    }
+    if (listingType) {
+      params.set("listing_type", listingType);
+    }
+    if (selectedQuickFilters.has("rera")) {
+      params.set("rera", "true");
+    }
+    if (selectedQuickFilters.has("ready")) {
+      params.set("status", "ready");
+    }
+    if (selectedQuickFilters.has("new")) {
+      params.set("listing_type", "new");
     }
 
-    // Navigate to search page or properties page
+    // Navigate to search page
     const searchUrl = `/hyderabad/buy?${params.toString()}`;
     router.push(searchUrl);
   };
@@ -213,71 +213,178 @@ export default function HeroSectionWithSearch({ onContactClick }: HeroSectionWit
           Discover premium resale homes, luxury villas, and investment properties with trusted experts by your side.
         </p>
 
-        {/* World-Class Search Bar */}
-        <div ref={searchRef} className="w-full max-w-4xl mt-8 relative">
-          <div className="bg-white rounded-2xl shadow-2xl p-6 border border-gray-200 relative">
-            {/* Search Input */}
-            <div className="relative mb-4">
-              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-              <input
-                ref={inputRef}
-                type="text"
-                placeholder="Search projects, developers, micro markets..."
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  setShowSuggestions(true);
-                }}
-                onFocus={() => setShowSuggestions(true)}
-                onKeyDown={handleKeyDown}
-                className="w-full pl-12 pr-4 py-4 bg-gray-50 rounded-xl text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white text-lg border border-gray-200"
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => {
-                    setSearchQuery("");
-                    setShowSuggestions(false);
-                    inputRef.current?.focus();
+        {/* World-Class Search Bar - 90% width */}
+        <div ref={searchRef} className="w-[90%] max-w-5xl mt-8 relative">
+          <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden">
+            {/* Desktop: Single Row Layout */}
+            <div className="hidden md:flex items-stretch">
+              {/* Search Input - Full Width */}
+              <div className="flex-1 relative">
+                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 z-10" />
+                <input
+                  ref={inputRef}
+                  type="text"
+                  placeholder="Search projects, developers, micro markets..."
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setShowSuggestions(true);
                   }}
-                  className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              )}
-            </div>
-
-            {/* Filter Chips - 2 Rows */}
-            <div className="flex flex-wrap gap-2 mb-4">
-              {filterChips.map((chip) => {
-                const isSelected = selectedChips.has(chip.id);
-                return (
+                  onFocus={() => setShowSuggestions(true)}
+                  onKeyDown={handleKeyDown}
+                  className="w-full h-14 pl-12 pr-4 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 text-base border-r border-gray-200"
+                />
+                {searchQuery && (
                   <button
-                    key={chip.id}
-                    onClick={() => toggleChip(chip.id)}
-                    className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                      isSelected
-                        ? "bg-blue-600 text-white shadow-md"
-                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                    }`}
+                    onClick={() => {
+                      setSearchQuery("");
+                      setShowSuggestions(false);
+                      inputRef.current?.focus();
+                    }}
+                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 z-10"
                   >
-                    {chip.label}
+                    <X className="w-4 h-4" />
                   </button>
-                );
-              })}
+                )}
+              </div>
+
+              {/* Dropdowns - Left Aligned */}
+              <div className="flex items-stretch border-r border-gray-200">
+                <Select value={transactionType} onValueChange={setTransactionType}>
+                  <SelectTrigger className="w-32 h-14 rounded-none border-0 border-r border-gray-200 focus:ring-0">
+                    <SelectValue placeholder="Buy" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="buy">Buy</SelectItem>
+                    <SelectItem value="rent">Rent</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={propertyType} onValueChange={setPropertyType}>
+                  <SelectTrigger className="w-40 h-14 rounded-none border-0 border-r border-gray-200 focus:ring-0">
+                    <SelectValue placeholder="Residential" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="residential">Residential</SelectItem>
+                    <SelectItem value="commercial">Commercial</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={listingType} onValueChange={setListingType}>
+                  <SelectTrigger className="w-32 h-14 rounded-none border-0 focus:ring-0">
+                    <SelectValue placeholder="New" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="new">New</SelectItem>
+                    <SelectItem value="resale">Resale</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Search Button - Right Side */}
+              <Button
+                onClick={handleSearch}
+                className="h-14 px-8 bg-blue-700 hover:bg-blue-800 text-white rounded-none font-semibold text-base min-w-[140px]"
+              >
+                Search
+              </Button>
             </div>
 
-            {/* Search Button */}
-            <Button
-              onClick={handleSearch}
-              size="lg"
-              className="w-full bg-blue-700 hover:bg-blue-800 text-white rounded-xl py-6 text-lg font-semibold shadow-lg"
-            >
-              Search Properties
-            </Button>
+            {/* Mobile: Two-Row Stacked Layout */}
+            <div className="md:hidden p-4 space-y-3">
+              {/* Search Input */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 z-10" />
+                <input
+                  ref={inputRef}
+                  type="text"
+                  placeholder="Search projects, developers, micro markets..."
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setShowSuggestions(true);
+                  }}
+                  onFocus={() => setShowSuggestions(true)}
+                  onKeyDown={handleKeyDown}
+                  className="w-full h-12 pl-10 pr-4 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 text-base border border-gray-200 rounded-lg"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => {
+                      setSearchQuery("");
+                      setShowSuggestions(false);
+                      inputRef.current?.focus();
+                    }}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 z-10"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+
+              {/* Dropdowns Row */}
+              <div className="flex gap-2">
+                <Select value={transactionType} onValueChange={setTransactionType}>
+                  <SelectTrigger className="h-12 flex-1">
+                    <SelectValue placeholder="Buy" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="buy">Buy</SelectItem>
+                    <SelectItem value="rent">Rent</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={propertyType} onValueChange={setPropertyType}>
+                  <SelectTrigger className="h-12 flex-1">
+                    <SelectValue placeholder="Residential" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="residential">Residential</SelectItem>
+                    <SelectItem value="commercial">Commercial</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={listingType} onValueChange={setListingType}>
+                  <SelectTrigger className="h-12 flex-1">
+                    <SelectValue placeholder="New" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="new">New</SelectItem>
+                    <SelectItem value="resale">Resale</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Search Button */}
+              <Button
+                onClick={handleSearch}
+                className="w-full h-12 bg-blue-700 hover:bg-blue-800 text-white font-semibold text-base"
+              >
+                Search
+              </Button>
+            </div>
+
+            {/* Minimal Chips Below Input (3-5 max) */}
+            <div className="px-4 pb-4 pt-2 border-t border-gray-100">
+              <div className="flex flex-wrap gap-2 justify-center">
+                {quickFilters.map((filter) => {
+                  const isSelected = selectedQuickFilters.has(filter.id);
+                  return (
+                    <button
+                      key={filter.id}
+                      onClick={() => toggleQuickFilter(filter.id)}
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                        isSelected
+                          ? "bg-blue-100 text-blue-700 border border-blue-300"
+                          : "bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200"
+                      }`}
+                    >
+                      {filter.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
 
             {/* Autocomplete Suggestions */}
             {showSuggestions && suggestions.length > 0 && (
-              <div className="absolute z-50 left-0 right-0 mt-2 bg-white rounded-xl shadow-2xl border border-gray-200 max-h-96 overflow-y-auto">
+              <div className="absolute z-50 left-0 right-0 mt-1 bg-white rounded-lg shadow-2xl border border-gray-200 max-h-96 overflow-y-auto">
                 {suggestions.map((suggestion) => (
                   <button
                     key={`${suggestion.type}-${suggestion.id}`}
