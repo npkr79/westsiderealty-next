@@ -34,7 +34,7 @@ export default function HeroSearch() {
           <p className="text-xl md:text-2xl text-gray-300">
             1000+ RERA verified projects
           </p>
-        </motion.div>
+        </div>
 
         {/* Glass Search Bar */}
         <div className="max-w-4xl mx-auto animate-fade-in-up" style={{ animationDelay: "0.2s" }}>
