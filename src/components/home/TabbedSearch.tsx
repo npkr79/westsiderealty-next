@@ -54,9 +54,9 @@ export default function TabbedSearch() {
   const propertyTypeOptions: Record<TabType, PropertyTypeOption[]> = {
     residential: [
       { id: "apartment", label: "Apartment/Flat", value: "apartment" },
-      { id: "villa", label: "Villa", value: "villa" },
       { id: "standalone", label: "Standalone Apartment", value: "standalone" },
       { id: "independent-house", label: "Independent House", value: "independent-house" },
+      { id: "villa", label: "Villa", value: "villa" },
     ],
     commercial: [
       { id: "office", label: "Office Space", value: "office" },
@@ -65,10 +65,10 @@ export default function TabbedSearch() {
       { id: "coworking", label: "Co-working", value: "coworking" },
     ],
     land: [
-      { id: "open-plot", label: "Open Plots", value: "open-plot" },
+      { id: "residential-plot", label: "Residential Plot", value: "residential-plot" },
+      { id: "commercial-plot", label: "Commercial Plot", value: "commercial-plot" },
       { id: "gated-plot", label: "Gated Plots", value: "gated-plot" },
       { id: "agricultural", label: "Agricultural", value: "agricultural" },
-      { id: "residential-plot", label: "Residential Plot", value: "residential-plot" },
     ],
   };
 
@@ -350,58 +350,50 @@ export default function TabbedSearch() {
         </button>
       </div>
 
-      {/* Search Container */}
-      <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-4 md:p-6 relative">
-        {/* Dropdowns Row */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+      {/* Search Container - Lightweight */}
+      <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-4 md:p-5 relative">
+        {/* Dropdowns Row - No Labels */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
           {/* City Dropdown */}
-          <div>
-            <label className="block text-xs text-gray-600 mb-2">City</label>
-            <Select value={city} onValueChange={setCity}>
-              <SelectTrigger className="h-12 w-full">
-                <div className="flex items-center gap-2">
-                  <MapPin className="w-4 h-4 text-gray-500" />
-                  <SelectValue placeholder="Hyderabad" />
-                </div>
-              </SelectTrigger>
-              <SelectContent>
-                {locationOptions
-                  .filter(opt => opt.type === "city")
-                  .map((option) => (
-                    <SelectItem key={option.id} value={option.slug}>
-                      {option.name}
-                    </SelectItem>
-                  ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Type Dropdown */}
-          <div>
-            <label className="block text-xs text-gray-600 mb-2">
-              {activeTab === "residential" ? "Type" : activeTab === "commercial" ? "Property Type" : "Plot Type"}
-            </label>
-            <Select value={type} onValueChange={setType}>
-              <SelectTrigger className="h-12 w-full">
-                <div className="flex items-center gap-2">
-                  <Building2 className="w-4 h-4 text-gray-500" />
-                  <SelectValue placeholder={typeOptions[activeTab][0]?.label || "Select"} />
-                </div>
-              </SelectTrigger>
-              <SelectContent>
-                {typeOptions[activeTab].map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
+          <Select value={city} onValueChange={setCity}>
+            <SelectTrigger className="h-11 w-full">
+              <div className="flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-gray-500" />
+                <SelectValue placeholder="Hyderabad" />
+              </div>
+            </SelectTrigger>
+            <SelectContent>
+              {locationOptions
+                .filter(opt => opt.type === "city")
+                .map((option) => (
+                  <SelectItem key={option.id} value={option.slug}>
+                    {option.name}
                   </SelectItem>
                 ))}
-              </SelectContent>
-            </Select>
-          </div>
+            </SelectContent>
+          </Select>
+
+          {/* Type Dropdown */}
+          <Select value={type} onValueChange={setType}>
+            <SelectTrigger className="h-11 w-full">
+              <div className="flex items-center gap-2">
+                <Building2 className="w-4 h-4 text-gray-500" />
+                <SelectValue placeholder={typeOptions[activeTab][0]?.label || "Select"} />
+              </div>
+            </SelectTrigger>
+            <SelectContent>
+              {typeOptions[activeTab].map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Search Input */}
-        <div className="relative mb-4">
-          <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 z-10" />
+        <div className="relative mb-2">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 md:w-5 md:h-5 z-10" />
           <input
             ref={inputRef}
             type="text"
@@ -413,7 +405,7 @@ export default function TabbedSearch() {
             }}
             onFocus={() => setShowSuggestions(true)}
             onKeyDown={handleKeyDown}
-            className="w-full h-12 md:h-14 pl-12 pr-4 bg-gray-50 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white text-base border border-gray-200"
+            className="w-full h-11 md:h-12 pl-10 md:pl-12 pr-4 bg-gray-50 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white text-sm md:text-base border border-gray-200"
           />
           {searchQuery && (
             <button
@@ -422,65 +414,70 @@ export default function TabbedSearch() {
                 setShowSuggestions(false);
                 inputRef.current?.focus();
               }}
-              className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 z-10"
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 z-10"
             >
               <X className="w-4 h-4" />
             </button>
           )}
-          <p className="text-xs text-gray-500 mt-2 ml-1">
-            Ex: 3BHK in Kokapet by Godrej...
-          </p>
         </div>
+        
+        {/* Example Text - Left Aligned */}
+        <p className="text-xs text-gray-500 mb-3 text-left">
+          Ex: 3BHK in Kokapet by Godrej...
+        </p>
 
-        {/* Property Type Checkboxes */}
-        <div className="mb-4">
-          <label className="block text-xs text-gray-600 mb-3">Property Types</label>
-          <div className="flex flex-wrap gap-3">
+        {/* Property Type Checkboxes - Desktop: 4 cols, Mobile: 2x2 grid */}
+        <div className="mb-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
             {visibleTypes.map((option) => (
               <label
                 key={option.id}
-                className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors"
+                className="flex items-center gap-2 px-3 py-2 md:px-4 md:py-2.5 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors text-xs md:text-sm"
               >
                 <input
                   type="checkbox"
                   checked={selectedPropertyTypes.has(option.id)}
                   onChange={() => togglePropertyType(option.id)}
-                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  className="w-3.5 h-3.5 md:w-4 md:h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 flex-shrink-0"
                 />
-                <span className="text-sm text-gray-700">{option.label}</span>
+                <span className="text-gray-700 truncate">{option.label}</span>
               </label>
             ))}
-            {moreTypes.length > 0 && (
-              <>
-                {showMoreTypes && moreTypes.map((option) => (
-                  <label
-                    key={option.id}
-                    className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedPropertyTypes.has(option.id)}
-                      onChange={() => togglePropertyType(option.id)}
-                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                    />
-                    <span className="text-sm text-gray-700">{option.label}</span>
-                  </label>
-                ))}
-                <button
-                  onClick={() => setShowMoreTypes(!showMoreTypes)}
-                  className="px-4 py-2 text-sm text-blue-600 hover:text-blue-700 font-medium"
-                >
-                  {showMoreTypes ? "Less" : "More"}
-                </button>
-              </>
-            )}
           </div>
+          {moreTypes.length > 0 && (
+            <div className="mt-2">
+              {showMoreTypes && (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
+                  {moreTypes.map((option) => (
+                    <label
+                      key={option.id}
+                      className="flex items-center gap-2 px-3 py-2 md:px-4 md:py-2.5 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors text-xs md:text-sm"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedPropertyTypes.has(option.id)}
+                        onChange={() => togglePropertyType(option.id)}
+                        className="w-3.5 h-3.5 md:w-4 md:h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 flex-shrink-0"
+                      />
+                      <span className="text-gray-700 truncate">{option.label}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+              <button
+                onClick={() => setShowMoreTypes(!showMoreTypes)}
+                className="mt-2 px-3 py-1.5 text-xs md:text-sm text-blue-600 hover:text-blue-700 font-medium"
+              >
+                {showMoreTypes ? "Less" : "More"}
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Search Button */}
         <Button
           onClick={handleSearch}
-          className="w-full h-12 md:h-14 bg-blue-700 hover:bg-blue-800 text-white font-semibold text-base rounded-lg"
+          className="w-full h-11 md:h-12 bg-blue-700 hover:bg-blue-800 text-white font-semibold text-sm md:text-base rounded-lg"
         >
           Search Properties
         </Button>
