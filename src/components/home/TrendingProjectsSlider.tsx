@@ -53,45 +53,53 @@ export default function TrendingProjectsSlider() {
     if (emblaApi) emblaApi.scrollNext();
   }, [emblaApi]);
 
+  // Reinitialize carousel when projects change
+  useEffect(() => {
+    if (emblaApi && projects.length > 0) {
+      emblaApi.reInit();
+    }
+  }, [emblaApi, projects.length]);
+
   useEffect(() => {
     const fetchTrendingProjects = async () => {
       try {
         const supabase = createClient();
 
+        console.log("[TrendingProjectsSlider] Starting to fetch trending projects...");
+
         // Query projects WHERE is_trending = true
+        // Simplified query without relations first to avoid errors
         const { data: projectsData, error: projectsError } = await supabase
           .from("projects")
-          .select(`
-            id,
-            project_name,
-            price_range_text,
-            hero_image_url,
-            url_slug,
-            micro_markets(micro_market_name),
-            cities(city_name, url_slug)
-          `)
+          .select("id, project_name, price_range_text, hero_image_url, url_slug, micro_market_id, city_id")
           .eq("is_trending", true)
           .order("created_at", { ascending: false })
           .limit(10);
+
+        console.log("[TrendingProjectsSlider] Projects query result:", {
+          data: projectsData,
+          error: projectsError,
+          count: projectsData?.length || 0
+        });
 
         if (projectsError) {
           console.error("[TrendingProjectsSlider] Error fetching projects:", projectsError);
         }
 
         // Query landing_pages WHERE is_trending = true
+        // Try both uri and url_slug fields
         const { data: landingData, error: landingError } = await supabase
           .from("landing_pages")
-          .select(`
-            id,
-            title,
-            hero_image_url,
-            url_slug,
-            micro_market,
-            price_display
-          `)
+          .select("id, title, hero_image_url, uri, url_slug, micro_market, price_display")
           .eq("is_trending", true)
           .order("created_at", { ascending: false })
           .limit(10);
+
+        console.log("[TrendingProjectsSlider] Landing pages query result:", {
+          data: landingData,
+          error: landingError,
+          count: landingData?.length || 0
+        });
 
         if (landingError) {
           console.error("[TrendingProjectsSlider] Error fetching landing pages:", landingError);
@@ -99,46 +107,52 @@ export default function TrendingProjectsSlider() {
 
         // Transform projects data
         const transformedProjects: TrendingProject[] = (projectsData || []).map((p: any) => {
-          const microMarket = Array.isArray(p.micro_markets) 
-            ? p.micro_markets[0] 
-            : p.micro_markets;
-          const city = Array.isArray(p.cities) 
-            ? p.cities[0] 
-            : p.cities;
-
           return {
-            id: p.id,
-            name: p.project_name,
+            id: String(p.id),
+            name: p.project_name || "Untitled Project",
             price_range: p.price_range_text || null,
-            location: microMarket?.micro_market_name || null,
+            location: null, // Will be fetched separately if needed
             image_url: p.hero_image_url,
-            slug: p.url_slug,
+            slug: p.url_slug || String(p.id),
             source: "project" as const,
-            city_slug: city?.url_slug || "hyderabad",
-            city_name: city?.city_name || null,
+            city_slug: "hyderabad", // Default, can be enhanced later
+            city_name: null,
           };
         });
 
         // Transform landing pages data
         const transformedLanding: TrendingProject[] = (landingData || []).map((l: any) => ({
-          id: l.id,
-          name: l.title || l.project_name,
+          id: String(l.id),
+          name: l.title || "Untitled Project",
           price_range: l.price_display || null,
           location: l.micro_market || null,
           image_url: l.hero_image_url,
-          slug: l.url_slug || l.slug,
+          slug: l.uri || l.url_slug || String(l.id), // Use uri first, fallback to url_slug
           source: "landing" as const,
         }));
 
         // Combine and sort by created_at descending (already sorted in query)
         const combined = [...transformedProjects, ...transformedLanding].slice(0, 10);
 
-        console.log("[TrendingProjectsSlider] Loaded", combined.length, "trending projects");
-        setProjects(combined);
+        console.log("[TrendingProjectsSlider] Final combined result:", {
+          projectsCount: transformedProjects.length,
+          landingCount: transformedLanding.length,
+          totalCount: combined.length,
+          combined: combined.map(p => ({ id: p.id, name: p.name, slug: p.slug }))
+        });
+
+        if (combined.length > 0) {
+          setProjects(combined);
+          console.log("[TrendingProjectsSlider] ✅ Projects set successfully:", combined.length);
+        } else {
+          console.warn("[TrendingProjectsSlider] ⚠️ No projects to display!");
+        }
       } catch (error: any) {
-        console.error("[TrendingProjectsSlider] Error fetching trending projects:", error);
+        console.error("[TrendingProjectsSlider] CRITICAL ERROR fetching trending projects:", error);
+        console.error("[TrendingProjectsSlider] Error stack:", error?.stack);
       } finally {
         setLoading(false);
+        console.log("[TrendingProjectsSlider] Loading complete");
       }
     };
 
@@ -149,14 +163,35 @@ export default function TrendingProjectsSlider() {
     return (
       <section className="py-12 px-4 bg-white">
         <div className="max-w-7xl mx-auto">
+          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-8">
+            🔥 Trending Projects
+          </h2>
           <div className="text-center text-gray-400">Loading trending projects...</div>
         </div>
       </section>
     );
   }
 
+  // Always show section, even if empty (for debugging)
   if (projects.length === 0) {
-    return null;
+    return (
+      <section className="py-12 px-4 bg-white">
+        <div className="max-w-7xl mx-auto">
+          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-8">
+            🔥 Trending Projects
+          </h2>
+          <div className="text-center py-12">
+            <p className="text-gray-500 text-lg mb-2">No trending projects found.</p>
+            <p className="text-gray-400 text-sm">
+              Please mark projects with <code className="bg-gray-100 px-2 py-1 rounded">is_trending = true</code> in the database.
+            </p>
+            <p className="text-gray-400 text-xs mt-4">
+              Check browser console for detailed query results.
+            </p>
+          </div>
+        </div>
+      </section>
+    );
   }
 
   return (
