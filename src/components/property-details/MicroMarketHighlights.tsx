@@ -84,8 +84,7 @@ export default function MicroMarketHighlights({ marketData }: MicroMarketHighlig
                     Annual Appreciation
                   </p>
                   <p className="text-sm font-semibold text-foreground">
-                    {marketData.annual_appreciation_min}%
-                    {marketData.annual_appreciation_max && ` - ${marketData.annual_appreciation_max}%`}
+                    {marketData.annual_appreciation_min}%+
                   </p>
                 </div>
               )}
@@ -95,8 +94,7 @@ export default function MicroMarketHighlights({ marketData }: MicroMarketHighlig
                     Rental Yield
                   </p>
                   <p className="text-sm font-semibold text-foreground">
-                    {marketData.rental_yield_min}%
-                    {marketData.rental_yield_max && ` - ${marketData.rental_yield_max}%`}
+                    {marketData.rental_yield_min}%+
                   </p>
                 </div>
               )}
