@@ -145,10 +145,17 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     ? optimizeSupabaseImage(ogImageUrl, { width: 1200, height: 630, quality: 80, format: "webp" })
     : "https://www.westsiderealty.in/placeholder.svg";
 
+  // Handle seo_keywords - could be array or string
+  const keywordsString = Array.isArray(pageData.seo_keywords)
+    ? pageData.seo_keywords.join(", ")
+    : typeof pageData.seo_keywords === "string"
+    ? pageData.seo_keywords
+    : undefined;
+
   return {
     title: seoTitle,
     description: seoDescription,
-    keywords: pageData.seo_keywords?.join(", "),
+    keywords: keywordsString,
     alternates: {
       canonical: canonicalUrl,
     },
