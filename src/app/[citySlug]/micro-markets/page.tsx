@@ -22,14 +22,11 @@ interface MicroMarket {
   id: string;
   micro_market_name: string;
   url_slug: string;
-  hero_image_url: string | null;
   hero_hook: string | null;
   price_per_sqft_min: number | null;
   price_per_sqft_max: number | null;
   annual_appreciation_min: number | null;
-  annual_appreciation_max: number | null;
   rental_yield_min: number | null;
-  rental_yield_max: number | null;
   status: string;
 }
 
@@ -129,14 +126,11 @@ export default async function MicroMarketsHubPage({ params }: PageProps) {
       id,
       micro_market_name,
       url_slug,
-      hero_image_url,
       hero_hook,
       price_per_sqft_min,
       price_per_sqft_max,
       annual_appreciation_min,
-      annual_appreciation_max,
       rental_yield_min,
-      rental_yield_max,
       status
     `)
     .eq("city_id", cityData.id)
@@ -145,6 +139,18 @@ export default async function MicroMarketsHubPage({ params }: PageProps) {
 
   if (error) {
     console.error("Error fetching micro markets:", error);
+    console.error("Error details:", JSON.stringify(error, null, 2));
+    // Return empty array instead of crashing
+    return (
+      <>
+        <div className="container mx-auto px-4 py-12">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold mb-4">Error Loading Micro Markets</h1>
+            <p className="text-muted-foreground">Please try again later.</p>
+          </div>
+        </div>
+      </>
+    );
   }
 
   const microMarkets = (mmData || []) as MicroMarket[];
@@ -268,14 +274,10 @@ export default async function MicroMarketsHubPage({ params }: PageProps) {
       : market.price_per_sqft_min
       ? `₹${market.price_per_sqft_min.toLocaleString()}/sqft+`
       : "Price on request",
-    growth: market.annual_appreciation_min && market.annual_appreciation_max
-      ? `${market.annual_appreciation_min}% - ${market.annual_appreciation_max}%`
-      : market.annual_appreciation_min
+    growth: market.annual_appreciation_min
       ? `${market.annual_appreciation_min}%+`
       : "N/A",
-    rentalYield: market.rental_yield_min && market.rental_yield_max
-      ? `${market.rental_yield_min}% - ${market.rental_yield_max}%`
-      : market.rental_yield_min
+    rentalYield: market.rental_yield_min
       ? `${market.rental_yield_min}%+`
       : "N/A",
     url: `/${citySlug}/${market.url_slug}`,
@@ -524,14 +526,10 @@ function MarketGrid({
         const avgPrice = market.price_per_sqft_min && market.price_per_sqft_max
           ? Math.round((market.price_per_sqft_min + market.price_per_sqft_max) / 2)
           : market.price_per_sqft_min || market.price_per_sqft_max || 0;
-        const appreciation = market.annual_appreciation_min && market.annual_appreciation_max
-          ? `${market.annual_appreciation_min}-${market.annual_appreciation_max}%`
-          : market.annual_appreciation_min
+        const appreciation = market.annual_appreciation_min
           ? `${market.annual_appreciation_min}%+`
           : "N/A";
-        const rentalYield = market.rental_yield_min && market.rental_yield_max
-          ? `${market.rental_yield_min}-${market.rental_yield_max}%`
-          : market.rental_yield_min
+        const rentalYield = market.rental_yield_min
           ? `${market.rental_yield_min}%+`
           : "N/A";
 
@@ -539,19 +537,9 @@ function MarketGrid({
           <Card key={market.id} className="group overflow-hidden hover:shadow-xl transition-all duration-300 border-l-4 border-l-primary/50">
             {/* Image Section */}
             <div className="relative h-48 w-full overflow-hidden">
-              {market.hero_image_url ? (
-                <Image
-                  src={safeImageSrc(market.hero_image_url)}
-                  alt={`Real Estate trends in ${market.micro_market_name}`}
-                  fill
-                  className="object-cover group-hover:scale-110 transition-transform duration-500"
-                  priority={false}
-                />
-              ) : (
-                <div className="w-full h-full bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center">
-                  <MapPin className="h-16 w-16 text-primary/50" />
-                </div>
-              )}
+              <div className="w-full h-full bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center">
+                <MapPin className="h-16 w-16 text-primary/50" />
+              </div>
               {/* Overlay Badges */}
               <div className="absolute top-4 right-4 flex flex-col gap-2">
                 {badges.map((badge, idx) => (

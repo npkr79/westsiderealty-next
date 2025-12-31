@@ -13,9 +13,7 @@ export interface MicroMarketInfo {
   price_per_sqft_min?: number;
   price_per_sqft_max?: number;
   annual_appreciation_min?: number;
-  annual_appreciation_max?: number;
   rental_yield_min?: number;
-  rental_yield_max?: number;
 }
 
 const truncateWords = (text: string, maxWords: number): string => {
@@ -42,7 +40,7 @@ export const microMarketService = {
 
     const { data, error } = await supabase
       .from('micro_markets')
-      .select('micro_market_name, growth_story, connectivity_details, infrastructure_details, it_corridor_influence, h1_title, url_slug, price_per_sqft_min, price_per_sqft_max, annual_appreciation_min, annual_appreciation_max, rental_yield_min, rental_yield_max')
+      .select('micro_market_name, growth_story, connectivity_details, infrastructure_details, it_corridor_influence, h1_title, url_slug, price_per_sqft_min, price_per_sqft_max, annual_appreciation_min, rental_yield_min')
       .ilike('micro_market_name', microMarketName)
       .single();
 
@@ -69,9 +67,7 @@ export const microMarketService = {
       price_per_sqft_min: data.price_per_sqft_min,
       price_per_sqft_max: data.price_per_sqft_max,
       annual_appreciation_min: data.annual_appreciation_min,
-      annual_appreciation_max: data.annual_appreciation_max,
-      rental_yield_min: data.rental_yield_min,
-      rental_yield_max: data.rental_yield_max
+      rental_yield_min: data.rental_yield_min
     };
   },
 
