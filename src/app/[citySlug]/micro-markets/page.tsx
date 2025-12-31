@@ -240,7 +240,6 @@ export default async function MicroMarketsHubPage({ params }: PageProps) {
         name: market.micro_market_name,
         description: stripHtml(market.hero_hook) || `Real estate investment opportunities in ${market.micro_market_name}`,
         url: `https://www.westsiderealty.in/${citySlug}/${market.url_slug}`,
-        ...(market.hero_image_url && { image: market.hero_image_url }),
         ...(market.price_per_sqft_min && market.price_per_sqft_max && {
           offers: {
             "@type": "AggregateOffer",
