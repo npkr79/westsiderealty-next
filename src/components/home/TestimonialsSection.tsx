@@ -62,20 +62,20 @@ export default function TestimonialsSection({ testimonials: propTestimonials }: 
   // Show loading state
   if (loading && (!displayTestimonials || displayTestimonials.length === 0)) {
     return (
-      <section className="py-20 px-4 relative overflow-hidden bg-gradient-to-br from-primary/5 via-background to-secondary/10">
+      <section className="py-12 px-4 relative overflow-hidden bg-gradient-to-br from-primary/5 via-background to-secondary/10">
         <div className="container mx-auto max-w-7xl relative z-10">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4 text-foreground">
+          <div className="text-center mb-8">
+            <h2 className="text-2xl md:text-3xl font-bold mb-2 text-foreground">
               What Our Clients Say
             </h2>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
             {[...Array(3)].map((_, i) => (
               <Card key={i} className="animate-pulse">
-                <CardContent className="p-6 lg:p-8">
-                  <div className="h-4 bg-gray-200 rounded mb-4"></div>
-                  <div className="h-4 bg-gray-200 rounded mb-4"></div>
-                  <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                <CardContent className="p-4 lg:p-5">
+                  <div className="h-3 bg-gray-200 rounded mb-3"></div>
+                  <div className="h-3 bg-gray-200 rounded mb-3"></div>
+                  <div className="h-3 bg-gray-200 rounded w-3/4"></div>
                 </CardContent>
               </Card>
             ))}
@@ -102,7 +102,7 @@ export default function TestimonialsSection({ testimonials: propTestimonials }: 
   };
 
   return (
-    <section className="py-20 px-4 relative overflow-hidden bg-gradient-to-br from-primary/5 via-background to-secondary/10">
+    <section className="py-12 px-4 relative overflow-hidden bg-gradient-to-br from-primary/5 via-background to-secondary/10">
       {/* Decorative background pattern */}
       <div className="absolute inset-0 opacity-5">
         <div className="absolute top-20 left-10 w-72 h-72 bg-primary rounded-full blur-3xl"></div>
@@ -111,17 +111,17 @@ export default function TestimonialsSection({ testimonials: propTestimonials }: 
 
       <div className="container mx-auto max-w-7xl relative z-10">
         {/* Section Header */}
-        <div className="text-center mb-12 animate-fade-in">
-          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4 text-foreground">
+        <div className="text-center mb-8 animate-fade-in">
+          <h2 className="text-2xl md:text-3xl font-bold mb-2 text-foreground">
             What Our Clients Say
           </h2>
-          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
+          <p className="text-sm md:text-base text-muted-foreground max-w-2xl mx-auto">
             Real stories from satisfied clients across Hyderabad, Goa, and Dubai
           </p>
         </div>
 
         {/* Testimonials Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
           {displayTestimonials.slice(0, 6).map((t: any, index: number) => {
             const testimonialText = t.message || t.text || "";
             const rating = t.rating || 5;
@@ -138,18 +138,18 @@ export default function TestimonialsSection({ testimonials: propTestimonials }: 
                 <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-primary to-primary/50"></div>
 
                 {/* Decorative quote icon */}
-                <div className="absolute top-4 right-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                  <Quote className="h-16 w-16 text-primary" />
+                <div className="absolute top-3 right-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                  <Quote className="h-12 w-12 text-primary" />
                 </div>
 
-                <CardContent className="p-6 lg:p-8 relative z-10">
+                <CardContent className="p-4 lg:p-5 relative z-10">
                   {/* Star Rating */}
                   {rating && (
-                    <div className="flex gap-1 mb-4">
+                    <div className="flex gap-1 mb-3">
                       {[...Array(5)].map((_, i) => (
                         <Star
                           key={i}
-                          className={`h-4 w-4 ${
+                          className={`h-3.5 w-3.5 ${
                             i < rating
                               ? "fill-amber-400 text-amber-400"
                               : "fill-muted text-muted-foreground/30"
@@ -160,9 +160,9 @@ export default function TestimonialsSection({ testimonials: propTestimonials }: 
                   )}
 
                   {/* Testimonial Text */}
-                  <blockquote className="mb-6">
-                    <p className="text-base lg:text-lg text-foreground leading-relaxed font-serif italic relative pl-6">
-                      <span className="absolute left-0 top-0 text-4xl text-primary/30 font-serif leading-none">
+                  <blockquote className="mb-4">
+                    <p className="text-sm md:text-base text-foreground leading-relaxed font-serif italic relative pl-4 line-clamp-4">
+                      <span className="absolute left-0 top-0 text-2xl text-primary/30 font-serif leading-none">
                         "
                       </span>
                       {testimonialText}
@@ -170,11 +170,11 @@ export default function TestimonialsSection({ testimonials: propTestimonials }: 
                   </blockquote>
 
                   {/* Author Info */}
-                  <div className="flex items-center gap-4 pt-4 border-t border-border/50">
+                  <div className="flex items-center gap-3 pt-3 border-t border-border/50">
                     {/* Avatar */}
                     <div className="flex-shrink-0">
-                      <div className="h-12 w-12 rounded-full bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center border-2 border-primary/30">
-                        <span className="text-sm font-bold text-primary">
+                      <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center border-2 border-primary/30">
+                        <span className="text-xs font-bold text-primary">
                           {getInitials(name)}
                         </span>
                       </div>
@@ -182,13 +182,13 @@ export default function TestimonialsSection({ testimonials: propTestimonials }: 
 
                     {/* Name and Location */}
                     <div className="flex-1 min-w-0">
-                      <p className="font-bold text-sm lg:text-base text-foreground truncate">
+                      <p className="font-bold text-xs md:text-sm text-foreground truncate">
                         {name}
                       </p>
                       {location && (
-                        <div className="flex items-center gap-1 mt-1">
+                        <div className="flex items-center gap-1 mt-0.5">
                           <MapPin className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-                          <p className="text-xs lg:text-sm text-muted-foreground truncate">
+                          <p className="text-xs text-muted-foreground truncate">
                             {location}
                           </p>
                         </div>
