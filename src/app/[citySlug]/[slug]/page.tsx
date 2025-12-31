@@ -35,9 +35,10 @@ export default async function OldPropertyRedirectPage({ params }: PageProps) {
   }
 
   if (microMarket) {
-    const citySlugFromMM = Array.isArray(microMarket.city) 
-      ? microMarket.city[0]?.url_slug 
-      : microMarket.city?.url_slug;
+    const cityData = (microMarket as any).city;
+    const citySlugFromMM = Array.isArray(cityData) 
+      ? cityData[0]?.url_slug 
+      : cityData?.url_slug;
     
     // If micro-market exists and city matches, this should be handled by micro-market route
     // Return 404 so Next.js can try the micro-market route (though it may have already matched this one)
