@@ -226,9 +226,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       });
     });
 
-    // Property Listings - Hyderabad
+    // Property Listings - Hyderabad (use canonical slug field)
     hyderabadPropertiesResult.data?.forEach((p) => {
-      const slug = p.seo_slug || p.slug;
+      // Prioritize slug (canonical) over seo_slug (old format)
+      const slug = p.slug || p.seo_slug;
       if (slug) {
         urls.push({
           url: `${baseUrl}/hyderabad/buy/${slug}`,
@@ -239,9 +240,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       }
     });
 
-    // Property Listings - Goa
+    // Property Listings - Goa (use canonical slug field, fallback to seo_slug)
     goaPropertiesResult.data?.forEach((p) => {
-      const slug = p.seo_slug || p.slug;
+      // Goa may only have seo_slug, but prefer slug if available
+      const slug = p.slug || p.seo_slug;
       if (slug) {
         urls.push({
           url: `${baseUrl}/goa/buy/${slug}`,
@@ -252,9 +254,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       }
     });
 
-    // Property Listings - Dubai
+    // Property Listings - Dubai (use canonical slug field)
     dubaiPropertiesResult.data?.forEach((p) => {
-      const slug = p.seo_slug || p.slug;
+      // Prioritize slug (canonical) over seo_slug (old format)
+      const slug = p.slug || p.seo_slug;
       if (slug) {
         urls.push({
           url: `${baseUrl}/dubai/buy/${slug}`,
