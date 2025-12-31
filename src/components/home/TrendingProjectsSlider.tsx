@@ -226,9 +226,19 @@ export default function TrendingProjectsSlider() {
           <div className="overflow-hidden" ref={emblaRef}>
             <div className="flex gap-4">
               {projects.map((project) => {
-                const projectUrl = project.source === "project"
-                  ? `/${project.city_slug}/projects/${project.slug}`
-                  : `/landing/${project.slug}`;
+                // Special URL mapping for specific projects that should link to landing pages
+                const projectName = project.name.toLowerCase();
+                let projectUrl: string;
+                
+                if (projectName.includes("godrej regal pavilion")) {
+                  projectUrl = "/landing/godrej-regal-pavilion-rajendra-nagar-hyderabad";
+                } else if (projectName.includes("aerocidade")) {
+                  projectUrl = "/landing/aerocidade-studio-apartments-dabolim";
+                } else if (project.source === "project") {
+                  projectUrl = `/${project.city_slug}/projects/${project.slug}`;
+                } else {
+                  projectUrl = `/landing/${project.slug}`;
+                }
 
                 return (
                   <div
