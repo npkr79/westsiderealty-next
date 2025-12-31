@@ -121,15 +121,28 @@ export default function TrendingProjectsSlider() {
         });
 
         // Transform landing pages data
-        const transformedLanding: TrendingProject[] = (landingData || []).map((l: any) => ({
-          id: String(l.id),
-          name: l.title || "Untitled Project",
-          price_range: l.price_display || null,
-          location: l.micro_market || null,
-          image_url: l.hero_image_url,
-          slug: l.uri || l.url_slug || String(l.id), // Use uri first, fallback to url_slug
-          source: "landing" as const,
-        }));
+        const transformedLanding: TrendingProject[] = (landingData || []).map((l: any) => {
+          // Special handling for specific landing pages with custom URLs
+          let landingSlug = l.uri || l.url_slug || String(l.id);
+          
+          // Map specific project names to their correct landing page URLs
+          const projectName = (l.title || "").toLowerCase();
+          if (projectName.includes("godrej regal pavilion")) {
+            landingSlug = "godrej-regal-pavilion-rajendra-nagar-hyderabad";
+          } else if (projectName.includes("aerocidade")) {
+            landingSlug = "aerocidade-studio-apartments-dabolim";
+          }
+          
+          return {
+            id: String(l.id),
+            name: l.title || "Untitled Project",
+            price_range: l.price_display || null,
+            location: l.micro_market || null,
+            image_url: l.hero_image_url,
+            slug: landingSlug,
+            source: "landing" as const,
+          };
+        });
 
         // Combine and sort by created_at descending (already sorted in query)
         const combined = [...transformedProjects, ...transformedLanding].slice(0, 10);
