@@ -88,15 +88,32 @@ export default async function LandownerInvestorSharePage() {
   
   console.log(`[LandownerSharePage] Fetched ${projects.length} projects with landowner/investor share`);
 
-  // Fetch page content
-  const { data: contentData, error: contentError } = await supabase
-    .from("landowner_page_content")
-    .select("*")
-    .eq("city_slug", "hyderabad")
-    .maybeSingle();
-
-  if (contentError) {
-    console.error("Error fetching page content:", contentError);
+  // Fetch page content - handle missing table gracefully
+  let contentData = null;
+  try {
+    const result = await supabase
+      .from("landowner_page_content")
+      .select("*")
+      .eq("city_slug", "hyderabad")
+      .maybeSingle();
+    
+    if (result.error) {
+      // Handle missing table error (42P01) gracefully - don't crash build
+      if (result.error.code === '42P01' || result.error.message?.includes('does not exist')) {
+        console.warn("[LandownerSharePage] Table 'landowner_page_content' does not exist - using default content");
+      } else {
+        console.error("Error fetching page content:", result.error);
+      }
+    } else {
+      contentData = result.data;
+    }
+  } catch (err: any) {
+    // Catch any unexpected errors (including missing table) and continue with defaults
+    if (err?.code === '42P01' || err?.message?.includes('does not exist')) {
+      console.warn("[LandownerSharePage] Table 'landowner_page_content' does not exist - using default content");
+    } else {
+      console.error("[LandownerSharePage] Unexpected error fetching content:", err);
+    }
   }
 
   const content = (contentData || {}) as PageContent;

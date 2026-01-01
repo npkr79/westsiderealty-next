@@ -147,9 +147,33 @@ class MicroMarketPagesService {
     }
     
     // Don't filter by status - let's see what we get and log it
-    const { data, error } = await query.maybeSingle();
+    const { data, error } = await query.limit(1).maybeSingle();
 
     if (error) {
+      // Handle PGRST116 (0 rows) gracefully - this is expected if micro market doesn't exist
+      if (error.code === 'PGRST116' && error.details?.includes('0 rows')) {
+        console.warn(`[MicroMarketPagesService] No micro-market found with url_slug: "${slug}"${citySlug ? ` for city: ${citySlug}` : ''}`);
+        return null;
+      }
+      // Handle duplicate rows (shouldn't happen with limit(1), but be safe)
+      if (error.code === 'PGRST116' && !error.details?.includes('0 rows')) {
+        console.warn(`[MicroMarketPagesService] Multiple rows found for slug "${slug}" - using first match`);
+        // Retry with explicit limit to get first row
+        const retryResult = await query.limit(1).maybeSingle();
+        if (retryResult.error && retryResult.error.code === 'PGRST116') {
+          console.warn(`[MicroMarketPagesService] Still error after retry for "${slug}"`);
+          return null;
+        }
+        if (retryResult.data) {
+          const retryData = retryResult.data;
+          const retryStatus = (retryData as any).status;
+          if (retryStatus !== "published") {
+            console.warn(`[MicroMarketPagesService] Micro-market "${slug}" found but status is "${retryStatus}" (expected "published"). Still returning data.`);
+          }
+          return retryData as unknown as MicroMarketPage;
+        }
+        return null;
+      }
       console.error(`[MicroMarketPagesService] Error fetching micro-market page for slug "${slug}":`, error);
       return null;
     }

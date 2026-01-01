@@ -38,17 +38,41 @@ export const microMarketService = {
 
     console.log('🔍 [MicroMarketService] Fetching data for:', microMarketName);
 
-    const { data, error } = await supabase
+    let result = await supabase
       .from('micro_markets')
       .select('micro_market_name, growth_story, connectivity_details, infrastructure_details, it_corridor_influence, h1_title, url_slug, price_per_sqft_min, price_per_sqft_max, annual_appreciation_min, rental_yield_min')
       .ilike('micro_market_name', microMarketName)
-      .single();
+      .limit(1)
+      .maybeSingle();
 
-    if (error) {
-      console.error('❌ [MicroMarketService] Error:', error);
-      return null;
+    // Handle PGRST116 errors gracefully
+    if (result.error) {
+      // PGRST116 with "0 rows" means no match found - this is expected
+      if (result.error.code === 'PGRST116' && result.error.details?.includes('0 rows')) {
+        console.warn('⚠️ [MicroMarketService] No data found for:', microMarketName);
+        return null;
+      }
+      // PGRST116 without "0 rows" means multiple rows - shouldn't happen with limit(1) but handle it
+      if (result.error.code === 'PGRST116' && !result.error.details?.includes('0 rows')) {
+        console.warn('⚠️ [MicroMarketService] Multiple rows found for:', microMarketName, '- using first match');
+        // Retry to get first row explicitly
+        result = await supabase
+          .from('micro_markets')
+          .select('micro_market_name, growth_story, connectivity_details, infrastructure_details, it_corridor_influence, h1_title, url_slug, price_per_sqft_min, price_per_sqft_max, annual_appreciation_min, rental_yield_min')
+          .ilike('micro_market_name', microMarketName)
+          .limit(1)
+          .maybeSingle();
+        if (result.error && result.error.code === 'PGRST116') {
+          console.warn('⚠️ [MicroMarketService] Still error after retry:', result.error);
+          return null;
+        }
+      } else {
+        console.error('❌ [MicroMarketService] Error:', result.error);
+        return null;
+      }
     }
 
+    const data = result.data;
     if (!data) {
       console.warn('⚠️ [MicroMarketService] No data found for:', microMarketName);
       return null;
@@ -81,10 +105,21 @@ export const microMarketService = {
       .from('cities')
       .select('id')
       .eq('url_slug', citySlug)
-      .single();
+      .limit(1)
+      .maybeSingle();
 
-    if (cityError || !cityData) {
-      console.error('❌ [MicroMarketService] City not found:', citySlug);
+    if (cityError) {
+      // Handle PGRST116 (0 rows) gracefully
+      if (cityError.code === 'PGRST116' && cityError.details?.includes('0 rows')) {
+        console.warn('⚠️ [MicroMarketService] City not found:', citySlug);
+        return [];
+      }
+      console.error('❌ [MicroMarketService] Error fetching city:', cityError);
+      return [];
+    }
+
+    if (!cityData) {
+      console.warn('⚠️ [MicroMarketService] City not found:', citySlug);
       return [];
     }
 

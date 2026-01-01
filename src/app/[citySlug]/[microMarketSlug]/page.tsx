@@ -94,8 +94,16 @@ const getFaqSchemaJsonString = (pageData: MicroMarketPage | null): string => {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { citySlug: citySlugParam, microMarketSlug: microMarketSlugParam } = await params;
-  const citySlug = Array.isArray(citySlugParam) ? citySlugParam[0] : citySlugParam;
-  const microMarketSlug = Array.isArray(microMarketSlugParam) ? microMarketSlugParam[0] : microMarketSlugParam;
+  const citySlug = Array.isArray(citySlugParam) ? citySlugParam[0] : citySlugParam || "";
+  const microMarketSlug = Array.isArray(microMarketSlugParam) ? microMarketSlugParam[0] : microMarketSlugParam || "";
+  
+  // Early return if slugs are invalid
+  if (!citySlug || !microMarketSlug || typeof citySlug !== "string" || typeof microMarketSlug !== "string") {
+    return {
+      title: "Micro Market Not Found",
+    };
+  }
+  
   const pageData = await microMarketPagesService.getMicroMarketPageBySlug(microMarketSlug, citySlug);
 
   if (!pageData) {
@@ -240,6 +248,11 @@ export async function generateStaticParams() {
         }
       })
       .filter((params: any) => params && params.citySlug && params.microMarketSlug);
+    
+    // Log during build for debugging
+    if (process.env.NODE_ENV === 'production' || process.env.VERCEL) {
+      console.log(`[generateStaticParams] Generated ${params.length} micro market static params`);
+    }
     
     return params || [];
   } catch (error) {
