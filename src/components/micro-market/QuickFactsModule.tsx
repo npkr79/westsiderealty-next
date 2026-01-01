@@ -56,7 +56,7 @@ export default function QuickFactsModule({
               <p className="font-semibold">{nearestMmtsStatus}</p>
             </div>
           )}
-          {keyAdjacentAreas && keyAdjacentAreas.length > 0 && (
+          {Array.isArray(keyAdjacentAreas) && keyAdjacentAreas.length > 0 && (
             <div className="md:col-span-2">
               <p className="text-xs text-muted-foreground">Key Adjacent Areas</p>
               <p className="font-semibold">{keyAdjacentAreas.join(", ")}</p>

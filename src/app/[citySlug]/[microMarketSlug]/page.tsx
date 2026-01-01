@@ -783,7 +783,10 @@ export default async function MicroMarketPage({ params }: PageProps) {
           )}
 
           {/* Leading Developers Section */}
-          {pageData.developer_pillar_urls && Object.keys(pageData.developer_pillar_urls).length > 0 && (
+          {pageData.developer_pillar_urls && 
+           typeof pageData.developer_pillar_urls === 'object' && 
+           !Array.isArray(pageData.developer_pillar_urls) &&
+           Object.keys(pageData.developer_pillar_urls).length > 0 && (
             <section className="mb-12">
               <h2 className="micro-market-h2">
                 Leading Developers and Their Landmark Projects in {pageData.micro_market_name}
@@ -796,8 +799,8 @@ export default async function MicroMarketPage({ params }: PageProps) {
 
               <div className="space-y-8">
                 {Object.entries(pageData.developer_pillar_urls)
-                  .sort(([, a], [, b]) => a.displayOrder - b.displayOrder)
-                  .map(([key, developer]) => (
+                  .sort(([, a], [, b]) => (a as any).displayOrder - (b as any).displayOrder)
+                  .map(([key, developer]: [string, any]) => (
                     <Card key={key} className="overflow-hidden">
                       <CardHeader>
                         <CardTitle>
@@ -819,7 +822,7 @@ export default async function MicroMarketPage({ params }: PageProps) {
                         <p className="text-muted-foreground mb-6" dangerouslySetInnerHTML={{ __html: developer.bio }} />
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                          {developer.projects.map((project, idx) => (
+                          {Array.isArray(developer.projects) && developer.projects.map((project: any, idx: number) => (
                             <div key={idx} className="block">
                               <Button variant="outline" className="w-full h-auto py-4 px-4 flex flex-col items-center gap-2 cursor-default opacity-90" disabled>
                                 <span className="font-semibold text-base text-center">{project.name}</span>
@@ -870,11 +873,13 @@ export default async function MicroMarketPage({ params }: PageProps) {
           )}
 
           {/* Social Infrastructure */}
-          {(pageData.top_schools?.length || pageData.top_hospitals?.length || pageData.entertainment_centers?.length) && (
+          {((Array.isArray(pageData.top_schools) && pageData.top_schools.length > 0) ||
+            (Array.isArray(pageData.top_hospitals) && pageData.top_hospitals.length > 0) ||
+            (Array.isArray(pageData.entertainment_centers) && pageData.entertainment_centers.length > 0)) && (
             <section className="mb-12">
               <h2 className="micro-market-h2">Essential Infrastructure</h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {pageData.top_schools && pageData.top_schools.length > 0 && (
+                {Array.isArray(pageData.top_schools) && pageData.top_schools.length > 0 && (
                   <Card>
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
@@ -894,7 +899,7 @@ export default async function MicroMarketPage({ params }: PageProps) {
                   </Card>
                 )}
 
-                {pageData.top_hospitals && pageData.top_hospitals.length > 0 && (
+                {Array.isArray(pageData.top_hospitals) && pageData.top_hospitals.length > 0 && (
                   <Card>
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
@@ -914,7 +919,7 @@ export default async function MicroMarketPage({ params }: PageProps) {
                   </Card>
                 )}
 
-                {pageData.entertainment_centers && pageData.entertainment_centers.length > 0 && (
+                {Array.isArray(pageData.entertainment_centers) && pageData.entertainment_centers.length > 0 && (
                   <Card>
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
