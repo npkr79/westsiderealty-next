@@ -73,7 +73,7 @@ const getFaqSchemaJsonString = (pageData: MicroMarketPage | null): string => {
   }
 
   // SCENARIO 2: FALLBACK (GENERATED DYNAMICALLY from clean faqs array)
-  if (!schemaData && pageData.faqs && pageData.faqs.length > 0) {
+  if (!schemaData && Array.isArray(pageData.faqs) && pageData.faqs.length > 0) {
     schemaData = {
       "@context": "https://schema.org",
       "@type": "FAQPage",
@@ -382,7 +382,7 @@ export default async function MicroMarketPage({ params }: PageProps) {
     primaryEntity = {
       "@type": "Place",
       name: `${pageData.micro_market_name} Master Plan & Zoning`,
-      description: `Master Plan and Zoning information for ${pageData.micro_market_name}, ${cityName}. ${masterPlanData.zones?.map((zone: any) => `${zone.zone}: ${zone.purpose} - ${zone.description}`).join(". ") || ""}${masterPlanData.fsi_policy ? ` FSI Policy: ${masterPlanData.fsi_policy}.` : ""}${masterPlanData.total_area ? ` Total Area: ${masterPlanData.total_area}.` : ""}`,
+      description: `Master Plan and Zoning information for ${pageData.micro_market_name}, ${cityName}. ${(Array.isArray(masterPlanData.zones) ? masterPlanData.zones.map((zone: any) => `${zone.zone}: ${zone.purpose} - ${zone.description}`).join(". ") : "") || ""}${masterPlanData.fsi_policy ? ` FSI Policy: ${masterPlanData.fsi_policy}.` : ""}${masterPlanData.total_area ? ` Total Area: ${masterPlanData.total_area}.` : ""}`,
       address: {
         "@type": "PostalAddress",
         addressLocality: pageData.micro_market_name,
@@ -390,7 +390,7 @@ export default async function MicroMarketPage({ params }: PageProps) {
         addressCountry: "IN",
         ...(pageData.locality_pincode && { postalCode: pageData.locality_pincode }),
       },
-      ...(masterPlanData.zones && masterPlanData.zones.length > 0 && {
+      ...(Array.isArray(masterPlanData.zones) && masterPlanData.zones.length > 0 && {
         containsPlace: masterPlanData.zones.map((zone: any) => ({
           "@type": "Place",
           name: zone.zone,
@@ -469,8 +469,8 @@ export default async function MicroMarketPage({ params }: PageProps) {
   // For Neopolis, use the same FAQ items for both visible section and JSON-LD
   // This ensures perfect synchronization between visible FAQs and schema markup
   const finalFAQs = isNeopolis 
-    ? faqItems 
-    : pageData.faqs || [];
+    ? (Array.isArray(faqItems) ? faqItems : [])
+    : (Array.isArray(pageData.faqs) ? pageData.faqs : []);
 
   return (
     <>
@@ -664,7 +664,7 @@ export default async function MicroMarketPage({ params }: PageProps) {
           )}
 
           {/* Infrastructure Roadmap Timeline */}
-          {pageData.infrastructure_json && pageData.infrastructure_json.length > 0 && (
+          {Array.isArray(pageData.infrastructure_json) && pageData.infrastructure_json.length > 0 && (
             <InfrastructureTimeline data={pageData.infrastructure_json} />
           )}
 
@@ -962,7 +962,7 @@ export default async function MicroMarketPage({ params }: PageProps) {
           </section>
 
           {/* FAQ Section */}
-          {finalFAQs && finalFAQs.length > 0 && (
+          {Array.isArray(finalFAQs) && finalFAQs.length > 0 && (
             <section className="mb-12" id="faqs">
               <h2 className="micro-market-h2">
                 {isNeopolis ? "Neopolis FAQs" : "Frequently Asked Questions"}
