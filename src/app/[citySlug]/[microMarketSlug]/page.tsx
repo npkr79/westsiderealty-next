@@ -264,11 +264,28 @@ export default async function MicroMarketPage({ params }: PageProps) {
   // Fetch projects for this micro-market
   const mmProjects = await projectService.getProjectsByMicroMarket(citySlug, microMarketSlug);
 
+  // Normalize projects - handle cases where micro_market might be null or array
+  const normalizedProjects = (mmProjects || []).map((project: any) => {
+    // Normalize micro_market relation (could be object, array, or null)
+    if (project.micro_market) {
+      project.micro_market = Array.isArray(project.micro_market) 
+        ? project.micro_market[0] 
+        : project.micro_market;
+    }
+    // Normalize developer relation (could be object, array, or null)
+    if (project.developer) {
+      project.developer = Array.isArray(project.developer) 
+        ? project.developer[0] 
+        : project.developer;
+    }
+    return project;
+  });
+
   // For Neopolis, show all projects; for other micro-markets, limit to 9 random projects
   const microMarketProjects =
     microMarketSlug.toLowerCase() === "neopolis"
-      ? mmProjects
-      : [...mmProjects].sort(() => Math.random() - 0.5).slice(0, 9);
+      ? normalizedProjects
+      : [...normalizedProjects].sort(() => Math.random() - 0.5).slice(0, 9);
 
   // Neopolis-specific metadata overrides
   const isNeopolis = microMarketSlug.toLowerCase() === "neopolis";
@@ -724,31 +741,37 @@ export default async function MicroMarketPage({ params }: PageProps) {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {microMarketProjects.map((project) => (
-                          <TableRow key={project.id}>
+                        {microMarketProjects
+                          .filter((project: any) => project != null && project !== undefined)
+                          .map((project: any) => (
+                          <TableRow key={project?.id || Math.random()}>
                             <TableCell>
-                              <Link
-                                href={`/${citySlug}/projects/${project.url_slug}`}
-                                className="font-medium text-primary underline decoration-primary/50 underline-offset-2 hover:decoration-primary hover:text-primary transition-colors"
-                              >
-                                {project.project_name}
-                              </Link>
+                              {project?.url_slug ? (
+                                <Link
+                                  href={`/${citySlug}/projects/${project.url_slug}`}
+                                  className="font-medium text-primary underline decoration-primary/50 underline-offset-2 hover:decoration-primary hover:text-primary transition-colors"
+                                >
+                                  {project?.project_name || "Project"}
+                                </Link>
+                              ) : (
+                                <span className="font-medium">{project?.project_name || "Project"}</span>
+                              )}
                             </TableCell>
-                            <TableCell>{project.unit_size_range || "—"}</TableCell>
+                            <TableCell>{project?.unit_size_range || "—"}</TableCell>
                             <TableCell>
-                              {project.developer?.url_slug ? (
+                              {project?.developer?.url_slug ? (
                                 <Link
                                   href={`/developers/${project.developer.url_slug}`}
                                   className="text-primary/80 underline decoration-primary/30 underline-offset-2 hover:text-primary hover:decoration-primary transition-colors"
                                 >
-                                  {project.developer.developer_name}
+                                  {project.developer?.developer_name || "—"}
                                 </Link>
                               ) : (
-                                <span className="text-muted-foreground">{project.developer?.developer_name || "—"}</span>
+                                <span className="text-muted-foreground">{project?.developer?.developer_name || "—"}</span>
                               )}
                             </TableCell>
                             <TableCell className="font-semibold text-foreground">
-                              {project.price_range_text || "Enquire for Price"}
+                              {project?.price_range_text || "Enquire for Price"}
                             </TableCell>
                           </TableRow>
                         ))}
@@ -822,17 +845,19 @@ export default async function MicroMarketPage({ params }: PageProps) {
                         <p className="text-muted-foreground mb-6" dangerouslySetInnerHTML={{ __html: developer.bio }} />
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                          {Array.isArray(developer.projects) && developer.projects.map((project: any, idx: number) => (
+                          {Array.isArray(developer.projects) && developer.projects
+                            .filter((project: any) => project != null && project !== undefined)
+                            .map((project: any, idx: number) => (
                             <div key={idx} className="block">
                               <Button variant="outline" className="w-full h-auto py-4 px-4 flex flex-col items-center gap-2 cursor-default opacity-90" disabled>
-                                <span className="font-semibold text-base text-center">{project.name}</span>
-                                <span className="text-xs text-muted-foreground">{project.label}</span>
-                                {project.status === "under-construction" && (
+                                <span className="font-semibold text-base text-center">{project?.name || "Project"}</span>
+                                <span className="text-xs text-muted-foreground">{project?.label || ""}</span>
+                                {project?.status === "under-construction" && (
                                   <Badge variant="secondary" className="text-xs">
                                     U/C
                                   </Badge>
                                 )}
-                                {project.status === "upcoming" && (
+                                {project?.status === "upcoming" && (
                                   <Badge variant="secondary" className="text-xs">
                                     Upcoming
                                   </Badge>
@@ -952,8 +977,10 @@ export default async function MicroMarketPage({ params }: PageProps) {
 
             {microMarketProjects.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {microMarketProjects.map((project) => (
-                  <ProjectCard key={project.id} project={project} citySlug={citySlug} />
+                {microMarketProjects
+                  .filter((project: any) => project != null && project !== undefined)
+                  .map((project: any) => (
+                  <ProjectCard key={project?.id || Math.random()} project={project} citySlug={citySlug} />
                 ))}
               </div>
             ) : (
