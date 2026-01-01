@@ -105,8 +105,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   }
 
   // Neopolis-specific metadata overrides
-  const isNeopolis = microMarketSlug?.toLowerCase() === "neopolis";
-  const cityName = citySlug ? citySlug.charAt(0).toUpperCase() + citySlug.slice(1) : "City";
+  const isNeopolis = typeof microMarketSlug === "string" && microMarketSlug.toLowerCase() === "neopolis";
+  const cityName = typeof citySlug === "string" && citySlug.length > 0 
+    ? citySlug.charAt(0).toUpperCase() + citySlug.slice(1) 
+    : "City";
   
   // SEO-optimized title and description for Neopolis
   const seoTitle = isNeopolis
@@ -185,25 +187,65 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 }
 
 export async function generateStaticParams() {
-  const { createClient } = await import("@/lib/supabase/server");
-  const supabase = await createClient();
-  const { data: microMarkets } = await supabase
-    .from("micro_markets")
-    .select("url_slug, cities!inner(url_slug)")
-    .eq("status", "published");
+  try {
+    const { createClient } = await import("@/lib/supabase/server");
+    const supabase = await createClient();
+    const { data: microMarkets, error } = await supabase
+      .from("micro_markets")
+      .select("url_slug, cities!inner(url_slug)")
+      .eq("status", "published");
 
-  return (
-    microMarkets
-      ?.filter((mm: any) => mm && mm.url_slug && mm.cities)
-      .map((mm: any) => {
-        const city = Array.isArray(mm.cities) ? mm.cities[0] : mm.cities;
-        return {
-          citySlug: city?.url_slug || "hyderabad",
-          microMarketSlug: mm.url_slug,
-        };
+    if (error) {
+      console.error("[generateStaticParams] Error fetching micro markets:", error);
+      return [];
+    }
+
+    if (!microMarkets || !Array.isArray(microMarkets)) {
+      return [];
+    }
+
+    const params = microMarkets
+      .filter((mm: any) => {
+        // Ensure mm exists and has required properties
+        if (!mm || !mm.url_slug || !mm.cities) return false;
+        // Ensure url_slug is a string
+        if (typeof mm.url_slug !== "string" || mm.url_slug.trim() === "") return false;
+        return true;
       })
-      .filter((params: any) => params.citySlug && params.microMarketSlug) || []
-  );
+      .map((mm: any) => {
+        try {
+          const city = Array.isArray(mm.cities) ? mm.cities[0] : mm.cities;
+          const citySlug = city?.url_slug;
+          const microMarketSlug = mm.url_slug;
+          
+          // Ensure both are strings
+          if (typeof citySlug !== "string" || typeof microMarketSlug !== "string") {
+            return null;
+          }
+          
+          const trimmedCitySlug = citySlug.trim();
+          const trimmedMicroMarketSlug = microMarketSlug.trim();
+          
+          if (!trimmedCitySlug || !trimmedMicroMarketSlug) {
+            return null;
+          }
+          
+          return {
+            citySlug: trimmedCitySlug,
+            microMarketSlug: trimmedMicroMarketSlug,
+          };
+        } catch (err) {
+          console.error("[generateStaticParams] Error processing micro market:", mm, err);
+          return null;
+        }
+      })
+      .filter((params: any) => params && params.citySlug && params.microMarketSlug);
+    
+    return params || [];
+  } catch (error) {
+    console.error("[generateStaticParams] Fatal error:", error);
+    return [];
+  }
 }
 
 export default async function MicroMarketPage({ params }: PageProps) {
@@ -293,13 +335,10 @@ export default async function MicroMarketPage({ params }: PageProps) {
   });
 
   // For Neopolis, show all projects; for other micro-markets, limit to 9 random projects
-  const microMarketProjects =
-    microMarketSlug?.toLowerCase() === "neopolis"
+  const isNeopolis = typeof microMarketSlug === "string" && microMarketSlug.toLowerCase() === "neopolis";
+  const microMarketProjects = isNeopolis
       ? normalizedProjects
       : [...normalizedProjects].sort(() => Math.random() - 0.5).slice(0, 9);
-
-  // Neopolis-specific metadata overrides
-  const isNeopolis = microMarketSlug?.toLowerCase() === "neopolis";
   const seoTitle = isNeopolis
     ? "Neopolis Hyderabad: Kokapet Projects, Prices & Master Plan | RE/MAX"
     : pageData.seo_title;
