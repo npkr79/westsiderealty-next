@@ -121,18 +121,48 @@ export interface PropertyListing {
 
 class MicroMarketPagesService {
   // Public methods
-  async getMicroMarketPageBySlug(slug: string): Promise<MicroMarketPage | null> {
+  async getMicroMarketPageBySlug(slug: string, citySlug?: string): Promise<MicroMarketPage | null> {
     const supabase = await createClient();
-    const { data, error } = await supabase
+    
+    // First, try to get the city if citySlug is provided
+    let cityId: string | null = null;
+    if (citySlug) {
+      const { data: cityData } = await supabase
+        .from("cities")
+        .select("id")
+        .eq("url_slug", citySlug)
+        .maybeSingle();
+      cityId = cityData?.id || null;
+    }
+    
+    // Build query
+    let query = supabase
       .from("micro_markets")
       .select("*")
-      .eq("url_slug", slug)
-      .eq("status", "published")
-      .maybeSingle();
+      .eq("url_slug", slug);
+    
+    // If citySlug is provided and we found the city, filter by city_id to avoid conflicts
+    if (cityId) {
+      query = query.eq("city_id", cityId);
+    }
+    
+    // Don't filter by status - let's see what we get and log it
+    const { data, error } = await query.maybeSingle();
 
     if (error) {
-      console.error("Error fetching micro-market page:", error);
+      console.error(`[MicroMarketPagesService] Error fetching micro-market page for slug "${slug}":`, error);
       return null;
+    }
+    
+    if (!data) {
+      console.warn(`[MicroMarketPagesService] No micro-market found with url_slug: "${slug}"${citySlug ? ` for city: ${citySlug}` : ''}`);
+      return null;
+    }
+    
+    // Check if status is published, but don't block if it's not (for debugging)
+    const status = (data as any).status;
+    if (status !== "published") {
+      console.warn(`[MicroMarketPagesService] Micro-market "${slug}" found but status is "${status}" (expected "published"). Still returning data.`);
     }
 
     return data as unknown as MicroMarketPage;

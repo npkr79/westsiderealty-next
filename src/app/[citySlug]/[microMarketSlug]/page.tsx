@@ -96,7 +96,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { citySlug: citySlugParam, microMarketSlug: microMarketSlugParam } = await params;
   const citySlug = Array.isArray(citySlugParam) ? citySlugParam[0] : citySlugParam;
   const microMarketSlug = Array.isArray(microMarketSlugParam) ? microMarketSlugParam[0] : microMarketSlugParam;
-  const pageData = await microMarketPagesService.getMicroMarketPageBySlug(microMarketSlug);
+  const pageData = await microMarketPagesService.getMicroMarketPageBySlug(microMarketSlug, citySlug);
 
   if (!pageData) {
     return {
@@ -205,8 +205,8 @@ export default async function MicroMarketPage({ params }: PageProps) {
   const citySlug = Array.isArray(citySlugParam) ? citySlugParam[0] : citySlugParam;
   const microMarketSlug = Array.isArray(microMarketSlugParam) ? microMarketSlugParam[0] : microMarketSlugParam;
 
-  // Try to resolve as a micro-market first
-  const pageData = await microMarketPagesService.getMicroMarketPageBySlug(microMarketSlug);
+  // Try to resolve as a micro-market first (pass citySlug to ensure correct city match)
+  const pageData = await microMarketPagesService.getMicroMarketPageBySlug(microMarketSlug, citySlug);
 
   if (!pageData) {
     // If no micro-market page found, this might be an old or direct property URL like:
