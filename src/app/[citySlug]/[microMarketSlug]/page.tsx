@@ -270,12 +270,13 @@ export default async function MicroMarketPage({ params }: PageProps) {
       const supabase = await createClient();
 
       // Determine property table based on city
+      const normalizedCitySlug = typeof citySlug === "string" ? citySlug.toLowerCase() : "";
       const tableName =
-        citySlug === "hyderabad"
+        normalizedCitySlug === "hyderabad"
           ? "hyderabad_properties"
-          : citySlug === "goa"
+          : normalizedCitySlug === "goa"
           ? "goa_holiday_properties"
-          : citySlug === "dubai"
+          : normalizedCitySlug === "dubai"
           ? "dubai_properties"
           : null;
 
@@ -314,25 +315,37 @@ export default async function MicroMarketPage({ params }: PageProps) {
   // Fetch featured projects
   const featuredProjects = await microMarketPagesService.getFeaturedProjectsForPage(pageData.id);
 
-  // Fetch projects for this micro-market
-  const mmProjects = await projectService.getProjectsByMicroMarket(citySlug, microMarketSlug);
+  // Fetch projects for this micro-market - ensure citySlug and microMarketSlug are strings
+  const safeCitySlug = typeof citySlug === "string" ? citySlug : "";
+  const safeMicroMarketSlug = typeof microMarketSlug === "string" ? microMarketSlug : "";
+  
+  if (!safeCitySlug || !safeMicroMarketSlug) {
+    console.error("[MicroMarketPage] Invalid slugs:", { citySlug, microMarketSlug });
+    notFound();
+  }
+
+  const mmProjects = await projectService.getProjectsByMicroMarket(safeCitySlug, safeMicroMarketSlug);
 
   // Normalize projects - handle cases where micro_market might be null or array
-  const normalizedProjects = (mmProjects || []).map((project: any) => {
-    // Normalize micro_market relation (could be object, array, or null)
-    if (project.micro_market) {
-      project.micro_market = Array.isArray(project.micro_market) 
-        ? project.micro_market[0] 
-        : project.micro_market;
-    }
-    // Normalize developer relation (could be object, array, or null)
-    if (project.developer) {
-      project.developer = Array.isArray(project.developer) 
-        ? project.developer[0] 
-        : project.developer;
-    }
-    return project;
-  });
+  // Filter out any null/undefined projects first
+  const normalizedProjects = (mmProjects || [])
+    .filter((project: any) => project != null && project !== undefined)
+    .map((project: any) => {
+      // Normalize micro_market relation (could be object, array, or null)
+      if (project.micro_market) {
+        project.micro_market = Array.isArray(project.micro_market) 
+          ? project.micro_market[0] 
+          : project.micro_market;
+      }
+      // Normalize developer relation (could be object, array, or null)
+      if (project.developer) {
+        project.developer = Array.isArray(project.developer) 
+          ? project.developer[0] 
+          : project.developer;
+      }
+      return project;
+    })
+    .filter((project: any) => project != null && project !== undefined);
 
   // For Neopolis, show all projects; for other micro-markets, limit to 9 random projects
   const isNeopolis = typeof microMarketSlug === "string" && microMarketSlug.toLowerCase() === "neopolis";
