@@ -3,6 +3,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import { microMarketPagesService, type MicroMarketPage, type FeaturedProject } from "@/services/microMarketPagesService";
+
+// Safe toLowerCase helper
+const safeLower = (v: unknown): string => (typeof v === "string" ? v : "").toLowerCase();
 import { projectService, ProjectWithRelations } from "@/services/projectService";
 import BreadcrumbNav from "@/components/layout/BreadcrumbNav";
 import { Building2, TrendingUp, MapPin, School, Hospital, ShoppingBag } from "lucide-react";
@@ -77,7 +80,7 @@ const getFaqSchemaJsonString = (pageData: MicroMarketPage | null): string => {
     schemaData = {
       "@context": "https://schema.org",
       "@type": "FAQPage",
-      mainEntity: pageData.faqs.map((faq: any) => ({
+      mainEntity: (pageData.faqs ?? []).map((faq: any) => ({
         "@type": "Question",
         name: faq.question || faq.q,
         acceptedAnswer: {
@@ -113,7 +116,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   }
 
   // Neopolis-specific metadata overrides
-  const isNeopolis = typeof microMarketSlug === "string" && microMarketSlug.toLowerCase() === "neopolis";
+  const isNeopolis = safeLower(microMarketSlug) === "neopolis";
   const cityName = typeof citySlug === "string" && citySlug.length > 0 
     ? citySlug.charAt(0).toUpperCase() + citySlug.slice(1) 
     : "City";
@@ -142,11 +145,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   } else if (pageData.connectivity_map_url) {
     ogImageUrl = pageData.connectivity_map_url;
   } else {
-    // Fetch city hero image as fallback
-    const { cityService } = await import("@/services/cityService");
-    const city = await cityService.getCityBySlug(citySlug);
-    if (city?.hero_image_url) {
-      ogImageUrl = city.hero_image_url;
+    // Fetch city hero image as fallback - ensure citySlug is a string
+    if (typeof citySlug === "string" && citySlug.length > 0) {
+      const { cityService } = await import("@/services/cityService");
+      const city = await cityService.getCityBySlug(citySlug);
+      if (city?.hero_image_url) {
+        ogImageUrl = city.hero_image_url;
+      }
     }
   }
 
@@ -274,6 +279,7 @@ export default async function MicroMarketPage({ params }: PageProps) {
   // Try to resolve as a micro-market first (pass citySlug to ensure correct city match)
   const pageData = await microMarketPagesService.getMicroMarketPageBySlug(microMarketSlug, citySlug);
 
+  // Early return if pageData is null - BEFORE any string operations
   if (!pageData) {
     // If no micro-market page found, this might be an old or direct property URL like:
     // /hyderabad/3bhk-apartment-for-sale-in-hallmark-treasor-kokapet
@@ -283,7 +289,7 @@ export default async function MicroMarketPage({ params }: PageProps) {
       const supabase = await createClient();
 
       // Determine property table based on city
-      const normalizedCitySlug = typeof citySlug === "string" ? citySlug.toLowerCase() : "";
+      const normalizedCitySlug = safeLower(citySlug);
       const tableName =
         normalizedCitySlug === "hyderabad"
           ? "hyderabad_properties"
@@ -361,7 +367,7 @@ export default async function MicroMarketPage({ params }: PageProps) {
     .filter((project: any) => project != null && project !== undefined);
 
   // For Neopolis, show all projects; for other micro-markets, limit to 9 random projects
-  const isNeopolis = typeof microMarketSlug === "string" && microMarketSlug.toLowerCase() === "neopolis";
+  const isNeopolis = safeLower(microMarketSlug) === "neopolis";
   const microMarketProjects = isNeopolis
       ? normalizedProjects
       : [...normalizedProjects].sort(() => Math.random() - 0.5).slice(0, 9);
@@ -475,7 +481,7 @@ export default async function MicroMarketPage({ params }: PageProps) {
     primaryEntity = {
       "@type": "Place",
       name: `${pageData.micro_market_name} Master Plan & Zoning`,
-      description: `Master Plan and Zoning information for ${pageData.micro_market_name}, ${cityName}. ${(Array.isArray(masterPlanData.zones) ? masterPlanData.zones.map((zone: any) => `${zone.zone}: ${zone.purpose} - ${zone.description}`).join(". ") : "") || ""}${masterPlanData.fsi_policy ? ` FSI Policy: ${masterPlanData.fsi_policy}.` : ""}${masterPlanData.total_area ? ` Total Area: ${masterPlanData.total_area}.` : ""}`,
+      description: `Master Plan and Zoning information for ${pageData.micro_market_name}, ${cityName}. ${(Array.isArray(masterPlanData.zones) ? (masterPlanData.zones ?? []).map((zone: any) => `${zone?.zone || ""}: ${zone?.purpose || ""} - ${zone?.description || ""}`).join(". ") : "") || ""}${masterPlanData.fsi_policy ? ` FSI Policy: ${masterPlanData.fsi_policy}.` : ""}${masterPlanData.total_area ? ` Total Area: ${masterPlanData.total_area}.` : ""}`,
       address: {
         "@type": "PostalAddress",
         addressLocality: pageData.micro_market_name,
@@ -484,10 +490,10 @@ export default async function MicroMarketPage({ params }: PageProps) {
         ...(pageData.locality_pincode && { postalCode: pageData.locality_pincode }),
       },
       ...(Array.isArray(masterPlanData.zones) && masterPlanData.zones.length > 0 && {
-        containsPlace: masterPlanData.zones.map((zone: any) => ({
+        containsPlace: (masterPlanData.zones ?? []).map((zone: any) => ({
           "@type": "Place",
-          name: zone.zone,
-          description: `${zone.purpose}: ${zone.description}`,
+          name: zone?.zone || "",
+          description: `${zone?.purpose || ""}: ${zone?.description || ""}`,
         })),
       }),
       ...(masterPlanData.fsi_policy && {
@@ -817,7 +823,7 @@ export default async function MicroMarketPage({ params }: PageProps) {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {microMarketProjects
+                        {(microMarketProjects ?? [])
                           .filter((project: any) => project != null && project !== undefined)
                           .map((project: any) => (
                           <TableRow key={project?.id || Math.random()}>
@@ -897,7 +903,7 @@ export default async function MicroMarketPage({ params }: PageProps) {
               </p>
 
               <div className="space-y-8">
-                {Object.entries(pageData.developer_pillar_urls)
+                {Object.entries(pageData.developer_pillar_urls ?? {})
                   .sort(([, a], [, b]) => (a as any).displayOrder - (b as any).displayOrder)
                   .map(([key, developer]: [string, any]) => (
                     <Card key={key} className="overflow-hidden">
@@ -921,7 +927,7 @@ export default async function MicroMarketPage({ params }: PageProps) {
                         <p className="text-muted-foreground mb-6" dangerouslySetInnerHTML={{ __html: developer.bio }} />
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                          {Array.isArray(developer.projects) && developer.projects
+                          {Array.isArray(developer.projects) && (developer.projects ?? [])
                             .filter((project: any) => project != null && project !== undefined)
                             .map((project: any, idx: number) => (
                             <div key={idx} className="block">
@@ -954,7 +960,7 @@ export default async function MicroMarketPage({ params }: PageProps) {
             <section className="mb-12">
               <h2 className="micro-market-h2">Featured Projects in {pageData.micro_market_name}</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {featuredProjects.map((project) => (
+                {(featuredProjects ?? []).map((project) => (
                   <Card key={project.id}>
                     <CardHeader>
                       <CardTitle>
@@ -990,7 +996,7 @@ export default async function MicroMarketPage({ params }: PageProps) {
                     </CardHeader>
                     <CardContent>
                       <ul className="space-y-2">
-                        {pageData.top_schools.map((school, idx) => (
+                        {(pageData.top_schools ?? []).map((school, idx) => (
                           <li key={idx} className="text-muted-foreground">
                             • {school}
                           </li>
@@ -1010,7 +1016,7 @@ export default async function MicroMarketPage({ params }: PageProps) {
                     </CardHeader>
                     <CardContent>
                       <ul className="space-y-2">
-                        {pageData.top_hospitals.map((hospital, idx) => (
+                        {(pageData.top_hospitals ?? []).map((hospital, idx) => (
                           <li key={idx} className="text-muted-foreground">
                             • {hospital}
                           </li>
@@ -1030,7 +1036,7 @@ export default async function MicroMarketPage({ params }: PageProps) {
                     </CardHeader>
                     <CardContent>
                       <ul className="space-y-2">
-                        {pageData.entertainment_centers.map((center, idx) => (
+                        {(pageData.entertainment_centers ?? []).map((center, idx) => (
                           <li key={idx} className="text-muted-foreground">
                             • {center}
                           </li>
@@ -1053,7 +1059,7 @@ export default async function MicroMarketPage({ params }: PageProps) {
 
             {microMarketProjects.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {microMarketProjects
+                {(microMarketProjects ?? [])
                   .filter((project: any) => project != null && project !== undefined)
                   .map((project: any) => (
                   <ProjectCard key={project?.id || Math.random()} project={project} citySlug={citySlug} />
@@ -1079,7 +1085,7 @@ export default async function MicroMarketPage({ params }: PageProps) {
               <Card>
                 <CardContent className="pt-6">
                   <Accordion type="single" collapsible className="w-full">
-                    {finalFAQs.map((faq: any, idx) => {
+                    {(finalFAQs ?? []).map((faq: any, idx) => {
                       const question = faq.question || faq.q;
                       const answer = faq.answer || faq.a;
                       return (

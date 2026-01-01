@@ -39,9 +39,15 @@ export const cityService = {
       .select('*')
       .eq('url_slug', slug)
       .eq('page_status', 'published')
-      .single();
+      .limit(1)
+      .maybeSingle();
 
     if (error) {
+      // Handle PGRST116 (0 rows) gracefully
+      if (error.code === 'PGRST116' && error.details?.includes('0 rows')) {
+        console.warn('⚠️ [CityService] No city found for slug:', slug);
+        return null;
+      }
       console.error('❌ [CityService] Error:', error);
       return null;
     }
