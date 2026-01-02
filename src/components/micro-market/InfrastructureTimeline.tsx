@@ -1,5 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { safeLower } from "@/lib/parse-jsonb";
 
 interface InfrastructureItem {
   year: string;
@@ -12,8 +13,8 @@ interface InfrastructureTimelineProps {
   data: InfrastructureItem[];
 }
 
-const getStatusVariant = (status: string): "default" | "secondary" | "destructive" | "outline" => {
-  const statusLower = status.toLowerCase();
+const getStatusVariant = (status: string | undefined | null): "default" | "secondary" | "destructive" | "outline" => {
+  const statusLower = safeLower(status);
   if (statusLower === 'operational' || statusLower === 'completed') return 'default';
   if (statusLower === 'under construction' || statusLower === 'in progress') return 'secondary';
   if (statusLower === 'proposed' || statusLower === 'planned') return 'outline';

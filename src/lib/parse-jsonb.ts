@@ -33,3 +33,12 @@ export const asObject = <T extends Record<string, unknown> = Record<string, unkn
   v: unknown
 ): T =>
   v && typeof v === "object" && !Array.isArray(v) ? (v as T) : ({} as T);
+
+/**
+ * Safely capitalizes the first letter of a string.
+ * Returns empty string if input is not a valid string.
+ */
+export const safeCapitalize = (v: unknown): string => {
+  if (typeof v !== "string" || v.length === 0) return "";
+  return (v.charAt(0)?.toUpperCase() || "") + (v.slice(1) || "");
+};

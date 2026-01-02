@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import { microMarketPagesService, type MicroMarketPage, type FeaturedProject } from "@/services/microMarketPagesService";
-import { parseJsonb, safeLower, asArray, asObject } from "@/lib/parse-jsonb";
+import { parseJsonb, safeLower, asArray, asObject, safeCapitalize } from "@/lib/parse-jsonb";
 import { projectService, ProjectWithRelations } from "@/services/projectService";
 import BreadcrumbNav from "@/components/layout/BreadcrumbNav";
 import { Building2, TrendingUp, MapPin, School, Hospital, ShoppingBag } from "lucide-react";
@@ -106,9 +106,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   // Neopolis-specific metadata overrides
   const isNeopolis = safeLower(microMarketSlug) === "neopolis";
-  const cityName = typeof citySlug === "string" && citySlug.length > 0 
-    ? citySlug.charAt(0).toUpperCase() + citySlug.slice(1) 
-    : "City";
+  const cityName = safeCapitalize(citySlug) || "City";
   
   // SEO-optimized title and description for Neopolis
   const seoTitle = isNeopolis
@@ -390,7 +388,7 @@ export default async function MicroMarketPage({ params }: PageProps) {
   const breadcrumbItems = [
     { label: "Home", href: "/" },
     { label: "Properties", href: "/properties" },
-    { label: citySlug.charAt(0).toUpperCase() + citySlug.slice(1), href: `/${citySlug}` },
+    { label: safeCapitalize(citySlug) || "City", href: `/${citySlug}` },
     { label: pageData.micro_market_name, href: "" },
   ];
 
@@ -469,7 +467,7 @@ export default async function MicroMarketPage({ params }: PageProps) {
   // Build primary entity based on page type
   let primaryEntity: Record<string, any> | null = null;
   let primaryEntityType: "Place" | "RealEstateListing" = "RealEstateListing";
-  const cityName = citySlug.charAt(0).toUpperCase() + citySlug.slice(1);
+  const cityName = safeCapitalize(citySlug) || "City";
 
   if (isNeopolis) {
     // For Neopolis, use Place schema with master plan data
@@ -587,7 +585,7 @@ export default async function MicroMarketPage({ params }: PageProps) {
                   src={safeImageSrc(getHeroImageUrl(pageData.hero_image_url))}
                   alt={isNeopolis 
                     ? "Aerial view of Neopolis Hyderabad high-rise corridor showing ultra-luxury residential towers in Kokapet"
-                    : `Aerial view of ${pageData.micro_market_name} ultra-luxury residential township in ${pageData.key_adjacent_areas?.[0] || "West " + citySlug.charAt(0).toUpperCase() + citySlug.slice(1)}, ${citySlug.charAt(0).toUpperCase() + citySlug.slice(1)}`
+                    : `Aerial view of ${pageData.micro_market_name || ""} ultra-luxury residential township in ${pageData.key_adjacent_areas?.[0] || "West " + (safeCapitalize(citySlug) || "City")}, ${safeCapitalize(citySlug) || "City"}`
                   }
                   width={1200}
                   height={400}
@@ -1127,7 +1125,7 @@ export default async function MicroMarketPage({ params }: PageProps) {
         </div>
       </main>
 
-      <CityHubBacklink citySlug={citySlug} cityName={citySlug.charAt(0).toUpperCase() + citySlug.slice(1)} />
+      <CityHubBacklink citySlug={citySlug} cityName={safeCapitalize(citySlug) || "City"} />
     </>
   );
 }

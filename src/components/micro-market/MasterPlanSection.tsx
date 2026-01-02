@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Building2, MapPin, Trees, Briefcase, Home } from "lucide-react";
+import { safeLower } from "@/lib/parse-jsonb";
 
 interface MasterPlanZone {
   zone: string;
@@ -23,8 +24,8 @@ interface MasterPlanSectionProps {
 }
 
 // Icon mapping for different zone types
-const getZoneIcon = (zone: string): typeof Building2 => {
-  const zoneLower = zone.toLowerCase();
+const getZoneIcon = (zone: string | undefined | null): typeof Building2 => {
+  const zoneLower = safeLower(zone);
   if (zoneLower.includes("residential") || zoneLower.includes("housing")) {
     return Home;
   }
@@ -129,7 +130,7 @@ export default function MasterPlanSection({ data, microMarketName = "Neopolis", 
             {/* Zones Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {zones.map((zone, index) => {
-                const IconComponent = getZoneIcon(zone.zone);
+                const IconComponent = getZoneIcon(zone?.zone);
                 return (
                   <Card
                     key={index}
