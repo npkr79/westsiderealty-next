@@ -158,6 +158,9 @@ export default async function DeveloperPage({ params }: PageProps) {
   const specializationText = stripHtmlTags(developer.specialization);
   const specializationSummary = truncateText(specializationText, 120);
 
+  // Normalize location_focus array to prevent crashes
+  const operatingLocations = Array.isArray(developer.location_focus) ? developer.location_focus : [];
+
   // Normalize JSONB fields to handle both proper JSONB and stringified JSON formats
   const historyTimeline = asArray(parseJsonb(developer.history_timeline_json, []));
   const notableProjects = asArray(parseJsonb(developer.notable_projects_json, []));
@@ -617,13 +620,13 @@ export default async function DeveloperPage({ params }: PageProps) {
                         </span>
                       </div>
                     )}
-                    {developer.location_focus && developer.location_focus.length > 0 && (
+                    {operatingLocations.length > 0 && (
                       <div>
                         <h4 className="text-sm font-semibold text-muted-foreground mb-2">
                           Operating Locations
                         </h4>
                         <div className="flex flex-wrap gap-2">
-                          {developer.location_focus.map((location: string, index: number) => (
+                          {operatingLocations.map((location: string, index: number) => (
                             <Badge key={index} variant="secondary">
                               {location}
                             </Badge>
