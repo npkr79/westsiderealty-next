@@ -14,6 +14,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import CityHubBacklink from "@/components/seo/CityHubBacklink";
 import DeveloperProjectCard from "@/components/developer/DeveloperProjectCard";
 import DeveloperContactForm from "@/components/developer/DeveloperContactForm";
+import { parseJsonb, asArray } from "@/lib/parse-jsonb";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -38,9 +39,21 @@ async function getDeveloper(slug: string) {
     .select('*')
     .eq('url_slug', slug)
     .eq('is_published', true)
-    .single();
+    .limit(1)
+    .maybeSingle();
 
-  if (error || !data) {
+  // Handle PGRST116 error (no rows or multiple rows) gracefully
+  if (error) {
+    if (error.code === 'PGRST116') {
+      console.warn(`[getDeveloper] No developer found with url_slug: "${slug}"`);
+      return null;
+    }
+    console.error(`[getDeveloper] Error fetching developer with slug "${slug}":`, error);
+    return null;
+  }
+
+  if (!data) {
+    console.warn(`[getDeveloper] No developer data returned for slug: "${slug}"`);
     return null;
   }
 
@@ -69,11 +82,28 @@ async function getDeveloperProjects(developerId: string) {
     .limit(20);
 
   if (error) {
-    console.error('Error fetching developer projects:', error);
+    console.error('[getDeveloperProjects] Error fetching developer projects:', error);
     return [];
   }
 
-  return data || [];
+  // Normalize project data - handle cases where relations might be arrays or objects
+  const normalizedProjects = (data || []).map((project: any) => {
+    // Normalize city relation (could be object, array, or null)
+    if (project.city) {
+      project.city = Array.isArray(project.city) 
+        ? project.city[0] 
+        : project.city;
+    }
+    // Normalize micro_market relation (could be object, array, or null)
+    if (project.micro_market) {
+      project.micro_market = Array.isArray(project.micro_market) 
+        ? project.micro_market[0] 
+        : project.micro_market;
+    }
+    return project;
+  });
+
+  return normalizedProjects;
 }
 
 // Generate dynamic metadata
@@ -126,25 +156,12 @@ export default async function DeveloperPage({ params }: PageProps) {
   const specializationText = stripHtmlTags(developer.specialization);
   const specializationSummary = truncateText(specializationText, 120);
 
-  const historyTimeline = Array.isArray(developer.history_timeline_json)
-    ? developer.history_timeline_json
-    : [];
-
-  const notableProjects = Array.isArray(developer.notable_projects_json)
-    ? developer.notable_projects_json
-    : [];
-
-  const keyAwards = Array.isArray(developer.key_awards_json)
-    ? developer.key_awards_json
-    : [];
-
-  const testimonials = Array.isArray(developer.testimonial_json)
-    ? developer.testimonial_json
-    : [];
-
-  const faqs = Array.isArray(developer.faqs_json)
-    ? developer.faqs_json
-    : [];
+  // Normalize JSONB fields to handle both proper JSONB and stringified JSON formats
+  const historyTimeline = asArray(parseJsonb(developer.history_timeline_json, []));
+  const notableProjects = asArray(parseJsonb(developer.notable_projects_json, []));
+  const keyAwards = asArray(parseJsonb(developer.key_awards_json, []));
+  const testimonials = asArray(parseJsonb(developer.testimonial_json, []));
+  const faqs = asArray(parseJsonb(developer.faqs_json, []));
 
   const canonicalUrl = `https://www.westsiderealty.in/developers/${developer.url_slug}`;
 
