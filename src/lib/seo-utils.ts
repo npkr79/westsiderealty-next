@@ -18,6 +18,9 @@ interface UnifiedSchemaInput {
   breadcrumbs?: { name: string; item?: string }[];
 }
 
+// Safe toLowerCase helper - guards against undefined/null values
+const safeLower = (v: unknown): string => (typeof v === "string" ? v : "").toLowerCase();
+
 /**
  * Central helper to build a unified @graph JSON-LD schema.
  *
@@ -41,6 +44,11 @@ export function generateUnifiedSchema(input: UnifiedSchemaInput) {
     primaryEntity,
     faqItems = [],
   } = input;
+
+  // Guard against undefined/null inputs
+  const safePageUrl = pageUrl ?? "";
+  const safeTitle = title ?? "";
+  const safeDescription = description ?? "";
 
   const baseUrl = "https://www.westsiderealty.in";
 
@@ -86,13 +94,13 @@ export function generateUnifiedSchema(input: UnifiedSchemaInput) {
   graph.push(website);
 
   // WebPage (#webpage)
-  const webPageId = `${pageUrl}#webpage`;
+  const webPageId = `${safePageUrl}#webpage`;
   const webPage: any = {
     "@type": "WebPage",
     "@id": webPageId,
-    url: pageUrl,
-    name: title,
-    description,
+    url: safePageUrl,
+    name: safeTitle,
+    description: safeDescription,
     isPartOf: {
       "@id": `${baseUrl}/#website`,
     },
@@ -112,7 +120,7 @@ export function generateUnifiedSchema(input: UnifiedSchemaInput) {
 
   // Primary entity (#primary)
   if (primaryEntity && Object.keys(primaryEntity).length > 0) {
-    const primaryId = `${pageUrl}#primary`;
+    const primaryId = `${safePageUrl}#primary`;
 
     const basePrimary: any = {
       "@id": primaryId,
@@ -130,38 +138,38 @@ export function generateUnifiedSchema(input: UnifiedSchemaInput) {
     webPage.mainEntity = { "@id": primaryId };
   }
 
-  // Breadcrumbs (if provided)
-  if (input.breadcrumbs && input.breadcrumbs.length > 0) {
+  // Breadcrumbs (if provided) - guard all property access
+  if (input.breadcrumbs && Array.isArray(input.breadcrumbs) && input.breadcrumbs.length > 0) {
     webPage.breadcrumb = {
       "@type": "BreadcrumbList",
-      itemListElement: input.breadcrumbs.map((crumb, index) => ({
+      itemListElement: (input.breadcrumbs ?? []).map((crumb, index) => ({
         "@type": "ListItem",
         position: index + 1,
-        name: crumb.name,
-        item: crumb.item || baseUrl,
+        name: crumb?.name ?? "",
+        item: crumb?.item ?? baseUrl,
       })),
     };
   }
 
-  // FAQPage (#faq) if we have FAQs
+  // FAQPage (#faq) if we have FAQs - guard all property access
   const cleanedFaqs = Array.isArray(faqItems)
-    ? faqItems.filter((f) => f && f.question && f.answer)
+    ? (faqItems ?? []).filter((f) => f && f?.question && f?.answer)
     : [];
 
   if (cleanedFaqs.length > 0) {
-    const faqId = `${pageUrl}#faq`;
+    const faqId = `${safePageUrl}#faq`;
     const faqPage = {
       "@type": "FAQPage",
       "@id": faqId,
       isPartOf: {
         "@id": webPageId,
       },
-      mainEntity: cleanedFaqs.map((faq) => ({
+      mainEntity: (cleanedFaqs ?? []).map((faq) => ({
         "@type": "Question",
-        name: faq.question,
+        name: faq?.question ?? "",
         acceptedAnswer: {
           "@type": "Answer",
-          text: faq.answer,
+          text: faq?.answer ?? "",
         },
       })),
     };
