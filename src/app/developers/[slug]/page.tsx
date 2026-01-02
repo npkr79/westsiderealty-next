@@ -119,7 +119,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   // Fetch top projects for description
   const projects = await getDeveloperProjects(developer.id);
-  const projectNames = projects.slice(0, 3).map(p => p.project_name).join(', ');
+  const projectNames = Array.isArray(projects) && projects.length > 0
+    ? projects.slice(0, 3).filter((p: any) => p && p.project_name).map((p: any) => p.project_name).join(', ')
+    : '';
 
   const title = `${developer.developer_name} Hyderabad Projects | Reviews, Price & New Launches`;
   const description = projectNames
@@ -128,7 +130,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   // OG Image: Use developer logo or top project hero image
   const ogImage = developer.logo_url || 
-    (projects.length > 0 && projects[0].hero_image_url) || 
+    (Array.isArray(projects) && projects.length > 0 && projects[0]?.hero_image_url) || 
     undefined;
 
   const canonicalUrl = `https://www.westsiderealty.in/developers/${developer.url_slug}`;
@@ -181,27 +183,29 @@ export default async function DeveloperPage({ params }: PageProps) {
       addressLocality: developer.primary_city_focus || "Hyderabad",
       addressCountry: "IN",
     },
-    ...(projects.length > 0 && {
-      makesOffer: projects.slice(0, 10).map((project: any) => ({
-        "@type": "Offer",
-        itemOffered: {
-          "@type": "Product",
-          name: project.project_name,
-          description: project.meta_description || `Premium residential project by ${developer.developer_name}`,
-          ...(project.hero_image_url && { image: project.hero_image_url }),
-          ...(project.city && {
-            category: project.city.city_name,
-          }),
-        },
-        url: `https://www.westsiderealty.in/${project.city?.url_slug || 'hyderabad'}/projects/${project.url_slug}`,
-        ...(project.price_range_text && {
-          priceSpecification: {
-            "@type": "UnitPriceSpecification",
-            price: project.price_range_text,
-            priceCurrency: "INR",
+    ...(Array.isArray(projects) && projects.length > 0 && {
+      makesOffer: projects.slice(0, 10)
+        .filter((project: any) => project && project.project_name && project.url_slug)
+        .map((project: any) => ({
+          "@type": "Offer",
+          itemOffered: {
+            "@type": "Product",
+            name: project.project_name || "",
+            description: project.meta_description || `Premium residential project by ${developer.developer_name}`,
+            ...(project.hero_image_url && { image: project.hero_image_url }),
+            ...(project.city && project.city.city_name && {
+              category: project.city.city_name,
+            }),
           },
-        }),
-      })),
+          url: `https://www.westsiderealty.in/${project.city?.url_slug || 'hyderabad'}/projects/${project.url_slug || ''}`,
+          ...(project.price_range_text && {
+            priceSpecification: {
+              "@type": "UnitPriceSpecification",
+              price: project.price_range_text,
+              priceCurrency: "INR",
+            },
+          }),
+        })),
     }),
   };
 
@@ -372,21 +376,21 @@ export default async function DeveloperPage({ params }: PageProps) {
               </Card>
 
               {/* Projects Section */}
-              {projects.length > 0 && (
+              {Array.isArray(projects) && projects.length > 0 && (
                 <Card>
                   <CardContent className="p-8">
                     <h2 className="text-3xl font-bold text-heading-blue mb-6">
                       Projects by {developer.developer_name}
                     </h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {projects.map((project: any) => (
+                      {projects.filter((p: any) => p && p.id && p.project_name).map((project: any) => (
                         <div key={project.id} className="border rounded-lg p-4 hover:shadow-lg transition-shadow">
                           <h3 className="text-xl font-semibold text-heading-blue mb-2">
                             <Link 
-                              href={`/${project.city?.url_slug || 'hyderabad'}/projects/${project.url_slug}`}
+                              href={`/${project.city?.url_slug || 'hyderabad'}/projects/${project.url_slug || ''}`}
                               className="hover:underline"
                             >
-                              {project.project_name}
+                              {project.project_name || 'Project'}
                             </Link>
                           </h3>
                           {project.micro_market?.micro_market_name && (
