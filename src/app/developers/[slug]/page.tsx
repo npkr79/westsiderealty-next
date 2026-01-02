@@ -33,77 +33,117 @@ const truncateText = (text: string, maxLength = 140) => {
 
 // Fetch developer data server-side
 async function getDeveloper(slug: string) {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('developers')
-    .select('*')
-    .eq('url_slug', slug)
-    .eq('is_published', true)
-    .limit(1)
-    .maybeSingle();
+  try {
+    const supabase = await createClient();
+    
+    // First try with is_published = true
+    let { data, error } = await supabase
+      .from('developers')
+      .select('*')
+      .eq('url_slug', slug)
+      .eq('is_published', true)
+      .limit(1)
+      .maybeSingle();
 
-  // Handle PGRST116 error (no rows or multiple rows) gracefully
-  if (error) {
-    if (error.code === 'PGRST116') {
-      console.warn(`[getDeveloper] No developer found with url_slug: "${slug}"`);
+    // If not found, try without is_published filter (in case it's null)
+    if (!data && !error) {
+      const retryResult = await supabase
+        .from('developers')
+        .select('*')
+        .eq('url_slug', slug)
+        .limit(1)
+        .maybeSingle();
+      
+      data = retryResult.data;
+      error = retryResult.error;
+    }
+
+    // Handle PGRST116 error (no rows or multiple rows) gracefully
+    if (error) {
+      if (error.code === 'PGRST116') {
+        console.warn(`[getDeveloper] No developer found with url_slug: "${slug}"`);
+        return null;
+      }
+      console.error(`[getDeveloper] Error fetching developer with slug "${slug}":`, error);
       return null;
     }
-    console.error(`[getDeveloper] Error fetching developer with slug "${slug}":`, error);
+
+    if (!data) {
+      console.warn(`[getDeveloper] No developer data returned for slug: "${slug}"`);
+      return null;
+    }
+
+    // Ensure required fields exist
+    if (!data.id || !data.developer_name || !data.url_slug) {
+      console.error(`[getDeveloper] Developer data missing required fields for slug: "${slug}"`);
+      return null;
+    }
+
+    return data;
+  } catch (err) {
+    console.error(`[getDeveloper] Unexpected error fetching developer with slug "${slug}":`, err);
     return null;
   }
-
-  if (!data) {
-    console.warn(`[getDeveloper] No developer data returned for slug: "${slug}"`);
-    return null;
-  }
-
-  return data;
 }
 
 // Fetch projects by developer server-side
 async function getDeveloperProjects(developerId: string) {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('projects')
-    .select(`
-      id,
-      project_name,
-      url_slug,
-      hero_image_url,
-      meta_description,
-      price_range_text,
-      city:cities!inner(url_slug, city_name),
-      micro_market:micro_markets!projects_micromarket_id_fkey(url_slug, micro_market_name)
-    `)
-    .eq('developer_id', developerId)
-    .or('status.ilike.published,status.ilike.%under construction%')
-    .order('display_order', { ascending: true })
-    .order('project_name', { ascending: true })
-    .limit(20);
+  try {
+    const supabase = await createClient();
+    
+    // Use left join (!) instead of inner join (!inner) to handle missing relations
+    const { data, error } = await supabase
+      .from('projects')
+      .select(`
+        id,
+        project_name,
+        url_slug,
+        hero_image_url,
+        meta_description,
+        price_range_text,
+        city:cities(url_slug, city_name),
+        micro_market:micro_markets(url_slug, micro_market_name)
+      `)
+      .eq('developer_id', developerId)
+      .or('status.ilike.published,status.ilike.%under construction%')
+      .order('display_order', { ascending: true, nullsFirst: false })
+      .order('project_name', { ascending: true })
+      .limit(20);
 
-  if (error) {
-    console.error('[getDeveloperProjects] Error fetching developer projects:', error);
+    if (error) {
+      console.error('[getDeveloperProjects] Error fetching developer projects:', error);
+      return [];
+    }
+
+    if (!data || !Array.isArray(data)) {
+      return [];
+    }
+
+    // Normalize project data - handle cases where relations might be arrays or objects
+    const normalizedProjects = data
+      .filter((project: any) => project && project.id && project.project_name)
+      .map((project: any) => {
+        // Normalize city relation (could be object, array, or null)
+        if (project.city) {
+          project.city = Array.isArray(project.city) 
+            ? (project.city.length > 0 ? project.city[0] : null)
+            : project.city;
+        }
+        // Normalize micro_market relation (could be object, array, or null)
+        if (project.micro_market) {
+          project.micro_market = Array.isArray(project.micro_market) 
+            ? (project.micro_market.length > 0 ? project.micro_market[0] : null)
+            : project.micro_market;
+        }
+        return project;
+      })
+      .filter((project: any) => project != null);
+
+    return normalizedProjects;
+  } catch (err) {
+    console.error('[getDeveloperProjects] Unexpected error:', err);
     return [];
   }
-
-  // Normalize project data - handle cases where relations might be arrays or objects
-  const normalizedProjects = (data || []).map((project: any) => {
-    // Normalize city relation (could be object, array, or null)
-    if (project.city) {
-      project.city = Array.isArray(project.city) 
-        ? project.city[0] 
-        : project.city;
-    }
-    // Normalize micro_market relation (could be object, array, or null)
-    if (project.micro_market) {
-      project.micro_market = Array.isArray(project.micro_market) 
-        ? project.micro_market[0] 
-        : project.micro_market;
-    }
-    return project;
-  });
-
-  return normalizedProjects;
 }
 
 // Generate dynamic metadata
@@ -145,12 +185,26 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 }
 
 export default async function DeveloperPage({ params }: PageProps) {
-  const { slug } = await params;
-  const developer = await getDeveloper(slug);
+  try {
+    const { slug } = await params;
+    
+    if (!slug || typeof slug !== 'string') {
+      console.error('[DeveloperPage] Invalid slug parameter');
+      notFound();
+    }
 
-  if (!developer) {
-    notFound();
-  }
+    const developer = await getDeveloper(slug);
+
+    if (!developer) {
+      console.warn(`[DeveloperPage] Developer not found for slug: "${slug}"`);
+      notFound();
+    }
+
+    // Ensure developer has required fields
+    if (!developer.id || !developer.developer_name || !developer.url_slug) {
+      console.error(`[DeveloperPage] Developer missing required fields for slug: "${slug}"`);
+      notFound();
+    }
 
   // Fetch developer projects
   const projects = await getDeveloperProjects(developer.id);
@@ -159,7 +213,21 @@ export default async function DeveloperPage({ params }: PageProps) {
   const specializationSummary = truncateText(specializationText, 120);
 
   // Normalize location_focus array to prevent crashes
-  const operatingLocations = Array.isArray(developer.location_focus) ? developer.location_focus : [];
+  // Handle both array format and stringified JSON format
+  let operatingLocations: string[] = [];
+  if (developer.location_focus) {
+    if (Array.isArray(developer.location_focus)) {
+      operatingLocations = developer.location_focus.filter((loc: any) => loc && typeof loc === 'string');
+    } else if (typeof developer.location_focus === 'string') {
+      try {
+        const parsed = JSON.parse(developer.location_focus);
+        operatingLocations = Array.isArray(parsed) ? parsed.filter((loc: any) => loc && typeof loc === 'string') : [];
+      } catch {
+        // If parsing fails, treat as single location
+        operatingLocations = [developer.location_focus];
+      }
+    }
+  }
 
   // Normalize JSONB fields to handle both proper JSONB and stringified JSON formats
   const historyTimeline = asArray(parseJsonb(developer.history_timeline_json, []));
@@ -371,10 +439,14 @@ export default async function DeveloperPage({ params }: PageProps) {
                   <h2 className="text-3xl font-bold text-heading-blue mb-6">
                     About {developer.developer_name}
                   </h2>
-                  <div 
-                    className="prose prose-lg max-w-none text-foreground"
-                    dangerouslySetInnerHTML={{ __html: developer.long_description_seo }}
-                  />
+                  {developer.long_description_seo ? (
+                    <div 
+                      className="prose prose-lg max-w-none text-foreground"
+                      dangerouslySetInnerHTML={{ __html: developer.long_description_seo }}
+                    />
+                  ) : (
+                    <p className="text-muted-foreground">No description available.</p>
+                  )}
                 </CardContent>
               </Card>
 
@@ -431,10 +503,12 @@ export default async function DeveloperPage({ params }: PageProps) {
                           <User className="w-6 h-6 text-luxury-gold flex-shrink-0 mt-1" />
                           <h3 className="text-xl font-semibold text-heading-blue">Leadership & Vision</h3>
                         </div>
-                        <div
-                          className="text-foreground leading-relaxed prose max-w-none"
-                          dangerouslySetInnerHTML={{ __html: developer.founder_bio_summary }}
-                        />
+                    {developer.founder_bio_summary ? (
+                      <div
+                        className="text-foreground leading-relaxed prose max-w-none"
+                        dangerouslySetInnerHTML={{ __html: developer.founder_bio_summary }}
+                      />
+                    ) : null}
                       </div>
                     )}
 
@@ -660,10 +734,14 @@ export default async function DeveloperPage({ params }: PageProps) {
                 <Card className="bg-gradient-to-br from-heading-blue to-heading-blue-dark text-white">
                   <CardContent className="p-6">
                     <h3 className="text-xl font-bold mb-3">What Sets Us Apart</h3>
-                    <div
-                      className="text-white/90 prose prose-invert max-w-none"
-                      dangerouslySetInnerHTML={{ __html: developer.usp }}
-                    />
+                    {developer.usp ? (
+                      <div
+                        className="text-white/90 prose prose-invert max-w-none"
+                        dangerouslySetInnerHTML={{ __html: developer.usp }}
+                      />
+                    ) : (
+                      <p className="text-white/90">No unique selling points available.</p>
+                    )}
                   </CardContent>
                 </Card>
               )}
@@ -762,4 +840,8 @@ export default async function DeveloperPage({ params }: PageProps) {
       <CityHubBacklink />
     </>
   );
+  } catch (error) {
+    console.error('[DeveloperPage] Unexpected error rendering developer page:', error);
+    notFound();
+  }
 }
