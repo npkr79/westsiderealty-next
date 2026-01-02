@@ -279,6 +279,9 @@ export default async function MicroMarketPage({ params }: PageProps) {
   // Try to resolve as a micro-market first (pass citySlug to ensure correct city match)
   const pageData = await microMarketPagesService.getMicroMarketPageBySlug(microMarketSlug, citySlug);
 
+  // Debug logging to identify crash point
+  console.log("[MicroMarketPage] Rendering with pageData:", pageData ? "exists" : "null", "slug:", microMarketSlug);
+
   // Early return if pageData is null - BEFORE any string operations
   if (!pageData) {
     // If no micro-market page found, this might be an old or direct property URL like:
@@ -448,9 +451,9 @@ export default async function MicroMarketPage({ params }: PageProps) {
       try {
         const faqData = JSON.parse(faqSchemaString);
         if (faqData.mainEntity && Array.isArray(faqData.mainEntity)) {
-          faqItems = faqData.mainEntity.map((item: any) => ({
-            question: item.name || "",
-            answer: item.acceptedAnswer?.text || "",
+          faqItems = (faqData.mainEntity ?? []).map((item: any) => ({
+            question: item?.name || "",
+            answer: item?.acceptedAnswer?.text || "",
           }));
         }
       } catch (e) {
@@ -547,7 +550,7 @@ export default async function MicroMarketPage({ params }: PageProps) {
     };
   }
 
-  // Generate unified schema using the utility
+  // Generate unified schema using the utility - ensure faqItems is always an array
   const unifiedSchema = generateUnifiedSchema({
     pageUrl: canonicalUrl,
     title: seoTitle,
@@ -555,11 +558,11 @@ export default async function MicroMarketPage({ params }: PageProps) {
     heroImageUrl: pageData.hero_image_url || pageData.connectivity_map_url || undefined,
     primaryEntityType,
     primaryEntity,
-    faqItems,
+    faqItems: Array.isArray(faqItems) ? faqItems : [],
     breadcrumbs: [
       { name: "Home", item: "https://www.westsiderealty.in" },
       { name: cityName, item: `https://www.westsiderealty.in/${citySlug}` },
-      { name: pageData.micro_market_name, item: canonicalUrl },
+      { name: pageData.micro_market_name || "", item: canonicalUrl },
     ],
   });
 
