@@ -3,9 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import { microMarketPagesService, type MicroMarketPage, type FeaturedProject } from "@/services/microMarketPagesService";
-
-// Safe toLowerCase helper
-const safeLower = (v: unknown): string => (typeof v === "string" ? v : "").toLowerCase();
+import { parseJsonb, safeLower, asArray, asObject } from "@/lib/parse-jsonb";
 import { projectService, ProjectWithRelations } from "@/services/projectService";
 import BreadcrumbNav from "@/components/layout/BreadcrumbNav";
 import { Building2, TrendingUp, MapPin, School, Hospital, ShoppingBag } from "lucide-react";
@@ -54,8 +52,8 @@ const highlightMetrics = (html: string): string => {
 };
 
 // Helper function to robustly generate the final, stringified FAQ Schema content
-const getFaqSchemaJsonString = (pageData: MicroMarketPage | null): string => {
-  if (!pageData || (!pageData.faq_schema_json && !pageData.faqs?.length)) {
+const getFaqSchemaJsonString = (pageData: MicroMarketPage | null, normalizedFaqs: any[]): string => {
+  if (!pageData || (!pageData.faq_schema_json && normalizedFaqs.length === 0)) {
     return "";
   }
 
@@ -63,29 +61,20 @@ const getFaqSchemaJsonString = (pageData: MicroMarketPage | null): string => {
 
   // SCENARIO 1: Pre-generated content exists in faq_schema_json (PREFERRED PATH - Faster)
   if (pageData.faq_schema_json) {
-    schemaData = pageData.faq_schema_json;
-
-    // If the data is a string (TEXT column), attempt to parse it back into an object
-    if (typeof schemaData === "string") {
-      try {
-        schemaData = JSON.parse(schemaData);
-      } catch (e) {
-        schemaData = null;
-      }
-    }
+    schemaData = parseJsonb(pageData.faq_schema_json, null);
   }
 
   // SCENARIO 2: FALLBACK (GENERATED DYNAMICALLY from clean faqs array)
-  if (!schemaData && Array.isArray(pageData.faqs) && pageData.faqs.length > 0) {
+  if (!schemaData && normalizedFaqs.length > 0) {
     schemaData = {
       "@context": "https://schema.org",
       "@type": "FAQPage",
-      mainEntity: (pageData.faqs ?? []).map((faq: any) => ({
+      mainEntity: (normalizedFaqs ?? []).map((faq: any) => ({
         "@type": "Question",
-        name: faq.question || faq.q,
+        name: faq?.question || faq?.q || "",
         acceptedAnswer: {
           "@type": "Answer",
-          text: faq.answer || faq.a,
+          text: faq?.answer || faq?.a || "",
         },
       })),
     };
@@ -334,6 +323,14 @@ export default async function MicroMarketPage({ params }: PageProps) {
     notFound();
   }
 
+  // Normalize all JSONB fields to handle both proper JSONB and stringified JSON formats
+  // This makes the page resilient to data stored in either format (e.g., Kadthal vs Kompally)
+  const faqs = asArray(parseJsonb(pageData.faqs, []));
+  const infrastructure = asArray(parseJsonb(pageData.infrastructure_json, []));
+  const keyInfrastructure = asArray(parseJsonb((pageData as any).key_infrastructure_json, []));
+  const marketTable = asArray(parseJsonb((pageData as any).market_analysis_table, []));
+  const masterPlan = asObject(parseJsonb(pageData.master_plan_json, {}));
+
   // Fetch featured projects
   const featuredProjects = await microMarketPagesService.getFeaturedProjectsForPage(pageData.id);
 
@@ -446,7 +443,7 @@ export default async function MicroMarketPage({ params }: PageProps) {
       }
     ];
   } else {
-    const faqSchemaString = getFaqSchemaJsonString(pageData);
+    const faqSchemaString = getFaqSchemaJsonString(pageData, faqs);
     if (faqSchemaString) {
       try {
         const faqData = JSON.parse(faqSchemaString);
@@ -460,6 +457,13 @@ export default async function MicroMarketPage({ params }: PageProps) {
         // Ignore parse errors
       }
     }
+    // If no schema, use normalized faqs directly
+    if (faqItems.length === 0 && faqs.length > 0) {
+      faqItems = faqs.map((faq: any) => ({
+        question: faq?.question || faq?.q || "",
+        answer: faq?.answer || faq?.a || "",
+      }));
+    }
   }
 
   // Build primary entity based on page type
@@ -470,21 +474,13 @@ export default async function MicroMarketPage({ params }: PageProps) {
   if (isNeopolis) {
     // For Neopolis, use Place schema with master plan data
     primaryEntityType = "Place";
-    let masterPlanData: any = {};
-    if (pageData.master_plan_json) {
-      try {
-        masterPlanData = typeof pageData.master_plan_json === "string" 
-          ? JSON.parse(pageData.master_plan_json) 
-          : pageData.master_plan_json;
-      } catch (e) {
-        console.error("Error parsing master plan JSON:", e);
-      }
-    }
+    // Use normalized masterPlan (already parsed)
+    const masterPlanData = masterPlan;
 
     primaryEntity = {
       "@type": "Place",
       name: `${pageData.micro_market_name} Master Plan & Zoning`,
-      description: `Master Plan and Zoning information for ${pageData.micro_market_name}, ${cityName}. ${(Array.isArray(masterPlanData.zones) ? (masterPlanData.zones ?? []).map((zone: any) => `${zone?.zone || ""}: ${zone?.purpose || ""} - ${zone?.description || ""}`).join(". ") : "") || ""}${masterPlanData.fsi_policy ? ` FSI Policy: ${masterPlanData.fsi_policy}.` : ""}${masterPlanData.total_area ? ` Total Area: ${masterPlanData.total_area}.` : ""}`,
+      description: `Master Plan and Zoning information for ${pageData.micro_market_name}, ${cityName}. ${(Array.isArray(masterPlanData?.zones) ? (masterPlanData.zones ?? []).map((zone: any) => `${zone?.zone || ""}: ${zone?.purpose || ""} - ${zone?.description || ""}`).join(". ") : "") || ""}${masterPlanData?.fsi_policy ? ` FSI Policy: ${masterPlanData.fsi_policy}.` : ""}${masterPlanData?.total_area ? ` Total Area: ${masterPlanData.total_area}.` : ""}`,
       address: {
         "@type": "PostalAddress",
         addressLocality: pageData.micro_market_name,
@@ -492,20 +488,20 @@ export default async function MicroMarketPage({ params }: PageProps) {
         addressCountry: "IN",
         ...(pageData.locality_pincode && { postalCode: pageData.locality_pincode }),
       },
-      ...(Array.isArray(masterPlanData.zones) && masterPlanData.zones.length > 0 && {
+      ...(Array.isArray(masterPlanData?.zones) && masterPlanData.zones.length > 0 ? {
         containsPlace: (masterPlanData.zones ?? []).map((zone: any) => ({
           "@type": "Place",
           name: zone?.zone || "",
           description: `${zone?.purpose || ""}: ${zone?.description || ""}`,
         })),
-      }),
-      ...(masterPlanData.fsi_policy && {
+      } : {}),
+      ...(masterPlanData?.fsi_policy ? {
         additionalProperty: {
           "@type": "PropertyValue",
           name: "FSI Policy",
           value: masterPlanData.fsi_policy,
         },
-      }),
+      } : {}),
       ...((pageData as any).latitude && (pageData as any).longitude && {
         geo: {
           "@type": "GeoCoordinates",
@@ -570,9 +566,10 @@ export default async function MicroMarketPage({ params }: PageProps) {
 
   // For Neopolis, use the same FAQ items for both visible section and JSON-LD
   // This ensures perfect synchronization between visible FAQs and schema markup
+  // Use normalized faqs (already parsed from JSONB)
   const finalFAQs = isNeopolis 
     ? (Array.isArray(faqItems) ? faqItems : [])
-    : (Array.isArray(pageData.faqs) ? pageData.faqs : []);
+    : faqs;
 
   return (
     <>
@@ -755,9 +752,9 @@ export default async function MicroMarketPage({ params }: PageProps) {
           )}
 
           {/* Master Plan & Zoning Section */}
-          {pageData.master_plan_json && (
+          {Object.keys(masterPlan).length > 0 && (
             <MasterPlanSection 
-              data={pageData.master_plan_json} 
+              data={masterPlan} 
               microMarketName={pageData.micro_market_name}
               latitude={(pageData as any).latitude}
               longitude={(pageData as any).longitude}
@@ -766,8 +763,8 @@ export default async function MicroMarketPage({ params }: PageProps) {
           )}
 
           {/* Infrastructure Roadmap Timeline */}
-          {Array.isArray(pageData.infrastructure_json) && pageData.infrastructure_json.length > 0 && (
-            <InfrastructureTimeline data={pageData.infrastructure_json} />
+          {infrastructure.length > 0 && (
+            <InfrastructureTimeline data={infrastructure as Array<{ year: string; project: string; status: string; impact: string }>} />
           )}
 
           {/* Strategic Infrastructure & Social Amenities */}
