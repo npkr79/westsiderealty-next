@@ -3,18 +3,24 @@ import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 
 type PageProps = {
-  params: Promise<{ citySlug: string; slug: string }>;
+  params: Promise<{ citySlug: string; slug: string[] }>;
 };
 
 /**
  * Catch-all route for old Google-indexed property URLs
  * Handles URLs like: /hyderabad/4bhk-apartment-dsr-the-classe-kokapet
  * Redirects to canonical: /hyderabad/buy/dsr-the-classe-4bhk-kokapet-2
+ * 
+ * This is a catch-all route that won't conflict with [microMarketSlug]
+ * because catch-all routes have lower priority in Next.js routing.
  */
 export default async function OldPropertyRedirectPage({ params }: PageProps) {
   const { citySlug: citySlugParam, slug: slugParam } = await params;
   const citySlug = Array.isArray(citySlugParam) ? citySlugParam[0] : citySlugParam;
-  const slug = Array.isArray(slugParam) ? slugParam[0] : slugParam;
+  const slugArray = Array.isArray(slugParam) ? slugParam : [slugParam];
+  
+  // Join slug array into a single string (catch-all routes return arrays)
+  const slug = slugArray.join('/');
 
   if (!citySlug || !slug) {
     notFound();
