@@ -126,7 +126,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
       <div className="min-h-screen bg-gray-50">
         <PageHeader
           title={query ? `Search Results for "${query}"` : "Search Properties & Developers"}
-          description={
+          subtitle={
             query
               ? `Found ${projects.length} project${projects.length !== 1 ? "s" : ""} and ${developers.length} developer${developers.length !== 1 ? "s" : ""} matching your search`
               : "Search for projects and developers across Hyderabad, Goa, and Dubai"
