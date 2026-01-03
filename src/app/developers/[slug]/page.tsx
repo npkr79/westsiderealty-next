@@ -14,7 +14,6 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import CityHubBacklink from "@/components/seo/CityHubBacklink";
 import DeveloperProjectCard from "@/components/developer/DeveloperProjectCard";
 import DeveloperContactForm from "@/components/developer/DeveloperContactForm";
-import { parseJsonb, asArray } from "@/lib/parse-jsonb";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -33,57 +32,23 @@ const truncateText = (text: string, maxLength = 140) => {
 
 // Fetch developer data server-side
 async function getDeveloper(slug: string) {
-  try {
-    const supabase = await createClient();
-    
-    // First try with is_published = true
-    let { data, error } = await supabase
-      .from('developers')
-      .select('*')
-      .eq('url_slug', slug)
-      .eq('is_published', true)
-      .limit(1)
-      .maybeSingle();
+  const supabase = await createClient();
+  const { data: developer, error } = await supabase
+    .from('developers')
+    .select('*')
+    .eq('url_slug', slug)
+    .maybeSingle();
 
-    // If not found, try without is_published filter (in case it's null)
-    if (!data && !error) {
-      const retryResult = await supabase
-        .from('developers')
-        .select('*')
-        .eq('url_slug', slug)
-        .limit(1)
-        .maybeSingle();
-      
-      data = retryResult.data;
-      error = retryResult.error;
-    }
-
-    // Handle PGRST116 error (no rows or multiple rows) gracefully
-    if (error) {
-      if (error.code === 'PGRST116') {
-        console.warn(`[getDeveloper] No developer found with url_slug: "${slug}"`);
-        return null;
-      }
-      console.error(`[getDeveloper] Error fetching developer with slug "${slug}":`, error);
-      return null;
-    }
-
-    if (!data) {
-      console.warn(`[getDeveloper] No developer data returned for slug: "${slug}"`);
-      return null;
-    }
-
-    // Ensure required fields exist
-    if (!data.id || !data.developer_name || !data.url_slug) {
-      console.error(`[getDeveloper] Developer data missing required fields for slug: "${slug}"`);
-      return null;
-    }
-
-    return data;
-  } catch (err) {
-    console.error(`[getDeveloper] Unexpected error fetching developer with slug "${slug}":`, err);
+  if (error) {
+    console.error(`[getDeveloper] Error fetching developer with slug "${slug}":`, error);
     return null;
   }
+
+  if (!developer) {
+    return null;
+  }
+
+  return developer;
 }
 
 // Fetch projects by developer server-side
@@ -212,29 +177,13 @@ export default async function DeveloperPage({ params }: PageProps) {
   const specializationText = stripHtmlTags(developer.specialization);
   const specializationSummary = truncateText(specializationText, 120);
 
-  // Normalize location_focus array to prevent crashes
-  // Handle both array format and stringified JSON format
-  let operatingLocations: string[] = [];
-  if (developer.location_focus) {
-    if (Array.isArray(developer.location_focus)) {
-      operatingLocations = developer.location_focus.filter((loc: any) => loc && typeof loc === 'string');
-    } else if (typeof developer.location_focus === 'string') {
-      try {
-        const parsed = JSON.parse(developer.location_focus);
-        operatingLocations = Array.isArray(parsed) ? parsed.filter((loc: any) => loc && typeof loc === 'string') : [];
-      } catch {
-        // If parsing fails, treat as single location
-        operatingLocations = [developer.location_focus];
-      }
-    }
-  }
-
-  // Normalize JSONB fields to handle both proper JSONB and stringified JSON formats
-  const historyTimeline = asArray(parseJsonb(developer.history_timeline_json, []));
-  const notableProjects = asArray(parseJsonb(developer.notable_projects_json, []));
-  const keyAwards = asArray(parseJsonb(developer.key_awards_json, []));
-  const testimonials = asArray(parseJsonb(developer.testimonial_json, []));
-  const faqs = asArray(parseJsonb(developer.faqs_json, []));
+  // Safe array normalization after data fetch
+  const historyTimeline = Array.isArray(developer.history_timeline_json) ? developer.history_timeline_json : [];
+  const notableProjects = Array.isArray(developer.notable_projects_json) ? developer.notable_projects_json : [];
+  const keyAwards = Array.isArray(developer.key_awards_json) ? developer.key_awards_json : [];
+  const testimonials = Array.isArray(developer.testimonial_json) ? developer.testimonial_json : [];
+  const faqs = Array.isArray(developer.faqs_json) ? developer.faqs_json : [];
+  const operatingLocations = Array.isArray(developer.location_focus) ? developer.location_focus : [];
 
   const canonicalUrl = `https://www.westsiderealty.in/developers/${developer.url_slug}`;
 
