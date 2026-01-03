@@ -260,44 +260,31 @@ export default function TabbedSearch() {
   };
 
   const handleSearch = () => {
-    // If there's a search query, route to the search page
-    if (searchQuery.trim()) {
-      router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
-      return;
-    }
-    
-    // Otherwise, route to city buy page with filters
     const params = new URLSearchParams();
     
-    // Map tab to category
-    if (activeTab === "residential") {
-      params.set("type", "residential");
-    } else if (activeTab === "commercial") {
-      params.set("type", "commercial");
-    } else if (activeTab === "land") {
-      params.set("type", "land");
+    // Always add search query if present
+    if (searchQuery.trim()) {
+      params.set("q", searchQuery.trim());
     }
     
-    // Map type
+    // Add city filter
+    params.set("city", city);
+    
+    // Add tab/category
+    params.set("category", activeTab);
+    
+    // Add type filter (New Projects, Resale, etc.)
     if (type) {
-      if (activeTab === "residential") {
-        if (type === "resale") {
-          params.set("isResale", "true");
-        } else if (type === "new-project") {
-          params.set("listing_type", "new");
-        }
-      } else if (activeTab === "commercial") {
-        params.set("propertyType", type);
-      }
+      params.set("projectType", type);
     }
     
-    // Add property types
+    // Add property types (checkboxes)
     if (selectedPropertyTypes.size > 0) {
-      params.set("types", Array.from(selectedPropertyTypes).join(","));
+      params.set("propertyTypes", Array.from(selectedPropertyTypes).join(","));
     }
     
-    // Route to city buy page
-    router.push(`/${city}/buy?${params.toString()}`);
+    // Route to search page with all filters
+    router.push(`/search?${params.toString()}`);
   };
 
   const handleSuggestionClick = (suggestion: SearchSuggestion) => {
