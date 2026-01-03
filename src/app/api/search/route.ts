@@ -74,14 +74,40 @@ export async function GET(request: NextRequest) {
       dbQuery = dbQuery.or('status.ilike.published,status.ilike.%under construction%,status.is.null,status.neq.resale');
     }
 
-    // Apply micro-market filter (from parsed text or URL param)
+    // CRITICAL: Apply micro-market filter using micro_market_id
+    // First, look up the micro-market ID from name or slug
     if (microMarket) {
-      dbQuery = dbQuery.eq('micro_markets.micro_market_name', microMarket);
+      const { data: mmData } = await supabase
+        .from('micro_markets')
+        .select('id')
+        .or(`micro_market_name.ilike.%${microMarket}%,url_slug.ilike.%${microMarket.toLowerCase().replace(/\s+/g, '-')}%`)
+        .limit(1)
+        .maybeSingle();
+
+      if (mmData?.id) {
+        console.log(`[SearchAPI] Found micro-market ID: ${mmData.id} for "${microMarket}"`);
+        dbQuery = dbQuery.eq('micro_market_id', mmData.id);
+      } else {
+        console.log(`[SearchAPI] No micro-market found for: "${microMarket}"`);
+      }
     }
 
-    // Apply developer filter (from parsed text or URL param)
+    // Apply developer filter using developer_id
+    // First, look up the developer ID from name or slug
     if (developer) {
-      dbQuery = dbQuery.eq('developers.developer_name', developer);
+      const { data: devData } = await supabase
+        .from('developers')
+        .select('id')
+        .or(`developer_name.ilike.%${developer}%,url_slug.ilike.%${developer.toLowerCase().replace(/\s+/g, '-')}%`)
+        .limit(1)
+        .maybeSingle();
+
+      if (devData?.id) {
+        console.log(`[SearchAPI] Found developer ID: ${devData.id} for "${developer}"`);
+        dbQuery = dbQuery.eq('developer_id', devData.id);
+      } else {
+        console.log(`[SearchAPI] No developer found for: "${developer}"`);
+      }
     }
 
     // Apply BHK filter (from parsed text)

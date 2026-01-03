@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/common/PageHeader";
 import ProjectCard from "@/components/properties/ProjectCard";
 import Link from "next/link";
 import Image from "next/image";
-import { Building2, Search, Briefcase, ChevronLeft, ChevronRight } from "lucide-react";
+import { Building2, Search, Briefcase, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,11 @@ interface PageProps {
     category?: string;
     projectType?: string;
     propertyTypes?: string;
+    microMarket?: string;
+    bhk?: string;
+    developer?: string;
+    completionStatus?: string;
+    isNewProject?: string;
     page?: string;
   }>;
 }
@@ -129,6 +134,11 @@ export default async function SearchPage({ searchParams }: PageProps) {
   const category = resolved.category || "";
   const projectType = resolved.projectType || "";
   const propertyTypesParam = resolved.propertyTypes || "";
+  const microMarket = resolved.microMarket || "";
+  const bhk = resolved.bhk || "";
+  const developer = resolved.developer || "";
+  const completionStatus = resolved.completionStatus || "";
+  const isNewProject = resolved.isNewProject === "true";
   const currentPage = parseInt(resolved.page || "1", 10);
   
   const supabase = await createClient();
@@ -147,6 +157,32 @@ export default async function SearchPage({ searchParams }: PageProps) {
       .eq("url_slug", citySlug)
       .maybeSingle();
     cityId = cityData?.id || null;
+  }
+
+  // Get micro-market ID if micro-market filter is provided
+  let microMarketId: string | null = null;
+  if (microMarket) {
+    const { data: mmData } = await supabase
+      .from("micro_markets")
+      .select("id")
+      .or(`micro_market_name.ilike.%${microMarket}%,url_slug.ilike.%${microMarket.toLowerCase().replace(/\s+/g, '-')}%`)
+      .limit(1)
+      .maybeSingle();
+    microMarketId = mmData?.id || null;
+    console.log(`[SearchPage] Micro-market "${microMarket}" -> ID: ${microMarketId}`);
+  }
+
+  // Get developer ID if developer filter is provided
+  let developerId: string | null = null;
+  if (developer) {
+    const { data: devData } = await supabase
+      .from("developers")
+      .select("id")
+      .or(`developer_name.ilike.%${developer}%,url_slug.ilike.%${developer.toLowerCase().replace(/\s+/g, '-')}%`)
+      .limit(1)
+      .maybeSingle();
+    developerId = devData?.id || null;
+    console.log(`[SearchPage] Developer "${developer}" -> ID: ${developerId}`);
   }
 
   // Build projects query - don't filter by is_published to include all projects
@@ -177,6 +213,34 @@ export default async function SearchPage({ searchParams }: PageProps) {
     // If no city filter but we have a text query, don't restrict by city
     // This allows searching across all cities when user types a query
     console.log("[SearchPage] No city filter - searching across all cities");
+  }
+
+  // CRITICAL: Apply micro-market filter using micro_market_id
+  if (microMarketId) {
+    projectsQuery = projectsQuery.eq("micro_market_id", microMarketId);
+    console.log(`[SearchPage] Filtering by micro_market_id: ${microMarketId} (microMarket: ${microMarket})`);
+  }
+
+  // Apply developer filter using developer_id
+  if (developerId) {
+    projectsQuery = projectsQuery.eq("developer_id", developerId);
+    console.log(`[SearchPage] Filtering by developer_id: ${developerId} (developer: ${developer})`);
+  }
+
+  // Apply BHK filter
+  if (bhk) {
+    projectsQuery = projectsQuery.ilike("project_name", `%${bhk}%`);
+    console.log(`[SearchPage] Filtering by BHK: ${bhk}`);
+  }
+
+  // Apply completion status filter
+  if (completionStatus) {
+    projectsQuery = projectsQuery.or(`completion_status.ilike.%${completionStatus}%,status.ilike.%${completionStatus}%`);
+    console.log(`[SearchPage] Filtering by completion_status: ${completionStatus}`);
+  } else if (isNewProject) {
+    // Generic "new projects" - filter for non-null completion_status or status
+    projectsQuery = projectsQuery.or("completion_status.not.is.null,status.not.is.null");
+    console.log(`[SearchPage] Filtering for new projects (non-null completion_status or status)`);
   }
 
   // Apply project type filter (New Projects vs Resale) - make it less restrictive
@@ -369,10 +433,32 @@ export default async function SearchPage({ searchParams }: PageProps) {
 
   const hasResults = projects.length > 0 || developers.length > 0;
 
+  // Build active filters for display
+  const activeFilters: { key: string; label: string; value: string }[] = [];
+  if (citySlug) activeFilters.push({ key: "city", label: "City", value: citySlug.charAt(0).toUpperCase() + citySlug.slice(1) });
+  if (microMarket) activeFilters.push({ key: "microMarket", label: "Area", value: microMarket });
+  if (propertyTypes.length > 0) {
+    const typeLabels: Record<string, string> = {
+      "apartment": "Apartment/Flat",
+      "standalone": "Standalone Apartment",
+      "independent-house": "Independent House",
+      "villa": "Villa",
+      "office": "Office Space",
+      "retail": "Retail Space",
+    };
+    activeFilters.push({ key: "propertyTypes", label: "Type", value: propertyTypes.map(pt => typeLabels[pt] || pt).join(", ") });
+  }
+  if (bhk) activeFilters.push({ key: "bhk", label: "BHK", value: bhk });
+  if (developer) activeFilters.push({ key: "developer", label: "Developer", value: developer });
+  if (projectType === "new" || projectType === "new-project") activeFilters.push({ key: "projectType", label: "Project Type", value: "New Projects" });
+  if (projectType === "resale") activeFilters.push({ key: "projectType", label: "Project Type", value: "Resale" });
+  if (completionStatus) activeFilters.push({ key: "completionStatus", label: "Status", value: completionStatus });
+  if (isNewProject && !completionStatus) activeFilters.push({ key: "isNewProject", label: "Status", value: "New Projects" });
+
   // Build search summary
   const searchSummary: string[] = [];
   if (citySlug) searchSummary.push(citySlug.charAt(0).toUpperCase() + citySlug.slice(1));
-  if (projectType === "new-project") searchSummary.push("New Projects");
+  if (projectType === "new-project" || projectType === "new") searchSummary.push("New Projects");
   if (projectType === "resale") searchSummary.push("Resale");
   if (propertyTypes.length > 0) {
     const typeLabels: Record<string, string> = {
@@ -392,8 +478,29 @@ export default async function SearchPage({ searchParams }: PageProps) {
     if (category) params.set("category", category);
     if (projectType) params.set("projectType", projectType);
     if (propertyTypesParam) params.set("propertyTypes", propertyTypesParam);
+    if (microMarket) params.set("microMarket", microMarket);
+    if (bhk) params.set("bhk", bhk);
+    if (developer) params.set("developer", developer);
+    if (completionStatus) params.set("completionStatus", completionStatus);
+    if (isNewProject) params.set("isNewProject", "true");
     if (query) params.set("q", query);
     if (page > 1) params.set("page", page.toString());
+    return `/search?${params.toString()}`;
+  };
+
+  // Build remove filter URL
+  const buildRemoveFilterUrl = (keyToRemove: string) => {
+    const params = new URLSearchParams();
+    if (citySlug && keyToRemove !== "city") params.set("city", citySlug);
+    if (category && keyToRemove !== "category") params.set("category", category);
+    if (projectType && keyToRemove !== "projectType") params.set("projectType", projectType);
+    if (propertyTypesParam && keyToRemove !== "propertyTypes") params.set("propertyTypes", propertyTypesParam);
+    if (microMarket && keyToRemove !== "microMarket") params.set("microMarket", microMarket);
+    if (bhk && keyToRemove !== "bhk") params.set("bhk", bhk);
+    if (developer && keyToRemove !== "developer") params.set("developer", developer);
+    if (completionStatus && keyToRemove !== "completionStatus") params.set("completionStatus", completionStatus);
+    if (isNewProject && keyToRemove !== "isNewProject") params.set("isNewProject", "true");
+    if (query && keyToRemove !== "q") params.set("q", query);
     return `/search?${params.toString()}`;
   };
 
@@ -423,6 +530,25 @@ export default async function SearchPage({ searchParams }: PageProps) {
               : "Search for projects and developers across Hyderabad, Goa, and Dubai"
           }
         />
+
+        {/* Active Filters */}
+        {activeFilters.length > 0 && (
+          <div className="container mx-auto px-4 -mt-4 mb-6">
+            <div className="flex flex-wrap gap-2">
+              {activeFilters.map((filter) => (
+                <Link
+                  key={filter.key}
+                  href={buildRemoveFilterUrl(filter.key)}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-full text-sm hover:bg-blue-100 transition-colors"
+                >
+                  <span className="text-xs text-blue-600">{filter.label}:</span>
+                  <span className="font-medium">{filter.value}</span>
+                  <X className="w-3 h-3 ml-1" />
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="container mx-auto px-4 py-8">
           {!hasResults && !query && !citySlug ? (
