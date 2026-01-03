@@ -41,6 +41,11 @@ export const metadata: Metadata = {
   // Web App Manifest
   manifest: '/site.webmanifest',
   
+  // Google Site Verification
+  verification: {
+    google: 'GNYcJkMYT85NyAgCUMb5XnmaLqtOzN-rF4UiPEH3ZiA',
+  },
+  
   // Additional meta tags
   other: {
     'msapplication-TileColor': '#1a365d',
