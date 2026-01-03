@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { createClient } from "@/lib/supabase/client";
+import { parseSearchQuery } from "@/lib/search/queryParser";
 
 interface SearchSuggestion {
   id: string;
@@ -259,31 +260,92 @@ export default function TabbedSearch() {
     setSelectedPropertyTypes(newSelected);
   };
 
-  const handleSearch = () => {
+  const handleSearch = async () => {
     const params = new URLSearchParams();
     
-    // Always add search query if present
-    if (searchQuery.trim()) {
-      params.set("q", searchQuery.trim());
-    }
-    
-    // Add city filter
+    // 1. Add UI-selected filters (these are explicit user choices)
     params.set("city", city);
-    
-    // Add tab/category
     params.set("category", activeTab);
     
-    // Add type filter (New Projects, Resale, etc.)
+    // Map type to projectType (resale vs new-project)
     if (type) {
-      params.set("projectType", type);
+      if (type === "new-project") {
+        params.set("projectType", "new");
+      } else if (type === "resale") {
+        params.set("projectType", "resale");
+      } else {
+        // For other types like "invest", "office", etc., pass as-is
+        params.set("projectType", type);
+      }
     }
     
-    // Add property types (checkboxes)
+    // Add checkbox-selected property types
     if (selectedPropertyTypes.size > 0) {
       params.set("propertyTypes", Array.from(selectedPropertyTypes).join(","));
     }
     
-    // Route to search page with all filters
+    // 2. Parse text input for additional entities
+    if (searchQuery.trim()) {
+      try {
+        // For client-side, we'll call the API route to parse the query
+        // This avoids type issues with client vs server Supabase clients
+        const parseResponse = await fetch(`/api/search/parse?q=${encodeURIComponent(searchQuery.trim())}`);
+        if (parseResponse.ok) {
+          const { parsed } = await parseResponse.json();
+          
+          if (parsed) {
+            // Add parsed micro-market (only if not already filtered by UI)
+            if (parsed.microMarket) {
+              params.set("microMarket", parsed.microMarket);
+            }
+            
+            // Add parsed BHK configuration
+            if (parsed.bhkConfig) {
+              params.set("bhk", parsed.bhkConfig);
+            }
+            
+            // Add parsed developer
+            if (parsed.developer) {
+              params.set("developer", parsed.developer);
+            }
+            
+            // Handle completion status from text
+            if (parsed.completionStatus) {
+              // Specific status like "New Launch"
+              params.set("completionStatus", parsed.completionStatus);
+            } else if (parsed.isNewProject) {
+              // Generic "new projects" indicator
+              params.set("isNewProject", "true");
+            }
+            
+            // IMPORTANT: If text mentions property type, it OVERRIDES checkbox selection
+            // Only if no checkboxes are selected
+            if (parsed.propertyType && selectedPropertyTypes.size === 0) {
+              params.set("propertyTypes", parsed.propertyType);
+            }
+            
+            // Keep remaining unparsed text for full-text search
+            if (parsed.remainingQuery && parsed.remainingQuery.trim()) {
+              params.set("q", parsed.remainingQuery.trim());
+            } else {
+              // If no remaining query, don't add q param
+            }
+          } else {
+            // If parsing returned null, use original query
+            params.set("q", searchQuery.trim());
+          }
+        } else {
+          // If parsing failed, use original query
+          params.set("q", searchQuery.trim());
+        }
+      } catch (error) {
+        console.error("[TabbedSearch] Error parsing query:", error);
+        // Fallback: just use the raw query
+        params.set("q", searchQuery.trim());
+      }
+    }
+    
+    // Route to search page with all merged filters
     router.push(`/search?${params.toString()}`);
   };
 

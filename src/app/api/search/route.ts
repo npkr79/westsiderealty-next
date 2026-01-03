@@ -3,18 +3,20 @@ import { parseSearchQuery } from '@/lib/search/queryParser';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
-  const searchParams = request.nextUrl.searchParams;
-  const query = searchParams.get('q') || '';
-  const city = searchParams.get('city') || 'hyderabad';
+  const { searchParams } = new URL(request.url);
 
-  if (!query.trim()) {
-    return NextResponse.json({ 
-      results: [], 
-      parsed: null, 
-      total: 0,
-      message: 'Please provide a search query' 
-    });
-  }
+  // Extract all filters from URL
+  const city = searchParams.get('city') || 'hyderabad';
+  const category = searchParams.get('category') || 'residential';
+  const projectType = searchParams.get('projectType'); // 'resale' | 'new' | 'invest' | etc.
+  const propertyTypesParam = searchParams.get('propertyTypes'); // comma-separated
+  const propertyTypes = propertyTypesParam ? propertyTypesParam.split(',').filter(Boolean) : [];
+  const microMarket = searchParams.get('microMarket');
+  const bhk = searchParams.get('bhk');
+  const developer = searchParams.get('developer');
+  const completionStatus = searchParams.get('completionStatus');
+  const isNewProject = searchParams.get('isNewProject') === 'true';
+  const textQuery = searchParams.get('q');
 
   try {
     const supabase = await createClient();
@@ -29,16 +31,18 @@ export async function GET(request: NextRequest) {
     if (!cityData) {
       return NextResponse.json({ 
         results: [], 
-        parsed: null, 
+        appliedFilters: {},
         total: 0,
         message: `City "${city}" not found` 
       }, { status: 404 });
     }
 
-    // Parse the natural language query
-    const parsed = await parseSearchQuery(query, supabase);
+    // Determine which table to query based on category + projectType
+    // For now, we'll use 'projects' table for all cases
+    // In the future, we can add logic for hyderabad_properties (resale) or commercial_properties
+    const useProjectsTable = true; // Always use projects table for now
 
-    // Build Supabase query
+    // Build query
     let dbQuery = supabase
       .from('projects')
       .select(`
@@ -58,67 +62,48 @@ export async function GET(request: NextRequest) {
       `)
       .eq('city_id', cityData.id);
 
-    // Apply parsed filters
+    // Apply category filter (residential, commercial, plots)
+    // This is handled in post-processing for property_types
 
-    // Micro-market filter (highest priority for location queries)
-    if (parsed.microMarket) {
-      dbQuery = dbQuery.eq('micro_markets.micro_market_name', parsed.microMarket);
+    // Apply projectType filter (resale vs new)
+    if (projectType === 'resale') {
+      // Resale: ready-to-move or completed projects
+      dbQuery = dbQuery.or('status.ilike.%ready%,status.ilike.%completed%,status.ilike.%resale%');
+    } else if (projectType === 'new' || projectType === 'new-project') {
+      // New projects: published, under construction, or any status that's not explicitly "resale"
+      dbQuery = dbQuery.or('status.ilike.published,status.ilike.%under construction%,status.is.null,status.neq.resale');
     }
 
-    // Developer filter
-    if (parsed.developer) {
-      dbQuery = dbQuery.eq('developers.developer_name', parsed.developer);
+    // Apply micro-market filter (from parsed text or URL param)
+    if (microMarket) {
+      dbQuery = dbQuery.eq('micro_markets.micro_market_name', microMarket);
     }
 
-    // BHK configuration filter (search in project_name or property_types)
-    if (parsed.bhkConfig) {
-      // Try to match BHK in project_name first
-      dbQuery = dbQuery.ilike('project_name', `%${parsed.bhkConfig}%`);
-      // Also check property_types JSONB if needed (this is a fallback)
-      // Note: Supabase doesn't support direct JSONB array contains with text matching easily
-      // So we'll rely on project_name matching for BHK
+    // Apply developer filter (from parsed text or URL param)
+    if (developer) {
+      dbQuery = dbQuery.eq('developers.developer_name', developer);
     }
 
-    // Property type filter (check in property_types JSONB)
-    if (parsed.propertyType) {
-      // property_types is JSONB, so we need to use text search
-      // We'll filter in memory after fetching, or use ilike on a text representation
-      // For now, we'll also search in project_name as a fallback
-      const propertyTypeLower = parsed.propertyType.toLowerCase();
-      dbQuery = dbQuery.or(`project_name.ilike.%${propertyTypeLower}%,meta_description.ilike.%${propertyTypeLower}%`);
+    // Apply BHK filter (from parsed text)
+    if (bhk) {
+      dbQuery = dbQuery.ilike('project_name', `%${bhk}%`);
     }
 
-    // COMPLETION STATUS LOGIC:
-    // Case 1: Specific status like "new launch projects in kokapet"
-    if (parsed.completionStatus) {
-      // Try to match in completion_status first, then fallback to status
-      const statusMap: Record<string, string> = {
-        'New Launch': 'New Launch',
-        'Under Construction': 'Under Construction',
-        'Ready to Move': 'Ready to Move',
-        'Pre-Launch': 'Pre-Launch',
-        'Upcoming': 'Upcoming',
-        'Published': 'Published',
-      };
-      const dbStatus = statusMap[parsed.completionStatus] || parsed.completionStatus;
-      
-      // Check both completion_status and status fields
-      dbQuery = dbQuery.or(`completion_status.ilike.%${dbStatus}%,status.ilike.%${dbStatus}%`);
-    }
-    // Case 2: Generic "new projects in kollur" = any non-null completion_status or status
-    else if (parsed.isNewProject) {
-      // Include projects with any completion_status or status (not null)
-      // Use separate filters since Supabase .or() with .not() can be tricky
-      // We'll filter in memory after fetching
-      // For now, just ensure we get projects (we'll filter nulls in post-processing)
+    // Apply completion_status logic (for new projects)
+    if (completionStatus) {
+      // Specific status from parsed text like "New Launch"
+      dbQuery = dbQuery.or(`completion_status.ilike.%${completionStatus}%,status.ilike.%${completionStatus}%`);
+    } else if (isNewProject) {
+      // Generic "new projects" - any non-null completion_status or status
+      // We'll filter in post-processing
     }
 
-    // If there's remaining text, use it for full-text search
-    if (parsed.remainingQuery && parsed.remainingQuery.length >= 2) {
+    // Apply text search for remaining query
+    if (textQuery && textQuery.trim().length >= 2) {
       dbQuery = dbQuery.or(`
-        project_name.ilike.%${parsed.remainingQuery}%,
-        meta_description.ilike.%${parsed.remainingQuery}%,
-        project_overview_seo.ilike.%${parsed.remainingQuery}%
+        project_name.ilike.%${textQuery.trim()}%,
+        meta_description.ilike.%${textQuery.trim()}%,
+        project_overview_seo.ilike.%${textQuery.trim()}%
       `);
     }
 
@@ -126,55 +111,93 @@ export async function GET(request: NextRequest) {
     const { data: projects, error } = await dbQuery
       .order('is_featured', { ascending: false })
       .order('created_at', { ascending: false })
-      .limit(50);
+      .limit(500); // Fetch more for post-processing
 
     if (error) {
       console.error('[SearchAPI] Error:', error);
       return NextResponse.json({ 
         error: error.message,
         results: [],
-        parsed,
+        appliedFilters: {},
         total: 0
       }, { status: 500 });
     }
 
-    // Post-process: Filter by property type and "new projects" logic
+    // Post-process: Filter by property types, category, and "new projects" logic
     let filteredProjects = projects || [];
-    
-    // Filter by property type if specified (since JSONB filtering is complex)
-    if (parsed.propertyType && projects) {
-      const propertyTypeLower = parsed.propertyType.toLowerCase();
+
+    // Filter by property types (from checkboxes or parsed text)
+    if (propertyTypes.length > 0) {
       filteredProjects = filteredProjects.filter((p: any) => {
-        // Check project_name
-        if (p.project_name?.toLowerCase().includes(propertyTypeLower)) return true;
-        
-        // Check property_types JSONB
-        if (p.property_types) {
-          const typesStr = JSON.stringify(p.property_types).toLowerCase();
-          if (typesStr.includes(propertyTypeLower)) return true;
+        const typesStr = JSON.stringify(p.property_types || {}).toLowerCase();
+        return propertyTypes.some(pt => {
+          const ptLower = pt.toLowerCase();
+          // Check if property_types JSONB contains the type
+          if (typesStr.includes(ptLower)) return true;
           
           // Handle array of strings
           if (Array.isArray(p.property_types)) {
-            return p.property_types.some((pt: any) => 
-              String(pt).toLowerCase().includes(propertyTypeLower)
+            return p.property_types.some((propType: any) => 
+              String(propType).toLowerCase().includes(ptLower)
             );
           }
-        }
-        
-        return false;
+          
+          // Check project_name as fallback
+          if (p.project_name?.toLowerCase().includes(ptLower)) return true;
+          
+          return false;
+        });
       });
     }
-    
+
+    // Filter by category (residential, commercial, plots)
+    if (category === 'residential') {
+      filteredProjects = filteredProjects.filter((p: any) => {
+        const types = p.property_types;
+        if (!types) return true;
+        const typesStr = JSON.stringify(types).toLowerCase();
+        return !typesStr.includes('commercial') && !typesStr.includes('plot') && !typesStr.includes('land');
+      });
+    } else if (category === 'commercial') {
+      filteredProjects = filteredProjects.filter((p: any) => {
+        const types = p.property_types;
+        if (!types) return false;
+        const typesStr = JSON.stringify(types).toLowerCase();
+        return typesStr.includes('commercial') || typesStr.includes('office') || typesStr.includes('retail');
+      });
+    } else if (category === 'land' || category === 'plots') {
+      filteredProjects = filteredProjects.filter((p: any) => {
+        const types = p.property_types;
+        if (!types) return false;
+        const typesStr = JSON.stringify(types).toLowerCase();
+        return typesStr.includes('plot') || typesStr.includes('land') || typesStr.includes('agricultural');
+      });
+    }
+
     // Filter for "new projects" - exclude projects with null completion_status AND null status
-    if (parsed.isNewProject && !parsed.completionStatus) {
+    if (isNewProject && !completionStatus) {
       filteredProjects = filteredProjects.filter((p: any) => {
         return p.completion_status != null || p.status != null;
       });
     }
 
+    // Limit final results
+    filteredProjects = filteredProjects.slice(0, 50);
+
     return NextResponse.json({
       results: filteredProjects,
-      parsed: parsed, // Return parsed info for UI display
+      appliedFilters: {
+        city,
+        category,
+        projectType,
+        propertyTypes,
+        microMarket,
+        bhk,
+        developer,
+        completionStatus,
+        isNewProject,
+        textQuery
+      },
       total: filteredProjects.length,
     });
   } catch (error: any) {
@@ -182,7 +205,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ 
       error: error.message || 'Internal server error',
       results: [],
-      parsed: null,
+      appliedFilters: {},
       total: 0
     }, { status: 500 });
   }
