@@ -151,6 +151,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
 
   // Build projects query - don't filter by is_published to include all projects
   // The user wants to see all projects matching the criteria, not just published ones
+  // Note: is_published column doesn't exist in projects table, so we don't select it
   let projectsQuery = supabase
     .from("projects")
     .select(`
@@ -160,7 +161,6 @@ export default async function SearchPage({ searchParams }: PageProps) {
       hero_image_url,
       price_range_text,
       status,
-      is_published,
       property_types,
       city:cities(url_slug, city_name),
       micro_market:micro_markets!projects_micromarket_id_fkey(url_slug, micro_market_name),
