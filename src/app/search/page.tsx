@@ -172,10 +172,20 @@ export default async function SearchPage({ searchParams }: PageProps) {
   // Apply city filter
   if (cityId) {
     projectsQuery = projectsQuery.eq("city_id", cityId);
+    console.log(`[SearchPage] Filtering by city_id: ${cityId} (citySlug: ${citySlug})`);
+  } else {
+    // If no city filter but we have a text query, don't restrict by city
+    // This allows searching across all cities when user types a query
+    console.log("[SearchPage] No city filter - searching across all cities");
   }
 
   // Apply project type filter (New Projects vs Resale) - make it less restrictive
-  if (projectType === "new-project") {
+  // When there's a text query, skip status filtering entirely to get all projects
+  if (query) {
+    // When there's a text query, don't filter by status at all
+    // This allows finding projects regardless of status (user is searching by location/keywords)
+    console.log("[SearchPage] Text query present - skipping status filter to get all projects");
+  } else if (projectType === "new-project") {
     // New projects: include published, under construction, or any status that's not explicitly "resale"
     projectsQuery = projectsQuery.or("status.ilike.published,status.ilike.%under construction%,status.is.null");
   } else if (projectType === "resale") {
@@ -192,7 +202,11 @@ export default async function SearchPage({ searchParams }: PageProps) {
 
   if (projectsError) {
     console.error("[SearchPage] Error fetching projects:", projectsError);
+    console.error("[SearchPage] Error details:", JSON.stringify(projectsError, null, 2));
   }
+  
+  console.log(`[SearchPage] SQL query returned ${projectsData?.length || 0} projects`);
+  console.log(`[SearchPage] Query params:`, { citySlug, cityId, projectType, query, category });
 
   // Filter by property types in memory (since JSONB filtering is complex)
   let filteredProjects = (projectsData || []) as any[];
