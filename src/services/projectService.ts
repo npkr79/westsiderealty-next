@@ -253,8 +253,30 @@ export const projectService = {
 
     console.log(`[getCityLevelProjectBySlug] Found city ID: ${cityData.id}`);
 
+    // First, check if project exists at all (for debugging)
+    const { data: debugData } = await supabase
+      .from('projects')
+      .select('id, project_name, url_slug, is_published, status, page_status, city_id')
+      .eq('url_slug', correctedSlug)
+      .maybeSingle();
+    
+    if (debugData) {
+      console.log('[getCityLevelProjectBySlug] Project exists in DB:', {
+        id: debugData.id,
+        name: debugData.project_name,
+        url_slug: debugData.url_slug,
+        is_published: debugData.is_published,
+        status: debugData.status,
+        page_status: debugData.page_status,
+        city_id: debugData.city_id,
+        city_id_matches: debugData.city_id === cityData.id
+      });
+    } else {
+      console.warn('[getCityLevelProjectBySlug] ⚠️ Project not found in DB with url_slug:', correctedSlug);
+    }
+
     // Query project by city_id and url_slug (using corrected slug)
-    // Try with status filter first, then without filter
+    // First try with is_published = true (most common case)
     let { data, error } = await supabase
       .from('projects')
       .select(`
@@ -266,12 +288,32 @@ export const projectService = {
       `)
       .eq('url_slug', correctedSlug)
       .eq('city_id', cityData.id)
-      .or('status.ilike.published,status.ilike.%under construction%,page_status.eq.published')
+      .eq('is_published', true)
       .maybeSingle();
     
-    // If no result with status filter, try without any filter (project might exist but not published)
+    // If no result with is_published filter, try with status/page_status filters
     if (!data && !error) {
-      console.log('[getCityLevelProjectBySlug] No result with status filter, trying without any filter...');
+      console.log('[getCityLevelProjectBySlug] No result with is_published filter, trying with status/page_status filters...');
+      const result = await supabase
+        .from('projects')
+        .select(`
+          *,
+          floor_plan_images,
+          city:cities(*),
+          developer:developers(*),
+          micro_market:micro_markets!projects_micromarket_id_fkey(*)
+        `)
+        .eq('url_slug', correctedSlug)
+        .eq('city_id', cityData.id)
+        .or('status.ilike.published,status.ilike.%under construction%,page_status.eq.published')
+        .maybeSingle();
+      data = result.data;
+      error = result.error;
+    }
+    
+    // If still no result, try without any filters (for newly added projects that might not have status set)
+    if (!data && !error) {
+      console.log('[getCityLevelProjectBySlug] No result with status filters, trying without any filter (for newly added projects)...');
       const result = await supabase
         .from('projects')
         .select(`
@@ -288,7 +330,8 @@ export const projectService = {
       error = result.error;
       
       if (data) {
-        console.warn('[getCityLevelProjectBySlug] ⚠️ Project found but may not be published:', {
+        console.warn('[getCityLevelProjectBySlug] ⚠️ Project found but may not have is_published or status set:', {
+          is_published: (data as any).is_published,
           status: (data as any).status,
           page_status: (data as any).page_status
         });
