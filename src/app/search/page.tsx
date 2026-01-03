@@ -162,6 +162,8 @@ export default async function SearchPage({ searchParams }: PageProps) {
       price_range_text,
       status,
       property_types,
+      meta_description,
+      project_overview_seo,
       city:cities(url_slug, city_name),
       micro_market:micro_markets!projects_micromarket_id_fkey(url_slug, micro_market_name),
       developer:developers(url_slug, developer_name)
@@ -181,12 +183,10 @@ export default async function SearchPage({ searchParams }: PageProps) {
     projectsQuery = projectsQuery.or("status.ilike.%ready%,status.ilike.%completed%");
   }
 
-  // Apply search query filter
-  if (query) {
-    projectsQuery = projectsQuery.ilike("project_name", `%${query}%`);
-  }
+  // Don't filter by query in SQL - we'll filter in memory to search across all fields including relations
+  // This allows searching in micro_market names, developer names, etc.
 
-  // Fetch all matching projects (we'll filter property types and category in memory)
+  // Fetch all matching projects (we'll filter by query, property types and category in memory)
   // Increase limit to get more projects before filtering
   const { data: projectsData, error: projectsError, count: totalCount } = await projectsQuery.limit(500);
 
@@ -197,8 +197,59 @@ export default async function SearchPage({ searchParams }: PageProps) {
   // Filter by property types in memory (since JSONB filtering is complex)
   let filteredProjects = (projectsData || []) as any[];
   
-  console.log(`[SearchPage] Fetched ${filteredProjects.length} projects before property type filtering`);
+  console.log(`[SearchPage] Fetched ${filteredProjects.length} projects before filtering`);
+  console.log(`[SearchPage] Search query:`, query);
   console.log(`[SearchPage] Property types filter:`, propertyTypes);
+  
+  // Apply text search filter in memory (search across multiple fields including related data)
+  if (query) {
+    const searchLower = query.toLowerCase();
+    const keywords = searchLower.split(/\s+/).filter(k => k.length > 1); // Filter out single characters like "3", "in"
+    
+    filteredProjects = filteredProjects.filter(project => {
+      // Search in project_name
+      const projectName = (project.project_name || "").toLowerCase();
+      if (projectName.includes(searchLower)) return true;
+      
+      // Search in micro_market name
+      const microMarket = project.micro_market;
+      if (microMarket) {
+        const mmName = Array.isArray(microMarket) 
+          ? (microMarket[0]?.micro_market_name || "").toLowerCase()
+          : (microMarket.micro_market_name || "").toLowerCase();
+        if (mmName.includes(searchLower) || keywords.some(k => mmName.includes(k))) return true;
+      }
+      
+      // Search in developer name
+      const developer = project.developer;
+      if (developer) {
+        const devName = Array.isArray(developer)
+          ? (developer[0]?.developer_name || "").toLowerCase()
+          : (developer.developer_name || "").toLowerCase();
+        if (devName.includes(searchLower) || keywords.some(k => devName.includes(k))) return true;
+      }
+      
+      // Search in description fields if available
+      const metaDesc = (project.meta_description || "").toLowerCase();
+      const overview = (project.project_overview_seo || "").toLowerCase();
+      if (metaDesc.includes(searchLower) || overview.includes(searchLower)) return true;
+      
+      // Search for keywords (e.g., "3 bhk" or "kokapet")
+      // Match if significant keywords are found (like "bhk", "kokapet")
+      if (keywords.length > 0) {
+        const significantKeywords = keywords.filter(k => k.length > 2); // "bhk", "kokapet" but not "3", "in"
+        if (significantKeywords.length > 0) {
+          const allText = `${projectName} ${microMarket ? (Array.isArray(microMarket) ? (microMarket[0]?.micro_market_name || "") : (microMarket.micro_market_name || "")) : ""} ${developer ? (Array.isArray(developer) ? (developer[0]?.developer_name || "") : (developer.developer_name || "")) : ""} ${metaDesc} ${overview}`.toLowerCase();
+          // Match if at least one significant keyword is found
+          if (significantKeywords.some(k => allText.includes(k))) return true;
+        }
+      }
+      
+      return false;
+    });
+    
+    console.log(`[SearchPage] After text search filtering: ${filteredProjects.length} projects`);
+  }
   
   if (propertyTypes.length > 0) {
     // Map property type IDs to actual property type names
