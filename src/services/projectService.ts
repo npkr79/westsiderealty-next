@@ -253,14 +253,17 @@ export const projectService = {
 
     console.log(`[getCityLevelProjectBySlug] Found city ID: ${cityData.id}`);
 
-    // First, check if project exists at all (for debugging)
+    // First, check if project exists at all (for debugging) - check without city filter first
     const { data: debugData } = await supabase
       .from('projects')
-      .select('id, project_name, url_slug, is_published, status, page_status, city_id')
+      .select('id, project_name, url_slug, is_published, status, page_status, city_id, city:cities(url_slug)')
       .eq('url_slug', correctedSlug)
       .maybeSingle();
     
     if (debugData) {
+      const debugCitySlug = Array.isArray(debugData.city) 
+        ? debugData.city[0]?.url_slug 
+        : debugData.city?.url_slug;
       console.log('[getCityLevelProjectBySlug] Project exists in DB:', {
         id: debugData.id,
         name: debugData.project_name,
@@ -269,10 +272,31 @@ export const projectService = {
         status: debugData.status,
         page_status: debugData.page_status,
         city_id: debugData.city_id,
-        city_id_matches: debugData.city_id === cityData.id
+        city_slug_from_db: debugCitySlug,
+        requested_city_slug: citySlug,
+        city_id_matches: debugData.city_id === cityData.id,
+        city_slug_matches: debugCitySlug === citySlug
       });
+      
+      // If city doesn't match, warn about it
+      if (debugCitySlug !== citySlug) {
+        console.warn('[getCityLevelProjectBySlug] ⚠️ City mismatch! Project belongs to:', debugCitySlug, 'but requested:', citySlug);
+      }
     } else {
       console.warn('[getCityLevelProjectBySlug] ⚠️ Project not found in DB with url_slug:', correctedSlug);
+      
+      // Try case-insensitive search
+      const { data: caseInsensitiveData } = await supabase
+        .from('projects')
+        .select('id, project_name, url_slug')
+        .ilike('url_slug', correctedSlug)
+        .limit(5);
+      
+      if (caseInsensitiveData && caseInsensitiveData.length > 0) {
+        console.warn('[getCityLevelProjectBySlug] ⚠️ Found projects with similar slugs (case-insensitive):', 
+          caseInsensitiveData.map((p: any) => ({ name: p.project_name, slug: p.url_slug }))
+        );
+      }
     }
 
     // Query project by city_id and url_slug (using corrected slug)
