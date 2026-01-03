@@ -260,6 +260,13 @@ export default function TabbedSearch() {
   };
 
   const handleSearch = () => {
+    // If there's a search query, route to the search page
+    if (searchQuery.trim()) {
+      router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+      return;
+    }
+    
+    // Otherwise, route to city buy page with filters
     const params = new URLSearchParams();
     
     // Map tab to category
@@ -282,11 +289,6 @@ export default function TabbedSearch() {
       } else if (activeTab === "commercial") {
         params.set("propertyType", type);
       }
-    }
-    
-    // Add search query
-    if (searchQuery.trim()) {
-      params.set("search", searchQuery.trim());
     }
     
     // Add property types
