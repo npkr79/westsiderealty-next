@@ -86,7 +86,7 @@ function similarityScore(a: string, b: string): number {
 }
 
 // Load entities from database
-async function loadEntities(supabase: ReturnType<typeof createClient>): Promise<EntityCache> {
+async function loadEntities(supabase: Awaited<ReturnType<typeof createClient>>): Promise<EntityCache> {
   if (entityCache && Date.now() - entityCache.cachedAt < CACHE_TTL) {
     return entityCache;
   }
@@ -108,7 +108,7 @@ async function loadEntities(supabase: ReturnType<typeof createClient>): Promise<
 // Main parser function
 export async function parseSearchQuery(
   query: string,
-  supabase: ReturnType<typeof createClient>
+  supabase: Awaited<ReturnType<typeof createClient>>
 ): Promise<ParsedQuery> {
   const entities = await loadEntities(supabase);
   const normalizedQuery = query.toLowerCase().trim();
