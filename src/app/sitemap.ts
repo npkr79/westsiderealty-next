@@ -28,7 +28,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         .select(
           "url_slug, updated_at, city:cities(url_slug), micro_market:micro_markets(url_slug)"
         )
-        .eq("is_published", true),
+        .not("url_slug", "is", null),
       supabase
         .from("landing_pages")
         .select("uri, updated_at")
@@ -170,31 +170,38 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       }
     });
 
-    // Projects
-    projectsResult.data?.forEach((p: any) => {
-      const citySlug = p.city?.url_slug || p.city_slug;
-      const microMarketSlug = p.micro_market?.url_slug;
+    // Projects - Generate canonical URLs: /{citySlug}/projects/{url_slug}
+    // Only include projects that have both url_slug and city
+    if (projectsResult.data) {
+      console.log(`[Sitemap] Found ${projectsResult.data.length} projects to process`);
       
-      if (citySlug && microMarketSlug) {
-        // Micro-market level project route (preferred)
-        urls.push({
-          url: `${baseUrl}/${citySlug}/${microMarketSlug}/projects/${p.url_slug}`,
-          lastModified: p.updated_at ? new Date(p.updated_at) : new Date(),
-          changeFrequency: "weekly",
-          priority: 0.8,
-        });
-      }
+      projectsResult.data.forEach((p: any) => {
+        // Handle city relation (could be object, array, or null)
+        const cityData = Array.isArray(p.city) ? p.city[0] : p.city;
+        const citySlug = cityData?.url_slug;
+        
+        // Only add project if it has url_slug and city_slug
+        if (p.url_slug && citySlug) {
+          // Use canonical city-level route: /{citySlug}/projects/{url_slug}
+          urls.push({
+            url: `${baseUrl}/${citySlug}/projects/${p.url_slug}`,
+            lastModified: p.updated_at ? new Date(p.updated_at) : new Date(),
+            changeFrequency: "weekly",
+            priority: 0.8,
+          });
+        } else {
+          console.warn(`[Sitemap] Skipping project - missing url_slug or city:`, {
+            url_slug: p.url_slug,
+            city: cityData,
+            citySlug
+          });
+        }
+      });
       
-      if (citySlug) {
-        // City-level project route (fallback or alternative)
-        urls.push({
-          url: `${baseUrl}/${citySlug}/projects/${p.url_slug}`,
-          lastModified: p.updated_at ? new Date(p.updated_at) : new Date(),
-          changeFrequency: "weekly",
-          priority: 0.8,
-        });
-      }
-    });
+      console.log(`[Sitemap] Added ${urls.filter(u => u.url.includes('/projects/')).length} project URLs to sitemap`);
+    } else {
+      console.warn("[Sitemap] No projects data returned from query");
+    }
 
     // Landing Pages
     landingPagesResult.data?.forEach((lp) => {
