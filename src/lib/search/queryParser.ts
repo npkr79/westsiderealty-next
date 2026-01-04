@@ -158,9 +158,13 @@ export async function parseSearchQuery(
       if (propType.includes('apartment') || propType.includes('flat')) {
         result.propertyType = 'apartment';
       } else if (propType.includes('independent')) {
-        result.propertyType = 'independent house';
+        result.propertyType = 'independent-house'; // Match the checkbox value format
       } else if (propType.includes('standalone')) {
-        result.propertyType = 'standalone apartment';
+        result.propertyType = 'standalone';
+      } else if (propType.includes('penthouse')) {
+        result.propertyType = 'penthouse';
+      } else if (propType.includes('plot')) {
+        result.propertyType = 'residential-plot'; // Default to residential plot
       } else {
         result.propertyType = propType.replace(/s$/, ''); // Remove plural
       }

@@ -262,72 +262,50 @@ export default function TabbedSearch() {
 
   const handleSearch = async () => {
     const params = new URLSearchParams();
+    const hasSearchText = searchQuery.trim().length > 0;
     
-    // 1. Add UI-selected filters (these are explicit user choices)
-    params.set("city", city);
-    params.set("category", activeTab);
-    
-    // Map type to projectType (resale vs new-project)
-    if (type) {
-      if (type === "new-project") {
-        params.set("projectType", "new");
-      } else if (type === "resale") {
-        params.set("projectType", "resale");
-      } else {
-        // For other types like "invest", "office", etc., pass as-is
-        params.set("projectType", type);
-      }
-    }
-    
-    // Add checkbox-selected property types
-    if (selectedPropertyTypes.size > 0) {
-      params.set("propertyTypes", Array.from(selectedPropertyTypes).join(","));
-    }
-    
-    // 2. Parse text input for additional entities
-    if (searchQuery.trim()) {
+    // PRIORITY 1: Text Input Parsing (if search text exists)
+    if (hasSearchText) {
       try {
-        // For client-side, we'll call the API route to parse the query
-        // This avoids type issues with client vs server Supabase clients
+        // Parse the search query to extract entities
         const parseResponse = await fetch(`/api/search/parse?q=${encodeURIComponent(searchQuery.trim())}`);
         if (parseResponse.ok) {
           const { parsed } = await parseResponse.json();
           
           if (parsed) {
-            // Add parsed micro-market (only if not already filtered by UI)
+            // Use parsed values with highest priority - these override dropdowns
+            
+            // Property Type from text (highest priority)
+            if (parsed.propertyType) {
+              params.set("propertyTypes", parsed.propertyType);
+            } else if (selectedPropertyTypes.size > 0) {
+              // Fallback to checkbox selection if no property type in text
+              params.set("propertyTypes", Array.from(selectedPropertyTypes).join(","));
+            }
+            
+            // Micro Market from text
             if (parsed.microMarket) {
               params.set("microMarket", parsed.microMarket);
             }
             
-            // Add parsed BHK configuration
+            // BHK configuration from text
             if (parsed.bhkConfig) {
               params.set("bhk", parsed.bhkConfig);
             }
             
-            // Add parsed developer
+            // Developer from text
             if (parsed.developer) {
               params.set("developer", parsed.developer);
             }
             
-            // Handle completion status from text
+            // Completion status from text (overrides projectType dropdown)
             if (parsed.completionStatus) {
-              // Specific status like "New Launch"
               params.set("completionStatus", parsed.completionStatus);
             } else if (parsed.isNewProject) {
-              // Generic "new projects" indicator
               params.set("isNewProject", "true");
             }
             
-            // IMPORTANT: If text mentions property type, it OVERRIDES checkbox selection
-            // Only if no checkboxes are selected
-            if (parsed.propertyType && selectedPropertyTypes.size === 0) {
-              params.set("propertyTypes", parsed.propertyType);
-            }
-            // If both checkbox and parsed propertyType exist, checkbox takes precedence
-            // (checkbox value is already added above at line 284)
-            
             // Keep remaining unparsed text for full-text search
-            // Only add if there's meaningful content (more than just common words)
             if (parsed.remainingQuery && parsed.remainingQuery.trim()) {
               const meaningfulWords = parsed.remainingQuery.trim().split(/\s+/).filter(
                 (word: string) => word.length > 2 && !['in', 'at', 'near', 'the', 'a', 'an', 'of', 'for', 'with'].includes(word.toLowerCase())
@@ -335,24 +313,64 @@ export default function TabbedSearch() {
               if (meaningfulWords.length > 0) {
                 params.set("q", meaningfulWords.join(' '));
               }
-              // If only common words remain, don't add q param
             }
-          } else {
-            // If parsing returned null, use original query
-            params.set("q", searchQuery.trim());
+            
+            // For city and category, still use dropdowns as context
+            // But if parsed values exist, they take precedence for micro-market filtering
+            params.set("city", city);
+            params.set("category", activeTab);
+            
+            // Project Type: Use parsed status if available, otherwise use dropdown
+            if (!parsed.completionStatus && !parsed.isNewProject) {
+              if (type) {
+                if (type === "new-project") {
+                  params.set("projectType", "new");
+                } else if (type === "resale") {
+                  params.set("projectType", "resale");
+                } else {
+                  params.set("projectType", type);
+                }
+              }
+            }
+            
+            // Route to search page with parsed filters
+            router.push(`/search?${params.toString()}`);
+            return;
           }
-        } else {
-          // If parsing failed, use original query
-          params.set("q", searchQuery.trim());
         }
+        
+        // If parsing failed, use original query as fallback
+        params.set("q", searchQuery.trim());
       } catch (error) {
         console.error("[TabbedSearch] Error parsing query:", error);
-        // Fallback: just use the raw query
+        // Fallback: use raw query
         params.set("q", searchQuery.trim());
       }
     }
     
-    // Route to search page with all merged filters
+    // PRIORITY 2: Dropdown Selections (when no search text)
+    if (!hasSearchText) {
+      params.set("city", city);
+      params.set("category", activeTab);
+      
+      // Map type to projectType
+      if (type) {
+        if (type === "new-project") {
+          params.set("projectType", "new");
+        } else if (type === "resale") {
+          params.set("projectType", "resale");
+        } else {
+          params.set("projectType", type);
+        }
+      }
+      
+      // Checkbox-selected property types
+      if (selectedPropertyTypes.size > 0) {
+        params.set("propertyTypes", Array.from(selectedPropertyTypes).join(","));
+      }
+    }
+    
+    // Route to search page
     router.push(`/search?${params.toString()}`);
   };
 

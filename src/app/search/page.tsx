@@ -185,9 +185,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
     console.log(`[SearchPage] Developer "${developer}" -> ID: ${developerId}`);
   }
 
-  // Build projects query - don't filter by is_published to include all projects
-  // The user wants to see all projects matching the criteria, not just published ones
-  // Note: is_published column doesn't exist in projects table, so we don't select it
+  // Build projects query - don't filter by page_status to include all projects
   let projectsQuery = supabase
     .from("projects")
     .select(`
@@ -355,6 +353,8 @@ export default async function SearchPage({ searchParams }: PageProps) {
       "standalone": ["standalone", "standalone apartment"],
       "independent-house": ["independent house", "independent", "house"],
       "villa": ["villa", "villas", "Villa", "Villas"],  // Include both lowercase and capitalized
+      "penthouse": ["penthouse", "Penthouse"],
+      "duplex": ["duplex", "Duplex"],
       "office": ["office", "office space"],
       "retail": ["retail", "retail space"],
       "serviced": ["serviced"],
