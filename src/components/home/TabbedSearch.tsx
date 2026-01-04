@@ -330,7 +330,7 @@ export default function TabbedSearch() {
             // Only add if there's meaningful content (more than just common words)
             if (parsed.remainingQuery && parsed.remainingQuery.trim()) {
               const meaningfulWords = parsed.remainingQuery.trim().split(/\s+/).filter(
-                word => word.length > 2 && !['in', 'at', 'near', 'the', 'a', 'an', 'of', 'for', 'with'].includes(word.toLowerCase())
+                (word: string) => word.length > 2 && !['in', 'at', 'near', 'the', 'a', 'an', 'of', 'for', 'with'].includes(word.toLowerCase())
               );
               if (meaningfulWords.length > 0) {
                 params.set("q", meaningfulWords.join(' '));
