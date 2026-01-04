@@ -262,25 +262,23 @@ export default function TabbedSearch() {
 
   const handleSearch = async () => {
     const params = new URLSearchParams();
-    const hasSearchText = searchQuery.trim().length > 0;
+    const raw = searchQuery.trim();
+    const hasSearchText = raw.length > 0;
     
     // PRIORITY 1: Text Input Parsing (if search text exists)
     if (hasSearchText) {
       try {
         // Parse the search query to extract entities
-        const parseResponse = await fetch(`/api/search/parse?q=${encodeURIComponent(searchQuery.trim())}`);
+        const parseResponse = await fetch(`/api/search/parse?q=${encodeURIComponent(raw)}`);
         if (parseResponse.ok) {
           const { parsed } = await parseResponse.json();
           
           if (parsed) {
-            // Use parsed values with highest priority - these override dropdowns
+            // IMPORTANT: ONLY use parsed entities, IGNORE ALL dropdown selections
             
-            // Property Type from text (highest priority)
+            // Property Type from text
             if (parsed.propertyType) {
               params.set("propertyTypes", parsed.propertyType);
-            } else if (selectedPropertyTypes.size > 0) {
-              // Fallback to checkbox selection if no property type in text
-              params.set("propertyTypes", Array.from(selectedPropertyTypes).join(","));
             }
             
             // Micro Market from text
@@ -298,76 +296,54 @@ export default function TabbedSearch() {
               params.set("developer", parsed.developer);
             }
             
-            // Completion status from text (overrides projectType dropdown)
+            // Completion status from text
             if (parsed.completionStatus) {
               params.set("completionStatus", parsed.completionStatus);
             } else if (parsed.isNewProject) {
               params.set("isNewProject", "true");
             }
             
-            // Keep remaining unparsed text for full-text search
-            if (parsed.remainingQuery && parsed.remainingQuery.trim()) {
-              const meaningfulWords = parsed.remainingQuery.trim().split(/\s+/).filter(
-                (word: string) => word.length > 2 && !['in', 'at', 'near', 'the', 'a', 'an', 'of', 'for', 'with'].includes(word.toLowerCase())
-              );
-              if (meaningfulWords.length > 0) {
-                params.set("q", meaningfulWords.join(' '));
-              }
-            }
+            // Always include raw query for /search to re-parse reliably
+            params.set("q", raw);
             
-            // For city and category, still use dropdowns as context
-            // But if parsed values exist, they take precedence for micro-market filtering
-            params.set("city", city);
-            params.set("category", activeTab);
-            
-            // Project Type: Use parsed status if available, otherwise use dropdown
-            if (!parsed.completionStatus && !parsed.isNewProject) {
-              if (type) {
-                if (type === "new-project") {
-                  params.set("projectType", "new");
-                } else if (type === "resale") {
-                  params.set("projectType", "resale");
-                } else {
-                  params.set("projectType", type);
-                }
-              }
-            }
-            
-            // Route to search page with parsed filters
+            // Route to search page with ONLY text-derived params
             router.push(`/search?${params.toString()}`);
             return;
           }
         }
         
-        // If parsing failed, use original query as fallback
-        params.set("q", searchQuery.trim());
+        // If parsing failed, use raw query as fallback (still don't add dropdown params)
+        params.set("q", raw);
+        router.push(`/search?${params.toString()}`);
+        return;
       } catch (error) {
         console.error("[TabbedSearch] Error parsing query:", error);
-        // Fallback: use raw query
-        params.set("q", searchQuery.trim());
+        // Fallback: use raw query only
+        params.set("q", raw);
+        router.push(`/search?${params.toString()}`);
+        return;
       }
     }
     
     // PRIORITY 2: Dropdown Selections (when no search text)
-    if (!hasSearchText) {
-      params.set("city", city);
-      params.set("category", activeTab);
-      
-      // Map type to projectType
-      if (type) {
-        if (type === "new-project") {
-          params.set("projectType", "new");
-        } else if (type === "resale") {
-          params.set("projectType", "resale");
-        } else {
-          params.set("projectType", type);
-        }
+    // Only include params that user explicitly selected (not defaults)
+    params.set("city", city);
+    params.set("category", activeTab);
+    
+    // Map type to projectType
+    if (type) {
+      if (type === "new-project") {
+        params.set("projectType", "new");
+      } else if (type === "resale") {
+        params.set("projectType", "resale");
+      } else {
+        params.set("projectType", type);
       }
-      
-      // Checkbox-selected property types
-      if (selectedPropertyTypes.size > 0) {
-        params.set("propertyTypes", Array.from(selectedPropertyTypes).join(","));
-      }
+    }
+    
+    // Checkbox-selected property types
+    if (selectedPropertyTypes.size > 0) {
+      params.set("propertyTypes", Array.from(selectedPropertyTypes).join(","));
     }
     
     // Route to search page

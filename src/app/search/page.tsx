@@ -129,24 +129,67 @@ const ITEMS_PER_PAGE = 20;
 
 export default async function SearchPage({ searchParams }: PageProps) {
   const resolved = await searchParams;
-  const query = resolved.q || "";
+  const rawQuery = resolved.q || "";
   const citySlug = resolved.city || "";
   const category = resolved.category || "";
   const projectType = resolved.projectType || "";
-  const propertyTypesParam = resolved.propertyTypes || "";
-  const microMarket = resolved.microMarket || "";
-  const bhk = resolved.bhk || "";
-  const developer = resolved.developer || "";
-  const completionStatus = resolved.completionStatus || "";
-  const isNewProject = resolved.isNewProject === "true";
+  let propertyTypesParam = resolved.propertyTypes || "";
+  let microMarket = resolved.microMarket || "";
+  let bhk = resolved.bhk || "";
+  let developer = resolved.developer || "";
+  let completionStatus = resolved.completionStatus || "";
+  let isNewProject = resolved.isNewProject === "true";
   const currentPage = parseInt(resolved.page || "1", 10);
   
   const supabase = await createClient();
+
+  // OPTIONAL HARDENING: If q exists and is non-empty, re-parse and treat as source of truth
+  // This ensures that text-derived params override any conflicting URL params
+  // Also ignore dropdown-derived params (city/category/projectType) when text search exists
+  let useTextSearchOnly = false;
+  if (rawQuery.trim().length > 0) {
+    try {
+      const { parseSearchQuery } = await import('@/lib/search/queryParser');
+      const parsed = await parseSearchQuery(rawQuery.trim(), supabase);
+      
+      if (parsed && (parsed.propertyType || parsed.microMarket || parsed.developer || parsed.bhkConfig)) {
+        // Successfully parsed entities from text - treat as source of truth
+        useTextSearchOnly = true;
+        
+        // Override URL params with parsed entities (parsed values take precedence)
+        if (parsed.propertyType) {
+          propertyTypesParam = parsed.propertyType;
+        }
+        if (parsed.microMarket) {
+          microMarket = parsed.microMarket;
+        }
+        if (parsed.bhkConfig) {
+          bhk = parsed.bhkConfig;
+        }
+        if (parsed.developer) {
+          developer = parsed.developer;
+        }
+        if (parsed.completionStatus) {
+          completionStatus = parsed.completionStatus;
+          isNewProject = false; // Clear isNewProject if specific status found
+        } else if (parsed.isNewProject) {
+          isNewProject = true;
+          completionStatus = ""; // Clear specific status if generic new project
+        }
+      }
+    } catch (error) {
+      console.error("[SearchPage] Error re-parsing q parameter:", error);
+      // Continue with URL params if parsing fails
+    }
+  }
 
   // Parse property types from comma-separated string
   const propertyTypes = propertyTypesParam 
     ? propertyTypesParam.split(",").filter(Boolean)
     : [];
+
+  // Use rawQuery for text search filtering later
+  const query = rawQuery;
 
   // Get city ID if city filter is provided
   let cityId: string | null = null;
@@ -203,13 +246,14 @@ export default async function SearchPage({ searchParams }: PageProps) {
       developer:developers(url_slug, developer_name)
     `, { count: 'exact' });
 
-  // Apply city filter
-  if (cityId) {
+  // Apply city filter (only if not using text-search-only mode)
+  if (!useTextSearchOnly && cityId) {
     projectsQuery = projectsQuery.eq("city_id", cityId);
     console.log(`[SearchPage] Filtering by city_id: ${cityId} (citySlug: ${citySlug})`);
+  } else if (useTextSearchOnly) {
+    // When text search exists, ignore city filter to allow cross-city searching
+    console.log("[SearchPage] Text search mode - ignoring city filter for cross-city search");
   } else {
-    // If no city filter but we have a text query, don't restrict by city
-    // This allows searching across all cities when user types a query
     console.log("[SearchPage] No city filter - searching across all cities");
   }
 
@@ -249,12 +293,14 @@ export default async function SearchPage({ searchParams }: PageProps) {
     console.log(`[SearchPage] Filtering for new projects (non-null completion_status or status)`);
   }
 
-  // Apply project type filter (New Projects vs Resale) - make it less restrictive
-  // When there's a text query, skip status filtering entirely to get all projects
-  if (query) {
-    // When there's a text query, don't filter by status at all
-    // This allows finding projects regardless of status (user is searching by location/keywords)
-    console.log("[SearchPage] Text query present - skipping status filter to get all projects");
+  // Apply project type filter (New Projects vs Resale)
+  // Skip if using text-search-only mode or if query exists (already handled via completionStatus/isNewProject)
+  if (useTextSearchOnly || query) {
+    // When text search exists, parsed completionStatus/isNewProject takes precedence
+    // Don't apply dropdown projectType filter
+    if (query && !useTextSearchOnly) {
+      console.log("[SearchPage] Text query present - skipping dropdown projectType filter");
+    }
   } else if (projectType === "new-project") {
     // New projects: include published, under construction, or any status that's not explicitly "resale"
     projectsQuery = projectsQuery.or("status.ilike.published,status.ilike.%under construction%,status.is.null");
@@ -386,7 +432,10 @@ export default async function SearchPage({ searchParams }: PageProps) {
   }
 
   // Apply category filter (residential/commercial/land)
-  if (category === "residential") {
+  // Skip category filtering when using text-search-only mode
+  if (useTextSearchOnly) {
+    console.log("[SearchPage] Text search mode - ignoring category filter");
+  } else if (category === "residential") {
     // Filter out commercial and land types
     filteredProjects = filteredProjects.filter(project => {
       const types = project.property_types;
