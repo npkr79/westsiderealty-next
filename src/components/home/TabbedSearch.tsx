@@ -275,36 +275,37 @@ export default function TabbedSearch() {
           
           if (parsed) {
             // IMPORTANT: ONLY use parsed entities, IGNORE ALL dropdown selections
+            // Only add parameters that have actual parsed values (explicitly stated)
             
-            // Property Type from text
+            // Property Type from text (only if explicitly mentioned)
             if (parsed.propertyType) {
               params.set("propertyTypes", parsed.propertyType);
             }
             
-            // Micro Market from text
+            // Micro Market from text (only if explicitly mentioned)
             if (parsed.microMarket) {
               params.set("microMarket", parsed.microMarket);
             }
             
-            // BHK configuration from text
+            // BHK configuration from text (only if explicitly mentioned)
             if (parsed.bhkConfig) {
               params.set("bhk", parsed.bhkConfig);
             }
             
-            // Developer from text
+            // Developer from text (only if explicitly mentioned)
             if (parsed.developer) {
               params.set("developer", parsed.developer);
             }
             
-            // Completion status from text
+            // Completion status from text (ONLY if explicitly mentioned)
+            // Do not infer or assume any completion status
             if (parsed.completionStatus) {
               params.set("completionStatus", parsed.completionStatus);
-            } else if (parsed.isNewProject) {
-              params.set("isNewProject", "true");
             }
+            // Note: We don't add isNewProject - only add if explicitly parsed completionStatus
             
-            // Always include raw query for /search to re-parse reliably
-            params.set("q", raw);
+            // DO NOT add 'q' parameter - it's redundant since we parsed the entities
+            // DO NOT add any defaults like city, category, projectType
             
             // Route to search page with ONLY text-derived params
             router.push(`/search?${params.toString()}`);
@@ -312,8 +313,11 @@ export default function TabbedSearch() {
           }
         }
         
-        // If parsing failed, use raw query as fallback (still don't add dropdown params)
-        params.set("q", raw);
+        // If parsing failed, still don't add dropdown params
+        // Just navigate with empty params or raw query as fallback
+        if (raw.length > 0) {
+          params.set("q", raw);
+        }
         router.push(`/search?${params.toString()}`);
         return;
       } catch (error) {

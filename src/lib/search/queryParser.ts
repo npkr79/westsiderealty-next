@@ -124,7 +124,8 @@ export async function parseSearchQuery(
     remainingQuery: '',
   };
 
-  // 1. Check for SPECIFIC status keywords first (e.g., "new launch")
+  // 1. Check for EXPLICIT status keywords ONLY (e.g., "new launch", "ready to move")
+  // DO NOT infer or assume any completion status - only extract if explicitly stated
   for (const [keyword, status] of Object.entries(STATUS_KEYWORDS)) {
     if (normalizedQuery.includes(keyword)) {
       result.completionStatus = status;
@@ -132,8 +133,10 @@ export async function parseSearchQuery(
       break;
     }
   }
+  // If no explicit status keyword found, completionStatus remains null (DO NOT infer)
 
-  // 2. Check for GENERIC "new projects" indicators (only if no specific status found)
+  // 2. Check for EXPLICIT "new projects" indicators (only if no specific status found)
+  // These are still explicit phrases, but separate from completionStatus
   if (!result.completionStatus) {
     for (const indicator of NEW_PROJECT_INDICATORS) {
       if (normalizedQuery.includes(indicator)) {
