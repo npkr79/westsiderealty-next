@@ -126,11 +126,26 @@ export async function parseSearchQuery(
 
   // 1. Check for EXPLICIT status keywords ONLY (e.g., "new launch", "ready to move")
   // DO NOT infer or assume any completion status - only extract if explicitly stated
+  // Use word boundaries to prevent partial matches (e.g., "beeramguda" shouldn't match "ready")
   for (const [keyword, status] of Object.entries(STATUS_KEYWORDS)) {
-    if (normalizedQuery.includes(keyword)) {
-      result.completionStatus = status;
-      remainingQuery = remainingQuery.replace(new RegExp(keyword, 'gi'), '').trim();
-      break;
+    // Create a regex with word boundaries for multi-word phrases
+    const keywordWords = keyword.split(/\s+/);
+    if (keywordWords.length > 1) {
+      // Multi-word phrase: use word boundaries around the phrase
+      const regex = new RegExp(`\\b${keyword.replace(/\s+/g, '\\s+')}\\b`, 'i');
+      if (regex.test(normalizedQuery)) {
+        result.completionStatus = status;
+        remainingQuery = remainingQuery.replace(regex, '').trim();
+        break;
+      }
+    } else {
+      // Single word: use word boundaries
+      const regex = new RegExp(`\\b${keyword}\\b`, 'i');
+      if (regex.test(normalizedQuery)) {
+        result.completionStatus = status;
+        remainingQuery = remainingQuery.replace(regex, '').trim();
+        break;
+      }
     }
   }
   // If no explicit status keyword found, completionStatus remains null (DO NOT infer)
@@ -154,9 +169,11 @@ export async function parseSearchQuery(
     remainingQuery = remainingQuery.replace(BHK_PATTERN, '').trim();
   }
 
-  // 4. Extract property type
+  // 4. Extract property type (use word boundaries to prevent partial matches)
   for (const propType of PROPERTY_TYPES) {
-    if (normalizedQuery.includes(propType)) {
+    // Use word boundaries for property type matching
+    const propTypeRegex = new RegExp(`\\b${propType.replace(/\s+/g, '\\s+')}\\b`, 'i');
+    if (propTypeRegex.test(normalizedQuery)) {
       // Normalize to singular and handle special cases
       if (propType.includes('apartment') || propType.includes('flat')) {
         result.propertyType = 'apartment';
@@ -171,32 +188,52 @@ export async function parseSearchQuery(
       } else {
         result.propertyType = propType.replace(/s$/, ''); // Remove plural
       }
-      remainingQuery = remainingQuery.replace(new RegExp(propType, 'gi'), '').trim();
+      remainingQuery = remainingQuery.replace(propTypeRegex, '').trim();
       break;
     }
   }
 
   // 5. Fuzzy match micro-market (threshold 0.8)
-  const queryWords = remainingQuery.split(/\s+/);
+  // IMPORTANT: Do this BEFORE other extractions to prioritize location matching
+  const queryWords = remainingQuery.split(/\s+/).filter(w => w.length > 0);
+  
+  // First try exact case-insensitive match (most reliable)
   for (const microMarket of entities.microMarkets) {
     const microMarketLower = microMarket.toLowerCase();
-
-    // Direct inclusion check
-    if (remainingQuery.includes(microMarketLower)) {
-      result.microMarket = microMarket;
-      remainingQuery = remainingQuery.replace(new RegExp(microMarketLower, 'gi'), '').trim();
-      break;
-    }
-
-    // Fuzzy match on individual words
-    for (const word of queryWords) {
-      if (word.length >= 3 && similarityScore(word, microMarketLower) >= 0.8) {
+    
+    // Try full micro-market name match (with word boundaries for multi-word names)
+    if (microMarketLower.includes(' ')) {
+      // Multi-word micro-market: use word boundaries
+      const regex = new RegExp(`\\b${microMarketLower.replace(/\s+/g, '\\s+')}\\b`, 'i');
+      if (regex.test(remainingQuery)) {
         result.microMarket = microMarket;
-        remainingQuery = remainingQuery.replace(new RegExp(word, 'gi'), '').trim();
+        remainingQuery = remainingQuery.replace(regex, '').trim();
+        break;
+      }
+    } else {
+      // Single-word micro-market: use word boundaries
+      const regex = new RegExp(`\\b${microMarketLower}\\b`, 'i');
+      if (regex.test(remainingQuery)) {
+        result.microMarket = microMarket;
+        remainingQuery = remainingQuery.replace(regex, '').trim();
         break;
       }
     }
-    if (result.microMarket) break;
+  }
+  
+  // If no exact match, try fuzzy match on individual words
+  if (!result.microMarket) {
+    for (const microMarket of entities.microMarkets) {
+      const microMarketLower = microMarket.toLowerCase();
+      for (const word of queryWords) {
+        if (word.length >= 3 && similarityScore(word, microMarketLower) >= 0.8) {
+          result.microMarket = microMarket;
+          remainingQuery = remainingQuery.replace(new RegExp(`\\b${word}\\b`, 'gi'), '').trim();
+          break;
+        }
+      }
+      if (result.microMarket) break;
+    }
   }
 
   // 6. Match developer name
@@ -237,6 +274,20 @@ export async function parseSearchQuery(
   );
   
   result.remainingQuery = remainingWords.join(' ').trim();
+
+  // Debug logging (can be removed in production)
+  if (process.env.NODE_ENV === 'development') {
+    console.log('[QueryParser] Parsed query:', {
+      input: query,
+      propertyType: result.propertyType,
+      microMarket: result.microMarket,
+      bhkConfig: result.bhkConfig,
+      developer: result.developer,
+      completionStatus: result.completionStatus,
+      isNewProject: result.isNewProject,
+      remainingQuery: result.remainingQuery,
+    });
+  }
 
   return result;
 }
