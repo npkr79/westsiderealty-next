@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { GoogleAnalytics } from "@next/third-parties/google";
+import Script from "next/script";
 import "./globals.css";
 import Layout from "@/components/layout/Layout";
 
@@ -91,8 +91,21 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} min-h-screen bg-background text-foreground antialiased`}
       >
         <Layout>{children}</Layout>
+        <Script 
+          src="https://www.googletagmanager.com/gtag/js?id=G-GYG41B6D00" 
+          strategy="afterInteractive" 
+        />
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-GYG41B6D00', {
+              page_path: window.location.pathname,
+            });
+          `}
+        </Script>
       </body>
-      <GoogleAnalytics gaId="G-GYG41B6D00" />
     </html>
   );
 }
