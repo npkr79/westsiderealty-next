@@ -224,71 +224,10 @@ export default async function SearchPage({ searchParams }: PageProps) {
     console.log(`[SearchPage] Filtering by micro_market_id: ${microMarketId} (microMarket: ${microMarket})`);
   }
 
-  // CRITICAL: Apply property types filter in SQL using JSONB contains operator
-  // This matches the expected SQL: property_types @> '"Villa"'
-  // In Supabase/PostgREST, we use .contains() for JSONB arrays
-  if (propertyTypes.length > 0) {
-    // Map checkbox property type values to database values
-    // Try common variations that might exist in the database
-    const propertyTypeMap: Record<string, string[]> = {
-      "apartment": ["Apartment", "apartment"],
-      "standalone": ["Standalone Apartment", "standalone"],
-      "independent-house": ["Independent House", "independent house"],
-      "villa": ["Villa", "villa"],  // Most likely stored as "Villa" (capitalized)
-      "office": ["Office", "office"],
-      "retail": ["Retail", "retail"],
-      "serviced": ["Serviced", "serviced"],
-      "coworking": ["Co-working", "coworking"],
-      "residential-plot": ["Residential Plot", "residential plot"],
-      "commercial-plot": ["Commercial Plot", "commercial plot"],
-      "gated-plot": ["Gated Plot", "gated plot"],
-      "agricultural": ["Agricultural", "agricultural"],
-    };
-
-    // For each property type, try filtering with its variants
-    // We'll try to filter using the first (most common) variant in SQL
-    // If that doesn't work well, we can fall back to in-memory filtering
-    const primaryVariants: string[] = [];
-    propertyTypes.forEach(pt => {
-      const variants = propertyTypeMap[pt] || [pt];
-      primaryVariants.push(variants[0]); // Use first (most common) variant
-    });
-
-    // Try to filter using JSONB contains for the primary variant
-    // For "villa", we'll check if property_types JSONB contains "Villa"
-    // In Supabase/PostgREST, JSONB contains uses the format: property_types @> '"Villa"'
-    // We'll use the PostgREST query parameter syntax directly
-    
-    // For single property type, use .contains() which should translate to JSONB @> operator
-    if (primaryVariants.length === 1) {
-      try {
-        // Supabase .contains() for JSONB arrays - pass the value to check for
-        // This should generate: property_types.cs.{"Villa"} in PostgREST syntax
-        projectsQuery = (projectsQuery as any).contains("property_types", JSON.stringify(primaryVariants[0]));
-        console.log(`[SearchPage] Filtering by property_types in SQL using JSONB contains for:`, primaryVariants[0]);
-      } catch (error) {
-        // If .contains() doesn't work, try alternative syntax
-        console.warn(`[SearchPage] First attempt failed, trying alternative JSONB contains syntax:`, error);
-        try {
-          // Alternative: pass as array element check
-          projectsQuery = (projectsQuery as any).contains("property_types", [primaryVariants[0]]);
-          console.log(`[SearchPage] Using alternative JSONB contains syntax`);
-        } catch (error2) {
-          console.warn(`[SearchPage] JSONB contains filtering not supported, will filter in memory:`, error2);
-        }
-      }
-    } else if (primaryVariants.length > 1) {
-      // Multiple property types - need OR logic
-      // PostgREST format: property_types.cs.{"Villa"},property_types.cs.{"Apartment"}
-      const orFilters = primaryVariants.map(variant => `property_types.cs.${JSON.stringify(variant)}`).join(",");
-      try {
-        projectsQuery = projectsQuery.or(orFilters);
-        console.log(`[SearchPage] Filtering by property_types in SQL using OR with JSONB contains:`, primaryVariants);
-      } catch (error) {
-        console.warn(`[SearchPage] Error using .or() with property_types JSONB filter, will filter in memory:`, error);
-      }
-    }
-  }
+  // NOTE: Property types filtering is done in-memory after fetching
+  // This is because JSONB filtering with Supabase JS client requires specific syntax
+  // that may vary. The in-memory filtering will handle all cases correctly.
+  // TODO: Implement SQL-level JSONB filtering if performance becomes an issue
 
   // Apply developer filter using developer_id
   if (developerId) {
@@ -339,7 +278,16 @@ export default async function SearchPage({ searchParams }: PageProps) {
   }
   
   console.log(`[SearchPage] SQL query returned ${projectsData?.length || 0} projects`);
-  console.log(`[SearchPage] Query params:`, { citySlug, cityId, projectType, query, category });
+  console.log(`[SearchPage] Query params:`, { 
+    citySlug, 
+    cityId, 
+    projectType, 
+    query, 
+    category, 
+    microMarket, 
+    microMarketId,
+    propertyTypes 
+  });
 
   // Filter by property types in memory (as fallback/refinement if SQL filtering was applied)
   // Note: We attempt SQL-level JSONB filtering above, but also filter in memory
@@ -406,7 +354,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
       "apartment": ["apartment", "flat", "apartment/flat", "apartments", "Apartment", "Flat"],
       "standalone": ["standalone", "standalone apartment"],
       "independent-house": ["independent house", "independent", "house"],
-      "villa": ["villa", "villas"],
+      "villa": ["villa", "villas", "Villa", "Villas"],  // Include both lowercase and capitalized
       "office": ["office", "office space"],
       "retail": ["retail", "retail space"],
       "serviced": ["serviced"],

@@ -210,13 +210,26 @@ export async function parseSearchQuery(
     }
   }
 
-  // Clean up remaining query
+  // Clean up remaining query - remove common prepositions and connectors
+  // First remove with spaces, then remove standalone words
   result.remainingQuery = remainingQuery
     .replace(/\s+in\s+/gi, ' ')
     .replace(/\s+at\s+/gi, ' ')
     .replace(/\s+near\s+/gi, ' ')
+    .replace(/\s+the\s+/gi, ' ')
+    .replace(/\s+a\s+/gi, ' ')
+    .replace(/\s+an\s+/gi, ' ')
+    .replace(/\s+of\s+/gi, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+  
+  // Remove standalone common words (even without spaces)
+  const commonWords = ['in', 'at', 'near', 'the', 'a', 'an', 'of', 'for', 'with'];
+  const remainingWords = result.remainingQuery.split(/\s+/).filter(word => 
+    word.length > 0 && !commonWords.includes(word.toLowerCase())
+  );
+  
+  result.remainingQuery = remainingWords.join(' ').trim();
 
   return result;
 }

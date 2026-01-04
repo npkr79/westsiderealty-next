@@ -323,12 +323,19 @@ export default function TabbedSearch() {
             if (parsed.propertyType && selectedPropertyTypes.size === 0) {
               params.set("propertyTypes", parsed.propertyType);
             }
+            // If both checkbox and parsed propertyType exist, checkbox takes precedence
+            // (checkbox value is already added above at line 284)
             
             // Keep remaining unparsed text for full-text search
+            // Only add if there's meaningful content (more than just common words)
             if (parsed.remainingQuery && parsed.remainingQuery.trim()) {
-              params.set("q", parsed.remainingQuery.trim());
-            } else {
-              // If no remaining query, don't add q param
+              const meaningfulWords = parsed.remainingQuery.trim().split(/\s+/).filter(
+                word => word.length > 2 && !['in', 'at', 'near', 'the', 'a', 'an', 'of', 'for', 'with'].includes(word.toLowerCase())
+              );
+              if (meaningfulWords.length > 0) {
+                params.set("q", meaningfulWords.join(' '));
+              }
+              // If only common words remain, don't add q param
             }
           } else {
             // If parsing returned null, use original query

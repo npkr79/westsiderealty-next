@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { GoogleAnalytics } from "@next/third-parties/google";
 import "./globals.css";
 import Layout from "@/components/layout/Layout";
 
@@ -91,6 +92,7 @@ export default function RootLayout({
       >
         <Layout>{children}</Layout>
       </body>
+      <GoogleAnalytics gaId="G-GYG41B6D00" />
     </html>
   );
 }
