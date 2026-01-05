@@ -70,6 +70,11 @@ export default function RelatedProjectsSection({
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {projects.map((project) => {
+          // Skip projects without url_slug to avoid broken links
+          if (!project.url_slug) {
+            return null;
+          }
+          
           const projectCitySlug = project?.city?.url_slug || citySlug;
           const href = `/${projectCitySlug}/projects/${project.url_slug}`;
 

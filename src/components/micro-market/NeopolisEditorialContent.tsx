@@ -109,6 +109,8 @@ export default function NeopolisEditorialContent({ citySlug }: NeopolisEditorial
           <li><strong>MSN Group:</strong> <Link href={`/${citySlug}/projects/msn-one`} className="text-primary underline">MSN One</Link> focuses on luxury high-rise living with premium finishes</li>
           <li><strong>Yula Globus:</strong> <Link href={`/${citySlug}/projects/neo-by-yula-globus`} className="text-primary underline">Neo by Yula Globus</Link> brings contemporary design and smart home features</li>
         </ul>
+        {/* NOTE: The project slugs above (my-home-99, rajapushpa-skyra, prestige-clairemont, brigade-gateway, msn-one, neo-by-yula-globus) 
+             are hardcoded and must match the url_slug values in the projects table. Verify these slugs exist in the database. */}
         <p>
           It's worth noting that while individual projects are impressive, the <strong>collective development momentum</strong> in Neopolis creates network effects: shared infrastructure improvements, enhanced security, and a cohesive luxury residential ecosystem that benefits all residents.
         </p>
