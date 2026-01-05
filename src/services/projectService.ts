@@ -253,160 +253,128 @@ export const projectService = {
 
     console.log(`[getCityLevelProjectBySlug] Found city ID: ${cityData.id}`);
 
-    // First, check if project exists at all (for debugging) - check without city filter first
-    const { data: debugData } = await supabase
-      .from('projects')
-      .select('id, project_name, url_slug, is_published, status, page_status, city_id, city:cities(url_slug)')
-      .eq('url_slug', correctedSlug)
-      .maybeSingle();
-    
-    if (debugData) {
-      const debugCitySlug = Array.isArray(debugData.city) 
-        ? debugData.city[0]?.url_slug 
-        : debugData.city?.url_slug;
-      console.log('[getCityLevelProjectBySlug] Project exists in DB:', {
-        id: debugData.id,
-        name: debugData.project_name,
-        url_slug: debugData.url_slug,
-        is_published: debugData.is_published,
-        status: debugData.status,
-        page_status: debugData.page_status,
-        city_id: debugData.city_id,
-        city_slug_from_db: debugCitySlug,
-        requested_city_slug: citySlug,
-        city_id_matches: debugData.city_id === cityData.id,
-        city_slug_matches: debugCitySlug === citySlug
-      });
+    // Helper function to try finding project with various slug patterns
+    const tryFindProject = async (slugToTry: string, skipCityCheck = false) => {
+      const buildQuery = () => {
+        let q = supabase
+          .from('projects')
+          .select(`
+            *,
+            floor_plan_images,
+            city:cities(*),
+            developer:developers(*),
+            micro_market:micro_markets!projects_micromarket_id_fkey(*)
+          `)
+          .eq('url_slug', slugToTry);
+        
+        if (!skipCityCheck) {
+          q = q.eq('city_id', cityData.id);
+        }
+        return q;
+      };
       
-      // If city doesn't match, warn about it
-      if (debugCitySlug !== citySlug) {
-        console.warn('[getCityLevelProjectBySlug] ⚠️ City mismatch! Project belongs to:', debugCitySlug, 'but requested:', citySlug);
-      }
-    } else {
-      console.warn('[getCityLevelProjectBySlug] ⚠️ Project not found in DB with url_slug:', correctedSlug);
+      // Try with is_published first
+      const result1 = await buildQuery().eq('is_published', true).maybeSingle();
+      if (result1.data) return result1.data;
       
-      // Try case-insensitive search
-      const { data: caseInsensitiveData } = await supabase
-        .from('projects')
-        .select('id, project_name, url_slug')
-        .ilike('url_slug', correctedSlug)
-        .limit(5);
+      // Try with status filters
+      const result2 = await buildQuery().or('status.ilike.published,status.ilike.%under construction%,page_status.eq.published').maybeSingle();
+      if (result2.data) return result2.data;
       
-      if (caseInsensitiveData && caseInsensitiveData.length > 0) {
-        console.warn('[getCityLevelProjectBySlug] ⚠️ Found projects with similar slugs (case-insensitive):', 
-          caseInsensitiveData.map((p: any) => ({ name: p.project_name, slug: p.url_slug }))
-        );
-      }
-    }
-
-    // Query project by city_id and url_slug (using corrected slug)
-    // First try with is_published = true (most common case)
-    let { data, error } = await supabase
-      .from('projects')
-      .select(`
-        *,
-        floor_plan_images,
-        city:cities(*),
-        developer:developers(*),
-        micro_market:micro_markets!projects_micromarket_id_fkey(*)
-      `)
-      .eq('url_slug', correctedSlug)
-      .eq('city_id', cityData.id)
-      .eq('is_published', true)
-      .maybeSingle();
-    
-    // If no result with is_published filter, try with status/page_status filters
-    if (!data && !error) {
-      console.log('[getCityLevelProjectBySlug] No result with is_published filter, trying with status/page_status filters...');
-      const result = await supabase
-        .from('projects')
-        .select(`
-          *,
-          floor_plan_images,
-          city:cities(*),
-          developer:developers(*),
-          micro_market:micro_markets!projects_micromarket_id_fkey(*)
-        `)
-        .eq('url_slug', correctedSlug)
-        .eq('city_id', cityData.id)
-        .or('status.ilike.published,status.ilike.%under construction%,page_status.eq.published')
-        .maybeSingle();
-      data = result.data;
-      error = result.error;
-    }
-    
-    // If still no result, try without any filters (for newly added projects that might not have status set)
-    if (!data && !error) {
-      console.log('[getCityLevelProjectBySlug] No result with status filters, trying without any filter (for newly added projects)...');
-      const result = await supabase
-        .from('projects')
-        .select(`
-          *,
-          floor_plan_images,
-          city:cities(*),
-          developer:developers(*),
-          micro_market:micro_markets!projects_micromarket_id_fkey(*)
-        `)
-        .eq('url_slug', correctedSlug)
-        .eq('city_id', cityData.id)
-        .maybeSingle();
-      data = result.data;
-      error = result.error;
-      
-      if (data) {
-        console.warn('[getCityLevelProjectBySlug] ⚠️ Project found but may not have is_published or status set:', {
-          is_published: (data as any).is_published,
-          status: (data as any).status,
-          page_status: (data as any).page_status
-        });
-      }
-    }
-
-    if (error) {
-      console.error('[getCityLevelProjectBySlug] Error fetching project:', error);
-      console.error('[getCityLevelProjectBySlug] Error details:', JSON.stringify(error, null, 2));
-      
-      // Try without status filter as fallback
-      console.log('[getCityLevelProjectBySlug] Retrying without status filter...');
-      const { data: fallbackData, error: fallbackError } = await supabase
-        .from('projects')
-        .select(`
-          *,
-          floor_plan_images,
-          city:cities(*),
-          developer:developers(*),
-          micro_market:micro_markets!projects_micromarket_id_fkey(*)
-        `)
-        .eq('url_slug', correctedSlug)
-        .eq('city_id', cityData.id)
-        .maybeSingle();
-      
-      if (fallbackError) {
-        console.error('[getCityLevelProjectBySlug] Fallback query also failed:', fallbackError);
-        return null;
-      }
-      
-      if (fallbackData) {
-        console.log('[getCityLevelProjectBySlug] Found project via fallback query');
-        return fallbackData as ProjectWithRelations;
-      }
+      // Try without status filters
+      const result3 = await buildQuery().maybeSingle();
+      if (result3.data) return result3.data;
       
       return null;
+    };
+
+    // Try to find project with exact slug first
+    let data = await tryFindProject(correctedSlug, false);
+    let error = null;
+    
+    // If not found, try stripping common location suffixes
+    if (!data) {
+      console.log('[getCityLevelProjectBySlug] Exact slug not found, trying slug variations...');
+      
+      // Common patterns: "-mokila-hyderabad", "-hyderabad", "-kokapet-hyderabad", etc.
+      // Try removing location suffixes
+      const slugVariations = [
+        correctedSlug.replace(/-mokila-hyderabad$/i, ''),
+        correctedSlug.replace(/-kokapet-hyderabad$/i, ''),
+        correctedSlug.replace(/-gachibowli-hyderabad$/i, ''),
+        correctedSlug.replace(/-hyderabad$/i, ''),
+        correctedSlug.replace(/-mokila$/i, ''),
+        correctedSlug.replace(/-kokapet$/i, ''),
+        correctedSlug.replace(/-gachibowli$/i, ''),
+      ].filter(s => s && s !== correctedSlug && s.length > 0);
+      
+      // Remove duplicates
+      const uniqueVariations = [...new Set(slugVariations)];
+      
+      for (const variation of uniqueVariations) {
+        data = await tryFindProject(variation, false);
+        if (data) {
+          console.log(`[getCityLevelProjectBySlug] ✅ Found project with slug variation: ${variation} (original: ${correctedSlug})`);
+          break;
+        }
+      }
+    }
+
+    // If still not found, log for debugging
+    if (!data) {
+      console.warn('[getCityLevelProjectBySlug] ⚠️ Project not found with any slug variation:', {
+        requestedSlug: correctedSlug,
+        citySlug,
+        cityId: cityData.id
+      });
+      
+      // Try one more time: search by project name if slug looks like it was generated from name
+      // This is a last resort fallback
+      const projectNameFromSlug = correctedSlug
+        .replace(/-mokila-hyderabad$/i, '')
+        .replace(/-kokapet-hyderabad$/i, '')
+        .replace(/-gachibowli-hyderabad$/i, '')
+        .replace(/-hyderabad$/i, '')
+        .replace(/-/g, ' ');
+      
+      if (projectNameFromSlug.length > 5) {
+        console.log('[getCityLevelProjectBySlug] Trying fallback search by project name pattern...');
+        const { data: nameMatchData } = await supabase
+          .from('projects')
+          .select(`
+            *,
+            floor_plan_images,
+            city:cities(*),
+            developer:developers(*),
+            micro_market:micro_markets!projects_micromarket_id_fkey(*)
+          `)
+          .eq('city_id', cityData.id)
+          .ilike('project_name', `%${projectNameFromSlug.split(' ').slice(0, 2).join(' ')}%`)
+          .eq('is_published', true)
+          .limit(5)
+          .maybeSingle();
+        
+        if (nameMatchData) {
+          console.log('[getCityLevelProjectBySlug] ⚠️ Found project by name match (slug mismatch):', {
+            requestedSlug: correctedSlug,
+            foundSlug: (nameMatchData as any).url_slug,
+            projectName: (nameMatchData as any).project_name
+          });
+          // Don't return this - it's likely the wrong project
+        }
+      }
     }
 
     if (data) {
-      console.log('[getCityLevelProjectBySlug] ✅ Successfully loaded project:', data.project_name);
-      console.log('[getCityLevelProjectBySlug] Image fields:', {
-        hero_image_url: (data as any).hero_image_url,
-        gallery_images_json: (data as any).gallery_images_json,
-        gallery_images: (data as any).gallery_images,
-        images: (data as any).images
-      });
-      console.log('[getCityLevelProjectBySlug] Floor Plans:', (data as any).floor_plan_images);
+      console.log('[getCityLevelProjectBySlug] ✅ Successfully loaded project:', (data as any).project_name);
       return data as ProjectWithRelations;
     }
 
-    console.warn('[getCityLevelProjectBySlug] ⚠️ Project not found:', { citySlug, projectSlug, cityId: cityData.id });
+    console.warn('[getCityLevelProjectBySlug] ⚠️ Project not found after all attempts:', { 
+      citySlug, 
+      projectSlug: correctedSlug, 
+      cityId: cityData.id 
+    });
     return null;
   },
 

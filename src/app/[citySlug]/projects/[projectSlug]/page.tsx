@@ -81,7 +81,29 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     redirect(`/${citySlug}/projects/sumadhura-the-olympus`);
   }
 
-  const project = await projectService.getCityLevelProjectBySlug(citySlug, projectSlug);
+  let project = await projectService.getCityLevelProjectBySlug(citySlug, projectSlug);
+
+  // If not found, try stripping location suffixes (handle legacy slugs)
+  if (!project) {
+    // Try common location suffix patterns: -mokila-hyderabad, -hyderabad, etc.
+    const slugWithoutSuffix = projectSlug
+      .replace(/-mokila-hyderabad$/i, '')
+      .replace(/-kokapet-hyderabad$/i, '')
+      .replace(/-gachibowli-hyderabad$/i, '')
+      .replace(/-hyderabad$/i, '')
+      .replace(/-mokila$/i, '')
+      .replace(/-kokapet$/i, '')
+      .replace(/-gachibowli$/i, '');
+    
+    if (slugWithoutSuffix && slugWithoutSuffix !== projectSlug) {
+      project = await projectService.getCityLevelProjectBySlug(citySlug, slugWithoutSuffix);
+      if (project) {
+        // Redirect to canonical URL (without location suffix)
+        const { redirect } = await import('next/navigation');
+        redirect(`/${citySlug}/projects/${slugWithoutSuffix}`);
+      }
+    }
+  }
 
   if (!project) {
     return {
