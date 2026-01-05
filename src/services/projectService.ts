@@ -313,17 +313,18 @@ export const projectService = {
       });
       if (result1.data) return result1.data;
       
-      // Try with status filters (broader match) - BUT this excludes page_status='draft'
-      const query2 = buildQuery().or('status.ilike.published,status.ilike.%under construction%,page_status.eq.published');
+      // Try with status filters (broader match) - NO page_status filter for detail pages
+      // Detail pages should show projects regardless of page_status (draft/published)
+      const query2 = buildQuery().or('status.ilike.published,status.ilike.%under construction%');
       const result2 = await query2.maybeSingle();
-      console.log(`[getCityLevelProjectBySlug] Query 2 (status/page_status filters):`, { 
+      console.log(`[getCityLevelProjectBySlug] Query 2 (status filters, NO page_status):`, { 
         slug: slugToTry, 
         found: !!result2.data,
         error: result2.error 
       });
       if (result2.data) return result2.data;
       
-      // Try without any status/published filters (fallback - includes drafts, better than 404)
+      // Try without any status/published filters (fallback - includes everything, better than 404)
       const query3 = buildQuery();
       const result3 = await query3.maybeSingle();
       console.log(`[getCityLevelProjectBySlug] Query 3 (no status filters):`, { 
