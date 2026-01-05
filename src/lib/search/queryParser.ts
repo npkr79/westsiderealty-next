@@ -202,9 +202,11 @@ export async function parseSearchQuery(
 
   // 5. Match micro-market (exact first, then substring, then fuzzy)
   const queryWords = remainingQuery.split(/\s+/).filter(w => w.length > 0);
+  const remainingQueryLower = remainingQuery.toLowerCase();
+  
+  // Common words to exclude from matching (defined once for reuse)
   const commonWords = ['in', 'at', 'near', 'the', 'a', 'an', 'of', 'for', 'with'];
   const meaningfulWords = queryWords.filter(w => !commonWords.includes(w.toLowerCase()));
-  const remainingQueryLower = remainingQuery.toLowerCase();
   
   // First try exact case-insensitive match with word boundaries (most reliable)
   for (const microMarket of entities.microMarkets) {
@@ -295,7 +297,6 @@ export async function parseSearchQuery(
     .trim();
   
   // Remove standalone common words (even without spaces)
-  const commonWords = ['in', 'at', 'near', 'the', 'a', 'an', 'of', 'for', 'with'];
   const remainingWords = result.remainingQuery.split(/\s+/).filter(word => 
     word.length > 0 && !commonWords.includes(word.toLowerCase())
   );
