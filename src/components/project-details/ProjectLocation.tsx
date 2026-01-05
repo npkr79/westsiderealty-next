@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { extractMapUrl } from "@/lib/utils/mapUrlExtractor";
+import { extractGoogleMapsEmbedUrl } from "@/lib/utils/extractGoogleMapsEmbedUrl";
 
 interface ProjectLocationProps {
   googleMapsUrl?: string | null;
@@ -18,9 +18,11 @@ export default function ProjectLocation({
   microMarketName,
   cityName,
 }: ProjectLocationProps) {
-  // Extract clean URL from google_maps_embed_url (may contain iframe HTML)
-  const extractedEmbedUrl = extractMapUrl(googleMapsEmbedUrl);
-  const hasMap = !!(extractedEmbedUrl || googleMapsUrl);
+  // Extract and normalize Google Maps embed URL (handles iframe HTML, malformed URLs, etc.)
+  const embedUrl = extractGoogleMapsEmbedUrl(googleMapsEmbedUrl ?? googleMapsUrl);
+  
+  // Only render map container if we have a valid embed URL
+  const hasMap = !!embedUrl;
 
   return (
     <section className="mt-8 space-y-6">
@@ -59,26 +61,13 @@ export default function ProjectLocation({
 
       {hasMap && (
         <div className="rounded-lg border overflow-hidden">
-          {extractedEmbedUrl ? (
-            <iframe
-              src={extractedEmbedUrl}
-              title="Project location map"
-              loading="lazy"
-              className="w-full h-[360px] border-0"
-              referrerPolicy="no-referrer-when-downgrade"
-            />
-          ) : googleMapsUrl ? (
-            <div className="p-4 text-center text-sm">
-              <a
-                href={googleMapsUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="text-primary underline underline-offset-2"
-              >
-                Open location in Google Maps
-              </a>
-            </div>
-          ) : null}
+          <iframe
+            src={embedUrl!}
+            title="Project location map"
+            loading="lazy"
+            className="w-full h-[360px] border-0"
+            referrerPolicy="no-referrer-when-downgrade"
+          />
         </div>
       )}
     </section>

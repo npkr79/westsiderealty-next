@@ -1,4 +1,5 @@
 import { convertGoogleMapsToEmbed } from "@/utils/urlConverters";
+import { extractGoogleMapsEmbedUrl } from "@/lib/utils/extractGoogleMapsEmbedUrl";
 import { Button } from "@/components/ui/button";
 import { ExternalLink, Star } from "lucide-react";
 import Link from "next/link";
@@ -70,25 +71,15 @@ export default function GoogleMapEmbed({
     return "#";
   };
 
-  // Priority 1: If URL is provided and is an embed URL, use it (highest priority for Goa properties)
-  // Check if URL is an embed URL first, before using coordinates
-  if (url && (url.includes('maps/embed') || url.includes('maps?pb=') || url.includes('maps.google.com/maps') || url.includes('google.com/maps/embed'))) {
-    // Extract URL from iframe src if needed
-    let cleanUrl = url.trim();
-    const iframeMatch = cleanUrl.match(/src=["']([^"']+)["']/);
-    if (iframeMatch) {
-      cleanUrl = iframeMatch[1];
-    }
+  // Priority 1: If URL is provided, sanitize and use it (highest priority for Goa properties)
+  // Use the centralized extractGoogleMapsEmbedUrl helper to handle iframe HTML, malformed URLs, etc.
+  if (url) {
+    const embedUrl = extractGoogleMapsEmbedUrl(url);
     
-    // Ensure it's a proper embed URL
-    if (cleanUrl.includes('maps.google.com/maps') && !cleanUrl.includes('/embed') && !cleanUrl.includes('output=embed')) {
-      cleanUrl = cleanUrl.replace('/maps?', '/maps/embed?').replace('/maps/', '/maps/embed?');
-      if (!cleanUrl.includes('output=embed')) {
-        cleanUrl += (cleanUrl.includes('?') ? '&' : '?') + 'output=embed';
-      }
-    }
-    
-    const embedUrl = cleanUrl;
+    // Only render if we have a valid embed URL
+    if (!embedUrl) {
+      // Invalid URL - skip to next priority (coordinates or address)
+    } else {
     const placeMatch = embedUrl.match(/!1s([^!]+)/);
     let directionsUrl: string;
     if (placeMatch) {
@@ -171,6 +162,7 @@ export default function GoogleMapEmbed({
         />
       </div>
     );
+    }
   }
 
   // Priority 2: If lat/lng provided, use them directly
@@ -329,66 +321,28 @@ export default function GoogleMapEmbed({
   }
 
   // Priority 4: Use provided URL and convert if needed (fallback for non-embed URLs)
+  // This path handles non-embed URLs that need conversion (e.g., regular Google Maps share URLs)
+  // Note: Priority 1 already handled embed URLs, so this only runs if URL wasn't an embed URL
   if (url) {
-    // Check if URL is already a Google Maps embed URL
-    // Also check for iframe src URLs (common in Goa properties)
-    const isEmbedUrl = url.includes('maps/embed') || url.includes('maps?pb=') || url.includes('maps.google.com/maps') || url.includes('google.com/maps/embed');
+    // Try to extract/sanitize first (handles iframe HTML, malformed URLs)
+    const sanitizedUrl = extractGoogleMapsEmbedUrl(url);
     
-    let embedUrl: string;
-    let directionsUrl: string;
-    
-    if (isEmbedUrl) {
-      // If URL is already an iframe src URL, extract the src attribute value if needed
-      // Some databases might store the full iframe tag, so we need to extract just the URL
-      let cleanUrl = url.trim();
-      
-      // Check if it's wrapped in an iframe tag
-      const iframeMatch = cleanUrl.match(/src=["']([^"']+)["']/);
-      if (iframeMatch) {
-        cleanUrl = iframeMatch[1];
-      }
-      
-      // Ensure it's a proper embed URL
-      if (cleanUrl.includes('maps.google.com/maps') && !cleanUrl.includes('/embed') && !cleanUrl.includes('output=embed')) {
-        // Convert to embed format if it's a regular maps URL
-        cleanUrl = cleanUrl.replace('/maps?', '/maps/embed?').replace('/maps/', '/maps/embed?');
-        if (!cleanUrl.includes('output=embed')) {
-          cleanUrl += (cleanUrl.includes('?') ? '&' : '?') + 'output=embed';
-        }
-      }
-      
-      embedUrl = cleanUrl;
-      
-      // Extract place ID or coordinates for directions
-      const placeMatch = embedUrl.match(/!1s([^!]+)/);
+    if (sanitizedUrl) {
+      // Already a valid embed URL after sanitization
+      const placeMatch = sanitizedUrl.match(/!1s([^!]+)/);
+      let directionsUrl: string;
       if (placeMatch) {
         directionsUrl = `https://www.google.com/maps/place/${encodeURIComponent(placeMatch[1])}`;
       } else {
-        // Try to extract coordinates from embed URL
-        const coordsMatch = embedUrl.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+        const coordsMatch = sanitizedUrl.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/);
         if (coordsMatch) {
           directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${coordsMatch[1]},${coordsMatch[2]}`;
         } else {
-          directionsUrl = embedUrl.replace('/embed', '').replace('output=embed', '').replace('&output=embed', '');
+          directionsUrl = sanitizedUrl.replace('/embed', '').replace('output=embed', '').replace('&output=embed', '');
         }
       }
-    } else {
-      // Convert regular Google Maps URL to embed
-      const convertedUrl = convertGoogleMapsToEmbed(url);
-      if (!convertedUrl) {
-        return (
-          <div className="w-full bg-muted/20 rounded-lg flex items-center justify-center p-8" style={{ height }}>
-            <p className="text-muted-foreground text-center">
-              Unable to display map. Invalid URL format.
-            </p>
-          </div>
-        );
-      }
-      embedUrl = convertedUrl;
-      directionsUrl = url;
-    }
 
-    return (
+      return (
       <div className="w-full relative" style={{ height: height }}>
         {/* Info Card Overlay */}
         {(businessName || address || rating) && (
@@ -457,14 +411,86 @@ export default function GoogleMapEmbed({
         />
       </div>
     );
+    }
+    
+    // If sanitization failed, try converting regular Google Maps URL to embed
+    const convertedUrl = convertGoogleMapsToEmbed(url);
+    if (convertedUrl) {
+      return (
+        <div className="w-full relative" style={{ height: height }}>
+          {/* Info Card Overlay */}
+          {(businessName || address || rating) && (
+            <div className="absolute top-4 left-4 z-10 bg-white rounded-lg shadow-lg p-4 max-w-xs">
+              {businessName && (
+                <h3 className="font-semibold text-lg text-foreground mb-1">
+                  {businessName}
+                </h3>
+              )}
+              {address && (
+                <p className="text-sm text-muted-foreground mb-3">
+                  {address}
+                </p>
+              )}
+              {rating && (
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <Star
+                        key={i}
+                        className={`h-4 w-4 ${
+                          i < Math.round(rating)
+                            ? "fill-yellow-400 text-yellow-400"
+                            : "text-gray-300"
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  <span className="text-sm font-medium text-foreground">
+                    {rating}
+                  </span>
+                  {reviewCount && (
+                    <span className="text-sm text-muted-foreground">
+                      • {reviewCount} reviews
+                    </span>
+                  )}
+                </div>
+              )}
+              <Button
+                asChild
+                size="sm"
+                className="w-full"
+              >
+                <Link
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  Directions
+                </Link>
+              </Button>
+            </div>
+          )}
+          <iframe
+            src={convertedUrl}
+            width="100%"
+            height={height}
+            style={{ border: 0 }}
+            allowFullScreen
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
+            title={title}
+            className="w-full h-full"
+          />
+        </div>
+      );
+    }
+    
+    // URL is invalid - don't render map container
+    // Fall through to "No valid data provided" below
   }
 
-  // No valid data provided
-  return (
-    <div className="w-full bg-muted/20 rounded-lg flex items-center justify-center p-8" style={{ height }}>
-      <p className="text-muted-foreground text-center">
-        No map location available
-      </p>
-    </div>
-  );
+  // No valid data provided - don't render anything
+  return null;
 }
