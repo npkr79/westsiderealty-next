@@ -399,7 +399,7 @@ export default function GoogleMapEmbed({
           </div>
         )}
         <iframe
-          src={embedUrl}
+          src={sanitizedUrl}
           width="100%"
           height={height}
           style={{ border: 0 }}
