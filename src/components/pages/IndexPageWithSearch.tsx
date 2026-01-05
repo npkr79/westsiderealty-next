@@ -18,10 +18,16 @@ import CtaSection from "@/components/home/CtaSection";
 import CityCardsSection from "@/components/home/CityCardsSection";
 import { supabaseTestimonialClientService } from "@/services/admin/supabaseTestimonialClientService";
 import { siteImagesService } from "@/services/adminService";
+import HeroBannerSlider from "@/app/home-test/components/HeroBannerSlider";
+import type { HeroBannerOffer } from "@/services/heroBannerService";
 
 const fallbackImage = "/placeholder.svg";
 
-export default function IndexPageWithSearch() {
+interface IndexPageWithSearchProps {
+  heroBannerOffers?: HeroBannerOffer[];
+}
+
+export default function IndexPageWithSearch({ heroBannerOffers = [] }: IndexPageWithSearchProps) {
   const [testimonials, setTestimonials] = useState<any[]>([]);
   const [siteImages, setSiteImages] = useState<any>({});
   const [loading, setLoading] = useState(true);
@@ -116,6 +122,10 @@ export default function IndexPageWithSearch() {
 
   return (
     <div className="min-h-screen bg-white">
+      {/* Hero Banner Slider */}
+      {heroBannerOffers.length > 0 && (
+        <HeroBannerSlider offers={heroBannerOffers} />
+      )}
       <HeroSectionWithSearch onContactClick={handleContactClick} />
       <TrendingProjectsSlider />
       <StatsSection stats={stats} />

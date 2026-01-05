@@ -373,14 +373,14 @@ export default function TabbedSearch() {
 
   return (
     <div ref={searchRef} className="w-full max-w-4xl mx-auto mt-8 relative">
-      {/* Tabs */}
-      <div className="flex gap-6 border-b border-gray-200 mb-6 overflow-x-auto scrollbar-hide">
+      {/* Tabs - Lightweight with underline */}
+      <div className="flex gap-6 border-b border-gray-100 mb-6 overflow-x-auto scrollbar-hide">
         <button
           onClick={() => setActiveTab("residential")}
           className={`pb-3 px-2 text-sm font-medium whitespace-nowrap transition-colors border-b-2 ${
             activeTab === "residential"
-              ? "text-blue-700 border-blue-700"
-              : "text-gray-600 border-transparent hover:text-gray-900"
+              ? "text-blue-600 border-blue-600"
+              : "text-gray-500 border-transparent hover:text-gray-700"
           }`}
         >
           Residential
@@ -389,8 +389,8 @@ export default function TabbedSearch() {
           onClick={() => setActiveTab("commercial")}
           className={`pb-3 px-2 text-sm font-medium whitespace-nowrap transition-colors border-b-2 ${
             activeTab === "commercial"
-              ? "text-blue-700 border-blue-700"
-              : "text-gray-600 border-transparent hover:text-gray-900"
+              ? "text-blue-600 border-blue-600"
+              : "text-gray-500 border-transparent hover:text-gray-700"
           }`}
         >
           Commercial
@@ -399,16 +399,16 @@ export default function TabbedSearch() {
           onClick={() => setActiveTab("land")}
           className={`pb-3 px-2 text-sm font-medium whitespace-nowrap transition-colors border-b-2 ${
             activeTab === "land"
-              ? "text-blue-700 border-blue-700"
-              : "text-gray-600 border-transparent hover:text-gray-900"
+              ? "text-blue-600 border-blue-600"
+              : "text-gray-500 border-transparent hover:text-gray-700"
           }`}
         >
           Open Plots/Lands
         </button>
       </div>
 
-      {/* Search Container - Lightweight */}
-      <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-4 md:p-5 relative">
+      {/* Search Container - Lightweight modern design */}
+      <div className="bg-white rounded-lg border border-gray-200 p-4 md:p-5 relative shadow-sm">
         {/* Dropdowns Row - No Labels */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
           {/* City Dropdown */}
@@ -462,7 +462,7 @@ export default function TabbedSearch() {
             }}
             onFocus={() => setShowSuggestions(true)}
             onKeyDown={handleKeyDown}
-            className="w-full h-11 md:h-12 pl-10 md:pl-12 pr-4 bg-gray-50 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white text-sm md:text-base border border-gray-200"
+            className="w-full h-11 md:h-12 pl-10 md:pl-12 pr-4 bg-white rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm md:text-base border border-gray-200 transition-all"
           />
           {searchQuery && (
             <button
@@ -534,7 +534,7 @@ export default function TabbedSearch() {
         {/* Search Button */}
         <Button
           onClick={handleSearch}
-          className="w-full h-11 md:h-12 bg-blue-700 hover:bg-blue-800 text-white font-semibold text-sm md:text-base rounded-lg"
+          className="w-full h-11 md:h-12 bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm md:text-base rounded-lg shadow-sm"
         >
           Search Properties
         </Button>

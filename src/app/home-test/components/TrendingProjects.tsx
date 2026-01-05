@@ -4,6 +4,7 @@ import { useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ChevronRight, MapPin, TrendingUp } from "lucide-react";
+import { getProjectPrimaryImage } from "@/lib/project-images";
 
 interface TrendingProjectsProps {
   projects: any[];
@@ -64,6 +65,8 @@ export default function TrendingProjects({ projects }: TrendingProjectsProps) {
             const citySlug = project.city?.url_slug || "hyderabad";
             // Use canonical URL format: /citySlug/projects/projectSlug (no micro-market in path)
             const projectUrl = `/${citySlug}/projects/${project.url_slug}`;
+            // Use getProjectPrimaryImage helper for proper image fallback
+            const projectImage = getProjectPrimaryImage(project);
 
             return (
               <div
@@ -75,19 +78,13 @@ export default function TrendingProjects({ projects }: TrendingProjectsProps) {
                   <div className="bg-white rounded-3xl shadow-xl overflow-hidden hover:shadow-2xl transition-all duration-300">
                     {/* Image */}
                     <div className="relative w-full h-48 bg-gradient-to-br from-blue-400 to-blue-600">
-                      {project.hero_image_url ? (
-                        <Image
-                          src={project.hero_image_url}
-                          alt={project.project_name}
-                          fill
-                          className="object-cover"
-                          sizes="(max-width: 640px) 85vw, 400px"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-white text-2xl font-bold">
-                          {project.project_name.charAt(0)}
-                        </div>
-                      )}
+                      <Image
+                        src={projectImage}
+                        alt={project.project_name}
+                        fill
+                        className="object-cover"
+                        sizes="(max-width: 640px) 85vw, 400px"
+                      />
                       <div className="absolute top-3 right-3 bg-orange-500 text-white px-3 py-1 rounded-full text-xs font-bold">
                         🔥 TRENDING
                       </div>
@@ -95,7 +92,7 @@ export default function TrendingProjects({ projects }: TrendingProjectsProps) {
 
                     {/* Content */}
                     <div className="p-5">
-                      <h3 className="text-xl font-bold text-gray-900 mb-2 line-clamp-1">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2">
                         {project.project_name}
                       </h3>
                       {project.micro_market && (

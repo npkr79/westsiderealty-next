@@ -10,12 +10,15 @@ import Footer from "./components/Footer";
 import MobileBottomNav from "./components/MobileBottomNav";
 import StickyHeader from "./components/StickyHeader";
 import HeroSearch from "./components/HeroSearch";
+import HeroBannerSlider from "./components/HeroBannerSlider";
+import type { HeroBannerOffer } from "@/services/heroBannerService";
 
 interface HomeTestClientProps {
   trendingProjects: any[];
   featuredProjects: any[];
   testimonials: any[];
   microMarkets: any[];
+  heroBannerOffers?: HeroBannerOffer[];
 }
 
 export default function HomeTestClient({
@@ -23,6 +26,7 @@ export default function HomeTestClient({
   featuredProjects,
   testimonials,
   microMarkets,
+  heroBannerOffers = [],
 }: HomeTestClientProps) {
   const [isScrolled, setIsScrolled] = useState(false);
 
@@ -38,6 +42,11 @@ export default function HomeTestClient({
     <div className="min-h-screen bg-white">
       {/* Sticky Header */}
       <StickyHeader isScrolled={isScrolled} />
+
+      {/* Hero Banner Slider */}
+      {heroBannerOffers.length > 0 && (
+        <HeroBannerSlider offers={heroBannerOffers} />
+      )}
 
       {/* Hero Section with Search */}
       <HeroSearch />
