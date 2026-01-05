@@ -61,16 +61,42 @@ export async function getHeroBannerOffersServer(): Promise<HeroBannerOffer[]> {
   const { createClient } = await import("@/lib/supabase/server");
   const supabase = await createClient();
   
-  const { data, error } = await supabase
+  // Try with is_active and display_order first (most common case)
+  let query = supabase
     .from("homepage_banners")
     .select("*")
     .eq("is_active", true)
     .order("display_order", { ascending: true })
     .limit(3);
 
+  let { data, error } = await query;
+
+  // If error is about missing column, try without filters/ordering
+  if (error && (error.code === '42703' || error.message?.includes('does not exist'))) {
+    console.log("[getHeroBannerOffersServer] Column error, retrying without is_active/display_order filters...");
+    const retryQuery = supabase
+      .from("homepage_banners")
+      .select("*")
+      .limit(3);
+    
+    const retryResult = await retryQuery;
+    if (retryResult.error) {
+      console.error("[getHeroBannerOffersServer] Retry error:", retryResult.error);
+      return [];
+    }
+    
+    data = retryResult.data;
+    error = null;
+  }
+
   if (error) {
-    console.error("Error fetching hero banner offers:", error);
+    console.error("[getHeroBannerOffersServer] Error fetching hero banner offers:", error);
     return [];
+  }
+
+  console.log("[getHeroBannerOffersServer] Fetched banners:", data?.length || 0);
+  if (data && data.length > 0) {
+    console.log("[getHeroBannerOffersServer] Sample banner data:", JSON.stringify(data[0], null, 2));
   }
 
   return (data || []) as HeroBannerOffer[];

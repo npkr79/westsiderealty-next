@@ -46,13 +46,30 @@ export default function HeroBannerSlider({ offers }: HeroBannerSliderProps) {
 
   const currentOffer = offers[currentSlide];
 
+  // Support multiple possible image field names
+  const imageUrl = currentOffer.background_image_url 
+    || currentOffer.image_url 
+    || currentOffer.hero_image 
+    || currentOffer.banner_image 
+    || currentOffer.image;
+
+  // Debug logging (remove in production)
+  if (process.env.NODE_ENV === 'development' && currentOffer) {
+    console.log("[HeroBannerSlider] Current offer:", {
+      id: currentOffer.id,
+      title: currentOffer.title,
+      imageUrl,
+      allKeys: Object.keys(currentOffer)
+    });
+  }
+
   return (
     <section className="relative h-[400px] md:h-[450px] w-full overflow-hidden bg-gray-900">
       {/* Background Image */}
       <div className="absolute inset-0">
-        {currentOffer.background_image_url ? (
+        {imageUrl ? (
           <Image
-            src={currentOffer.background_image_url}
+            src={imageUrl}
             alt={currentOffer.title || "Banner"}
             fill
             className="object-cover"
