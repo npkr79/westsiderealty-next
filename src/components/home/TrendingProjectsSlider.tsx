@@ -6,6 +6,7 @@ import Link from "next/link";
 import { MapPin, Home, ChevronLeft, ChevronRight } from "lucide-react";
 import useEmblaCarousel from "embla-carousel-react";
 import { createClient } from "@/lib/supabase/client";
+import { getProjectPrimaryImage } from "@/lib/project-images";
 
 interface TrendingProject {
   id: string;
@@ -107,12 +108,17 @@ export default function TrendingProjectsSlider() {
 
         // Transform projects data
         const transformedProjects: TrendingProject[] = (projectsData || []).map((p: any) => {
+          // Use getProjectPrimaryImage helper for proper image fallback
+          const projectImage = getProjectPrimaryImage({
+            hero_image_url: p.hero_image_url,
+          });
+          
           return {
             id: String(p.id),
             name: p.project_name || "Untitled Project",
             price_range: p.price_range_text || null,
             location: null, // Will be fetched separately if needed
-            image_url: p.hero_image_url,
+            image_url: projectImage,
             slug: p.url_slug || String(p.id),
             source: "project" as const,
             city_slug: "hyderabad", // Default, can be enhanced later

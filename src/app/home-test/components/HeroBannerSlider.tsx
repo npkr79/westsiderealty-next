@@ -68,7 +68,7 @@ export default function HeroBannerSlider({ offers }: HeroBannerSliderProps) {
 
   return (
     <Link href={bannerLink} className="block">
-      <section className="relative h-[400px] md:h-[450px] w-full overflow-hidden bg-gray-900 cursor-pointer">
+      <section className="relative h-[300px] sm:h-[350px] md:h-[400px] lg:h-[450px] w-full overflow-hidden bg-gray-900 cursor-pointer">
         {/* Background Image */}
         <div className="absolute inset-0">
           {imageUrl ? (
@@ -78,6 +78,7 @@ export default function HeroBannerSlider({ offers }: HeroBannerSliderProps) {
               fill
               className="object-cover"
               priority
+              sizes="100vw"
             />
           ) : (
             <div className="w-full h-full bg-gradient-to-br from-blue-600 to-blue-800" />
@@ -118,21 +119,21 @@ export default function HeroBannerSlider({ offers }: HeroBannerSliderProps) {
           <div className="max-w-2xl text-white">
             {/* Title */}
             {currentOffer.title && (
-              <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4 leading-tight">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-2 sm:mb-4 leading-tight">
                 {currentOffer.title}
               </h1>
             )}
 
             {/* Offer Headline */}
             {currentOffer.offer_headline && (
-              <p className="text-lg md:text-xl font-semibold mb-4 text-blue-300">
+              <p className="text-base sm:text-lg md:text-xl font-semibold mb-2 sm:mb-4 text-blue-300">
                 {currentOffer.offer_headline}
               </p>
             )}
 
             {/* RERA Info */}
             {currentOffer.rera_number && (
-              <div className="text-sm md:text-base text-gray-200 mb-4">
+              <div className="text-xs sm:text-sm md:text-base text-gray-200 mb-2 sm:mb-4">
                 RERA No. {currentOffer.rera_number}
                 {currentOffer.rera_link && (
                   <a
@@ -150,13 +151,13 @@ export default function HeroBannerSlider({ offers }: HeroBannerSliderProps) {
 
             {/* Location Highlights */}
             {currentOffer.location_text && (
-              <div className="flex items-center gap-2 text-base md:text-lg text-gray-200 mb-2">
-                <MapPin className="w-5 h-5 flex-shrink-0" />
+              <div className="flex items-center gap-2 text-sm sm:text-base md:text-lg text-gray-200 mb-1 sm:mb-2">
+                <MapPin className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
                 <span>{currentOffer.location_text}</span>
               </div>
             )}
             {currentOffer.location_highlight && (
-              <p className="text-sm md:text-base text-gray-300 mb-4">
+              <p className="text-xs sm:text-sm md:text-base text-gray-300 mb-2 sm:mb-4">
                 {currentOffer.location_highlight}
               </p>
             )}
@@ -188,9 +189,9 @@ export default function HeroBannerSlider({ offers }: HeroBannerSliderProps) {
 
             {/* CTA Button - Hidden since entire banner is clickable */}
             {currentOffer.cta_text && (
-              <div className="inline-flex items-center gap-2 bg-white text-gray-900 px-6 py-3 rounded-lg font-semibold shadow-lg pointer-events-none">
+              <div className="inline-flex items-center gap-2 bg-white text-gray-900 px-4 py-2 sm:px-6 sm:py-3 rounded-lg text-sm sm:text-base font-semibold shadow-lg pointer-events-none">
                 {currentOffer.cta_text}
-                <ExternalLink className="w-5 h-5" />
+                <ExternalLink className="w-4 h-4 sm:w-5 sm:h-5" />
               </div>
             )}
           </div>
