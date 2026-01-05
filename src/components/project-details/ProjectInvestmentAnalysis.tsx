@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { sanitizeHTML } from "@/lib/utils/htmlSanitizer";
 
 interface ProjectInvestmentAnalysisProps {
   investmentData: any;
@@ -22,6 +23,13 @@ export default function ProjectInvestmentAnalysis({
 
   if (!hasContent) return null;
 
+  // Sanitize HTML description to prevent iframe/script injection
+  const sanitizedDescription = typeof investmentData === 'object' && 
+                               !Array.isArray(investmentData) && 
+                               investmentData.description 
+                               ? sanitizeHTML(investmentData.description)
+                               : null;
+
   return (
     <section className="mb-12">
       <Card>
@@ -37,10 +45,10 @@ export default function ProjectInvestmentAnalysis({
               ))}
             </ul>
           )}
-          {typeof investmentData === 'object' && !Array.isArray(investmentData) && investmentData.description && (
+          {sanitizedDescription && (
             <div 
               className="prose prose-sm max-w-none"
-              dangerouslySetInnerHTML={{ __html: investmentData.description }}
+              dangerouslySetInnerHTML={{ __html: sanitizedDescription }}
             />
           )}
         </CardContent>
