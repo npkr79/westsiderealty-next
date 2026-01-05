@@ -298,11 +298,12 @@ export default function TabbedSearch() {
             }
             
             // Completion status from text (ONLY if explicitly mentioned)
-            // Do not infer or assume any completion status
-            if (parsed.completionStatus) {
+            // Do not infer or assume any completion status - ONLY add if parser found it
+            // CRITICAL: Only add if parsed.completionStatus is truthy and not empty
+            if (parsed.completionStatus && parsed.completionStatus.trim().length > 0) {
               params.set("completionStatus", parsed.completionStatus);
             }
-            // Note: We don't add isNewProject - only add if explicitly parsed completionStatus
+            // DO NOT add isNewProject or any other inferred status
             
             // DO NOT add 'q' parameter - it's redundant since we parsed the entities
             // DO NOT add any defaults like city, category, projectType

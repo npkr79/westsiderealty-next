@@ -126,22 +126,29 @@ export async function parseSearchQuery(
 
   // 1. Check for EXPLICIT status keywords ONLY (e.g., "new launch", "ready to move")
   // DO NOT infer or assume any completion status - only extract if explicitly stated
-  // Use word boundaries to prevent partial matches (e.g., "beeramguda" shouldn't match "ready")
+  // Use strict word boundaries and ensure the phrase appears as a whole
   for (const [keyword, status] of Object.entries(STATUS_KEYWORDS)) {
-    // Create a regex with word boundaries for multi-word phrases
-    const keywordWords = keyword.split(/\s+/);
-    if (keywordWords.length > 1) {
-      // Multi-word phrase: use word boundaries around the phrase
-      const regex = new RegExp(`\\b${keyword.replace(/\s+/g, '\\s+')}\\b`, 'i');
-      if (regex.test(normalizedQuery)) {
-        result.completionStatus = status;
-        remainingQuery = remainingQuery.replace(regex, '').trim();
-        break;
-      }
-    } else {
-      // Single word: use word boundaries
-      const regex = new RegExp(`\\b${keyword}\\b`, 'i');
-      if (regex.test(normalizedQuery)) {
+    // Escape special regex characters in keyword
+    const escapedKeyword = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    
+    // Create a strict regex with word boundaries
+    // For multi-word phrases, ensure the entire phrase matches with word boundaries
+    const regex = new RegExp(`\\b${escapedKeyword.replace(/\s+/g, '\\s+')}\\b`, 'i');
+    
+    // Double-check: the match must be exact, not a substring of another word
+    const match = normalizedQuery.match(regex);
+    if (match) {
+      // Verify this is actually the status phrase, not part of another word
+      const matchIndex = match.index!;
+      const beforeChar = matchIndex > 0 ? normalizedQuery[matchIndex - 1] : ' ';
+      const afterIndex = matchIndex + match[0].length;
+      const afterChar = afterIndex < normalizedQuery.length ? normalizedQuery[afterIndex] : ' ';
+      
+      // Ensure it's surrounded by word boundaries (non-word characters or start/end)
+      const isWordBoundaryBefore = /[\s\W]/.test(beforeChar) || matchIndex === 0;
+      const isWordBoundaryAfter = /[\s\W]/.test(afterChar) || afterIndex === normalizedQuery.length;
+      
+      if (isWordBoundaryBefore && isWordBoundaryAfter) {
         result.completionStatus = status;
         remainingQuery = remainingQuery.replace(regex, '').trim();
         break;
