@@ -253,6 +253,36 @@ export const projectService = {
 
     console.log(`[getCityLevelProjectBySlug] Found city ID: ${cityData.id}`);
 
+    // First, let's check if the project exists at all (without city filter) for debugging
+    const { data: debugProject } = await supabase
+      .from('projects')
+      .select('id, project_name, url_slug, city_id, is_published, status, page_status, city:cities(id, url_slug)')
+      .eq('url_slug', correctedSlug)
+      .maybeSingle();
+    
+    if (debugProject) {
+      const debugCity = Array.isArray(debugProject.city) ? debugProject.city[0] : debugProject.city;
+      console.log('[getCityLevelProjectBySlug] Project exists in DB:', {
+        id: debugProject.id,
+        name: debugProject.project_name,
+        url_slug: debugProject.url_slug,
+        city_id: debugProject.city_id,
+        requested_city_id: cityData.id,
+        city_matches: debugProject.city_id === cityData.id,
+        city_slug_from_db: debugCity?.url_slug,
+        requested_city_slug: citySlug,
+        is_published: debugProject.is_published,
+        status: debugProject.status,
+        page_status: debugProject.page_status
+      });
+      
+      if (debugProject.city_id !== cityData.id) {
+        console.warn(`[getCityLevelProjectBySlug] ⚠️ City mismatch! Project belongs to city_id ${debugProject.city_id} (${debugCity?.url_slug}) but requested ${cityData.id} (${citySlug})`);
+      }
+    } else {
+      console.warn(`[getCityLevelProjectBySlug] ⚠️ Project not found in database with url_slug: ${correctedSlug}`);
+    }
+
     // Helper function to try finding project with various slug patterns
     const tryFindProject = async (slugToTry: string, skipCityCheck = false) => {
       const buildQuery = () => {
@@ -273,17 +303,24 @@ export const projectService = {
         return q;
       };
       
-      // Try with is_published first
+      // Try with is_published first (most common case)
       const result1 = await buildQuery().eq('is_published', true).maybeSingle();
       if (result1.data) return result1.data;
       
-      // Try with status filters
+      // Try with status filters (broader match)
       const result2 = await buildQuery().or('status.ilike.published,status.ilike.%under construction%,page_status.eq.published').maybeSingle();
       if (result2.data) return result2.data;
       
-      // Try without status filters
+      // Try without any status/published filters (fallback - might include unpublished projects, but better than 404)
       const result3 = await buildQuery().maybeSingle();
-      if (result3.data) return result3.data;
+      if (result3.data) {
+        console.warn(`[getCityLevelProjectBySlug] Found project but it may not be published: ${(result3.data as any).project_name}`, {
+          is_published: (result3.data as any).is_published,
+          status: (result3.data as any).status,
+          page_status: (result3.data as any).page_status
+        });
+        return result3.data;
+      }
       
       return null;
     };
