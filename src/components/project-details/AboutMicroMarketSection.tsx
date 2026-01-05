@@ -11,6 +11,31 @@ interface AboutMicroMarketSectionProps {
   appreciationRate?: number | null;
 }
 
+// Sanitize HTML to remove iframes, scripts, and other potentially dangerous elements
+function sanitizeHTML(html: string): string {
+  if (!html) return '';
+  
+  // Remove iframe tags and their content
+  html = html.replace(/<iframe[^>]*>.*?<\/iframe>/gi, '');
+  html = html.replace(/<iframe[^>]*\/?>/gi, '');
+  
+  // Remove script tags and their content
+  html = html.replace(/<script[^>]*>.*?<\/script>/gi, '');
+  html = html.replace(/<script[^>]*\/?>/gi, '');
+  
+  // Remove embed and object tags
+  html = html.replace(/<embed[^>]*>.*?<\/embed>/gi, '');
+  html = html.replace(/<embed[^>]*\/?>/gi, '');
+  html = html.replace(/<object[^>]*>.*?<\/object>/gi, '');
+  html = html.replace(/<object[^>]*\/?>/gi, '');
+  
+  // Remove on* event handlers (onclick, onload, etc.)
+  html = html.replace(/\s*on\w+\s*=\s*["'][^"']*["']/gi, '');
+  html = html.replace(/\s*on\w+\s*=\s*[^\s>]*/gi, '');
+  
+  return html;
+}
+
 export default function AboutMicroMarketSection({
   microMarketName,
   citySlug,
@@ -26,6 +51,10 @@ export default function AboutMicroMarketSection({
   const displayCity =
     citySlug.charAt(0).toUpperCase() + citySlug.slice(1).toLowerCase();
 
+  // Sanitize HTML content to prevent iframe/script injection
+  const sanitizedHeroHook = heroHook ? sanitizeHTML(heroHook) : null;
+  const sanitizedGrowthStory = growthStory ? sanitizeHTML(growthStory) : null;
+
   return (
     <section className="mb-8">
       <Card>
@@ -35,17 +64,17 @@ export default function AboutMicroMarketSection({
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3 text-sm text-muted-foreground">
-          {heroHook && (
+          {sanitizedHeroHook && (
             <p 
               className="text-base font-medium text-foreground"
-              dangerouslySetInnerHTML={{ __html: heroHook }}
+              dangerouslySetInnerHTML={{ __html: sanitizedHeroHook }}
             />
           )}
 
-          {growthStory && (
+          {sanitizedGrowthStory && (
             <div
               className="prose prose-sm max-w-none"
-              dangerouslySetInnerHTML={{ __html: growthStory }}
+              dangerouslySetInnerHTML={{ __html: sanitizedGrowthStory }}
             />
           )}
 
