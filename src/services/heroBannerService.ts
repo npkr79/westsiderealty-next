@@ -1,8 +1,9 @@
 import { createClient } from "@/lib/supabase/client";
 
+// Flexible interface that works with whatever columns exist in homepage_banners table
 export interface HeroBannerOffer {
   id: string;
-  title: string;
+  title?: string;
   offer_headline?: string | null;
   rera_number?: string | null;
   rera_link?: string | null;
@@ -16,12 +17,14 @@ export interface HeroBannerOffer {
     location?: string;
   }> | null;
   cta_text?: string | null;
-  cta_link: string;
-  background_image_url: string;
-  display_order: number;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
+  cta_link?: string;
+  background_image_url?: string;
+  display_order?: number;
+  is_active?: boolean;
+  created_at?: string;
+  updated_at?: string;
+  // Allow any other fields that might exist in the table
+  [key: string]: any;
 }
 
 /**

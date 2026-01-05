@@ -53,7 +53,7 @@ export default function HeroBannerSlider({ offers }: HeroBannerSliderProps) {
         {currentOffer.background_image_url ? (
           <Image
             src={currentOffer.background_image_url}
-            alt={currentOffer.title}
+            alt={currentOffer.title || "Banner"}
             fill
             className="object-cover"
             priority
@@ -90,9 +90,11 @@ export default function HeroBannerSlider({ offers }: HeroBannerSliderProps) {
         <div className="container mx-auto px-4 md:px-6 lg:px-8 max-w-7xl">
           <div className="max-w-2xl text-white">
             {/* Title */}
-            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4 leading-tight">
-              {currentOffer.title}
-            </h1>
+            {currentOffer.title && (
+              <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4 leading-tight">
+                {currentOffer.title}
+              </h1>
+            )}
 
             {/* Offer Headline */}
             {currentOffer.offer_headline && (
@@ -157,13 +159,15 @@ export default function HeroBannerSlider({ offers }: HeroBannerSliderProps) {
             )}
 
             {/* CTA Button */}
-            <Link
-              href={currentOffer.cta_link}
-              className="inline-flex items-center gap-2 bg-white text-gray-900 px-6 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-all shadow-lg"
-            >
-              {currentOffer.cta_text || "Explore Now"}
-              <ExternalLink className="w-5 h-5" />
-            </Link>
+            {currentOffer.cta_link && (
+              <Link
+                href={currentOffer.cta_link}
+                className="inline-flex items-center gap-2 bg-white text-gray-900 px-6 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-all shadow-lg"
+              >
+                {currentOffer.cta_text || "Explore Now"}
+                <ExternalLink className="w-5 h-5" />
+              </Link>
+            )}
           </div>
         </div>
       </div>
