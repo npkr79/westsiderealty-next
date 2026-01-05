@@ -254,28 +254,33 @@ export const projectService = {
     console.log(`[getCityLevelProjectBySlug] Found city ID: ${cityData.id}`);
 
     // First, let's check if the project exists at all (without city filter) for debugging
-    const { data: debugProject } = await supabase
+    const { data: debugProject, error: debugError } = await supabase
       .from('projects')
-      .select('id, project_name, url_slug, city_id, is_published, status, page_status, city:cities(id, url_slug)')
+      .select('id, project_name, url_slug, city_id, is_published, status, page_status, micro_market_id, developer_id, city:cities(id, url_slug)')
       .eq('url_slug', correctedSlug)
       .maybeSingle();
     
-    if (debugProject) {
-      const debugCity = Array.isArray(debugProject.city) ? debugProject.city[0] : debugProject.city;
-      console.log('[getCityLevelProjectBySlug] Project exists in DB:', {
+    console.log('[getCityLevelProjectBySlug] Debug query result:', {
+      slug: correctedSlug,
+      found: !!debugProject,
+      error: debugError,
+      projectData: debugProject ? {
         id: debugProject.id,
         name: debugProject.project_name,
         url_slug: debugProject.url_slug,
         city_id: debugProject.city_id,
-        requested_city_id: cityData.id,
-        city_matches: debugProject.city_id === cityData.id,
-        city_slug_from_db: debugCity?.url_slug,
-        requested_city_slug: citySlug,
+        micro_market_id: debugProject.micro_market_id,
+        developer_id: debugProject.developer_id,
         is_published: debugProject.is_published,
         status: debugProject.status,
-        page_status: debugProject.page_status
-      });
-      
+        page_status: debugProject.page_status,
+        requested_city_id: cityData.id,
+        city_matches: debugProject.city_id === cityData.id
+      } : null
+    });
+    
+    if (debugProject) {
+      const debugCity = Array.isArray(debugProject.city) ? debugProject.city[0] : debugProject.city;
       if (debugProject.city_id !== cityData.id) {
         console.warn(`[getCityLevelProjectBySlug] ⚠️ City mismatch! Project belongs to city_id ${debugProject.city_id} (${debugCity?.url_slug}) but requested ${cityData.id} (${citySlug})`);
       }
@@ -299,6 +304,9 @@ export const projectService = {
         
         if (!skipCityCheck) {
           q = q.eq('city_id', cityData.id);
+          console.log(`[getCityLevelProjectBySlug] Building query with city_id filter: ${cityData.id} for slug: ${slugToTry}`);
+        } else {
+          console.log(`[getCityLevelProjectBySlug] Building query WITHOUT city_id filter for slug: ${slugToTry}`);
         }
         return q;
       };
@@ -331,6 +339,7 @@ export const projectService = {
         slug: slugToTry, 
         found: !!result3.data,
         error: result3.error,
+        errorDetails: result3.error ? JSON.stringify(result3.error, null, 2) : null,
         data: result3.data ? {
           name: (result3.data as any).project_name,
           is_published: (result3.data as any).is_published,
@@ -339,6 +348,12 @@ export const projectService = {
           city_id: (result3.data as any).city_id
         } : null
       });
+      
+      // If Query 3 failed with an error, log it but don't return null yet
+      if (result3.error) {
+        console.error(`[getCityLevelProjectBySlug] Query 3 error for ${slugToTry}:`, result3.error);
+      }
+      
       if (result3.data) {
         console.warn(`[getCityLevelProjectBySlug] Found project but it may not be published: ${(result3.data as any).project_name}`, {
           is_published: (result3.data as any).is_published,
@@ -347,6 +362,13 @@ export const projectService = {
         });
         return result3.data;
       }
+      
+      // If we still don't have data, log what we tried
+      console.error(`[getCityLevelProjectBySlug] All queries failed for ${slugToTry}`, {
+        skipCityCheck,
+        cityId: cityData?.id,
+        queriesAttempted: ['is_published=true', 'status filters', 'no filters']
+      });
       
       return null;
     };
