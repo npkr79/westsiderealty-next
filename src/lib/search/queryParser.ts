@@ -1,6 +1,4 @@
 import { createClient } from '@/lib/supabase/server';
-import { writeFileSync, appendFileSync, existsSync, mkdirSync } from 'fs';
-import { join } from 'path';
 
 // Types
 export interface ParsedQuery {
@@ -107,43 +105,12 @@ async function loadEntities(supabase: Awaited<ReturnType<typeof createClient>>):
   return entityCache;
 }
 
-// Helper function for server-side logging
-function logDebug(location: string, message: string, data: any, hypothesisId: string) {
-  const logPath = join(process.cwd(), '.cursor', 'debug.log');
-  const logDir = join(process.cwd(), '.cursor');
-  if (!existsSync(logDir)) mkdirSync(logDir, { recursive: true });
-  const logEntry = JSON.stringify({
-    location,
-    message,
-    data,
-    timestamp: Date.now(),
-    sessionId: 'debug-session',
-    runId: 'run1',
-    hypothesisId,
-  }) + '\n';
-  try {
-    appendFileSync(logPath, logEntry);
-  } catch (e) {
-    console.error('[LogError]', e);
-  }
-}
-
 // Main parser function
 export async function parseSearchQuery(
   query: string,
   supabase: Awaited<ReturnType<typeof createClient>>
 ): Promise<ParsedQuery> {
-  logDebug('queryParser.ts:109', 'parseSearchQuery entry', { query }, 'A');
   const entities = await loadEntities(supabase);
-  const beeramgudaInList = entities.microMarkets.some(m => m.toLowerCase().includes('beeramguda'));
-  const beeramgudaExact = entities.microMarkets.find(m => m.toLowerCase() === 'beeramguda');
-  logDebug('queryParser.ts:113', 'Entities loaded', {
-    microMarketsCount: entities.microMarkets.length,
-    beeramgudaInList,
-    beeramgudaExact,
-    allBeeramgudaVariants: entities.microMarkets.filter(m => m.toLowerCase().includes('beeramguda')),
-    sampleMicroMarkets: entities.microMarkets.slice(0, 5),
-  }, 'B');
   const normalizedQuery = query.toLowerCase().trim();
   let remainingQuery = normalizedQuery;
 
@@ -232,19 +199,10 @@ export async function parseSearchQuery(
       break;
     }
   }
-  
-  logDebug('queryParser.ts:202', 'After property type extraction', {
-    propertyType: result.propertyType,
-    remainingQuery,
-  }, 'C');
 
-  // 5. Fuzzy match micro-market (threshold 0.8)
-  // IMPORTANT: Do this BEFORE other extractions to prioritize location matching
+  // 5. Match micro-market (exact first, then fuzzy)
+  // Remove common prepositions before matching to improve accuracy
   const queryWords = remainingQuery.split(/\s+/).filter(w => w.length > 0);
-  logDebug('queryParser.ts:207', 'Before micro-market matching', {
-    remainingQuery,
-    queryWords,
-  }, 'D');
   
   // First try exact case-insensitive match (most reliable)
   for (const microMarket of entities.microMarkets) {
@@ -255,17 +213,8 @@ export async function parseSearchQuery(
       // Multi-word micro-market: use word boundaries
       const regex = new RegExp(`\\b${microMarketLower.replace(/\s+/g, '\\s+')}\\b`, 'i');
       const testResult = regex.test(remainingQuery);
-      if (microMarketLower.includes('beeramguda')) {
-        logDebug('queryParser.ts:214', 'Testing beeramguda multi-word match', {
-          microMarket,
-          microMarketLower,
-          regex: regex.toString(),
-          remainingQuery,
-          testResult,
-        }, 'E');
-      }
       if (testResult) {
-        result.microMarket = microMarket;
+        result.microMarket = microMarket; // Use canonical name from database
         remainingQuery = remainingQuery.replace(regex, '').trim();
         break;
       }
@@ -273,44 +222,25 @@ export async function parseSearchQuery(
       // Single-word micro-market: use word boundaries
       const regex = new RegExp(`\\b${microMarketLower}\\b`, 'i');
       const testResult = regex.test(remainingQuery);
-      if (microMarketLower.includes('beeramguda') || microMarketLower === 'beeramguda') {
-        logDebug('queryParser.ts:223', 'Testing beeramguda single-word match', {
-          microMarket,
-          microMarketLower,
-          regex: regex.toString(),
-          remainingQuery,
-          testResult,
-        }, 'F');
-      }
       if (testResult) {
-        result.microMarket = microMarket;
+        result.microMarket = microMarket; // Use canonical name from database
         remainingQuery = remainingQuery.replace(regex, '').trim();
         break;
       }
     }
   }
   
-  // If no exact match, try fuzzy match on individual words
+  // If no exact match, try fuzzy match on individual words (excluding common words)
   if (!result.microMarket) {
-    logDebug('queryParser.ts:235', 'No exact micro-market match, trying fuzzy', {
-      queryWords,
-    }, 'G');
+    const commonWords = ['in', 'at', 'near', 'the', 'a', 'an', 'of', 'for', 'with'];
     for (const microMarket of entities.microMarkets) {
       const microMarketLower = microMarket.toLowerCase();
       for (const word of queryWords) {
-        if (word.length >= 3) {
+        // Skip common words for fuzzy matching
+        if (word.length >= 3 && !commonWords.includes(word.toLowerCase())) {
           const score = similarityScore(word, microMarketLower);
-          if (microMarketLower.includes('beeramguda') || word === 'beeramguda') {
-            logDebug('queryParser.ts:240', 'Fuzzy match test for beeramguda', {
-              microMarket,
-              microMarketLower,
-              word,
-              score,
-              thresholdMet: score >= 0.8,
-            }, 'H');
-          }
           if (score >= 0.8) {
-            result.microMarket = microMarket;
+            result.microMarket = microMarket; // Use canonical name from database
             remainingQuery = remainingQuery.replace(new RegExp(`\\b${word}\\b`, 'gi'), '').trim();
             break;
           }
@@ -319,11 +249,6 @@ export async function parseSearchQuery(
       if (result.microMarket) break;
     }
   }
-  
-  logDebug('queryParser.ts:251', 'After micro-market matching', {
-    microMarket: result.microMarket,
-    remainingQuery,
-  }, 'I');
 
   // 6. Match developer name
   for (const developer of entities.developers) {
@@ -378,9 +303,5 @@ export async function parseSearchQuery(
     });
   }
 
-  logDebug('queryParser.ts:299', 'parseSearchQuery exit', {
-    input: query,
-    result,
-  }, 'J');
   return result;
 }

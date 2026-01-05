@@ -269,15 +269,9 @@ export default function TabbedSearch() {
     if (hasSearchText) {
       try {
         // Parse the search query to extract entities
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/4e462e23-bd22-4d1c-9e9b-fbb1596e852a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TabbedSearch.tsx:272',message:'Calling parse API',data:{raw},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'K'})}).catch(()=>{});
-        // #endregion
         const parseResponse = await fetch(`/api/search/parse?q=${encodeURIComponent(raw)}`);
         if (parseResponse.ok) {
           const { parsed } = await parseResponse.json();
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/4e462e23-bd22-4d1c-9e9b-fbb1596e852a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TabbedSearch.tsx:276',message:'Parse response received',data:{parsed},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'L'})}).catch(()=>{});
-          // #endregion
           if (parsed) {
             // IMPORTANT: ONLY use parsed entities, IGNORE ALL dropdown selections
             // Only add parameters that have actual parsed values (explicitly stated)
@@ -310,14 +304,16 @@ export default function TabbedSearch() {
             }
             // DO NOT add isNewProject or any other inferred status
             
-            // DO NOT add 'q' parameter - it's redundant since we parsed the entities
-            // DO NOT add any defaults like city, category, projectType
+            // Check if we have any structured params
+            const hasStructured = Array.from(params.keys()).length > 0;
             
-            // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/4e462e23-bd22-4d1c-9e9b-fbb1596e852a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TabbedSearch.tsx:312',message:'Routing to search',data:{paramsString:params.toString(),parsed},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'M'})}).catch(()=>{});
-            // #endregion
-            // Route to search page with ONLY text-derived params
-            router.push(`/search?${params.toString()}`);
+            if (hasStructured) {
+              // Route to search page with ONLY text-derived structured params (no 'q')
+              router.push(`/search?${params.toString()}`);
+            } else {
+              // Fallback: use raw query if no structured params were extracted
+              router.push(`/search?q=${encodeURIComponent(raw)}`);
+            }
             return;
           }
         }
