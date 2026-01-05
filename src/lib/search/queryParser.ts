@@ -200,11 +200,13 @@ export async function parseSearchQuery(
     }
   }
 
-  // 5. Match micro-market (exact first, then fuzzy)
-  // Remove common prepositions before matching to improve accuracy
+  // 5. Match micro-market (exact first, then substring, then fuzzy)
   const queryWords = remainingQuery.split(/\s+/).filter(w => w.length > 0);
+  const commonWords = ['in', 'at', 'near', 'the', 'a', 'an', 'of', 'for', 'with'];
+  const meaningfulWords = queryWords.filter(w => !commonWords.includes(w.toLowerCase()));
+  const remainingQueryLower = remainingQuery.toLowerCase();
   
-  // First try exact case-insensitive match (most reliable)
+  // First try exact case-insensitive match with word boundaries (most reliable)
   for (const microMarket of entities.microMarkets) {
     const microMarketLower = microMarket.toLowerCase();
     
@@ -212,8 +214,7 @@ export async function parseSearchQuery(
     if (microMarketLower.includes(' ')) {
       // Multi-word micro-market: use word boundaries
       const regex = new RegExp(`\\b${microMarketLower.replace(/\s+/g, '\\s+')}\\b`, 'i');
-      const testResult = regex.test(remainingQuery);
-      if (testResult) {
+      if (regex.test(remainingQuery)) {
         result.microMarket = microMarket; // Use canonical name from database
         remainingQuery = remainingQuery.replace(regex, '').trim();
         break;
@@ -221,8 +222,7 @@ export async function parseSearchQuery(
     } else {
       // Single-word micro-market: use word boundaries
       const regex = new RegExp(`\\b${microMarketLower}\\b`, 'i');
-      const testResult = regex.test(remainingQuery);
-      if (testResult) {
+      if (regex.test(remainingQuery)) {
         result.microMarket = microMarket; // Use canonical name from database
         remainingQuery = remainingQuery.replace(regex, '').trim();
         break;
@@ -230,14 +230,27 @@ export async function parseSearchQuery(
     }
   }
   
-  // If no exact match, try fuzzy match on individual words (excluding common words)
+  // If no exact match, try substring matching (case-insensitive) - more aggressive
+  // This handles cases where word boundaries might fail
   if (!result.microMarket) {
-    const commonWords = ['in', 'at', 'near', 'the', 'a', 'an', 'of', 'for', 'with'];
     for (const microMarket of entities.microMarkets) {
       const microMarketLower = microMarket.toLowerCase();
-      for (const word of queryWords) {
-        // Skip common words for fuzzy matching
-        if (word.length >= 3 && !commonWords.includes(word.toLowerCase())) {
+      // Check if micro-market name appears in remaining query (case-insensitive)
+      if (remainingQueryLower.includes(microMarketLower)) {
+        result.microMarket = microMarket; // Use canonical name from database
+        // Remove the matched micro-market (case-insensitive)
+        remainingQuery = remainingQuery.replace(new RegExp(microMarketLower, 'gi'), '').trim();
+        break;
+      }
+    }
+  }
+  
+  // If still no match, try fuzzy match on meaningful words (excluding common words)
+  if (!result.microMarket) {
+    for (const microMarket of entities.microMarkets) {
+      const microMarketLower = microMarket.toLowerCase();
+      for (const word of meaningfulWords) {
+        if (word.length >= 3) {
           const score = similarityScore(word, microMarketLower);
           if (score >= 0.8) {
             result.microMarket = microMarket; // Use canonical name from database

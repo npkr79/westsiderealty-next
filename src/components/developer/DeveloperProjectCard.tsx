@@ -13,6 +13,11 @@ export default function DeveloperProjectCard({
   project,
   citySlug,
 }: DeveloperProjectCardProps) {
+  // Return null if url_slug is missing (avoid broken links)
+  if (!project.url_slug) {
+    return null;
+  }
+  
   const defaultCitySlug = citySlug || project.city_slug || 'hyderabad';
   // Use canonical project URL: /citySlug/projects/projectSlug
   const projectHref = `/${defaultCitySlug}/projects/${project.url_slug}`;

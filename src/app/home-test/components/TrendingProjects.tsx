@@ -62,10 +62,8 @@ export default function TrendingProjects({ projects }: TrendingProjectsProps) {
         >
           {projects.map((project, index) => {
             const citySlug = project.city?.url_slug || "hyderabad";
-            const microMarketSlug = project.micro_market?.url_slug;
-            const projectUrl = microMarketSlug
-              ? `/${citySlug}/${microMarketSlug}/projects/${project.url_slug}`
-              : `/${citySlug}/projects/${project.url_slug}`;
+            // Use canonical URL format: /citySlug/projects/projectSlug (no micro-market in path)
+            const projectUrl = `/${citySlug}/projects/${project.url_slug}`;
 
             return (
               <div

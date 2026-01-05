@@ -184,25 +184,21 @@ export default function TabbedSearch() {
 
       if (projectsResult.data) {
         projectsResult.data.forEach((p: any) => {
-          const citySlug = Array.isArray(p.city) ? p.city[0]?.url_slug : p.city?.url_slug;
-          const microMarketSlug = Array.isArray(p.micro_market) 
-            ? p.micro_market[0]?.url_slug 
-            : p.micro_market?.url_slug;
+          // Skip projects without url_slug to avoid broken links
+          if (!p.url_slug) return;
           
-          const url = microMarketSlug && citySlug
-            ? `/${citySlug}/${microMarketSlug}/projects/${p.url_slug}`
-            : citySlug
-            ? `/${citySlug}/projects/${p.url_slug}`
-            : null;
+          const citySlug = Array.isArray(p.city) ? p.city[0]?.url_slug : p.city?.url_slug;
+          if (!citySlug) return;
+          
+          // Use canonical URL format: /citySlug/projects/projectSlug
+          const url = `/${citySlug}/projects/${p.url_slug}`;
 
-          if (url) {
-            suggestionsList.push({
-              id: p.id,
-              name: p.project_name,
-              type: "project",
-              url,
-            });
-          }
+          suggestionsList.push({
+            id: p.id,
+            name: p.project_name,
+            type: "project",
+            url,
+          });
         });
       }
 
