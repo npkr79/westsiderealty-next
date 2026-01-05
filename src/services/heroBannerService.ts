@@ -35,7 +35,7 @@ export const heroBannerService = {
     const supabase = createClient();
     
     const { data, error } = await supabase
-      .from("hero_banner_offers")
+      .from("homepage_banners")
       .select("*")
       .eq("is_active", true)
       .order("display_order", { ascending: true })
@@ -59,7 +59,7 @@ export async function getHeroBannerOffersServer(): Promise<HeroBannerOffer[]> {
   const supabase = await createClient();
   
   const { data, error } = await supabase
-    .from("hero_banner_offers")
+    .from("homepage_banners")
     .select("*")
     .eq("is_active", true)
     .order("display_order", { ascending: true })
