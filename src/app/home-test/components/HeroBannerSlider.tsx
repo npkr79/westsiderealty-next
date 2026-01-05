@@ -68,7 +68,7 @@ export default function HeroBannerSlider({ offers }: HeroBannerSliderProps) {
 
   return (
     <Link href={bannerLink} className="block">
-      <section className="relative h-[300px] sm:h-[350px] md:h-[400px] lg:h-[450px] w-full overflow-hidden bg-gray-900 cursor-pointer">
+      <section className="relative h-[220px] sm:h-[300px] md:h-[400px] lg:h-[450px] w-full overflow-hidden bg-gray-900 cursor-pointer">
         {/* Background Image */}
         <div className="absolute inset-0 bg-gray-900">
           {imageUrl ? (

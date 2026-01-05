@@ -372,7 +372,7 @@ export default function TabbedSearch() {
   const moreTypes = propertyTypeOptions[activeTab].slice(4);
 
   return (
-    <div ref={searchRef} className="w-full max-w-4xl mx-auto mt-8 relative">
+    <div ref={searchRef} className="w-full max-w-4xl mx-auto mt-0 sm:mt-8 relative">
       {/* Tabs - Lightweight with underline */}
       <div className="flex gap-6 border-b border-gray-100 mb-6 overflow-x-auto scrollbar-hide">
         <button
@@ -409,8 +409,8 @@ export default function TabbedSearch() {
 
       {/* Search Container - Lightweight modern design */}
       <div className="bg-white rounded-lg border border-gray-200 p-4 md:p-5 relative shadow-sm">
-        {/* Dropdowns Row - No Labels */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+        {/* Dropdowns Row - Side by side on mobile, no Labels */}
+        <div className="grid grid-cols-2 md:grid-cols-2 gap-3 mb-3">
           {/* City Dropdown */}
           <Select value={city} onValueChange={setCity}>
             <SelectTrigger className="h-11 w-full">
