@@ -9,11 +9,12 @@ import { Building2 } from "lucide-react";
 
 interface PageProps {
   params: Promise<{ citySlug: string }>;
-  searchParams: Promise<{ search?: string; status?: string }>;
+  searchParams: Promise<{ search?: string; status?: string; microMarket?: string; page?: string }>;
 }
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+export async function generateMetadata({ params, searchParams }: PageProps): Promise<Metadata> {
   const { citySlug } = await params;
+  const resolvedSearchParams = await searchParams;
   const supabase = await createClient();
   
   const { data: city } = await supabase
@@ -28,13 +29,25 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     };
   }
 
+  // Check if filters are applied (excluding page parameter)
+  const hasFilters = !!(resolvedSearchParams.status || resolvedSearchParams.search || resolvedSearchParams.microMarket);
+
+  // Canonical should be base URL (no filters)
   const canonicalUrl = `https://www.westsiderealty.in/${citySlug}/projects`;
 
-  return buildMetadata({
-    title: `${city.seo_title || city.city_name} Projects - Premium Real Estate | RE/MAX Westside Realty`,
-    description: city.meta_description || `Explore premium residential projects in ${city.city_name}. Find luxury apartments, villas, and plots from top developers.`,
-    canonicalUrl,
-  });
+  // If filters are applied, add noindex to prevent duplicate content
+  const robotsConfig = hasFilters
+    ? { index: false, follow: true }
+    : { index: true, follow: true };
+
+  return {
+    ...buildMetadata({
+      title: `${city.seo_title || city.city_name} Projects - Premium Real Estate | RE/MAX Westside Realty`,
+      description: city.meta_description || `Explore premium residential projects in ${city.city_name}. Find luxury apartments, villas, and plots from top developers.`,
+      canonicalUrl,
+    }),
+    robots: robotsConfig,
+  };
 }
 
 export async function generateStaticParams() {

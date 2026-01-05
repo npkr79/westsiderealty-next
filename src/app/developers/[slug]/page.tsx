@@ -128,10 +128,26 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     ? projects.slice(0, 3).filter((p: any) => p && p.project_name).map((p: any) => p.project_name).join(', ')
     : '';
 
-  const title = `${developer.developer_name} Hyderabad Projects | Reviews, Price & New Launches`;
+  // Determine city dynamically from projects or developer's primary_city_focus
+  let cityName = developer.primary_city_focus || "Hyderabad";
+  if (Array.isArray(projects) && projects.length > 0) {
+    // Get unique cities from projects
+    const cities = projects
+      .map((p: any) => p.city?.city_name)
+      .filter(Boolean)
+      .filter((city, index, self) => self.indexOf(city) === index);
+    if (cities.length > 0) {
+      cityName = cities[0]; // Use first city, or join if multiple
+      if (cities.length > 1) {
+        cityName = cities.slice(0, 2).join(" & ");
+      }
+    }
+  }
+
+  const title = `${developer.developer_name} ${cityName} Projects | Reviews, Price & New Launches`;
   const description = projectNames
-    ? `Explore top projects by ${developer.developer_name} in Hyderabad. View floor plans, pricing, and ready-to-move inventory for projects like ${projectNames}.`
-    : `Explore top projects by ${developer.developer_name} in Hyderabad. View floor plans, pricing, and ready-to-move inventory.`;
+    ? `Explore top projects by ${developer.developer_name} in ${cityName}. View floor plans, pricing, and ready-to-move inventory for projects like ${projectNames}.`
+    : `Explore top projects by ${developer.developer_name} in ${cityName}. View floor plans, pricing, and ready-to-move inventory.`;
 
   // OG Image: Use developer logo or top project hero image
   const ogImage = developer.logo_url || 
@@ -794,3 +810,6 @@ export default async function DeveloperPage({ params }: PageProps) {
     notFound();
   }
 }
+
+// Revalidate every 24 hours (ISR)
+export const revalidate = 86400;

@@ -1,15 +1,20 @@
- "use client";
-
-import { useEffect, useState } from "react";
- import Link from "next/link";
- import { useParams } from "next/navigation";
- import Head from "next/head";
- import { createClient } from "@/lib/supabase/client";
-import { CityInfo } from "@/services/cityService";
+import { notFound } from "next/navigation";
+import type { Metadata } from "next";
+import Link from "next/link";
+import Image from "next/image";
+import { createClient } from "@/lib/supabase/server";
+import { cityService, CityInfo } from "@/services/cityService";
+import { buildMetadata } from "@/components/common/SEO";
+import { JsonLd } from "@/components/common/SEO";
+import { optimizeSupabaseImage } from "@/utils/imageOptimization";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Building2, MapPin, Award } from "lucide-react";
 import BreadcrumbNav from "@/components/layout/BreadcrumbNav";
+
+interface PageProps {
+  params: Promise<{ citySlug: string }>;
+}
 
 interface Developer {
   id: string;
@@ -24,91 +29,78 @@ interface Developer {
   is_featured: boolean | null;
 }
 
-export default function CityDevelopersPage() {
-  const params = useParams<{ citySlug?: string | string[] }>();
-  const citySlugParam = params.citySlug;
-  const citySlug = Array.isArray(citySlugParam) ? citySlugParam[0] : citySlugParam;
-  const supabase = createClient();
-  const [city, setCity] = useState<CityInfo | null>(null);
-  const [developers, setDevelopers] = useState<Developer[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const loadData = async () => {
-      if (!citySlug) return;
-
-      try {
-        // Fetch city data using client
-        const { data: cityData, error: cityError } = await supabase
-          .from('cities')
-          .select('*')
-          .eq('url_slug', citySlug)
-          .eq('page_status', 'published')
-          .maybeSingle();
-
-        if (cityError) {
-          console.error('Error fetching city:', cityError);
-        }
-
-        if (cityData) {
-          setCity(cityData as CityInfo);
-
-          // Fetch developers operating in this city
-          // Fetch developers operating in this city
-          const { data, error } = await supabase
-            .from('city_developers')
-            .select(`
-              developer_id,
-              developers (
-                id,
-                developer_name,
-                url_slug,
-                logo_url,
-                tagline,
-                specialization,
-                years_in_business,
-                total_projects,
-                location_focus,
-                is_featured
-              )
-            `)
-            .eq('city_id', cityData.id)
-            .order('display_order', { ascending: true });
-
-          if (error) throw error;
-
-          // Extract developer data from the nested structure
-          const devs = data
-            ?.map((item: any) => (item.developers as any))
-            .filter(Boolean) || [];
-          
-          setDevelopers(devs);
-        }
-      } catch (error) {
-        console.error('Error loading developers:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadData();
-  }, [citySlug]);
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { citySlug } = await params;
+  const city = await cityService.getCityBySlug(citySlug);
 
   if (!city) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p>City not found</p>
-      </div>
-    );
+    return {
+      title: "Developers Not Found",
+    };
   }
+
+  const canonicalUrl = `https://www.westsiderealty.in/${citySlug}/developers`;
+  const seoTitle = `Top Real Estate Developers in ${city.city_name} | Premium Property Builders`;
+  const seoDescription = `Explore leading real estate developers in ${city.city_name}. Find trusted builders, their projects, and premium properties. Get expert insights on top developers.`;
+  
+  // Optimize OG image
+  const rawOgImage = city.hero_image_url || "https://www.westsiderealty.in/placeholder.svg";
+  const optimizedOgImage = optimizeSupabaseImage(rawOgImage, {
+    width: 1200,
+    height: 630,
+    quality: 80,
+    format: "webp",
+  });
+
+  return buildMetadata({
+    title: seoTitle,
+    description: seoDescription,
+    canonicalUrl,
+    imageUrl: optimizedOgImage,
+    type: "website",
+  });
+}
+
+export default async function CityDevelopersPage({ params }: PageProps) {
+  const { citySlug } = await params;
+  const supabase = await createClient();
+
+  // Fetch city data
+  const city = await cityService.getCityBySlug(citySlug);
+
+  if (!city) {
+    notFound();
+  }
+
+  // Fetch developers operating in this city
+  const { data, error } = await supabase
+    .from('city_developers')
+    .select(`
+      developer_id,
+      developers (
+        id,
+        developer_name,
+        url_slug,
+        logo_url,
+        tagline,
+        specialization,
+        years_in_business,
+        total_projects,
+        location_focus,
+        is_featured
+      )
+    `)
+    .eq('city_id', city.id)
+    .order('display_order', { ascending: true });
+
+  if (error) {
+    console.error('Error loading developers:', error);
+  }
+
+  // Extract developer data from the nested structure
+  const developers: Developer[] = (data || [])
+    .map((item: any) => item.developers)
+    .filter(Boolean) || [];
 
   const breadcrumbItems = [
     { label: "Home", href: "/" },
@@ -116,10 +108,7 @@ export default function CityDevelopersPage() {
     { label: "Developers" }
   ];
 
-  const seoTitle = `Top Real Estate Developers in ${city.city_name} | Premium Property Builders`;
-  const seoDescription = `Explore leading real estate developers in ${city.city_name}. Find trusted builders, their projects, and premium properties. Get expert insights on top developers.`;
   const canonicalUrl = `https://www.westsiderealty.in/${citySlug}/developers`;
-  const ogImage = "https://www.westsiderealty.in/placeholder.svg";
 
   // JSON-LD Schemas
   const breadcrumbSchema = {
@@ -136,7 +125,7 @@ export default function CityDevelopersPage() {
     "@context": "https://schema.org",
     "@type": "ItemList",
     "name": `Real Estate Developers in ${city.city_name}`,
-    "description": seoDescription,
+    "description": `Explore leading real estate developers in ${city.city_name}. Find trusted builders, their projects, and premium properties.`,
     "numberOfItems": developers.length,
     "itemListElement": developers.map((dev, index) => ({
       "@type": "ListItem",
@@ -144,7 +133,7 @@ export default function CityDevelopersPage() {
       "item": {
         "@type": "RealEstateAgent",
         "name": dev.developer_name,
-        "url": `https://www.westsiderealty.in/${citySlug}/developers/${dev.url_slug}`,
+        "url": `https://www.westsiderealty.in/developers/${dev.url_slug}`,
         ...(dev.logo_url && { "logo": dev.logo_url }),
         ...(dev.tagline && { "description": dev.tagline })
       }
@@ -153,33 +142,9 @@ export default function CityDevelopersPage() {
 
   return (
     <>
-      <Head>
-        <title>{seoTitle}</title>
-        <meta name="description" content={seoDescription} />
-        <link rel="canonical" href={canonicalUrl} />
-        
-        {/* Open Graph */}
-        <meta property="og:title" content={seoTitle} />
-        <meta property="og:description" content={seoDescription} />
-        <meta property="og:image" content={ogImage} />
-        <meta property="og:url" content={canonicalUrl} />
-        <meta property="og:type" content="website" />
-        <meta property="og:site_name" content="RE/MAX Westside Realty" />
-        
-        {/* Twitter Card */}
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content={seoTitle} />
-        <meta name="twitter:description" content={seoDescription} />
-        <meta name="twitter:image" content={ogImage} />
-        
-        {/* JSON-LD Schemas */}
-        <script type="application/ld+json">
-          {JSON.stringify(breadcrumbSchema)}
-        </script>
-        <script type="application/ld+json">
-          {JSON.stringify(organizationListSchema)}
-        </script>
-      </Head>
+      {/* JSON-LD Schemas */}
+      <JsonLd jsonLd={breadcrumbSchema} />
+      <JsonLd jsonLd={organizationListSchema} />
 
       <div className="min-h-screen bg-background">
         {/* Header Section */}
@@ -211,16 +176,18 @@ export default function CityDevelopersPage() {
                 {developers.map((developer) => (
                   <Link
                     key={developer.id}
-                    href={`/${citySlug}/developers/${developer.url_slug}`}
+                    href={`/developers/${developer.url_slug}`}
                   >
                     <Card className="h-full hover:shadow-lg transition-shadow duration-300">
                       <CardContent className="p-6">
                         {/* Logo */}
                         {developer.logo_url && (
                           <div className="mb-4 h-20 flex items-center justify-center bg-muted rounded-lg p-4">
-                            <img
+                            <Image
                               src={developer.logo_url}
                               alt={`${developer.developer_name} logo`}
+                              width={80}
+                              height={80}
                               className="max-h-full max-w-full object-contain"
                             />
                           </div>
@@ -279,3 +246,6 @@ export default function CityDevelopersPage() {
     </>
   );
 }
+
+// Revalidate every 24 hours (ISR)
+export const revalidate = 86400;

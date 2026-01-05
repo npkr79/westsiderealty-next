@@ -30,16 +30,42 @@ interface PageProps {
 export async function generateMetadata({ searchParams }: PageProps): Promise<Metadata> {
   const resolved = await searchParams;
   const query = resolved.q || "";
+  const city = resolved.city || "";
+  const category = resolved.category || "";
+  const projectType = resolved.projectType || "";
+  const propertyTypes = resolved.propertyTypes || "";
+  const microMarket = resolved.microMarket || "";
+  const bhk = resolved.bhk || "";
+  const developer = resolved.developer || "";
+  const completionStatus = resolved.completionStatus || "";
+  const isNewProject = resolved.isNewProject === "true";
   
-  return buildMetadata({
-    title: query 
-      ? `Search Results for "${query}" | Westside Realty`
-      : "Search Properties & Developers | Westside Realty",
-    description: query
-      ? `Find projects and developers matching "${query}" in Hyderabad, Goa, and Dubai.`
-      : "Search for real estate projects and developers in Hyderabad, Goa, and Dubai.",
-    canonicalUrl: `https://www.westsiderealty.in/search${query ? `?q=${encodeURIComponent(query)}` : ""}`,
-  });
+  // Count active filters (excluding query string)
+  const hasFilters = !!(city || category || projectType || propertyTypes || microMarket || bhk || developer || completionStatus || isNewProject);
+  
+  // Canonical should be base /search URL (no filters)
+  // Only include query string if it's a meaningful search term (not empty)
+  const canonicalUrl = query && !hasFilters
+    ? `https://www.westsiderealty.in/search?q=${encodeURIComponent(query)}`
+    : "https://www.westsiderealty.in/search";
+  
+  // If filters are applied, add noindex to prevent duplicate content
+  const robotsConfig = hasFilters
+    ? { index: false, follow: true }
+    : { index: true, follow: true };
+  
+  return {
+    ...buildMetadata({
+      title: query 
+        ? `Search Results for "${query}" | Westside Realty`
+        : "Search Properties & Developers | Westside Realty",
+      description: query
+        ? `Find projects and developers matching "${query}" in Hyderabad, Goa, and Dubai.`
+        : "Search for real estate projects and developers in Hyderabad, Goa, and Dubai.",
+      canonicalUrl,
+    }),
+    robots: robotsConfig,
+  };
 }
 
 interface ProjectResult {

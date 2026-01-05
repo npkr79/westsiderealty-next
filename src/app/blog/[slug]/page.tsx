@@ -361,3 +361,6 @@ export default async function BlogArticlePage({ params }: PageProps) {
     </>
   );
 }
+
+// Revalidate every 24 hours (ISR)
+export const revalidate = 86400;
