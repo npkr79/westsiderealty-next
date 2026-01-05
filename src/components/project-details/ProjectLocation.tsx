@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { extractMapUrl } from "@/lib/utils/mapUrlExtractor";
 
 interface ProjectLocationProps {
   googleMapsUrl?: string | null;
@@ -17,7 +18,9 @@ export default function ProjectLocation({
   microMarketName,
   cityName,
 }: ProjectLocationProps) {
-  const hasMap = !!(googleMapsEmbedUrl || googleMapsUrl);
+  // Extract clean URL from google_maps_embed_url (may contain iframe HTML)
+  const extractedEmbedUrl = extractMapUrl(googleMapsEmbedUrl);
+  const hasMap = !!(extractedEmbedUrl || googleMapsUrl);
 
   return (
     <section className="mt-8 space-y-6">
@@ -56,9 +59,9 @@ export default function ProjectLocation({
 
       {hasMap && (
         <div className="rounded-lg border overflow-hidden">
-          {googleMapsEmbedUrl ? (
+          {extractedEmbedUrl ? (
             <iframe
-              src={googleMapsEmbedUrl}
+              src={extractedEmbedUrl}
               title="Project location map"
               loading="lazy"
               className="w-full h-[360px] border-0"
