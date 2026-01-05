@@ -1,5 +1,7 @@
 "use client";
 
+import { sanitizeHTML } from "@/lib/utils/htmlSanitizer";
+
 interface ProjectOverviewSectionProps {
   reraId?: string | null;
   possessionDate?: string | null;
@@ -13,12 +15,15 @@ export default function ProjectOverviewSection({
 }: ProjectOverviewSectionProps) {
   if (!description) return null;
 
+  // Sanitize HTML to prevent iframe/script injection
+  const sanitizedDescription = sanitizeHTML(description);
+
   return (
     <div className="space-y-3">
       <p
         className="text-sm text-muted-foreground leading-relaxed"
         // legacy descriptions can be HTML; keep it simple
-        dangerouslySetInnerHTML={{ __html: description }}
+        dangerouslySetInnerHTML={{ __html: sanitizedDescription }}
       />
     </div>
   );

@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { sanitizeHTML } from "@/lib/utils/htmlSanitizer";
 
 interface AboutMicroMarketSectionProps {
   microMarketName: string;
@@ -9,31 +10,6 @@ interface AboutMicroMarketSectionProps {
   pricePerSqftMin?: number | null;
   pricePerSqftMax?: number | null;
   appreciationRate?: number | null;
-}
-
-// Sanitize HTML to remove iframes, scripts, and other potentially dangerous elements
-function sanitizeHTML(html: string): string {
-  if (!html) return '';
-  
-  // Remove iframe tags and their content
-  html = html.replace(/<iframe[^>]*>.*?<\/iframe>/gi, '');
-  html = html.replace(/<iframe[^>]*\/?>/gi, '');
-  
-  // Remove script tags and their content
-  html = html.replace(/<script[^>]*>.*?<\/script>/gi, '');
-  html = html.replace(/<script[^>]*\/?>/gi, '');
-  
-  // Remove embed and object tags
-  html = html.replace(/<embed[^>]*>.*?<\/embed>/gi, '');
-  html = html.replace(/<embed[^>]*\/?>/gi, '');
-  html = html.replace(/<object[^>]*>.*?<\/object>/gi, '');
-  html = html.replace(/<object[^>]*\/?>/gi, '');
-  
-  // Remove on* event handlers (onclick, onload, etc.)
-  html = html.replace(/\s*on\w+\s*=\s*["'][^"']*["']/gi, '');
-  html = html.replace(/\s*on\w+\s*=\s*[^\s>]*/gi, '');
-  
-  return html;
 }
 
 export default function AboutMicroMarketSection({

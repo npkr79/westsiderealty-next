@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
+import { sanitizeHTML } from "@/lib/utils/htmlSanitizer";
 
 interface AboutDeveloperSectionProps {
   developerName: string;
@@ -26,6 +27,9 @@ export default function AboutDeveloperSection({
   description,
   notableProjects,
 }: AboutDeveloperSectionProps) {
+  // Sanitize HTML to prevent iframe/script injection
+  const sanitizedDescription = description ? sanitizeHTML(description) : null;
+
   return (
     <section className="mb-8">
       <Card>
@@ -39,10 +43,10 @@ export default function AboutDeveloperSection({
             </div>
           )}
           {tagline && <p className="text-lg font-semibold text-foreground">{tagline}</p>}
-          {description && (
+          {sanitizedDescription && (
             <div 
               className="prose prose-sm max-w-none text-muted-foreground"
-              dangerouslySetInnerHTML={{ __html: description }}
+              dangerouslySetInnerHTML={{ __html: sanitizedDescription }}
             />
           )}
           {(yearsInBusiness || totalProjects || totalSftDelivered) && (
