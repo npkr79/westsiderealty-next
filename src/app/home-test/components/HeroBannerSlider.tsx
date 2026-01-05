@@ -63,37 +63,47 @@ export default function HeroBannerSlider({ offers }: HeroBannerSliderProps) {
     });
   }
 
+  // Get link URL - use cta_link if available, otherwise default to /contact
+  const bannerLink = currentOffer.cta_link || "/contact";
+
   return (
-    <section className="relative h-[400px] md:h-[450px] w-full overflow-hidden bg-gray-900">
-      {/* Background Image */}
-      <div className="absolute inset-0">
-        {imageUrl ? (
-          <Image
-            src={imageUrl}
-            alt={currentOffer.title || "Banner"}
-            fill
-            className="object-cover"
-            priority
-          />
-        ) : (
-          <div className="w-full h-full bg-gradient-to-br from-blue-600 to-blue-800" />
-        )}
-        {/* Overlay for better text readability */}
-        <div className="absolute inset-0 bg-black/40" />
-      </div>
+    <Link href={bannerLink} className="block">
+      <section className="relative h-[400px] md:h-[450px] w-full overflow-hidden bg-gray-900 cursor-pointer">
+        {/* Background Image */}
+        <div className="absolute inset-0">
+          {imageUrl ? (
+            <Image
+              src={imageUrl}
+              alt={currentOffer.title || "Banner"}
+              fill
+              className="object-cover"
+              priority
+            />
+          ) : (
+            <div className="w-full h-full bg-gradient-to-br from-blue-600 to-blue-800" />
+          )}
+        </div>
 
       {/* Navigation Arrows */}
       {offers.length > 1 && (
         <>
           <button
-            onClick={goToPrevious}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              goToPrevious();
+            }}
             className="absolute left-4 top-1/2 -translate-y-1/2 z-20 p-2 rounded-full bg-white/20 backdrop-blur-sm hover:bg-white/30 transition-all text-white"
             aria-label="Previous slide"
           >
             <ChevronLeft className="w-6 h-6" />
           </button>
           <button
-            onClick={goToNext}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              goToNext();
+            }}
             className="absolute right-4 top-1/2 -translate-y-1/2 z-20 p-2 rounded-full bg-white/20 backdrop-blur-sm hover:bg-white/30 transition-all text-white"
             aria-label="Next slide"
           >
@@ -129,6 +139,7 @@ export default function HeroBannerSlider({ offers }: HeroBannerSliderProps) {
                     href={currentOffer.rera_link}
                     target="_blank"
                     rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
                     className="ml-2 underline hover:text-white transition-colors"
                   >
                     {currentOffer.rera_link}
@@ -175,15 +186,12 @@ export default function HeroBannerSlider({ offers }: HeroBannerSliderProps) {
               </div>
             )}
 
-            {/* CTA Button */}
-            {currentOffer.cta_link && (
-              <Link
-                href={currentOffer.cta_link}
-                className="inline-flex items-center gap-2 bg-white text-gray-900 px-6 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-all shadow-lg"
-              >
-                {currentOffer.cta_text || "Explore Now"}
+            {/* CTA Button - Hidden since entire banner is clickable */}
+            {currentOffer.cta_text && (
+              <div className="inline-flex items-center gap-2 bg-white text-gray-900 px-6 py-3 rounded-lg font-semibold shadow-lg pointer-events-none">
+                {currentOffer.cta_text}
                 <ExternalLink className="w-5 h-5" />
-              </Link>
+              </div>
             )}
           </div>
         </div>
@@ -195,7 +203,11 @@ export default function HeroBannerSlider({ offers }: HeroBannerSliderProps) {
           {offers.map((_, index) => (
             <button
               key={index}
-              onClick={() => goToSlide(index)}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                goToSlide(index);
+              }}
               className={`h-2 rounded-full transition-all ${
                 index === currentSlide
                   ? "bg-white w-8"
@@ -206,6 +218,7 @@ export default function HeroBannerSlider({ offers }: HeroBannerSliderProps) {
           ))}
         </div>
       )}
-    </section>
+      </section>
+    </Link>
   );
 }

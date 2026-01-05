@@ -41,8 +41,7 @@ export const heroBannerService = {
       .from("homepage_banners")
       .select("*")
       .eq("is_active", true)
-      .order("display_order", { ascending: true })
-      .limit(3);
+      .order("display_order", { ascending: true });
 
     if (error) {
       console.error("Error fetching hero banner offers:", error);
@@ -66,8 +65,7 @@ export async function getHeroBannerOffersServer(): Promise<HeroBannerOffer[]> {
     .from("homepage_banners")
     .select("*")
     .eq("is_active", true)
-    .order("display_order", { ascending: true })
-    .limit(3);
+    .order("display_order", { ascending: true });
 
   let { data, error } = await query;
 
@@ -76,8 +74,7 @@ export async function getHeroBannerOffersServer(): Promise<HeroBannerOffer[]> {
     console.log("[getHeroBannerOffersServer] Column error, retrying without is_active/display_order filters...");
     const retryQuery = supabase
       .from("homepage_banners")
-      .select("*")
-      .limit(3);
+      .select("*");
     
     const retryResult = await retryQuery;
     if (retryResult.error) {
