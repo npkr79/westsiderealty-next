@@ -1,4 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
+import { writeFileSync, appendFileSync, existsSync, mkdirSync } from 'fs';
+import { join } from 'path';
 
 // Types
 export interface ParsedQuery {
@@ -105,18 +107,43 @@ async function loadEntities(supabase: Awaited<ReturnType<typeof createClient>>):
   return entityCache;
 }
 
+// Helper function for server-side logging
+function logDebug(location: string, message: string, data: any, hypothesisId: string) {
+  const logPath = join(process.cwd(), '.cursor', 'debug.log');
+  const logDir = join(process.cwd(), '.cursor');
+  if (!existsSync(logDir)) mkdirSync(logDir, { recursive: true });
+  const logEntry = JSON.stringify({
+    location,
+    message,
+    data,
+    timestamp: Date.now(),
+    sessionId: 'debug-session',
+    runId: 'run1',
+    hypothesisId,
+  }) + '\n';
+  try {
+    appendFileSync(logPath, logEntry);
+  } catch (e) {
+    console.error('[LogError]', e);
+  }
+}
+
 // Main parser function
 export async function parseSearchQuery(
   query: string,
   supabase: Awaited<ReturnType<typeof createClient>>
 ): Promise<ParsedQuery> {
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/4e462e23-bd22-4d1c-9e9b-fbb1596e852a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'queryParser.ts:109',message:'parseSearchQuery entry',data:{query},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-  // #endregion
+  logDebug('queryParser.ts:109', 'parseSearchQuery entry', { query }, 'A');
   const entities = await loadEntities(supabase);
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/4e462e23-bd22-4d1c-9e9b-fbb1596e852a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'queryParser.ts:113',message:'Entities loaded',data:{microMarketsCount:entities.microMarkets.length,beeramgudaInList:entities.microMarkets.some(m=>m.toLowerCase().includes('beeramguda')),sampleMicroMarkets:entities.microMarkets.slice(0,5)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-  // #endregion
+  const beeramgudaInList = entities.microMarkets.some(m => m.toLowerCase().includes('beeramguda'));
+  const beeramgudaExact = entities.microMarkets.find(m => m.toLowerCase() === 'beeramguda');
+  logDebug('queryParser.ts:113', 'Entities loaded', {
+    microMarketsCount: entities.microMarkets.length,
+    beeramgudaInList,
+    beeramgudaExact,
+    allBeeramgudaVariants: entities.microMarkets.filter(m => m.toLowerCase().includes('beeramguda')),
+    sampleMicroMarkets: entities.microMarkets.slice(0, 5),
+  }, 'B');
   const normalizedQuery = query.toLowerCase().trim();
   let remainingQuery = normalizedQuery;
 
@@ -206,16 +233,18 @@ export async function parseSearchQuery(
     }
   }
   
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/4e462e23-bd22-4d1c-9e9b-fbb1596e852a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'queryParser.ts:202',message:'After property type extraction',data:{propertyType:result.propertyType,remainingQuery},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-  // #endregion
+  logDebug('queryParser.ts:202', 'After property type extraction', {
+    propertyType: result.propertyType,
+    remainingQuery,
+  }, 'C');
 
   // 5. Fuzzy match micro-market (threshold 0.8)
   // IMPORTANT: Do this BEFORE other extractions to prioritize location matching
   const queryWords = remainingQuery.split(/\s+/).filter(w => w.length > 0);
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/4e462e23-bd22-4d1c-9e9b-fbb1596e852a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'queryParser.ts:207',message:'Before micro-market matching',data:{remainingQuery,queryWords},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-  // #endregion
+  logDebug('queryParser.ts:207', 'Before micro-market matching', {
+    remainingQuery,
+    queryWords,
+  }, 'D');
   
   // First try exact case-insensitive match (most reliable)
   for (const microMarket of entities.microMarkets) {
@@ -226,11 +255,15 @@ export async function parseSearchQuery(
       // Multi-word micro-market: use word boundaries
       const regex = new RegExp(`\\b${microMarketLower.replace(/\s+/g, '\\s+')}\\b`, 'i');
       const testResult = regex.test(remainingQuery);
-      // #region agent log
       if (microMarketLower.includes('beeramguda')) {
-        fetch('http://127.0.0.1:7242/ingest/4e462e23-bd22-4d1c-9e9b-fbb1596e852a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'queryParser.ts:214',message:'Testing beeramguda multi-word match',data:{microMarket,microMarketLower,regex:regex.toString(),remainingQuery,testResult},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+        logDebug('queryParser.ts:214', 'Testing beeramguda multi-word match', {
+          microMarket,
+          microMarketLower,
+          regex: regex.toString(),
+          remainingQuery,
+          testResult,
+        }, 'E');
       }
-      // #endregion
       if (testResult) {
         result.microMarket = microMarket;
         remainingQuery = remainingQuery.replace(regex, '').trim();
@@ -240,11 +273,15 @@ export async function parseSearchQuery(
       // Single-word micro-market: use word boundaries
       const regex = new RegExp(`\\b${microMarketLower}\\b`, 'i');
       const testResult = regex.test(remainingQuery);
-      // #region agent log
       if (microMarketLower.includes('beeramguda') || microMarketLower === 'beeramguda') {
-        fetch('http://127.0.0.1:7242/ingest/4e462e23-bd22-4d1c-9e9b-fbb1596e852a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'queryParser.ts:223',message:'Testing beeramguda single-word match',data:{microMarket,microMarketLower,regex:regex.toString(),remainingQuery,testResult},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
+        logDebug('queryParser.ts:223', 'Testing beeramguda single-word match', {
+          microMarket,
+          microMarketLower,
+          regex: regex.toString(),
+          remainingQuery,
+          testResult,
+        }, 'F');
       }
-      // #endregion
       if (testResult) {
         result.microMarket = microMarket;
         remainingQuery = remainingQuery.replace(regex, '').trim();
@@ -255,19 +292,23 @@ export async function parseSearchQuery(
   
   // If no exact match, try fuzzy match on individual words
   if (!result.microMarket) {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/4e462e23-bd22-4d1c-9e9b-fbb1596e852a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'queryParser.ts:235',message:'No exact micro-market match, trying fuzzy',data:{queryWords},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'G'})}).catch(()=>{});
-    // #endregion
+    logDebug('queryParser.ts:235', 'No exact micro-market match, trying fuzzy', {
+      queryWords,
+    }, 'G');
     for (const microMarket of entities.microMarkets) {
       const microMarketLower = microMarket.toLowerCase();
       for (const word of queryWords) {
         if (word.length >= 3) {
           const score = similarityScore(word, microMarketLower);
-          // #region agent log
           if (microMarketLower.includes('beeramguda') || word === 'beeramguda') {
-            fetch('http://127.0.0.1:7242/ingest/4e462e23-bd22-4d1c-9e9b-fbb1596e852a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'queryParser.ts:240',message:'Fuzzy match test for beeramguda',data:{microMarket,microMarketLower,word,score,thresholdMet:score >= 0.8},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H'})}).catch(()=>{});
+            logDebug('queryParser.ts:240', 'Fuzzy match test for beeramguda', {
+              microMarket,
+              microMarketLower,
+              word,
+              score,
+              thresholdMet: score >= 0.8,
+            }, 'H');
           }
-          // #endregion
           if (score >= 0.8) {
             result.microMarket = microMarket;
             remainingQuery = remainingQuery.replace(new RegExp(`\\b${word}\\b`, 'gi'), '').trim();
@@ -279,9 +320,10 @@ export async function parseSearchQuery(
     }
   }
   
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/4e462e23-bd22-4d1c-9e9b-fbb1596e852a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'queryParser.ts:251',message:'After micro-market matching',data:{microMarket:result.microMarket,remainingQuery},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'I'})}).catch(()=>{});
-  // #endregion
+  logDebug('queryParser.ts:251', 'After micro-market matching', {
+    microMarket: result.microMarket,
+    remainingQuery,
+  }, 'I');
 
   // 6. Match developer name
   for (const developer of entities.developers) {
@@ -336,8 +378,9 @@ export async function parseSearchQuery(
     });
   }
 
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/4e462e23-bd22-4d1c-9e9b-fbb1596e852a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'queryParser.ts:299',message:'parseSearchQuery exit',data:{input:query,result},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'J'})}).catch(()=>{});
-  // #endregion
+  logDebug('queryParser.ts:299', 'parseSearchQuery exit', {
+    input: query,
+    result,
+  }, 'J');
   return result;
 }
