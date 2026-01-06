@@ -277,6 +277,11 @@ export default function TabbedSearch() {
               params.set("propertyTypes", parsed.propertyType);
             }
             
+            // Project Name from text (only if explicitly mentioned)
+            if (parsed.projectName) {
+              params.set("projectName", parsed.projectName);
+            }
+            
             // Micro Market from text (only if explicitly mentioned)
             if (parsed.microMarket) {
               params.set("microMarket", parsed.microMarket);

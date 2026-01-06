@@ -4,7 +4,8 @@ import { createClient } from '@/lib/supabase/server';
 export interface ParsedQuery {
   microMarket: string | null;
   developer: string | null;
-  bhkConfig: string | null;
+  bhkConfig: string | null; // Normalized format: "3 BHK", "4 BHK" (with space)
+  projectName: string | null; // Matched project name
   propertyType: string | null;
   completionStatus: string | null;  // Specific status like "New Launch"
   isNewProject: boolean;             // Generic "new projects" = any completion_status
@@ -14,6 +15,7 @@ export interface ParsedQuery {
 interface EntityCache {
   microMarkets: string[];
   developers: string[];
+  projects: Array<{ name: string; slug: string }>;
   cachedAt: number;
 }
 
@@ -58,8 +60,8 @@ const PROPERTY_TYPES = [
   'office', 'retail', 'commercial',
 ];
 
-// BHK regex pattern
-const BHK_PATTERN = /(\d)\s*bhk/i;
+// BHK regex pattern - supports multiple digits (e.g., "3BHK", "12bhk")
+const BHK_PATTERN = /(\d+)\s*bhk/i;
 
 // Levenshtein distance for fuzzy matching
 function levenshteinDistance(a: string, b: string): number {
@@ -91,14 +93,19 @@ async function loadEntities(supabase: Awaited<ReturnType<typeof createClient>>):
     return entityCache;
   }
 
-  const [microMarketsRes, developersRes] = await Promise.all([
+  const [microMarketsRes, developersRes, projectsRes] = await Promise.all([
     supabase.from('micro_markets').select('micro_market_name'),
     supabase.from('developers').select('developer_name'),
+    supabase.from('projects').select('project_name, url_slug').limit(5000), // Get all projects for matching
   ]);
 
   entityCache = {
     microMarkets: (microMarketsRes.data || []).map((m: any) => m.micro_market_name),
     developers: (developersRes.data || []).map((d: any) => d.developer_name),
+    projects: (projectsRes.data || []).map((p: any) => ({ 
+      name: p.project_name, 
+      slug: p.url_slug 
+    })),
     cachedAt: Date.now(),
   };
 
@@ -118,6 +125,7 @@ export async function parseSearchQuery(
     microMarket: null,
     developer: null,
     bhkConfig: null,
+    projectName: null,
     propertyType: null,
     completionStatus: null,
     isNewProject: false,
@@ -169,10 +177,13 @@ export async function parseSearchQuery(
     }
   }
 
-  // 3. Extract BHK configuration
+  // 3. Extract BHK configuration FIRST (priority)
+  // Normalize format: "3BHK" → "3 BHK", "4bhk" → "4 BHK" (with space as per DB format)
   const bhkMatch = normalizedQuery.match(BHK_PATTERN);
   if (bhkMatch) {
-    result.bhkConfig = `${bhkMatch[1]}BHK`;
+    const bhkNumber = bhkMatch[1];
+    result.bhkConfig = `${bhkNumber} BHK`; // Normalized format with space
+    // Remove BHK from remaining query string
     remainingQuery = remainingQuery.replace(BHK_PATTERN, '').trim();
   }
 
@@ -200,17 +211,73 @@ export async function parseSearchQuery(
     }
   }
 
-  // 5. Match micro-market (exact first, then substring, then fuzzy)
+  // 4. Clean remaining text - remove filler words ("in", "at", "near") before entity matching
+  remainingQuery = remainingQuery
+    .replace(/\b(in|at|near)\b/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  
   const queryWords = remainingQuery.split(/\s+/).filter(w => w.length > 0);
   const remainingQueryLower = remainingQuery.toLowerCase();
   
   // Common words to exclude from matching (defined once for reuse)
   const commonWords = ['in', 'at', 'near', 'the', 'a', 'an', 'of', 'for', 'with'];
   const meaningfulWords = queryWords.filter(w => !commonWords.includes(w.toLowerCase()));
+
+  // 5. Match PROJECT NAME FIRST (higher priority than micro-market)
+  // Project names can contain micro-market names (e.g., "Godrej Madison Avenue Kokapet")
+  // So we check projects first, then remove matched project name, then check micro-markets
+  let matchedProjectName: string | null = null;
+  let projectMatchedText = '';
   
-  // First try exact case-insensitive match with word boundaries (most reliable)
+  // Try exact project name match first (case-insensitive)
+  for (const project of entities.projects) {
+    const projectNameLower = project.name.toLowerCase();
+    
+    // Try full project name match
+    if (remainingQueryLower.includes(projectNameLower)) {
+      matchedProjectName = project.name;
+      projectMatchedText = projectNameLower;
+      remainingQuery = remainingQuery.replace(new RegExp(projectNameLower, 'gi'), '').trim();
+      break;
+    }
+    
+    // Try fuzzy match on project name words
+    const projectWords = projectNameLower.split(/\s+/).filter(w => w.length >= 3);
+    if (projectWords.length > 0) {
+      // Check if all significant words of project name are in query
+      const allWordsMatch = projectWords.every(word => 
+        remainingQueryLower.includes(word) || meaningfulWords.some(qw => 
+          similarityScore(qw.toLowerCase(), word) >= 0.85
+        )
+      );
+      
+      if (allWordsMatch && projectWords.length >= 2) {
+        matchedProjectName = project.name;
+        projectMatchedText = projectNameLower;
+        // Remove matched project words
+        for (const word of projectWords) {
+          remainingQuery = remainingQuery.replace(new RegExp(`\\b${word}\\b`, 'gi'), '').trim();
+        }
+        break;
+      }
+    }
+  }
+  
+  result.projectName = matchedProjectName;
+  
+  // 6. Match micro-market (exact first, then substring, then fuzzy)
+  // Only match micro-markets that weren't already matched as part of project name
+  
+  // Only match micro-markets if project name wasn't matched, or if query still has remaining text
+  // Try exact case-insensitive match with word boundaries (most reliable)
   for (const microMarket of entities.microMarkets) {
     const microMarketLower = microMarket.toLowerCase();
+    
+    // Skip if this micro-market was already part of matched project name
+    if (projectMatchedText && projectMatchedText.includes(microMarketLower)) {
+      continue;
+    }
     
     // Try full micro-market name match (with word boundaries for multi-word names)
     if (microMarketLower.includes(' ')) {
@@ -237,6 +304,12 @@ export async function parseSearchQuery(
   if (!result.microMarket) {
     for (const microMarket of entities.microMarkets) {
       const microMarketLower = microMarket.toLowerCase();
+      
+      // Skip if this micro-market was already part of matched project name
+      if (projectMatchedText && projectMatchedText.includes(microMarketLower)) {
+        continue;
+      }
+      
       // Check if micro-market name appears in remaining query (case-insensitive)
       if (remainingQueryLower.includes(microMarketLower)) {
         result.microMarket = microMarket; // Use canonical name from database
@@ -251,6 +324,12 @@ export async function parseSearchQuery(
   if (!result.microMarket) {
     for (const microMarket of entities.microMarkets) {
       const microMarketLower = microMarket.toLowerCase();
+      
+      // Skip if this micro-market was already part of matched project name
+      if (projectMatchedText && projectMatchedText.includes(microMarketLower)) {
+        continue;
+      }
+      
       for (const word of meaningfulWords) {
         if (word.length >= 3) {
           const score = similarityScore(word, microMarketLower);
@@ -265,7 +344,7 @@ export async function parseSearchQuery(
     }
   }
 
-  // 6. Match developer name
+  // 7. Match developer name
   for (const developer of entities.developers) {
     const developerLower = developer.toLowerCase();
     if (remainingQuery.includes(developerLower)) {
@@ -309,6 +388,7 @@ export async function parseSearchQuery(
       input: query,
       propertyType: result.propertyType,
       microMarket: result.microMarket,
+      projectName: result.projectName,
       bhkConfig: result.bhkConfig,
       developer: result.developer,
       completionStatus: result.completionStatus,

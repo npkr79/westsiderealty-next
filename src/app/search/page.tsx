@@ -20,6 +20,7 @@ interface PageProps {
     propertyTypes?: string;
     microMarket?: string;
     bhk?: string;
+    projectName?: string;
     developer?: string;
     completionStatus?: string;
     isNewProject?: string;
@@ -162,6 +163,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
   let propertyTypesParam = resolved.propertyTypes || "";
   let microMarket = resolved.microMarket || "";
   let bhk = resolved.bhk || "";
+  let projectName = resolved.projectName || "";
   let developer = resolved.developer || "";
   let completionStatus = resolved.completionStatus || "";
   let isNewProject = resolved.isNewProject === "true";
@@ -178,7 +180,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
       const { parseSearchQuery } = await import('@/lib/search/queryParser');
       const parsed = await parseSearchQuery(rawQuery.trim(), supabase);
       
-      if (parsed && (parsed.propertyType || parsed.microMarket || parsed.developer || parsed.bhkConfig)) {
+      if (parsed && (parsed.propertyType || parsed.microMarket || parsed.developer || parsed.bhkConfig || parsed.projectName)) {
         // Successfully parsed entities from text - treat as source of truth
         useTextSearchOnly = true;
         
@@ -191,6 +193,9 @@ export default async function SearchPage({ searchParams }: PageProps) {
         }
         if (parsed.bhkConfig) {
           bhk = parsed.bhkConfig;
+        }
+        if (parsed.projectName) {
+          projectName = parsed.projectName;
         }
         if (parsed.developer) {
           developer = parsed.developer;
@@ -303,11 +308,14 @@ export default async function SearchPage({ searchParams }: PageProps) {
     console.log(`[SearchPage] Filtering by developer_id: ${developerId} (developer: ${developer})`);
   }
 
-  // Apply BHK filter
-  if (bhk) {
-    projectsQuery = projectsQuery.ilike("project_name", `%${bhk}%`);
-    console.log(`[SearchPage] Filtering by BHK: ${bhk}`);
+  // Apply project name filter (from parsed text)
+  if (projectName) {
+    projectsQuery = projectsQuery.ilike("project_name", `%${projectName}%`);
+    console.log(`[SearchPage] Filtering by project name: ${projectName}`);
   }
+
+  // Note: BHK filter will be applied in post-processing (in-memory) due to JSONB complexity
+  // This ensures accurate matching against property_types JSONB array
 
   // Apply completion status filter
   if (completionStatus) {
@@ -457,6 +465,36 @@ export default async function SearchPage({ searchParams }: PageProps) {
     console.log(`[SearchPage] After property type filtering: ${filteredProjects.length} projects`);
   }
 
+  // Apply BHK filter using property_types JSONB array
+  // BHK format in DB: "3 BHK", "4 BHK" (with space)
+  if (bhk) {
+    // Normalize BHK format to match DB format (ensure space)
+    const normalizedBhk = bhk.replace(/(\d+)\s*bhk/i, '$1 BHK');
+    
+    filteredProjects = filteredProjects.filter((project: any) => {
+      const propertyTypes = project.property_types;
+      
+      // Handle array of strings
+      if (Array.isArray(propertyTypes)) {
+        return propertyTypes.some((propType: any) => {
+          const propTypeStr = String(propType).trim();
+          // Exact match with normalized BHK (case-insensitive)
+          return propTypeStr.toLowerCase() === normalizedBhk.toLowerCase();
+        });
+      }
+      
+      // Handle JSONB object or string representation
+      if (propertyTypes) {
+        const typesStr = JSON.stringify(propertyTypes).toLowerCase();
+        return typesStr.includes(normalizedBhk.toLowerCase());
+      }
+      
+      return false;
+    });
+    
+    console.log(`[SearchPage] After BHK filtering (${normalizedBhk}): ${filteredProjects.length} projects`);
+  }
+
   // Apply category filter (residential/commercial/land)
   // Skip category filtering when using text-search-only mode
   if (useTextSearchOnly) {
@@ -543,6 +581,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
     activeFilters.push({ key: "propertyTypes", label: "Type", value: propertyTypes.map(pt => typeLabels[pt] || pt).join(", ") });
   }
   if (bhk) activeFilters.push({ key: "bhk", label: "BHK", value: bhk });
+  if (projectName) activeFilters.push({ key: "projectName", label: "Project", value: projectName });
   if (developer) activeFilters.push({ key: "developer", label: "Developer", value: developer });
   if (projectType === "new" || projectType === "new-project") activeFilters.push({ key: "projectType", label: "Project Type", value: "New Projects" });
   if (projectType === "resale") activeFilters.push({ key: "projectType", label: "Project Type", value: "Resale" });
@@ -574,6 +613,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
     if (propertyTypesParam) params.set("propertyTypes", propertyTypesParam);
     if (microMarket) params.set("microMarket", microMarket);
     if (bhk) params.set("bhk", bhk);
+    if (projectName) params.set("projectName", projectName);
     if (developer) params.set("developer", developer);
     if (completionStatus) params.set("completionStatus", completionStatus);
     if (isNewProject) params.set("isNewProject", "true");
@@ -591,6 +631,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
     if (propertyTypesParam && keyToRemove !== "propertyTypes") params.set("propertyTypes", propertyTypesParam);
     if (microMarket && keyToRemove !== "microMarket") params.set("microMarket", microMarket);
     if (bhk && keyToRemove !== "bhk") params.set("bhk", bhk);
+    if (projectName && keyToRemove !== "projectName") params.set("projectName", projectName);
     if (developer && keyToRemove !== "developer") params.set("developer", developer);
     if (completionStatus && keyToRemove !== "completionStatus") params.set("completionStatus", completionStatus);
     if (isNewProject && keyToRemove !== "isNewProject") params.set("isNewProject", "true");

@@ -11,9 +11,10 @@ export async function GET(request: NextRequest) {
   const projectType = searchParams.get('projectType'); // 'resale' | 'new' | 'invest' | etc.
   const propertyTypesParam = searchParams.get('propertyTypes'); // comma-separated
   const propertyTypes = propertyTypesParam ? propertyTypesParam.split(',').filter(Boolean) : [];
-  const microMarket = searchParams.get('microMarket');
-  const bhk = searchParams.get('bhk');
-  const developer = searchParams.get('developer');
+    const microMarket = searchParams.get('microMarket');
+    const bhk = searchParams.get('bhk') || searchParams.get('bhkConfig'); // Support both parameter names
+    const projectName = searchParams.get('projectName');
+    const developer = searchParams.get('developer');
   const completionStatus = searchParams.get('completionStatus');
   const isNewProject = searchParams.get('isNewProject') === 'true';
   const textQuery = searchParams.get('q');
@@ -110,10 +111,15 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Apply BHK filter (from parsed text)
-    if (bhk) {
-      dbQuery = dbQuery.ilike('project_name', `%${bhk}%`);
+    // Apply project name filter (from parsed text) - HIGH PRIORITY
+    if (projectName) {
+      dbQuery = dbQuery.ilike('project_name', `%${projectName}%`);
     }
+
+    // Apply BHK filter using property_types JSONB array
+    // BHK format in DB: "3 BHK", "4 BHK" (with space)
+    // Note: This will be filtered in post-processing due to Supabase JS client JSONB limitations
+    // We'll fetch all and filter by property_types array in memory
 
     // Apply completion_status logic (for new projects)
     if (completionStatus) {
@@ -149,8 +155,36 @@ export async function GET(request: NextRequest) {
       }, { status: 500 });
     }
 
-    // Post-process: Filter by property types, category, and "new projects" logic
+    // Post-process: Filter by property types, category, BHK, and "new projects" logic
     let filteredProjects = projects || [];
+
+    // Filter by BHK using property_types JSONB array
+    // BHK format in DB: "3 BHK", "4 BHK" (with space)
+    if (bhk) {
+      // Normalize BHK format to match DB format (ensure space)
+      const normalizedBhk = bhk.replace(/(\d+)\s*bhk/i, '$1 BHK');
+      
+      filteredProjects = filteredProjects.filter((p: any) => {
+        const propertyTypes = p.property_types;
+        
+        // Handle array of strings
+        if (Array.isArray(propertyTypes)) {
+          return propertyTypes.some((propType: any) => {
+            const propTypeStr = String(propType).trim();
+            // Exact match with normalized BHK (case-insensitive)
+            return propTypeStr.toLowerCase() === normalizedBhk.toLowerCase();
+          });
+        }
+        
+        // Handle JSONB object or string representation
+        if (propertyTypes) {
+          const typesStr = JSON.stringify(propertyTypes).toLowerCase();
+          return typesStr.includes(normalizedBhk.toLowerCase());
+        }
+        
+        return false;
+      });
+    }
 
     // Filter by property types (from checkboxes or parsed text)
     if (propertyTypes.length > 0) {
@@ -219,6 +253,7 @@ export async function GET(request: NextRequest) {
         propertyTypes,
         microMarket,
         bhk,
+        projectName,
         developer,
         completionStatus,
         isNewProject,
