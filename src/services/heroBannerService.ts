@@ -19,6 +19,8 @@ export interface HeroBannerOffer {
   cta_text?: string | null;
   cta_link?: string;
   background_image_url?: string;
+  image_url?: string; // Desktop image
+  hero_banner_mobile_url?: string | null; // Mobile image
   display_order?: number;
   is_active?: boolean;
   created_at?: string;

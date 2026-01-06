@@ -46,20 +46,29 @@ export default function HeroBannerSlider({ offers }: HeroBannerSliderProps) {
 
   const currentOffer = offers[currentSlide];
 
-  // Support multiple possible image field names
-  const imageUrl = currentOffer.background_image_url 
+  // Get responsive image URLs
+  // Mobile: hero_banner_mobile_url (fallback to image_url if null)
+  // Desktop: image_url (fallback to background_image_url for backward compatibility)
+  const mobileImageUrl = currentOffer.hero_banner_mobile_url 
     || currentOffer.image_url 
-    || currentOffer.hero_image 
-    || currentOffer.banner_image 
-    || currentOffer.image;
+    || currentOffer.background_image_url;
+  
+  const desktopImageUrl = currentOffer.image_url 
+    || currentOffer.background_image_url 
+    || currentOffer.hero_banner_mobile_url;
+
+  // Use the same image for both if mobile-specific is not available
+  const hasResponsiveImages = currentOffer.hero_banner_mobile_url && currentOffer.image_url && 
+    currentOffer.hero_banner_mobile_url !== currentOffer.image_url;
 
   // Debug logging (remove in production)
   if (process.env.NODE_ENV === 'development' && currentOffer) {
     console.log("[HeroBannerSlider] Current offer:", {
       id: currentOffer.id,
       title: currentOffer.title,
-      imageUrl,
-      allKeys: Object.keys(currentOffer)
+      mobileImageUrl,
+      desktopImageUrl,
+      hasResponsiveImages
     });
   }
 
@@ -69,17 +78,46 @@ export default function HeroBannerSlider({ offers }: HeroBannerSliderProps) {
   return (
     <Link href={bannerLink} className="block">
       <section className="relative h-[220px] sm:h-[300px] md:h-[400px] lg:h-[450px] w-full overflow-hidden bg-gray-900 cursor-pointer">
-        {/* Background Image */}
+        {/* Background Image - Responsive using CSS swap */}
         <div className="absolute inset-0 bg-gray-900">
-          {imageUrl ? (
-            <Image
-              src={imageUrl}
-              alt={currentOffer.title || "Banner"}
-              fill
-              className="object-contain md:object-cover"
-              priority
-              sizes="100vw"
-            />
+          {mobileImageUrl || desktopImageUrl ? (
+            hasResponsiveImages ? (
+              // Option B: CSS swap - render both images, show/hide based on screen size
+              <>
+                {/* Mobile image - shown on < 768px */}
+                {mobileImageUrl && (
+                  <Image
+                    src={mobileImageUrl}
+                    alt={currentOffer.title || "Banner"}
+                    fill
+                    className="object-contain md:object-cover md:hidden"
+                    priority
+                    sizes="100vw"
+                  />
+                )}
+                {/* Desktop image - shown on >= 768px */}
+                {desktopImageUrl && (
+                  <Image
+                    src={desktopImageUrl}
+                    alt={currentOffer.title || "Banner"}
+                    fill
+                    className="object-contain md:object-cover hidden md:block"
+                    priority
+                    sizes="100vw"
+                  />
+                )}
+              </>
+            ) : (
+              // Fallback: Single image if both are same or only one exists
+              <Image
+                src={desktopImageUrl || mobileImageUrl || ""}
+                alt={currentOffer.title || "Banner"}
+                fill
+                className="object-contain md:object-cover"
+                priority
+                sizes="100vw"
+              />
+            )
           ) : (
             <div className="w-full h-full bg-gradient-to-br from-blue-600 to-blue-800" />
           )}
