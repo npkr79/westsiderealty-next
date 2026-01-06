@@ -89,10 +89,11 @@ export default function TrendingProjectsSlider() {
         }
 
         // Query landing_pages WHERE is_trending = true
-        // Include hero_image_supabase_path to resolve images properly
+        // Only select columns that actually exist in the landing_pages table
+        // Based on LandingPage interface: uri (not url_slug), location_info (not micro_market)
         const { data: landingData, error: landingError } = await supabase
           .from("landing_pages")
-          .select("id, title, hero_image_url, hero_image_supabase_path, uri, url_slug, micro_market, price_display")
+          .select("id, title, hero_image_url, hero_image_supabase_path, uri, location_info")
           .eq("is_trending", true)
           .order("created_at", { ascending: false })
           .limit(10);
@@ -104,7 +105,12 @@ export default function TrendingProjectsSlider() {
         });
 
         if (landingError) {
-          console.error("[TrendingProjectsSlider] Error fetching landing pages:", landingError);
+          console.error("[TrendingProjectsSlider] landing_pages error:", {
+            message: landingError.message,
+            details: landingError.details,
+            hint: landingError.hint,
+            code: landingError.code,
+          });
         }
 
         // Transform projects data
@@ -135,8 +141,8 @@ export default function TrendingProjectsSlider() {
 
         // Transform landing pages data
         const transformedLanding: TrendingProject[] = (landingData || []).map((l: any) => {
-          // Special handling for specific landing pages with custom URLs
-          let landingSlug = l.uri || l.url_slug || String(l.id);
+          // Use uri field (not url_slug which doesn't exist)
+          let landingSlug = l.uri || String(l.id);
           
           // Map specific project names to their correct landing page URLs
           const projectName = (l.title || "").toLowerCase();
@@ -167,8 +173,8 @@ export default function TrendingProjectsSlider() {
           return {
             id: String(l.id),
             name: l.title || "Untitled Project",
-            price_range: l.price_display || null,
-            location: l.micro_market || null,
+            price_range: null, // price_display is in landing_page_configurations, not main table
+            location: l.location_info || null, // Use location_info instead of micro_market
             image_url: resolvedImageUrl,
             slug: landingSlug,
             source: "landing" as const,
@@ -309,18 +315,36 @@ export default function TrendingProjectsSlider() {
 }
 
 function TrendingCard({ project, url }: { project: TrendingProject; url: string }) {
+  // Log the resolved image src for debugging
+  const imageSrc = project.image_url || "/placeholder.svg";
+  
+  console.log("[TrendingProjectsCard] image src resolved:", {
+    title: project.name,
+    source: project.source,
+    hero_image_url: project.image_url,
+    resolvedSrc: imageSrc,
+  });
+
   return (
     <Link href={url} className="block group h-full">
       <div className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 h-full flex flex-col">
         {/* Image - 16:9 aspect ratio */}
         <div className="relative w-full aspect-video bg-gradient-to-br from-blue-400 to-blue-600 flex-shrink-0">
-          {project.image_url && project.image_url !== "/placeholder.svg" ? (
+          {imageSrc && imageSrc !== "/placeholder.svg" ? (
             <Image
-              src={project.image_url}
+              src={imageSrc}
               alt={project.name}
               fill
               className="object-cover"
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+              onError={(e) => {
+                console.error("[TrendingProjectsCard] Image failed to load:", {
+                  title: project.name,
+                  source: project.source,
+                  src: imageSrc,
+                  error: e,
+                });
+              }}
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-white">
