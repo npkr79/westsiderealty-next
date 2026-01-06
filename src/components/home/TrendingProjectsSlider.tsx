@@ -7,6 +7,7 @@ import { MapPin, Home, ChevronLeft, ChevronRight } from "lucide-react";
 import useEmblaCarousel from "embla-carousel-react";
 import { createClient } from "@/lib/supabase/client";
 import { getProjectPrimaryImage } from "@/lib/project-images";
+import { resolveLandingPageHeroImage } from "@/lib/landing-page-images";
 
 interface TrendingProject {
   id: string;
@@ -88,10 +89,10 @@ export default function TrendingProjectsSlider() {
         }
 
         // Query landing_pages WHERE is_trending = true
-        // Try both uri and url_slug fields
+        // Include hero_image_supabase_path to resolve images properly
         const { data: landingData, error: landingError } = await supabase
           .from("landing_pages")
-          .select("id, title, hero_image_url, uri, url_slug, micro_market, price_display")
+          .select("id, title, hero_image_url, hero_image_supabase_path, uri, url_slug, micro_market, price_display")
           .eq("is_trending", true)
           .order("created_at", { ascending: false })
           .limit(10);
@@ -145,12 +146,30 @@ export default function TrendingProjectsSlider() {
             landingSlug = "aerocidade-studio-apartments-dabolim";
           }
           
+          // Resolve hero image URL using helper function
+          // Landing pages may have hero_image_url as a storage path (not absolute URL) or
+          // need URL construction from hero_image_supabase_path. This helper ensures we
+          // always get a valid, accessible image URL for Next.js Image component.
+          const resolvedImageUrl = resolveLandingPageHeroImage({
+            hero_image_url: l.hero_image_url,
+            hero_image_supabase_path: l.hero_image_supabase_path,
+          });
+          
+          // Debug logging for landing pages image resolution
+          console.log(`[TrendingProjectsSlider] Landing page "${l.title}":`, {
+            source: "landing_pages",
+            title: l.title,
+            hero_image_url: l.hero_image_url,
+            hero_image_supabase_path: l.hero_image_supabase_path,
+            resolvedImageUrl: resolvedImageUrl,
+          });
+          
           return {
             id: String(l.id),
             name: l.title || "Untitled Project",
             price_range: l.price_display || null,
             location: l.micro_market || null,
-            image_url: l.hero_image_url,
+            image_url: resolvedImageUrl,
             slug: landingSlug,
             source: "landing" as const,
           };
