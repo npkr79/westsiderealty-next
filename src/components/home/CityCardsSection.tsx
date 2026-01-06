@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight, Building2, MapPin } from "lucide-react";
 import { navigationService, NavCity } from "@/services/navigationService";
 import { cityService } from "@/services/cityService";
+import { getMultipleCityCounts, formatCount } from "@/services/cityProjectCountsService";
 
 interface CityCardProps {
   city: NavCity;
@@ -60,22 +61,26 @@ const CityCard = ({ city, stats }: CityCardProps) => {
         </div>
       </div>
       <CardContent className="p-6">
-        {stats && (
+        {stats && stats.projects > 0 && (
           <div className="flex gap-4 mb-4">
             <div className="flex items-center gap-2">
               <Building2 className="h-4 w-4 text-primary" />
               <div>
-                <p className="text-sm font-semibold">{stats.projects}</p>
-                <p className="text-xs text-muted-foreground">Projects</p>
+                <p className="text-sm font-semibold">{formatCount(stats.projects)}</p>
+                <p className="text-xs text-muted-foreground">
+                  {city.url_slug.toLowerCase() === "goa" ? "Properties" : "Projects"}
+                </p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <MapPin className="h-4 w-4 text-primary" />
-              <div>
-                <p className="text-sm font-semibold">{stats.listings}</p>
-                <p className="text-xs text-muted-foreground">Listings</p>
+            {stats.listings > 0 && city.url_slug.toLowerCase() !== "goa" && (
+              <div className="flex items-center gap-2">
+                <MapPin className="h-4 w-4 text-primary" />
+                <div>
+                  <p className="text-sm font-semibold">{formatCount(stats.listings)}</p>
+                  <p className="text-xs text-muted-foreground">Listings</p>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         )}
         <Button asChild variant="outline" className="w-full group-hover:bg-primary group-hover:text-primary-foreground">
@@ -100,19 +105,23 @@ export default function CityCardsSection() {
         const citiesData = await navigationService.getNavigationCities();
         setCities(citiesData);
 
-        // Fetch stats for each city
+        // Fetch project counts for all cities in parallel
+        const citySlugs = citiesData.map(city => city.url_slug);
+        const counts = await getMultipleCityCounts(citySlugs);
+
+        // Fetch listings counts and combine with project counts
         const stats: Record<string, { projects: number; listings: number }> = {};
         for (const city of citiesData) {
           const listings = await navigationService.getResaleListingsCount(city.url_slug);
-          // For projects count, we'd need to fetch from projects table
-          // For now, using placeholder or fetching from cityService
-          const cityData = await cityService.getCityBySlug(city.url_slug);
-          const projects = 0; // You can add a method to count projects per city
-          stats[city.url_slug] = { projects, listings };
+          const projectCounts = counts[city.url_slug] || { projects: 0, listings: 0 };
+          stats[city.url_slug] = { 
+            projects: projectCounts.projects, 
+            listings: listings || projectCounts.listings 
+          };
         }
         setCityStats(stats);
       } catch (error) {
-        console.error("Error fetching cities:", error);
+        console.error("Error fetching cities and counts:", error);
       } finally {
         setLoading(false);
       }
