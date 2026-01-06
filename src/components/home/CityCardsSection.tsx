@@ -107,18 +107,37 @@ export default function CityCardsSection() {
 
         // Fetch project counts for all cities in parallel
         const citySlugs = citiesData.map(city => city.url_slug);
+        console.log("[CityCardsSection] Fetching counts for city slugs:", citySlugs);
         const counts = await getMultipleCityCounts(citySlugs);
+        console.log("[CityCardsSection] Received counts:", counts);
 
         // Fetch listings counts and combine with project counts
         const stats: Record<string, { projects: number; listings: number }> = {};
         for (const city of citiesData) {
           const listings = await navigationService.getResaleListingsCount(city.url_slug);
           const projectCounts = counts[city.url_slug] || { projects: 0, listings: 0 };
+          
+          // Debug log for Goa specifically
+          if (city.url_slug.toLowerCase() === "goa") {
+            console.log("[CityCardsSection] Goa stats:", {
+              url_slug: city.url_slug,
+              city_name: city.city_name,
+              projectCounts,
+              listings,
+              finalStats: {
+                projects: projectCounts.projects,
+                listings: listings || projectCounts.listings
+              }
+            });
+          }
+          
           stats[city.url_slug] = { 
             projects: projectCounts.projects, 
             listings: listings || projectCounts.listings 
           };
         }
+        
+        console.log("[CityCardsSection] Final stats object:", stats);
         setCityStats(stats);
       } catch (error) {
         console.error("Error fetching cities and counts:", error);
