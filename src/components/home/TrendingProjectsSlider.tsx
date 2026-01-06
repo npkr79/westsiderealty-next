@@ -69,10 +69,10 @@ export default function TrendingProjectsSlider() {
         console.log("[TrendingProjectsSlider] Starting to fetch trending projects...");
 
         // Query projects WHERE is_trending = true
-        // Simplified query without relations first to avoid errors
+        // Include micro_market relation to get micro_market_name
         const { data: projectsData, error: projectsError } = await supabase
           .from("projects")
-          .select("id, project_name, price_range_text, hero_image_url, url_slug, micro_market_id, city_id")
+          .select("id, project_name, price_range_text, hero_image_url, url_slug, micro_market_id, city_id, micro_market:micro_markets!projects_micromarket_id_fkey(micro_market_name)")
           .eq("is_trending", true)
           .order("created_at", { ascending: false })
           .limit(10);
@@ -113,11 +113,17 @@ export default function TrendingProjectsSlider() {
             hero_image_url: p.hero_image_url,
           });
           
+          // Extract micro_market_name from relation
+          const microMarket = p.micro_market;
+          const locationName = Array.isArray(microMarket) 
+            ? microMarket[0]?.micro_market_name 
+            : microMarket?.micro_market_name;
+          
           return {
             id: String(p.id),
             name: p.project_name || "Untitled Project",
             price_range: p.price_range_text || null,
-            location: null, // Will be fetched separately if needed
+            location: locationName || null,
             image_url: projectImage,
             slug: p.url_slug || String(p.id),
             source: "project" as const,
@@ -289,14 +295,13 @@ function TrendingCard({ project, url }: { project: TrendingProject; url: string 
       <div className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 h-full flex flex-col">
         {/* Image - 16:9 aspect ratio */}
         <div className="relative w-full aspect-video bg-gradient-to-br from-blue-400 to-blue-600 flex-shrink-0">
-          {project.image_url ? (
+          {project.image_url && project.image_url !== "/placeholder.svg" ? (
             <Image
               src={project.image_url}
               alt={project.name}
               fill
               className="object-cover"
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-              unoptimized={project.image_url.includes('supabase.co/storage')}
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-white">
@@ -310,33 +315,31 @@ function TrendingCard({ project, url }: { project: TrendingProject; url: string 
         </div>
 
         {/* Content - flex-grow to fill remaining space */}
-        <div className="p-5 flex-grow flex flex-col">
-          {/* Title */}
-          <h3 className="text-lg md:text-xl font-bold text-gray-900 mb-3 line-clamp-2 min-h-[3.5rem]">
+        <div className="p-4 md:p-5 flex-grow flex flex-col">
+          {/* Title - Modern styling */}
+          <h3 className="text-base md:text-lg font-semibold text-gray-900 mb-2 line-clamp-2">
             {project.name}
           </h3>
 
+          {/* Location - Show before price */}
+          {project.location && (
+            <div className="flex items-center gap-1.5 text-gray-500 mb-2">
+              <MapPin className="w-3.5 h-3.5 flex-shrink-0" />
+              <span className="text-xs md:text-sm line-clamp-1">{project.location}</span>
+            </div>
+          )}
+
           {/* Price */}
-          <div className="mb-3">
+          <div className="mt-auto">
             {project.price_range ? (
-              <p className="text-xl md:text-2xl font-bold text-blue-600">
+              <p className="text-lg md:text-xl font-bold text-blue-600">
                 {project.price_range.includes('₹') ? project.price_range : `₹${project.price_range}`}
-                {!project.price_range.includes('+') && !project.price_range.includes('Cr') && ' Cr+'}
+                {!project.price_range.includes('+') && !project.price_range.includes('Cr') && !project.price_range.includes('onwards') && ' onwards'}
               </p>
             ) : (
-              <p className="text-lg md:text-xl font-semibold text-gray-600">
+              <p className="text-sm md:text-base font-medium text-gray-500">
                 Contact for price
               </p>
-            )}
-          </div>
-
-          {/* Location - push to bottom */}
-          <div className="mt-auto">
-            {project.location && (
-              <div className="flex items-center gap-2 text-gray-600">
-                <MapPin className="w-4 h-4 flex-shrink-0" />
-                <span className="text-sm md:text-base line-clamp-1">{project.location}</span>
-              </div>
             )}
           </div>
         </div>

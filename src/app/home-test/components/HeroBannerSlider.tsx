@@ -76,7 +76,7 @@ export default function HeroBannerSlider({ offers }: HeroBannerSliderProps) {
   const bannerLink = currentOffer.cta_link || "/contact";
 
   return (
-    <Link href={bannerLink} className="block">
+    <Link href={bannerLink} className="block mb-6 md:mb-8">
       <section className="relative h-[220px] sm:h-[300px] md:h-[400px] lg:h-[450px] w-full overflow-hidden bg-gray-900 cursor-pointer">
         {/* Background Image - Responsive using CSS swap */}
         <div className="absolute inset-0 bg-gray-900">
@@ -132,10 +132,10 @@ export default function HeroBannerSlider({ offers }: HeroBannerSliderProps) {
               e.stopPropagation();
               goToPrevious();
             }}
-            className="absolute left-4 top-1/2 -translate-y-1/2 z-20 p-2 rounded-full bg-white/20 backdrop-blur-sm hover:bg-white/30 transition-all text-white"
+            className="absolute left-2 md:left-4 bottom-4 md:bottom-6 z-20 p-2 rounded-full bg-white/20 backdrop-blur-sm hover:bg-white/30 transition-all text-white"
             aria-label="Previous slide"
           >
-            <ChevronLeft className="w-6 h-6" />
+            <ChevronLeft className="w-5 h-5 md:w-6 md:h-6" />
           </button>
           <button
             onClick={(e) => {
@@ -143,10 +143,10 @@ export default function HeroBannerSlider({ offers }: HeroBannerSliderProps) {
               e.stopPropagation();
               goToNext();
             }}
-            className="absolute right-4 top-1/2 -translate-y-1/2 z-20 p-2 rounded-full bg-white/20 backdrop-blur-sm hover:bg-white/30 transition-all text-white"
+            className="absolute right-2 md:right-4 bottom-4 md:bottom-6 z-20 p-2 rounded-full bg-white/20 backdrop-blur-sm hover:bg-white/30 transition-all text-white"
             aria-label="Next slide"
           >
-            <ChevronRight className="w-6 h-6" />
+            <ChevronRight className="w-5 h-5 md:w-6 md:h-6" />
           </button>
         </>
       )}

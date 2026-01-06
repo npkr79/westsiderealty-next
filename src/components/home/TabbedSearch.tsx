@@ -379,7 +379,7 @@ export default function TabbedSearch() {
   return (
     <div ref={searchRef} className="w-full max-w-4xl mx-auto mt-0 sm:mt-8 relative">
       {/* Tabs - Lightweight with underline */}
-      <div className="flex gap-6 border-b border-gray-100 mb-6 overflow-x-auto scrollbar-hide">
+      <div className="flex gap-6 border-b border-gray-100 mb-3 overflow-x-auto scrollbar-hide">
         <button
           onClick={() => setActiveTab("residential")}
           className={`pb-3 px-2 text-sm font-medium whitespace-nowrap transition-colors border-b-2 ${
