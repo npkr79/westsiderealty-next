@@ -93,9 +93,9 @@ export default function IndexPageWithSearch({ heroBannerOffers = [] }: IndexPage
   const services = [
     {
       icon: Building2,
-      title: "Resale Properties - West Hyderabad",
+      title: "Residential & Commercial - Hyderabad",
       description:
-        "Premium apartments & villas in Kokapet, Narsingi, Financial District, Gachibowli & Gandipet",
+        "Expert guidance for buying, selling & investing in premium residential, commercial & plots across Hyderabad",
       areas: ["Kokapet", "Narsingi", "Financial District", "Gachibowli"],
       color: "bg-blue-50 border-blue-200",
       image: siteImages.hyderabadView || fallbackImage,
