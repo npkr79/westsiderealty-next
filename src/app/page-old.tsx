@@ -1,7 +1,7 @@
+
 import { Metadata } from "next";
 import { JsonLd, buildMetadata } from "@/components/common/SEO";
-import IndexPageWithSearch from "@/components/pages/IndexPageWithSearch";
-import { getHeroBannerOffersServer } from "@/services/heroBannerService";
+import IndexPage from "@/components/pages/IndexPage";
 
 const ORGANIZATION_SCHEMA = {
   "@context": "https://schema.org",
@@ -35,7 +35,7 @@ export const metadata: Metadata = buildMetadata({
   title: "RE/MAX Westside Realty - Hyderabad, Goa, Dubai | Premium Real Estate Agents",
   description:
     "Find premium resale properties in Hyderabad, investment & holiday homes in Goa, and global real estate in Dubai. RE/MAX Westside Realty: Your local & global property expert.",
-  canonicalUrl: "https://www.westsiderealty.in/home-test",
+  canonicalUrl: "https://www.westsiderealty.in/",
   imageUrl:
     "https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/brand-assets//remax-favicon.png",
   type: "website",
@@ -44,14 +44,11 @@ export const metadata: Metadata = buildMetadata({
     "hyderabad resale property, goa holiday homes, dubai real estate, buy property hyderabad, investment property india",
 });
 
-export default async function HomeTest() {
-  // Fetch hero banner offers server-side
-  const heroBannerOffers = await getHeroBannerOffersServer();
-
+export default function Home() {
   return (
     <>
       <JsonLd jsonLd={ORGANIZATION_SCHEMA} />
-      <IndexPageWithSearch heroBannerOffers={heroBannerOffers} />
+      <IndexPage />
     </>
   );
 }

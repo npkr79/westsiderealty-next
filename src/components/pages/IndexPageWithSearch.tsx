@@ -18,7 +18,7 @@ import CtaSection from "@/components/home/CtaSection";
 import CityCardsSection from "@/components/home/CityCardsSection";
 import { supabaseTestimonialClientService } from "@/services/admin/supabaseTestimonialClientService";
 import { siteImagesService } from "@/services/adminService";
-import HeroBannerSlider from "@/app/home-test/components/HeroBannerSlider";
+import HeroBannerSlider from "@/components/home/HeroBannerSlider";
 import type { HeroBannerOffer } from "@/services/heroBannerService";
 
 const fallbackImage = "/placeholder.svg";

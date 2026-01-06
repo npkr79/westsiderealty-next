@@ -1,7 +1,7 @@
-
 import { Metadata } from "next";
 import { JsonLd, buildMetadata } from "@/components/common/SEO";
-import IndexPage from "@/components/pages/IndexPage";
+import IndexPageWithSearch from "@/components/pages/IndexPageWithSearch";
+import { getHeroBannerOffersServer } from "@/services/heroBannerService";
 
 const ORGANIZATION_SCHEMA = {
   "@context": "https://schema.org",
@@ -44,11 +44,14 @@ export const metadata: Metadata = buildMetadata({
     "hyderabad resale property, goa holiday homes, dubai real estate, buy property hyderabad, investment property india",
 });
 
-export default function Home() {
+export default async function Home() {
+  // Fetch hero banner offers server-side
+  const heroBannerOffers = await getHeroBannerOffersServer();
+
   return (
     <>
       <JsonLd jsonLd={ORGANIZATION_SCHEMA} />
-      <IndexPage />
+      <IndexPageWithSearch heroBannerOffers={heroBannerOffers} />
     </>
   );
 }
