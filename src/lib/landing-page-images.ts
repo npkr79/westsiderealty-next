@@ -8,6 +8,7 @@ const SUPABASE_PROJECT_URL = "https://imqlfztriragzypplbqa.supabase.co";
 
 /**
  * Normalizes HTTP/HTTPS URLs, fixing common issues like "https:/" (missing slash)
+ * and "https:///" (extra slashes) which can cause 400 Bad Request errors.
  */
 function normalizeHttpUrl(url?: string | null): string | null {
   if (!url) return null;
@@ -15,10 +16,11 @@ function normalizeHttpUrl(url?: string | null): string | null {
   const trimmed = url.trim();
   if (!trimmed) return null;
   
-  // Fix common bad values like "https:/" or "http:/" (missing slash)
+  // Fix protocol issues: https:/, https:///, https://// etc. → https://
+  // The regex /^https:\/+/ matches https: followed by ONE OR MORE slashes
   const fixed = trimmed
-    .replace(/^https:\//, "https://")
-    .replace(/^http:\//, "http://");
+    .replace(/^https:\/+/, "https://")
+    .replace(/^http:\/+/, "http://");
   
   // Upgrade HTTP to HTTPS for security
   if (fixed.startsWith("http://")) {
