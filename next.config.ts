@@ -9,6 +9,11 @@ const nextConfig: NextConfig = {
         // Allow ALL Supabase Storage buckets (landing-pages, banner-images, etc.)
         pathname: '/storage/v1/object/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
+        pathname: '/**',
+      },
     ],
   },
 }
