@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Images, ShieldCheck } from "lucide-react";
 import ImageLightbox from "@/components/landing/ImageLightbox";
+import ImageWithFallback from "@/components/common/ImageWithFallback";
 
 interface ProjectHeroGalleryProps {
   images: string[];
@@ -44,9 +44,8 @@ export default function ProjectHeroGallery({ images, projectName, status, reraId
     setLightboxOpen(true);
   };
 
-  // Ensure we have a valid image URL
-  const heroImageUrl = displayImages[0] || "/placeholder.svg";
-  const imageSrc = imageError ? "/placeholder.svg" : heroImageUrl;
+  // Get hero image URL (ImageWithFallback will handle fallback automatically)
+  const heroImageUrl = displayImages[0] || null;
 
   return (
     <>
@@ -56,32 +55,13 @@ export default function ProjectHeroGallery({ images, projectName, status, reraId
           onClick={() => openLightbox(0)}
           className="relative w-full h-full group"
         >
-          {imageSrc.includes('supabase.co/storage') ? (
-            // Use regular img tag for Supabase URLs to avoid Next.js Image optimization issues
-            <img
-              src={imageSrc}
-              alt={projectName}
-              className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-              onError={() => {
-                if (!imageError) {
-                  setImageError(true);
-                }
-              }}
-            />
-          ) : (
-            <Image
-              src={imageSrc}
-              alt={projectName}
-              fill
-              className="object-cover transition-transform duration-300 group-hover:scale-105"
-              priority
-              onError={() => {
-                if (!imageError) {
-                  setImageError(true);
-                }
-              }}
-            />
-          )}
+          <ImageWithFallback
+            src={heroImageUrl}
+            alt={projectName}
+            fill
+            className="object-cover transition-transform duration-300 group-hover:scale-105"
+            priority
+          />
           
           {/* Bottom Gradient Overlay */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />

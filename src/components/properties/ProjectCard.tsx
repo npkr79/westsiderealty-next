@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { ProjectWithRelations } from "@/services/projectService";
 import { getProjectPrimaryImage } from "@/lib/project-images";
+import ImageWithFallback from "@/components/common/ImageWithFallback";
 
 interface ProjectCardProps {
   project: ProjectWithRelations | any;
@@ -43,7 +43,7 @@ export default function ProjectCard({ project, citySlug }: ProjectCardProps) {
     <Link href={href} className="block">
       <Card className="h-full overflow-hidden hover:shadow-lg transition-shadow">
         <div className="relative h-40 w-full">
-          <Image
+          <ImageWithFallback
             src={image}
             alt={project.project_name}
             fill

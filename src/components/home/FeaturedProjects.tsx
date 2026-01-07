@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Flame } from "lucide-react";
+import ImageWithFallback from "@/components/common/ImageWithFallback";
 
 interface LandingPage {
   id: string;
@@ -118,7 +118,7 @@ export default function FeaturedProjects() {
               <Link key={project.id} href={`/landing/${project.uri}`}>
                 <Card className="h-full overflow-hidden hover:shadow-lg transition-all duration-300 hover:-translate-y-1 group">
                   <div className="relative h-48 w-full overflow-hidden">
-                    <Image
+                    <ImageWithFallback
                       src={imageUrl}
                       alt={displayTitle}
                       fill

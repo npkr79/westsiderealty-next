@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { Card, CardContent } from "@/components/ui/card";
 import type { UnifiedProperty, CitySlug } from "@/types/unifiedProperty";
+import ImageWithFallback from "@/components/common/ImageWithFallback";
 
 interface PropertyCardProps {
   property: UnifiedProperty;
@@ -19,7 +19,7 @@ export default function PropertyCard({ property, location, viewMode = "grid" }: 
     <Link href={href}>
       <Card className={viewMode === "list" ? "flex gap-4" : ""}>
         <div className={viewMode === "list" ? "relative h-40 w-52 flex-shrink-0" : "relative h-48 w-full"}>
-          <Image
+          <ImageWithFallback
             src={safeImage}
             alt={property.title}
             fill

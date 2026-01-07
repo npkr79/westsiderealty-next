@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, MapPin, ExternalLink } from "lucide-react";
 import type { HeroBannerOffer } from "@/services/heroBannerService";
+import ImageWithFallback from "@/components/common/ImageWithFallback";
 
 interface HeroBannerSliderProps {
   offers: HeroBannerOffer[];
@@ -86,7 +86,7 @@ export default function HeroBannerSlider({ offers }: HeroBannerSliderProps) {
               <>
                 {/* Mobile image - shown on < 768px */}
                 {mobileImageUrl && (
-                  <Image
+                  <ImageWithFallback
                     src={mobileImageUrl}
                     alt={currentOffer.title || "Banner"}
                     fill
@@ -97,7 +97,7 @@ export default function HeroBannerSlider({ offers }: HeroBannerSliderProps) {
                 )}
                 {/* Desktop image - shown on >= 768px */}
                 {desktopImageUrl && (
-                  <Image
+                  <ImageWithFallback
                     src={desktopImageUrl}
                     alt={currentOffer.title || "Banner"}
                     fill
@@ -109,8 +109,8 @@ export default function HeroBannerSlider({ offers }: HeroBannerSliderProps) {
               </>
             ) : (
               // Fallback: Single image if both are same or only one exists
-              <Image
-                src={desktopImageUrl || mobileImageUrl || ""}
+              <ImageWithFallback
+                src={desktopImageUrl || mobileImageUrl}
                 alt={currentOffer.title || "Banner"}
                 fill
                 className="object-contain md:object-cover"

@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { MapPin, Home, ChevronLeft, ChevronRight } from "lucide-react";
 import useEmblaCarousel from "embla-carousel-react";
 import { createClient } from "@/lib/supabase/client";
 import { getProjectPrimaryImage } from "@/lib/project-images";
 import { resolveLandingPageHeroImage } from "@/lib/landing-page-images";
+import ImageWithFallback from "@/components/common/ImageWithFallback";
 
 interface TrendingProject {
   id: string;
@@ -315,20 +315,7 @@ export default function TrendingProjectsSlider() {
 }
 
 function TrendingCard({ project, url }: { project: TrendingProject; url: string }) {
-  // Fail-safe: Ensure we always have a valid string URL, never empty/null
-  const PLACEHOLDER = "/placeholder.svg";
-  
-  const initialSrc = (() => {
-    const src = project?.image_url || PLACEHOLDER;
-    // Ensure it's a non-empty string
-    return typeof src === "string" && src.trim() ? src.trim() : PLACEHOLDER;
-  })();
-
-  const [imageSrc, setImageSrc] = useState(initialSrc);
-  const [hasError, setHasError] = useState(false);
-
-  // Check if this is a Supabase URL (may need unoptimized for certain cases)
-  const isSupabase = imageSrc.includes("supabase.co/storage/v1/object/");
+  const imageSrc = project?.image_url || null;
 
   // Log the resolved image src for debugging
   console.log("[TrendingProjectsCard] image src resolved:", {
@@ -336,46 +323,20 @@ function TrendingCard({ project, url }: { project: TrendingProject; url: string 
     source: project.source,
     image_url: project.image_url,
     resolvedSrc: imageSrc,
-    isSupabase,
   });
-
-  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
-    console.error("[TrendingProjectsCard] Image failed to load:", {
-      title: project.name,
-      source: project.source,
-      src: imageSrc,
-      isSupabase,
-      error: e,
-    });
-    
-    // Fallback to placeholder on error
-    if (imageSrc !== PLACEHOLDER) {
-      setImageSrc(PLACEHOLDER);
-      setHasError(true);
-    }
-  };
 
   return (
     <Link href={url} className="block group h-full">
       <div className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 h-full flex flex-col">
         {/* Image - 16:9 aspect ratio */}
         <div className="relative w-full aspect-video bg-gradient-to-br from-blue-400 to-blue-600 flex-shrink-0">
-          {imageSrc && imageSrc !== PLACEHOLDER && !hasError ? (
-            <Image
-              src={imageSrc}
-              alt={project.name}
-              fill
-              className="object-cover"
-              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-              onError={handleImageError}
-              // Temporarily bypass optimization for Supabase URLs if needed (uncomment if issues persist)
-              // unoptimized={isSupabase}
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-white">
-              <Home className="w-12 h-12" />
-            </div>
-          )}
+          <ImageWithFallback
+            src={imageSrc}
+            alt={project.name}
+            fill
+            className="object-cover"
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+          />
           {/* Trending Badge */}
           <div className="absolute top-3 right-3 bg-orange-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg z-10">
             🔥 TRENDING
