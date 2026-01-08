@@ -330,11 +330,11 @@ export default async function ProjectDetailPage({ params }: PageProps) {
 
   const technicalSpecs = parseJsonbField((project as any).project_snapshot_json, []);
   const amenities = parseJsonbField((project as any).amenities_json, []);
-  const specifications = parseJsonbField((project as any).specifications_json, null);
+  const specifications: any = parseJsonbField((project as any).specifications_json, null);
   const floorPlans = parseJsonbField((project as any).floor_plan_images, []);
-  const locationAdvantages = parseJsonbField((project as any).location_advantages_json, null);
+  const locationAdvantages: any = parseJsonbField((project as any).location_advantages_json, null);
   const investmentAnalysis = parseJsonbField((project as any).investment_analysis_json, {});
-  const projectHighlights = parseJsonbField((project as any).project_highlights, null);
+  const projectHighlights: any = parseJsonbField((project as any).project_highlights, null);
   const faqs = faqsRaw; // Reuse the already parsed FAQs
   const galleryImages = getProjectImageUrls(project);
 
@@ -416,7 +416,10 @@ export default async function ProjectDetailPage({ params }: PageProps) {
               <AmenitiesCard amenities={amenities} />
 
               {/* 5. Specifications Card */}
-              {specifications && (Array.isArray(specifications) ? specifications.length > 0 : Object.keys(specifications).length > 0) && (
+              {specifications && (
+                (Array.isArray(specifications) && specifications.length > 0) ||
+                (typeof specifications === 'object' && specifications !== null && Object.keys(specifications).length > 0)
+              ) && (
                 <SpecificationsCard specifications={specifications} />
               )}
 
