@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MapPin, Clock, Car, School, Hospital, ShoppingBag, Train, Plane, Building2 } from "lucide-react";
+import { parseJsonb } from "@/lib/parse-jsonb";
 
 interface LocationAdvantage {
   name: string;
