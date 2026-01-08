@@ -12,6 +12,7 @@ interface ProjectStickyCardProps {
   carpetArea?: string | number | null;
   possessionDate?: string | null;
   propertyType?: string | null;
+  propertyTypes?: string[] | any;
   priceMin?: number | null;
   priceMax?: number | null;
   priceRangeText?: string | null;
@@ -28,6 +29,7 @@ export default function ProjectStickyCard({
   carpetArea,
   possessionDate,
   propertyType,
+  propertyTypes,
   priceMin,
   priceMax,
   priceRangeText,
@@ -53,10 +55,10 @@ export default function ProjectStickyCard({
 
   return (
     <Card className="shadow-lg">
-      <CardContent className="p-6 space-y-6">
+      <CardContent className="p-4 lg:p-6 space-y-4 lg:space-y-6">
         {/* Project Name */}
         <div>
-          <h2 className="text-xl font-bold text-foreground mb-2">{projectName}</h2>
+          <h2 className="text-lg lg:text-xl font-bold text-foreground mb-2">{projectName}</h2>
           {address && (
             <div className="flex items-start gap-2 text-sm text-muted-foreground">
               <MapPin className="h-4 w-4 flex-shrink-0 mt-0.5" />
@@ -107,15 +109,36 @@ export default function ProjectStickyCard({
             </div>
           )}
 
-          {propertyType && (
-            <div className="flex items-center gap-3">
-              <Building2 className="h-5 w-5 text-muted-foreground" />
-              <div className="flex-1">
-                <div className="text-xs text-muted-foreground">Property Type</div>
-                <div className="font-semibold text-foreground">{propertyType}</div>
+          {(propertyType || propertyTypes) && (() => {
+            // Parse property types - handle array or string
+            let typesToDisplay: string[] = [];
+            if (Array.isArray(propertyTypes)) {
+              typesToDisplay = propertyTypes;
+            } else if (typeof propertyTypes === 'string') {
+              try {
+                const parsed = JSON.parse(propertyTypes);
+                typesToDisplay = Array.isArray(parsed) ? parsed : [parsed];
+              } catch {
+                typesToDisplay = [propertyTypes];
+              }
+            } else if (propertyType) {
+              typesToDisplay = [propertyType];
+            }
+
+            if (typesToDisplay.length === 0) return null;
+
+            return (
+              <div className="flex items-center gap-3">
+                <Building2 className="h-5 w-5 text-muted-foreground" />
+                <div className="flex-1">
+                  <div className="text-xs text-muted-foreground">Property Type</div>
+                  <div className="font-semibold text-foreground">
+                    {typesToDisplay.join(" | ")}
+                  </div>
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
         </div>
 
         {/* Developer & RERA */}
@@ -137,11 +160,11 @@ export default function ProjectStickyCard({
         )}
 
         {/* CTA Buttons */}
-        <div className="space-y-3">
+        <div className="space-y-2">
           <Button
             onClick={onBrochure}
             className="w-full bg-primary hover:bg-primary/90"
-            size="lg"
+            size="default"
           >
             Get Brochure
           </Button>
@@ -149,7 +172,7 @@ export default function ProjectStickyCard({
             onClick={onCallBack}
             variant="outline"
             className="w-full"
-            size="lg"
+            size="default"
           >
             Request Call Back
           </Button>

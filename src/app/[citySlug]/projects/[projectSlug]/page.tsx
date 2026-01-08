@@ -24,6 +24,8 @@ import WestsideVerdictSection from "@/components/project-details/WestsideVerdict
 import ProjectFAQs from "@/components/project-details/ProjectFAQs";
 import SimilarProjects from "@/components/project-details/SimilarProjects";
 import ProjectStickySidebar from "@/components/project-details/ProjectStickySidebar";
+import ProjectMobileActions from "@/components/project-details/ProjectMobileActions";
+import ProjectLeadForm from "@/components/project-details/ProjectLeadForm";
 import AboutDeveloperSection from "@/components/project-details/AboutDeveloperSection";
 import AboutMicroMarketSection from "@/components/project-details/AboutMicroMarketSection";
 import DebugClient from "./DebugClient";
@@ -367,6 +369,24 @@ export default async function ProjectDetailPage({ params }: PageProps) {
                 galleryImages={galleryImages}
               />
 
+              {/* Mobile-only: Key Details shown after hero */}
+              <div className="lg:hidden">
+                <ProjectStickyCard
+                  projectName={correctedProjectName}
+                  address={address}
+                  bhkConfig={(project as any).bhk_config}
+                  carpetArea={(project as any).carpet_area}
+                  possessionDate={(project as any).possession_date || (project as any).possession_date_text}
+                  propertyType={(project as any).property_type || (project as any).property_types}
+                  propertyTypes={(project as any).property_types}
+                  priceMin={(project as any).price_min}
+                  priceMax={(project as any).price_max}
+                  priceRangeText={project.price_range_text}
+                  reraNumber={(project as any).rera_number || (project as any).rera_id}
+                  developerName={project.developer?.developer_name}
+                />
+              </div>
+
               {/* 2. Project Description */}
               <ProjectDescription
                 htmlContent={(project as any).long_description_html}
@@ -394,7 +414,7 @@ export default async function ProjectDetailPage({ params }: PageProps) {
               />
 
               {/* 9. Why Invest Section */}
-              <WhyInvestSection investmentAnalysis={investmentAnalysis} />
+              <WhyInvestSection investmentAnalysis={investmentAnalysis} projectName={correctedProjectName} />
 
               {/* 10. Westside Realty Verdict */}
               <WestsideVerdictSection review={(project as any).westside_realty_review} />
@@ -459,27 +479,48 @@ export default async function ProjectDetailPage({ params }: PageProps) {
               )}
             </div>
 
-            {/* Right Column - Sticky Sidebar (35%) */}
-            <ProjectStickySidebar
-              projectName={correctedProjectName}
-              projectId={project.id}
-              address={address}
-              bhkConfig={(project as any).bhk_config}
-              carpetArea={(project as any).carpet_area}
-              possessionDate={(project as any).possession_date || (project as any).possession_date_text}
-              propertyType={(project as any).property_type || (project as any).property_types}
-              priceMin={(project as any).price_min}
-              priceMax={(project as any).price_max}
-              priceRangeText={project.price_range_text}
-              reraNumber={(project as any).rera_number || (project as any).rera_id}
-              developerName={project.developer?.developer_name}
-              developerLogo={project.developer?.logo_url}
-              brochureUrl={brochureUrl || undefined}
-            />
+            {/* Right Column - Sticky Sidebar (35%) - Desktop Only */}
+            <div className="hidden lg:block">
+              <ProjectStickySidebar
+                projectName={correctedProjectName}
+                projectId={project.id}
+                address={address}
+                bhkConfig={(project as any).bhk_config}
+                carpetArea={(project as any).carpet_area}
+                possessionDate={(project as any).possession_date || (project as any).possession_date_text}
+                propertyType={(project as any).property_type || (project as any).property_types}
+                propertyTypes={(project as any).property_types}
+                priceMin={(project as any).price_min}
+                priceMax={(project as any).price_max}
+                priceRangeText={project.price_range_text}
+                reraNumber={(project as any).rera_number || (project as any).rera_id}
+                developerName={project.developer?.developer_name}
+                developerLogo={project.developer?.logo_url}
+                brochureUrl={brochureUrl || undefined}
+              />
+            </div>
+
+            {/* Mobile-only: Lead Form at bottom */}
+            <div className="lg:hidden mt-8">
+              <ProjectLeadForm
+                projectName={correctedProjectName}
+                projectId={project.id}
+                developerName={project.developer?.developer_name ?? undefined}
+                developerLogo={project.developer?.logo_url}
+                brochureUrl={brochureUrl || undefined}
+              />
+            </div>
           </div>
         </div>
 
         <CityHubBacklink />
+
+        {/* Mobile Sticky Actions */}
+        <ProjectMobileActions
+          projectName={correctedProjectName}
+          whatsappNumber="919866085831"
+          phoneNumber="919866085831"
+        />
       </div>
     </>
   );

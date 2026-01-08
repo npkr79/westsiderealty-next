@@ -13,6 +13,7 @@ interface ProjectStickySidebarProps {
   carpetArea?: string | number | null;
   possessionDate?: string | null;
   propertyType?: string | null;
+  propertyTypes?: string[] | any;
   priceMin?: number | null;
   priceMax?: number | null;
   priceRangeText?: string | null;
@@ -30,6 +31,7 @@ export default function ProjectStickySidebar({
   carpetArea,
   possessionDate,
   propertyType,
+  propertyTypes,
   priceMin,
   priceMax,
   priceRangeText,
@@ -53,7 +55,7 @@ export default function ProjectStickySidebar({
 
   return (
     <>
-      <div className="lg:sticky lg:top-24 lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto space-y-6">
+      <div className="lg:sticky lg:top-24 lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto space-y-4">
         <ProjectStickyCard
           projectName={projectName}
           address={address}
@@ -61,6 +63,7 @@ export default function ProjectStickySidebar({
           carpetArea={carpetArea}
           possessionDate={possessionDate}
           propertyType={propertyType}
+          propertyTypes={propertyTypes}
           priceMin={priceMin}
           priceMax={priceMax}
           priceRangeText={priceRangeText}
@@ -70,14 +73,16 @@ export default function ProjectStickySidebar({
           onCallBack={handleCallback}
         />
 
-        {/* Inline Lead Form */}
-        <ProjectLeadForm
-          projectName={projectName}
-          projectId={projectId}
-          developerName={developerName ?? undefined}
-          developerLogo={developerLogo}
-          brochureUrl={brochureUrl}
-        />
+        {/* Inline Lead Form - Compact for desktop */}
+        <div className="lg:scale-95 lg:origin-top">
+          <ProjectLeadForm
+            projectName={projectName}
+            projectId={projectId}
+            developerName={developerName ?? undefined}
+            developerLogo={developerLogo}
+            brochureUrl={brochureUrl}
+          />
+        </div>
       </div>
 
       {/* Lead Form Dialog */}
