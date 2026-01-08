@@ -19,6 +19,7 @@ import CityCardsSection from "@/components/home/CityCardsSection";
 import { supabaseTestimonialClientService } from "@/services/admin/supabaseTestimonialClientService";
 import { siteImagesService } from "@/services/adminService";
 import HeroBannerSlider from "@/components/home/HeroBannerSlider";
+import IntentCards from "@/components/home/IntentCards";
 import type { HeroBannerOffer } from "@/services/heroBannerService";
 
 const fallbackImage = "/placeholder.svg";
@@ -127,6 +128,7 @@ export default function IndexPageWithSearch({ heroBannerOffers = [] }: IndexPage
         <HeroBannerSlider offers={heroBannerOffers} />
       )}
       <HeroSectionWithSearch onContactClick={handleContactClick} />
+      <IntentCards />
       <TrendingProjectsSlider />
       <StatsSection stats={stats} />
       <ServicesSection services={services} />

@@ -85,7 +85,7 @@ export default function IntentCards() {
             return (
               <Card
                 key={index}
-                className="overflow-hidden border-2 hover:border-primary/50 transition-all hover:shadow-xl h-full"
+                className="overflow-hidden bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all border border-gray-200 hover:border-primary/50 h-full"
               >
                 {CardContentWrapper}
               </Card>
