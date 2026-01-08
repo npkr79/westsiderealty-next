@@ -322,6 +322,7 @@ export const projectService = {
       if (result1.data) return result1.data;
       
       // Try without any status filters (fallback - includes everything, better than 404)
+      const query2 = buildQuery();
       const result2 = await query2.maybeSingle();
       console.log(`[getCityLevelProjectBySlug] Query 2 (no status filters):`, { 
         slug: slugToTry, 
