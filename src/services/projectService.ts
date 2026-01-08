@@ -491,12 +491,14 @@ export const projectService = {
 
   /**
    * Get all projects for a micro-market by slug
+   * Returns all projects matching the micro-market, regardless of show_in_micro_market_page flag
    */
   async getProjectsByMicroMarket(
     citySlug: string,
     microMarketSlug: string
   ): Promise<ProjectWithRelations[]> {
     const supabase = createClient();
+    
     const { data, error } = await supabase
       .from('projects')
       .select(`
@@ -508,7 +510,6 @@ export const projectService = {
       .eq('city.url_slug', citySlug)
       .eq('micro_market.url_slug', microMarketSlug)
       .or('status.ilike.published,status.ilike.%under construction%')
-      .eq('show_in_micro_market_page', true)
       .order('display_order', { ascending: true })
       .order('project_name', { ascending: true });
 
