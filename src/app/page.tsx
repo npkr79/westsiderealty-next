@@ -44,6 +44,9 @@ export const metadata: Metadata = buildMetadata({
     "hyderabad resale property, goa holiday homes, dubai real estate, buy property hyderabad, investment property india",
 });
 
+// Revalidate every 60 seconds to allow database changes (like new banners) to show quickly
+export const revalidate = 60;
+
 export default async function Home() {
   // Fetch hero banner offers server-side
   const heroBannerOffers = await getHeroBannerOffersServer();
