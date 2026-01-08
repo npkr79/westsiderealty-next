@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import ImageLightbox from "@/components/landing/ImageLightbox";
+import ImageWithFallback from "@/components/common/ImageWithFallback";
 
 interface ProjectHeroImageProps {
   heroImageUrl?: string | null;
@@ -41,16 +41,12 @@ export default function ProjectHeroImage({ heroImageUrl, galleryImages }: Projec
   return (
     <>
       <div className="relative w-full aspect-video rounded-lg overflow-hidden bg-muted group">
-        <Image
+        <ImageWithFallback
           src={displayImage}
           alt="Project hero"
           fill
           className="object-cover"
           priority
-          onError={(e) => {
-            const target = e.currentTarget;
-            target.src = "/agency_logo.png";
-          }}
         />
         
         {hasMultipleImages && (

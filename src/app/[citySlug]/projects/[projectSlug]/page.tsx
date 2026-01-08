@@ -9,8 +9,8 @@ import { generateUnifiedSchema } from "@/lib/seo-utils";
 import { optimizeSupabaseImage, getHeroImageUrl } from "@/utils/imageOptimization";
 import CityHubBacklink from "@/components/seo/CityHubBacklink";
 import BreadcrumbNav from "@/components/layout/BreadcrumbNav";
-import { getProjectImageUrls } from "@/lib/project-images";
 import { safeJsonParse } from "@/lib/project-utils";
+import { parseJsonb, asArray } from "@/lib/parse-jsonb";
 import ProjectHeroImage from "@/components/project-details/ProjectHeroImage";
 import ProjectDescription from "@/components/project-details/ProjectDescription";
 import TechnicalSpecsCard from "@/components/project-details/TechnicalSpecsCard";
@@ -318,25 +318,29 @@ export default async function ProjectDetailPage({ params }: PageProps) {
     ],
   });
 
-  // Parse JSON fields safely (JSONB fields from Supabase are already parsed, but handle string cases)
-  // Only parse if it's a string, otherwise use as-is
-  const parseJsonbField = <T,>(value: any, fallback: T): T => {
-    if (value === null || value === undefined) return fallback;
-    if (typeof value === 'string') {
-      return safeJsonParse(value, fallback);
-    }
-    return value as T;
-  };
-
-  const technicalSpecs = parseJsonbField((project as any).project_snapshot_json, []);
-  const amenities = parseJsonbField((project as any).amenities_json, []);
-  const specifications: any = parseJsonbField((project as any).specifications_json, null);
-  const floorPlans = parseJsonbField((project as any).floor_plan_images, []);
-  const locationAdvantages: any = parseJsonbField((project as any).location_advantages_json, null);
-  const investmentAnalysis = parseJsonbField((project as any).investment_analysis_json, {});
-  const projectHighlights: any = parseJsonbField((project as any).project_highlights, null);
+  // Parse JSONB fields safely using helpers (handles both arrays/objects and stringified JSON)
+  const technicalSpecs = parseJsonb((project as any).project_snapshot_json, []);
+  const amenities = parseJsonb((project as any).amenities_json, []);
+  const specifications: any = parseJsonb((project as any).specifications_json, null);
+  const floorPlansRaw = asArray<any>(parseJsonb((project as any).floor_plan_images, []));
+  const locationAdvantages: any = parseJsonb((project as any).location_advantages_json, null);
+  const investmentAnalysis = parseJsonb((project as any).investment_analysis_json, {});
+  const projectHighlights: any = parseJsonb((project as any).project_highlights, null);
   const faqs = faqsRaw; // Reuse the already parsed FAQs
-  const galleryImages = getProjectImageUrls(project);
+
+  // Gallery images: prefer explicit gallery_images_json, fall back to other image helpers if needed
+  const galleryImagesJson = asArray<string | { url?: string; image_url?: string; src?: string }>(
+    parseJsonb((project as any).gallery_images_json, [])
+  );
+
+  const galleryImagesFromJsonb: string[] = galleryImagesJson
+    .map((item) => {
+      if (typeof item === "string") return item;
+      return item?.url || item?.image_url || item?.src || "";
+    })
+    .filter((u) => typeof u === "string" && u.trim() !== "");
+
+  const galleryImages = galleryImagesFromJsonb;
 
   // Debug: Log image data in development
   if (process.env.NODE_ENV === 'development') {
@@ -375,10 +379,15 @@ export default async function ProjectDetailPage({ params }: PageProps) {
           <div className="grid grid-cols-1 lg:grid-cols-[65%_35%] gap-8">
             {/* Left Column - Scrollable Content (65%) */}
             <div className="space-y-8">
-              {/* 1. Hero Image */}
+              {/* 1. Hero Image + Gallery */}
               <ProjectHeroImage
                 heroImageUrl={project.hero_image_url ? getHeroImageUrl(project.hero_image_url) : null}
-                galleryImages={galleryImages}
+                // Combine hero + gallery for slider (hero first)
+                galleryImages={
+                  project.hero_image_url
+                    ? [getHeroImageUrl(project.hero_image_url), ...galleryImages]
+                    : galleryImages
+                }
               />
 
               {/* Mobile-only: Key Details shown after hero */}
@@ -416,15 +425,18 @@ export default async function ProjectDetailPage({ params }: PageProps) {
               <AmenitiesCard amenities={amenities} />
 
               {/* 5. Specifications Card */}
-              {specifications && (
-                (Array.isArray(specifications) && specifications.length > 0) ||
-                (typeof specifications === 'object' && specifications !== null && Object.keys(specifications).length > 0)
-              ) && (
-                <SpecificationsCard specifications={specifications} />
-              )}
+              {specifications &&
+                ((Array.isArray(specifications) && specifications.length > 0) ||
+                  (typeof specifications === "object" &&
+                    specifications !== null &&
+                    Object.keys(specifications).length > 0)) && (
+                  <SpecificationsCard specifications={specifications} />
+                )}
 
               {/* 6. Floor Plans Gallery */}
-              <FloorPlansGallery floorPlanImages={floorPlans} />
+              {floorPlansRaw && floorPlansRaw.length > 0 && (
+                <FloorPlansGallery floorPlanImages={floorPlansRaw} />
+              )}
 
               {/* 7. Google Map Embed */}
               <GoogleMapEmbed embedUrl={(project as any).google_maps_embed_url} />

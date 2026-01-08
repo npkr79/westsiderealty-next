@@ -1,12 +1,27 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import ImageLightbox from "@/components/landing/ImageLightbox";
+import ImageWithFallback from "@/components/common/ImageWithFallback";
+
+interface RawFloorPlan {
+  label?: string;
+  title?: string;
+  name?: string;
+  url?: string;
+  image_url?: string;
+  src?: string;
+}
+
+interface NormalizedFloorPlan {
+  label: string;
+  url: string;
+}
 
 interface FloorPlansGalleryProps {
-  floorPlanImages?: string[] | null;
+  // Can be an array of strings or objects from JSONB
+  floorPlanImages?: any;
 }
 
 export default function FloorPlansGallery({ floorPlanImages }: FloorPlansGalleryProps) {
@@ -17,9 +32,30 @@ export default function FloorPlansGallery({ floorPlanImages }: FloorPlansGallery
     return null;
   }
 
-  const images = floorPlanImages.filter((img): img is string => typeof img === 'string' && img.trim() !== '');
+  const plans: NormalizedFloorPlan[] = (floorPlanImages as Array<string | RawFloorPlan>)
+    .map((item, idx) => {
+      if (typeof item === "string") {
+        return {
+          label: `Floor Plan ${idx + 1}`,
+          url: item,
+        };
+      }
 
-  if (images.length === 0) return null;
+      const url = item.url || item.image_url || item.src || "";
+      const label = item.label || item.title || item.name || `Floor Plan ${idx + 1}`;
+
+      return url
+        ? {
+            label,
+            url,
+          }
+        : null;
+    })
+    .filter((p): p is NormalizedFloorPlan => !!p && typeof p.url === "string" && p.url.trim() !== "");
+
+  if (plans.length === 0) return null;
+
+  const images = plans.map((p) => p.url);
 
   const openLightbox = (index: number) => {
     setLightboxIndex(index);
@@ -34,22 +70,23 @@ export default function FloorPlansGallery({ floorPlanImages }: FloorPlansGallery
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {images.map((imageUrl, idx) => (
+            {plans.map((plan, idx) => (
               <button
-                key={idx}
+                key={plan.url + idx}
                 onClick={() => openLightbox(idx)}
                 className="relative aspect-[4/3] rounded-lg overflow-hidden border hover:ring-2 ring-primary transition-all group"
               >
-                <Image
-                  src={imageUrl}
-                  alt={`Floor plan ${idx + 1}`}
+                <ImageWithFallback
+                  src={plan.url}
+                  alt={plan.label || `Floor plan ${idx + 1}`}
                   fill
                   className="object-contain bg-muted group-hover:scale-105 transition-transform"
-                  onError={(e) => {
-                    const target = e.currentTarget;
-                    target.style.display = 'none';
-                  }}
                 />
+                {plan.label && (
+                  <div className="absolute bottom-0 inset-x-0 bg-black/60 text-white text-xs px-2 py-1 text-center">
+                    {plan.label}
+                  </div>
+                )}
                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
               </button>
             ))}
