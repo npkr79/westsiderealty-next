@@ -14,23 +14,18 @@ export default function ImageCarousel({ images, mainImage, title }: ImageCarouse
   const initialIndex = mainImage && allImages.includes(mainImage) ? allImages.indexOf(mainImage) : 0;
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
 
-  if (allImages.length === 0) {
-    return (
-      <div className="relative aspect-[16/9] w-full overflow-hidden rounded-xl bg-muted flex items-center justify-center">
-        <span className="text-sm text-muted-foreground">No images available</span>
-      </div>
-    );
-  }
-
   const handlePrev = () => {
+    if (allImages.length === 0) return;
     setCurrentIndex((idx) => (idx === 0 ? allImages.length - 1 : idx - 1));
   };
 
   const handleNext = () => {
+    if (allImages.length === 0) return;
     setCurrentIndex((idx) => (idx === allImages.length - 1 ? 0 : idx + 1));
   };
 
-  const current = allImages[currentIndex];
+  // Always render image area - use fallback if no images
+  const current = allImages.length > 0 ? allImages[currentIndex] : null;
 
   return (
     <div className="space-y-3">

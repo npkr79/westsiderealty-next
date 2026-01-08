@@ -16,30 +16,31 @@ export function PropertyImageGallery({ images, title }: PropertyImageGalleryProp
   const [lightboxOpen, setLightboxOpen] = useState(false);
 
   // Limit to max 10 images
-  const displayImages = images.slice(0, 10);
+  const displayImages = (images || []).slice(0, 10);
 
-  if (!displayImages || displayImages.length === 0) {
-    return (
-      <div className="relative w-full h-96 bg-gray-200 rounded-lg flex items-center justify-center">
-        <span className="text-muted-foreground">No images available</span>
-      </div>
+  const scrollPrev = () => {
+    if (displayImages.length === 0) return;
+    setSelectedIndex(prev => 
+      prev === 0 ? displayImages.length - 1 : prev - 1
     );
-  }
-
-  const scrollPrev = () => setSelectedIndex(prev => 
-    prev === 0 ? displayImages.length - 1 : prev - 1
-  );
+  };
   
-  const scrollNext = () => setSelectedIndex(prev => 
-    prev === displayImages.length - 1 ? 0 : prev + 1
-  );
+  const scrollNext = () => {
+    if (displayImages.length === 0) return;
+    setSelectedIndex(prev => 
+      prev === displayImages.length - 1 ? 0 : prev + 1
+    );
+  };
+
+  // Always render image area - use fallback if no images
+  const currentImage = displayImages.length > 0 ? displayImages[selectedIndex] : null;
 
   return (
     <>
       {/* Main Image */}
       <div className="relative w-full h-96 md:h-[500px] rounded-lg overflow-hidden bg-gray-100 mb-4">
         <ImageWithFallback
-          src={displayImages[selectedIndex]}
+          src={currentImage}
           alt={`${title} - Image ${selectedIndex + 1}`}
           fill
           className="object-cover"
@@ -57,9 +58,11 @@ export function PropertyImageGallery({ images, title }: PropertyImageGalleryProp
         </Button>
 
         {/* Image Counter */}
-        <div className="absolute bottom-4 right-4 bg-black/50 text-white px-3 py-1 rounded-full text-sm">
-          {selectedIndex + 1} / {displayImages.length}
-        </div>
+        {displayImages.length > 0 && (
+          <div className="absolute bottom-4 right-4 bg-black/50 text-white px-3 py-1 rounded-full text-sm">
+            {selectedIndex + 1} / {displayImages.length}
+          </div>
+        )}
 
         {/* Navigation Arrows */}
         {displayImages.length > 1 && (
@@ -113,7 +116,7 @@ export function PropertyImageGallery({ images, title }: PropertyImageGalleryProp
         <DialogContent className="max-w-7xl w-full p-0 bg-black/95">
           <div className="relative w-full h-[90vh]">
             <ImageWithFallback
-              src={displayImages[selectedIndex]}
+              src={currentImage}
               alt={`${title} - Full size`}
               fill
               className="object-contain"

@@ -4,7 +4,6 @@ import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { ProjectWithRelations } from "@/services/projectService";
-import { getProjectPrimaryImage } from "@/lib/project-images";
 import ImageWithFallback from "@/components/common/ImageWithFallback";
 
 interface ProjectCardProps {
@@ -33,7 +32,13 @@ export default function ProjectCard({ project, citySlug }: ProjectCardProps) {
   const href = (project as any)._isGoaProperty 
     ? `/goa/buy/${project.url_slug}`
     : `/${citySlug}/projects/${project.url_slug}`;
-  const image = getProjectPrimaryImage(project);
+  // Get primary image - return null instead of placeholder so ImageWithFallback uses agency logo
+  const imageUrl = project.hero_image_url || project.main_image_url || null;
+  // Also check gallery if needed
+  const galleryFirstImage = (project as any).gallery_images_json?.[0] || 
+                            (project as any).gallery_images?.[0] || 
+                            (project as any).images?.[0] || null;
+  const image = imageUrl || galleryFirstImage || null;
   const isFeatured = project.is_featured || project.show_on_city_page;
   const developerName = project.developer?.developer_name;
   const description = project.meta_description || project.project_overview_seo || (project as any).description;

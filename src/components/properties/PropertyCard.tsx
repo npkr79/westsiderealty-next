@@ -13,14 +13,15 @@ interface PropertyCardProps {
 
 export default function PropertyCard({ property, location, viewMode = "grid" }: PropertyCardProps) {
   const href = `/${location}/buy/${property.slug}`;
-  const safeImage = property.main_image_url || (property.image_gallery && property.image_gallery[0]) || "/placeholder.svg";
+  // ImageWithFallback will handle null/undefined fallback to agency logo
+  const imageSrc = property.main_image_url || (property.image_gallery && property.image_gallery[0]) || null;
 
   return (
     <Link href={href}>
       <Card className={viewMode === "list" ? "flex gap-4" : ""}>
         <div className={viewMode === "list" ? "relative h-40 w-52 flex-shrink-0" : "relative h-48 w-full"}>
           <ImageWithFallback
-            src={safeImage}
+            src={imageSrc}
             alt={property.title}
             fill
             className="object-cover rounded-t-lg"

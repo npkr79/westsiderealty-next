@@ -110,7 +110,8 @@ export default function FeaturedProjects() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {projects.map((project) => {
             const isUltraLuxury = project.template_type === "ultra_luxury_duplex";
-            const imageUrl = project.hero_image_url || "/placeholder.svg";
+            // ImageWithFallback will handle null/undefined fallback to agency logo
+            const imageUrl = project.hero_image_url || null;
             const displayTitle = project.headline || project.title;
             const location = project.location_info || "Premium Location";
 
