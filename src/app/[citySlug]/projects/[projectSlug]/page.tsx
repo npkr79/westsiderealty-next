@@ -253,11 +253,11 @@ export default async function ProjectDetailPage({ params }: PageProps) {
     { name: correctedProjectName, href: `/${citySlug}/projects/${finalProjectSlug}` },
   ];
 
-  // Extract FAQs
-  const faqs = (project as any).faqs_json;
+  // Extract FAQs for schema generation (parse early)
+  const faqsRaw = safeJsonParse((project as any).faqs_json, []);
   const faqItems: { question: string; answer: string }[] = [];
-  if (faqs && Array.isArray(faqs)) {
-    faqs.forEach((faq: any) => {
+  if (faqsRaw && Array.isArray(faqsRaw)) {
+    faqsRaw.forEach((faq: any) => {
       const question = faq.question || faq.q || faq.title || '';
       const answer = faq.answer || faq.a || faq.description || faq.content || '';
       if (question && answer) {
@@ -314,14 +314,14 @@ export default async function ProjectDetailPage({ params }: PageProps) {
     ],
   });
 
-  // Parse JSON fields safely
+  // Parse JSON fields safely (faqs already parsed above for schema)
   const technicalSpecs = safeJsonParse((project as any).project_snapshot_json, []);
   const amenities = safeJsonParse((project as any).amenities_json, []);
   const specifications = safeJsonParse((project as any).specifications_json, []);
   const floorPlans = safeJsonParse((project as any).floor_plan_images, []);
   const locationAdvantages = safeJsonParse((project as any).location_advantages_json, []);
   const investmentAnalysis = safeJsonParse((project as any).investment_analysis_json, {});
-  const faqs = safeJsonParse((project as any).faqs_json, []);
+  const faqs = faqsRaw; // Reuse the already parsed FAQs
   const galleryImages = getProjectImageUrls(project);
 
   // Debug: Log image data in development
