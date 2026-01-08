@@ -74,7 +74,7 @@ export default function ProjectStickySidebar({
         <ProjectLeadForm
           projectName={projectName}
           projectId={projectId}
-          developerName={developerName}
+          developerName={developerName ?? undefined}
           developerLogo={developerLogo}
           brochureUrl={brochureUrl}
         />
@@ -94,7 +94,7 @@ export default function ProjectStickySidebar({
           <ProjectLeadForm
             projectName={projectName}
             projectId={projectId}
-            developerName={developerName}
+            developerName={developerName ?? undefined}
             developerLogo={developerLogo}
             brochureUrl={leadFormMode === 'brochure' ? brochureUrl : undefined}
             inModal={true}
