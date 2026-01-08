@@ -9,26 +9,23 @@ import { generateUnifiedSchema } from "@/lib/seo-utils";
 import { optimizeSupabaseImage } from "@/utils/imageOptimization";
 import CityHubBacklink from "@/components/seo/CityHubBacklink";
 import BreadcrumbNav from "@/components/layout/BreadcrumbNav";
-import ProjectHeroGallery from "@/components/project-details/ProjectHeroGallery";
-import ProjectOverviewSection from "@/components/project-details/ProjectOverviewSection";
-import ProjectPriceTable from "@/components/project-details/ProjectPriceTable";
-import ProjectFloorPlans from "@/components/project-details/ProjectFloorPlans";
-import ProjectSpecifications from "@/components/project-details/ProjectSpecifications";
-import ProjectAmenities from "@/components/project-details/ProjectAmenities";
-import ProjectLocation from "@/components/project-details/ProjectLocation";
-import ProjectNearbyPlaces from "@/components/project-details/ProjectNearbyPlaces";
+import { getProjectImageUrls } from "@/lib/project-images";
+import { safeJsonParse } from "@/lib/project-utils";
+import ProjectHeroImage from "@/components/project-details/ProjectHeroImage";
+import ProjectDescription from "@/components/project-details/ProjectDescription";
+import TechnicalSpecsCard from "@/components/project-details/TechnicalSpecsCard";
+import AmenitiesCard from "@/components/project-details/AmenitiesCard";
+import SpecificationsCard from "@/components/project-details/SpecificationsCard";
+import FloorPlansGallery from "@/components/project-details/FloorPlansGallery";
+import GoogleMapEmbed from "@/components/project-details/GoogleMapEmbed";
+import LocationAdvantages from "@/components/project-details/LocationAdvantages";
+import WhyInvestSection from "@/components/project-details/WhyInvestSection";
+import WestsideVerdictSection from "@/components/project-details/WestsideVerdictSection";
+import ProjectFAQs from "@/components/project-details/ProjectFAQs";
+import SimilarProjects from "@/components/project-details/SimilarProjects";
+import ProjectStickySidebar from "@/components/project-details/ProjectStickySidebar";
 import AboutDeveloperSection from "@/components/project-details/AboutDeveloperSection";
 import AboutMicroMarketSection from "@/components/project-details/AboutMicroMarketSection";
-import RelatedProjectsSection from "@/components/project-details/RelatedProjectsSection";
-import ProjectFAQSection from "@/components/project-details/ProjectFAQSection";
-import ProjectInvestmentAnalysis from "@/components/project-details/ProjectInvestmentAnalysis";
-import ProjectExpertReview from "@/components/project-details/ProjectExpertReview";
-import ProjectRERATimeline from "@/components/project-details/ProjectRERATimeline";
-import TrustStrip from "@/components/project-details/TrustStrip";
-import LocationHighlightsCard from "@/components/project-details/LocationHighlightsCard";
-import BottomLeadFormSection from "@/components/project-details/BottomLeadFormSection";
-import { getProjectImageUrls } from "@/lib/project-images";
-import ProjectDetailClientActions from "./ProjectDetailClientActions";
 import DebugClient from "./DebugClient";
 
 interface PageProps {
@@ -317,6 +314,16 @@ export default async function ProjectDetailPage({ params }: PageProps) {
     ],
   });
 
+  // Parse JSON fields safely
+  const technicalSpecs = safeJsonParse((project as any).project_snapshot_json, []);
+  const amenities = safeJsonParse((project as any).amenities_json, []);
+  const specifications = safeJsonParse((project as any).specifications_json, []);
+  const floorPlans = safeJsonParse((project as any).floor_plan_images, []);
+  const locationAdvantages = safeJsonParse((project as any).location_advantages_json, []);
+  const investmentAnalysis = safeJsonParse((project as any).investment_analysis_json, {});
+  const faqs = safeJsonParse((project as any).faqs_json, []);
+  const galleryImages = getProjectImageUrls(project);
+
   // Debug: Log image data in development
   if (process.env.NODE_ENV === 'development') {
     console.log('[ProjectDetailPage] Image data:', {
@@ -324,9 +331,16 @@ export default async function ProjectDetailPage({ params }: PageProps) {
       gallery_images_json: (project as any).gallery_images_json,
       gallery_images: (project as any).gallery_images,
       images: (project as any).images,
-      extracted: getProjectImageUrls(project)
+      extracted: galleryImages
     });
   }
+
+  // Build address string
+  const addressParts = [
+    project.micro_market?.micro_market_name,
+    project.city?.city_name,
+  ].filter(Boolean);
+  const address = addressParts.join(", ");
 
   return (
     <>
@@ -342,89 +356,67 @@ export default async function ProjectDetailPage({ params }: PageProps) {
           />
         </div>
 
-        {/* Hero Gallery */}
-        <ProjectHeroGallery
-          projectName={correctedProjectName || "Project"}
-          images={getProjectImageUrls(project) || []}
-          status={(project as any).completion_status}
-          reraId={(project as any).rera_id}
-        />
-
-        {/* Client Actions Component - handles all interactive elements */}
-        <ProjectDetailClientActions
-          projectName={correctedProjectName}
-          brochureUrl={brochureUrl || undefined}
-          project={project}
-          citySlug={citySlug}
-        />
-
-        {/* Main Content */}
+        {/* Main Content - Two Column Layout */}
         <div className="container mx-auto px-4 py-8">
-          <div className="max-w-5xl mx-auto space-y-12">
-            {/* Trust Strip */}
-            <TrustStrip />
-
-            {/* Project Overview */}
-            <ProjectOverviewSection
-              reraId={(project as any).rera_id}
-              possessionDate={(project as any).possession_date_text || (project as any).rera_possession_date}
-              status={(project as any).completion_status}
-              description={(project as any).long_description_html || (project as any).project_overview_seo || project.meta_description}
-              highlights={(project as any).project_snapshot_json}
-            />
-
-            {/* Price Table */}
-            {(project as any).project_snapshot_json && (
-              <ProjectPriceTable
-                projectSnapshotJson={(project as any).project_snapshot_json}
+          <div className="grid grid-cols-1 lg:grid-cols-[65%_35%] gap-8">
+            {/* Left Column - Scrollable Content (65%) */}
+            <div className="space-y-8">
+              {/* 1. Hero Image */}
+              <ProjectHeroImage
+                heroImageUrl={project.hero_image_url}
+                galleryImages={galleryImages}
               />
-            )}
 
-            {/* Floor Plans */}
-            {(project as any).floor_plan_images && Array.isArray((project as any).floor_plan_images) && (project as any).floor_plan_images.length > 0 && (
-              <ProjectFloorPlans
-                floorPlanImages={(project as any).floor_plan_images}
+              {/* 2. Project Description */}
+              <ProjectDescription
+                htmlContent={(project as any).long_description_html}
               />
-            )}
 
-            {/* Specifications */}
-            <ProjectSpecifications
-              specifications={(project as any).specifications_json}
-            />
+              {/* 3. Technical Specs Card */}
+              <TechnicalSpecsCard projectSnapshot={technicalSpecs} />
 
-            {/* Amenities */}
-            {(project as any).amenities_json && (
-              <ProjectAmenities
-                amenities={(project as any).amenities_json}
+              {/* 4. Amenities Card */}
+              <AmenitiesCard amenities={amenities} />
+
+              {/* 5. Specifications Card */}
+              <SpecificationsCard specifications={specifications} />
+
+              {/* 6. Floor Plans Gallery */}
+              <FloorPlansGallery floorPlanImages={floorPlans} />
+
+              {/* 7. Google Map Embed */}
+              <GoogleMapEmbed embedUrl={(project as any).google_maps_embed_url} />
+
+              {/* 8. Location Advantages */}
+              <LocationAdvantages
+                locationAdvantages={locationAdvantages}
+                locationHighlights={(project as any).location_highlights}
               />
-            )}
 
-            {/* Location */}
-            <ProjectLocation
-              googleMapsUrl={(project as any).google_maps_url}
-              googleMapsEmbedUrl={(project as any).google_maps_embed_url}
-              landmarks={landmarks}
-              microMarketName={project.micro_market?.micro_market_name}
-              cityName={project.city?.city_name}
-              latitude={project.latitude}
-              longitude={project.longitude}
-            />
+              {/* 9. Why Invest Section */}
+              <WhyInvestSection investmentAnalysis={investmentAnalysis} />
 
-            {/* Location Highlights */}
-            {landmarks.length > 0 && (
-              <LocationHighlightsCard
-                highlights={landmarks.map((l: any) => l.name || l.title || l).filter(Boolean)}
-              />
-            )}
+              {/* 10. Westside Realty Verdict */}
+              <WestsideVerdictSection review={(project as any).westside_realty_review} />
 
-            {/* Nearby Places */}
-            {landmarks.length > 0 && (
-              <ProjectNearbyPlaces landmarks={landmarks} />
-            )}
+              {/* 11. FAQs Accordion */}
+              <ProjectFAQs faqs={faqs} projectName={correctedProjectName} />
 
-            {/* About Developer */}
-            {project.developer && (
-              <AboutDeveloperSection
+              {/* 12. Similar Properties */}
+              {citySlug && project.id && (
+                <SimilarProjects
+                  currentProjectId={String(project.id)}
+                  microMarketId={project.micro_market_id}
+                  priceMin={(project as any).price_min}
+                  priceMax={(project as any).price_max}
+                  citySlug={citySlug}
+                  microMarketSlug={project.micro_market?.url_slug}
+                />
+              )}
+
+              {/* About Developer */}
+              {project.developer && (
+                <AboutDeveloperSection
                   developerName={project.developer.developer_name}
                   citySlug={citySlug}
                   developerSlug={project.developer.url_slug}
@@ -445,78 +437,43 @@ export default async function ProjectDetailPage({ params }: PageProps) {
                       : null
                   }
                 />
-            )}
-
-            {/* About Micro Market */}
-            {project.micro_market && citySlug && (
-              <section>
-                <h3 className="text-xl font-bold text-slate-900 mb-6">
-                  Micro-Market Context: {project.micro_market.micro_market_name}
-                </h3>
-                <AboutMicroMarketSection
-                  microMarketName={project.micro_market.micro_market_name}
-                  citySlug={citySlug}
-                  microMarketSlug={project.micro_market.url_slug}
-                  heroHook={project.micro_market.hero_hook}
-                  growthStory={project.micro_market.growth_story}
-                  pricePerSqftMin={project.micro_market.price_per_sqft_min}
-                  pricePerSqftMax={project.micro_market.price_per_sqft_max}
-                  appreciationRate={project.micro_market.annual_appreciation_min}
-                />
-              </section>
-            )}
-
-            {/* RERA & Construction Status */}
-            <ProjectRERATimeline
-              reraId={(project as any).rera_id}
-              reraLink={(project as any).rera_link}
-              possessionDate={(project as any).possession_date_text || (project as any).rera_possession_date}
-              constructionTimeline={(project as any).construction_timeline_json}
-            />
-
-            {/* Investment Analysis */}
-            {(project as any).investment_analysis_json && (
-              <section>
-                <ProjectInvestmentAnalysis
-                  investmentData={(project as any).investment_analysis_json}
-                  projectName={correctedProjectName}
-                />
-              </section>
-            )}
-
-            {/* FAQs */}
-            {(project as any).faqs_json &&
-              Array.isArray((project as any).faqs_json) &&
-              (project as any).faqs_json.length > 0 && (
-                <ProjectFAQSection
-                  faqs={(project as any).faqs_json}
-                  projectName={correctedProjectName}
-                />
               )}
 
-            {/* Expert Review */}
-            {(project as any).expert_review_json && (
-              <ProjectExpertReview
-                review={(project as any).expert_review_json}
-                projectName={correctedProjectName}
-              />
-            )}
+              {/* About Micro Market */}
+              {project.micro_market && citySlug && (
+                <section>
+                  <h3 className="text-xl font-bold text-slate-900 mb-6">
+                    Micro-Market Context: {project.micro_market.micro_market_name}
+                  </h3>
+                  <AboutMicroMarketSection
+                    microMarketName={project.micro_market.micro_market_name}
+                    citySlug={citySlug}
+                    microMarketSlug={project.micro_market.url_slug}
+                    heroHook={project.micro_market.hero_hook}
+                    growthStory={project.micro_market.growth_story}
+                    pricePerSqftMin={project.micro_market.price_per_sqft_min}
+                    pricePerSqftMax={project.micro_market.price_per_sqft_max}
+                    appreciationRate={project.micro_market.annual_appreciation_min}
+                  />
+                </section>
+              )}
+            </div>
 
-            {/* Related Projects */}
-            {citySlug && project.id && (
-              <RelatedProjectsSection
-                citySlug={citySlug}
-                currentProjectId={String(project.id)}
-                microMarketId={project.micro_market_id ? String(project.micro_market_id) : undefined}
-                developerId={project.developer_id ? String(project.developer_id) : undefined}
-              />
-            )}
-
-            {/* Bottom Lead Form */}
-            <BottomLeadFormSection
+            {/* Right Column - Sticky Sidebar (35%) */}
+            <ProjectStickySidebar
               projectName={correctedProjectName}
               projectId={project.id}
+              address={address}
+              bhkConfig={(project as any).bhk_config}
+              carpetArea={(project as any).carpet_area}
+              possessionDate={(project as any).possession_date || (project as any).possession_date_text}
+              propertyType={(project as any).property_type || (project as any).property_types}
+              priceMin={(project as any).price_min}
+              priceMax={(project as any).price_max}
+              priceRangeText={project.price_range_text}
+              reraNumber={(project as any).rera_number || (project as any).rera_id}
               developerName={project.developer?.developer_name}
+              developerLogo={project.developer?.logo_url}
               brochureUrl={brochureUrl || undefined}
             />
           </div>
