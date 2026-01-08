@@ -80,7 +80,40 @@ export default function LocationAdvantages({ locationAdvantages, locationHighlig
           if (typeof item === 'string') {
             name = item;
           } else if (item && typeof item === 'object') {
-            name = item.name || item.title || item.landmark || item.label || String(item) || 'Location';
+            // Try multiple possible name fields
+            name = item.name || item.title || item.landmark || item.label || item.text || item.value;
+            
+            // If still no name, try to extract from object keys/values
+            if (!name || name === '[object Object]') {
+              // Try to get a meaningful string from the object
+              const keys = Object.keys(item);
+              if (keys.length > 0) {
+                // Prefer 'name', 'title', 'landmark', 'label' keys
+                const preferredKeys = ['name', 'title', 'landmark', 'label', 'text', 'value'];
+                for (const key of preferredKeys) {
+                  if (item[key] && typeof item[key] === 'string') {
+                    name = item[key];
+                    break;
+                  }
+                }
+                // If still no name, use first string value
+                if (!name || name === '[object Object]') {
+                  for (const key of keys) {
+                    const val = item[key];
+                    if (typeof val === 'string' && val && val !== '[object Object]') {
+                      name = val;
+                      break;
+                    }
+                  }
+                }
+              }
+            }
+            
+            // Final fallback
+            if (!name || name === '[object Object]') {
+              name = 'Location';
+            }
+            
             distance = typeof item.distance === 'string' ? item.distance : undefined;
             time = typeof item.time === 'string' ? item.time : undefined;
             category = item.category || 'general';
@@ -96,7 +129,7 @@ export default function LocationAdvantages({ locationAdvantages, locationHighlig
           };
         });
       }
-      items = items.filter(item => item.name && item.name !== 'undefined' && item.name !== 'null');
+      items = items.filter(item => item.name && item.name !== 'undefined' && item.name !== 'null' && item.name !== '[object Object]');
     } else if (typeof locationAdvantages === 'object') {
       // Handle object format: {category: {items: [...]}} or {key: value}
       items = Object.entries(locationAdvantages).flatMap(([key, value]: [string, any]) => {
@@ -120,7 +153,26 @@ export default function LocationAdvantages({ locationAdvantages, locationHighlig
         if (typeof value === 'string') {
           name = value;
         } else if (value && typeof value === 'object') {
-          name = value.name || value.title || value.landmark || value.label || String(value) || key;
+          // Try multiple possible name fields
+          name = value.name || value.title || value.landmark || value.label || value.text || value.value;
+          
+          // If still no name, try to extract from object
+          if (!name || name === '[object Object]') {
+            const keys = Object.keys(value);
+            for (const k of ['name', 'title', 'landmark', 'label', 'text', 'value', ...keys]) {
+              const val = (value as any)[k];
+              if (typeof val === 'string' && val && val !== '[object Object]') {
+                name = val;
+                break;
+              }
+            }
+          }
+          
+          // Final fallback
+          if (!name || name === '[object Object]') {
+            name = key;
+          }
+          
           distance = typeof value.distance === 'string' ? value.distance : undefined;
           time = typeof value.time === 'string' ? value.time : undefined;
           category = value.category || key.toLowerCase();
@@ -132,7 +184,7 @@ export default function LocationAdvantages({ locationAdvantages, locationHighlig
           time,
           category,
         };
-      }).filter(item => item.name && item.name !== 'undefined' && item.name !== 'null');
+      }).filter(item => item.name && item.name !== 'undefined' && item.name !== 'null' && item.name !== '[object Object]');
     }
   }
 

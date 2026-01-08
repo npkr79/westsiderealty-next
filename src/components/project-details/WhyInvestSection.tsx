@@ -80,11 +80,11 @@ export default function WhyInvestSection({ investmentAnalysis, projectName }: Wh
             {(appreciation || data.rental_yield) && (
               <div className="flex items-start gap-3 p-4 rounded-lg border bg-card">
                 <BarChart3 className="h-6 w-6 text-primary flex-shrink-0 mt-1" />
-                <div>
-                  <div className="text-sm font-medium text-muted-foreground">
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium text-muted-foreground mb-1">
                     {appreciation ? 'Annual Appreciation' : 'Rental Yield'}
                   </div>
-                  <div className="text-2xl font-bold text-foreground">
+                  <div className="text-lg font-semibold text-foreground leading-tight">
                     {appreciation || data.rental_yield}
                   </div>
                 </div>

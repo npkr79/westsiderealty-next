@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { safeJsonParse } from "@/lib/safeJson";
 
 interface Specification {
   label: string;
@@ -12,20 +13,33 @@ interface SpecificationsCardProps {
 export default function SpecificationsCard({ specifications }: SpecificationsCardProps) {
   if (!specifications) return null;
 
+  // Parse if it's a string
+  const parsed = safeJsonParse(specifications, specifications);
+  
   let entries: Specification[] = [];
 
-  if (Array.isArray(specifications)) {
-    entries = specifications.map((item: any) => ({
-      label: item.label || item.name || item.key || "",
-      value: item.value || item.text || item,
-    })).filter((item: Specification) => item.label && item.value);
-  } else if (typeof specifications === 'object') {
-    entries = Object.entries(specifications)
+  if (Array.isArray(parsed)) {
+    entries = parsed.map((item: any) => {
+      // Handle both object format {label, value} and simple values
+      if (typeof item === 'object' && item !== null) {
+        return {
+          label: item.label || item.name || item.key || item.title || "",
+          value: item.value !== undefined && item.value !== null ? String(item.value) : item.text || "",
+        };
+      } else {
+        return {
+          label: "",
+          value: String(item),
+        };
+      }
+    }).filter((item: Specification) => item.label || item.value);
+  } else if (typeof parsed === 'object' && parsed !== null) {
+    entries = Object.entries(parsed)
       .map(([label, value]) => ({
         label: label.charAt(0).toUpperCase() + label.slice(1).replace(/_/g, ' '),
-        value: String(value),
+        value: value !== null && value !== undefined ? String(value) : "",
       }))
-      .filter((item: Specification) => item.value && item.value !== 'null' && item.value !== 'undefined');
+      .filter((item: Specification) => item.value && item.value !== 'null' && item.value !== 'undefined' && item.value !== '');
   }
 
   if (entries.length === 0) return null;

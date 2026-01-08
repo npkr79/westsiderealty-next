@@ -29,6 +29,8 @@ import ProjectStickyCard from "@/components/project-details/ProjectStickyCard";
 import ProjectLeadForm from "@/components/project-details/ProjectLeadForm";
 import AboutDeveloperSection from "@/components/project-details/AboutDeveloperSection";
 import AboutMicroMarketSection from "@/components/project-details/AboutMicroMarketSection";
+import ProjectHighlights from "@/components/project-details/ProjectHighlights";
+import ProjectStickyCard from "@/components/project-details/ProjectStickyCard";
 import DebugClient from "./DebugClient";
 
 interface PageProps {
@@ -322,8 +324,9 @@ export default async function ProjectDetailPage({ params }: PageProps) {
   const amenities = safeJsonParse((project as any).amenities_json, []);
   const specifications = safeJsonParse((project as any).specifications_json, []);
   const floorPlans = safeJsonParse((project as any).floor_plan_images, []);
-  const locationAdvantages = safeJsonParse((project as any).location_advantages_json, []);
+  const locationAdvantages = safeJsonParse((project as any).location_advantages_json, null);
   const investmentAnalysis = safeJsonParse((project as any).investment_analysis_json, {});
+  const projectHighlights = safeJsonParse((project as any).project_highlights, null);
   const faqs = faqsRaw; // Reuse the already parsed FAQs
   const galleryImages = getProjectImageUrls(project);
 
@@ -393,6 +396,11 @@ export default async function ProjectDetailPage({ params }: PageProps) {
                 htmlContent={(project as any).long_description_html}
               />
 
+              {/* 2.5. Project Highlights */}
+              {projectHighlights && (
+                <ProjectHighlights highlights={projectHighlights} />
+              )}
+
               {/* 3. Technical Specs Card */}
               <TechnicalSpecsCard projectSnapshot={technicalSpecs} />
 
@@ -400,7 +408,9 @@ export default async function ProjectDetailPage({ params }: PageProps) {
               <AmenitiesCard amenities={amenities} />
 
               {/* 5. Specifications Card */}
-              <SpecificationsCard specifications={specifications} />
+              {specifications && (Array.isArray(specifications) ? specifications.length > 0 : Object.keys(specifications).length > 0) && (
+                <SpecificationsCard specifications={specifications} />
+              )}
 
               {/* 6. Floor Plans Gallery */}
               <FloorPlansGallery floorPlanImages={floorPlans} />
