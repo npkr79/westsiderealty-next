@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Shield, MessageCircle, TrendingUp } from "lucide-react";
 import type { LandingPage, LandingPageConfiguration } from "@/types/landingPage";
+import ImageWithFallback from "@/components/common/ImageWithFallback";
 
 interface AerocidadeHeroProps {
   landingPage: LandingPage;
@@ -25,8 +25,8 @@ export default function AerocidadeHero({ landingPage, configurations }: Aerocida
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
       {/* Hero Background Image with Parallax Effect */}
       <div className="absolute inset-0">
-        <Image
-          src={landingPage.hero_image_url || "/placeholder.svg"}
+        <ImageWithFallback
+          src={landingPage.hero_image_url}
           alt={landingPage.title}
           fill
           className="object-cover"

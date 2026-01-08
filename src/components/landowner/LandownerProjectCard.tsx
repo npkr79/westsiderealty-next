@@ -1,10 +1,10 @@
-import Image from "next/image";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MapPin, Building2, Maximize, IndianRupee, ArrowRight } from "lucide-react";
 import type { LandownerProject } from "@/lib/supabase/landowner-projects";
+import ImageWithFallback from "@/components/common/ImageWithFallback";
 
 interface Props {
   project: LandownerProject;
@@ -19,41 +19,30 @@ export function LandownerProjectCard({ project }: Props) {
   return (
     <Card className="group overflow-hidden hover:shadow-xl transition-all duration-300">
       {/* Image */}
-      {project.hero_image_url ? (
-        <div className="relative h-48 w-full overflow-hidden">
-          <Image
-            src={project.hero_image_url}
-            alt={project.project_name}
-            fill
-            className="object-cover group-hover:scale-110 transition-transform duration-500"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-          
-          {/* Badge */}
-          <div className="absolute top-4 left-4">
-            <Badge className="bg-amber-500 text-white font-semibold">
-              Landowner/Investor Share
+      <div className="relative h-48 w-full overflow-hidden">
+        <ImageWithFallback
+          src={project.hero_image_url}
+          alt={project.project_name}
+          fill
+          className="object-cover group-hover:scale-110 transition-transform duration-500"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+        
+        {/* Badge */}
+        <div className="absolute top-4 left-4">
+          <Badge className="bg-amber-500 text-white font-semibold">
+            Landowner/Investor Share
+          </Badge>
+        </div>
+        
+        {project.completion_status && (
+          <div className="absolute top-4 right-4">
+            <Badge variant="secondary" className="bg-white/90 text-foreground">
+              {project.completion_status}
             </Badge>
           </div>
-          
-          {project.completion_status && (
-            <div className="absolute top-4 right-4">
-              <Badge variant="secondary" className="bg-white/90 text-foreground">
-                {project.completion_status}
-              </Badge>
-            </div>
-          )}
-        </div>
-      ) : (
-        <div className="relative h-48 w-full bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center">
-          <Building2 className="h-16 w-16 text-primary/50" />
-          <div className="absolute top-4 left-4">
-            <Badge className="bg-amber-500 text-white font-semibold">
-              Landowner/Investor Share
-            </Badge>
-          </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Content */}
       <CardContent className="p-6 space-y-4">

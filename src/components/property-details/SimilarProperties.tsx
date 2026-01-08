@@ -2,12 +2,12 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { MapPin, Bed, Bath, Maximize } from "lucide-react";
 import { formatPriceWithCr } from "@/lib/priceFormatter";
 import { createClient } from "@/lib/supabase/client";
+import ImageWithFallback from "@/components/common/ImageWithFallback";
 
 interface SimilarPropertiesProps {
   currentPropertyId: string;
@@ -99,8 +99,8 @@ export default function SimilarProperties({
           >
             <Card className="overflow-hidden hover:shadow-lg transition-shadow h-full">
               <div className="aspect-video relative">
-                <Image
-                  src={property.main_image_url || "/placeholder.svg"}
+                <ImageWithFallback
+                  src={property.main_image_url}
                   alt={property.title}
                   fill
                   className="object-cover"

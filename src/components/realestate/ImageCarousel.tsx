@@ -1,7 +1,7 @@
 "use client";
 
-import Image from "next/image";
 import { useState } from "react";
+import ImageWithFallback from "@/components/common/ImageWithFallback";
 
 interface ImageCarouselProps {
   images: string[];
@@ -22,8 +22,6 @@ export default function ImageCarousel({ images, mainImage, title }: ImageCarouse
     );
   }
 
-  const safeSrc = (src: string | undefined) => (src && src.trim() ? src : "/placeholder.svg");
-
   const handlePrev = () => {
     setCurrentIndex((idx) => (idx === 0 ? allImages.length - 1 : idx - 1));
   };
@@ -37,8 +35,8 @@ export default function ImageCarousel({ images, mainImage, title }: ImageCarouse
   return (
     <div className="space-y-3">
       <div className="relative aspect-[16/9] w-full overflow-hidden rounded-xl bg-muted">
-        <Image
-          src={safeSrc(current)}
+        <ImageWithFallback
+          src={current}
           alt={title}
           fill
           className="object-cover"
@@ -73,8 +71,8 @@ export default function ImageCarousel({ images, mainImage, title }: ImageCarouse
                 idx === currentIndex ? "border-primary" : "border-border"
               }`}
             >
-              <Image
-                src={safeSrc(img)}
+              <ImageWithFallback
+                src={img}
                 alt={`${title} thumbnail ${idx + 1}`}
                 fill
                 className="object-cover"

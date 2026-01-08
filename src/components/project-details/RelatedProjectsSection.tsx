@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Building2, MapPin } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { projectService, type ProjectWithRelations } from "@/services/projectService";
+import ImageWithFallback from "@/components/common/ImageWithFallback";
 
 interface RelatedProjectsSectionProps {
   currentProjectId: string;
@@ -81,20 +82,13 @@ export default function RelatedProjectsSection({
           return (
             <Link key={project.id} href={href} className="block">
               <Card className="overflow-hidden transition-shadow hover:shadow-md">
-                <div className="aspect-video bg-muted">
-                  {project.hero_image_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={project.hero_image_url}
-                      alt={`${project.project_name} project`}
-                      className="h-full w-full object-cover"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center">
-                      <Building2 className="h-10 w-10 text-muted-foreground" />
-                    </div>
-                  )}
+                <div className="aspect-video bg-muted relative">
+                  <ImageWithFallback
+                    src={project.hero_image_url}
+                    alt={`${project.project_name} project`}
+                    fill
+                    className="object-cover"
+                  />
                 </div>
 
                 <CardContent className="space-y-2 p-4">

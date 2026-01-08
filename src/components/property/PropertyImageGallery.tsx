@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import { ChevronLeft, ChevronRight, Expand } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import ImageWithFallback from "@/components/common/ImageWithFallback";
 
 interface PropertyImageGalleryProps {
   images: string[];
@@ -38,8 +38,8 @@ export function PropertyImageGallery({ images, title }: PropertyImageGalleryProp
     <>
       {/* Main Image */}
       <div className="relative w-full h-96 md:h-[500px] rounded-lg overflow-hidden bg-gray-100 mb-4">
-        <Image
-          src={displayImages[selectedIndex] || "/placeholder.svg"}
+        <ImageWithFallback
+          src={displayImages[selectedIndex]}
           alt={`${title} - Image ${selectedIndex + 1}`}
           fill
           className="object-cover"
@@ -97,8 +97,8 @@ export function PropertyImageGallery({ images, title }: PropertyImageGalleryProp
                   : "border-transparent opacity-70 hover:opacity-100"
               }`}
             >
-              <Image
-                src={img || "/placeholder.svg"}
+              <ImageWithFallback
+                src={img}
                 alt={`Thumbnail ${idx + 1}`}
                 fill
                 className="object-cover"
@@ -112,8 +112,8 @@ export function PropertyImageGallery({ images, title }: PropertyImageGalleryProp
       <Dialog open={lightboxOpen} onOpenChange={setLightboxOpen}>
         <DialogContent className="max-w-7xl w-full p-0 bg-black/95">
           <div className="relative w-full h-[90vh]">
-            <Image
-              src={displayImages[selectedIndex] || "/placeholder.svg"}
+            <ImageWithFallback
+              src={displayImages[selectedIndex]}
               alt={`${title} - Full size`}
               fill
               className="object-contain"

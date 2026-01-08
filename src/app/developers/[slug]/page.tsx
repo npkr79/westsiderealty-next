@@ -14,6 +14,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import CityHubBacklink from "@/components/seo/CityHubBacklink";
 import DeveloperProjectCard from "@/components/developer/DeveloperProjectCard";
 import DeveloperContactForm from "@/components/developer/DeveloperContactForm";
+import ImageWithFallback from "@/components/common/ImageWithFallback";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -300,15 +301,13 @@ export default async function DeveloperPage({ params }: PageProps) {
 
         {/* Hero Section */}
         <div className="relative h-[400px] bg-gradient-to-br from-heading-blue to-heading-blue-dark">
-          {developer.banner_image_url && (
-            <Image
-              src={developer.banner_image_url}
-              alt={developer.developer_name}
-              fill
-              className="object-cover"
-              priority
-            />
-          )}
+          <ImageWithFallback
+            src={developer.banner_image_url}
+            alt={developer.developer_name}
+            fill
+            className="object-cover"
+            priority
+          />
           <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/60 to-black/40" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
           

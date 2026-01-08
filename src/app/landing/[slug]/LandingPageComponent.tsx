@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import ImageLightbox from "@/components/landing/ImageLightbox";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import ImageWithFallback from "@/components/common/ImageWithFallback";
 import { 
   MapPin, 
   Car, 
@@ -268,14 +269,20 @@ const LandingPageComponent = ({
       {/* Hero Section with Parallax */}
       <section className="relative h-screen flex items-center justify-center overflow-hidden">
         <div 
-          className="absolute inset-0 bg-cover bg-center bg-no-repeat cursor-pointer will-change-transform"
+          className="absolute inset-0 cursor-pointer will-change-transform"
           style={{ 
-            backgroundImage: `url(${landingPage.hero_image_url || 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=1200&h=600&fit=crop'})`,
             transform: `translateY(${parallaxOffset}px) scale(1.1)`,
             transition: 'transform 0.1s ease-out'
           }}
           onClick={() => landingPage.hero_image_url && openLightbox([landingPage.hero_image_url])}
         >
+          <ImageWithFallback
+            src={landingPage.hero_image_url || 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=1200&h=600&fit=crop'}
+            alt={landingPage.title}
+            fill
+            className="object-cover"
+            priority
+          />
           <div className="absolute inset-0 bg-gradient-to-b from-luxury-navy/60 via-black/40 to-luxury-charcoal/80"></div>
         </div>
         

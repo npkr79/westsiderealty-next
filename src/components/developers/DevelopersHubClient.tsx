@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Building2, Search, CheckCircle2, ArrowRight } from "lucide-react";
+import ImageWithFallback from "@/components/common/ImageWithFallback";
 
 interface DeveloperWithProjects {
   id: string;
@@ -152,30 +153,28 @@ export function DevelopersHubClient({
                 className="group overflow-hidden hover:shadow-xl transition-all duration-300"
               >
                 {/* Banner Image Header */}
-                {bannerImage && (
-                  <div className="relative h-40 w-full overflow-hidden">
-                    <Image
-                      src={bannerImage}
-                      alt={`${developer.developer_name} banner`}
-                      fill
-                      className="object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
-                    {/* Logo overlapping banner and body */}
-                    {developer.logo_url && (
-                      <div className="absolute -bottom-10 left-6 z-10">
-                        <div className="relative h-20 w-20 rounded-full bg-white p-2 shadow-lg border-4 border-white">
-                          <Image
-                            src={developer.logo_url}
-                            alt={`${developer.developer_name} logo`}
-                            fill
-                            className="object-contain rounded-full"
-                          />
-                        </div>
+                <div className="relative h-40 w-full overflow-hidden">
+                  <ImageWithFallback
+                    src={bannerImage}
+                    alt={`${developer.developer_name} banner`}
+                    fill
+                    className="object-cover group-hover:scale-105 transition-transform duration-500"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
+                  {/* Logo overlapping banner and body */}
+                  {developer.logo_url && (
+                    <div className="absolute -bottom-10 left-6 z-10">
+                      <div className="relative h-20 w-20 rounded-full bg-white p-2 shadow-lg border-4 border-white">
+                        <Image
+                          src={developer.logo_url}
+                          alt={`${developer.developer_name} logo`}
+                          fill
+                          className="object-contain rounded-full"
+                        />
                       </div>
-                    )}
-                  </div>
-                )}
+                    </div>
+                  )}
+                </div>
 
                 <CardContent className={`p-6 space-y-4 ${bannerImage ? "pt-16" : ""}`}>
                   {/* Header with Name and Verified Badge */}
