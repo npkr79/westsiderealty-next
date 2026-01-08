@@ -164,7 +164,7 @@ export default function TabbedSearch() {
           .from("projects")
           .select("id, project_name, url_slug, city:cities(url_slug), micro_market:micro_markets!projects_micromarket_id_fkey(url_slug)")
           .ilike("project_name", `%${query}%`)
-          .eq("is_published", true)
+          .or("status.ilike.published,status.ilike.%under construction%")
           .limit(5),
         supabase
           .from("developers")

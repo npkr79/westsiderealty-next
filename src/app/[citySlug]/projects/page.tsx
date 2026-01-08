@@ -91,12 +91,12 @@ export default async function CityProjectsPage({ params, searchParams }: PagePro
   let query = supabase
     .from("projects")
     .select(`
-      id, project_name, url_slug, hero_image_url, price_range_text, status, is_published,
+      id, project_name, url_slug, hero_image_url, price_range_text, status,
       micro_market:micro_markets!projects_micromarket_id_fkey(micro_market_name, url_slug),
       developer:developers(developer_name, url_slug)
     `)
     .eq("city_id", city.id)
-    .eq("is_published", true)
+    .or("status.ilike.published,status.ilike.%under construction%")
     .order("created_at", { ascending: false });
 
   // Apply status filter

@@ -256,7 +256,7 @@ export const projectService = {
     // First, let's check if the project exists at all (without city filter) for debugging
     const { data: debugProject, error: debugError } = await supabase
       .from('projects')
-      .select('id, project_name, url_slug, city_id, is_published, status, page_status, micro_market_id, developer_id, city:cities(id, url_slug)')
+      .select('id, project_name, url_slug, city_id, status, page_status, micro_market_id, developer_id, city:cities(id, url_slug)')
       .eq('url_slug', correctedSlug)
       .maybeSingle();
     
@@ -271,7 +271,6 @@ export const projectService = {
         city_id: debugProject.city_id,
         micro_market_id: debugProject.micro_market_id,
         developer_id: debugProject.developer_id,
-        is_published: debugProject.is_published,
         status: debugProject.status,
         page_status: debugProject.page_status,
         requested_city_id: cityData.id,
@@ -311,63 +310,50 @@ export const projectService = {
         return q;
       };
       
-      // Try with is_published first (most common case)
-      const query1 = buildQuery().eq('is_published', true);
+      // Try with status filters (published or under construction projects)
+      // Detail pages should show projects regardless of page_status (draft/published)
+      const query1 = buildQuery().or('status.ilike.published,status.ilike.%under construction%');
       const result1 = await query1.maybeSingle();
-      console.log(`[getCityLevelProjectBySlug] Query 1 (is_published=true):`, { 
+      console.log(`[getCityLevelProjectBySlug] Query 1 (status filters):`, { 
         slug: slugToTry, 
         found: !!result1.data,
         error: result1.error 
       });
       if (result1.data) return result1.data;
       
-      // Try with status filters (broader match) - NO page_status filter for detail pages
-      // Detail pages should show projects regardless of page_status (draft/published)
-      const query2 = buildQuery().or('status.ilike.published,status.ilike.%under construction%');
+      // Try without any status filters (fallback - includes everything, better than 404)
       const result2 = await query2.maybeSingle();
-      console.log(`[getCityLevelProjectBySlug] Query 2 (status filters, NO page_status):`, { 
+      console.log(`[getCityLevelProjectBySlug] Query 2 (no status filters):`, { 
         slug: slugToTry, 
         found: !!result2.data,
-        error: result2.error 
-      });
-      if (result2.data) return result2.data;
-      
-      // Try without any status/published filters (fallback - includes everything, better than 404)
-      const query3 = buildQuery();
-      const result3 = await query3.maybeSingle();
-      console.log(`[getCityLevelProjectBySlug] Query 3 (no status filters):`, { 
-        slug: slugToTry, 
-        found: !!result3.data,
-        error: result3.error,
-        errorDetails: result3.error ? JSON.stringify(result3.error, null, 2) : null,
-        data: result3.data ? {
-          name: (result3.data as any).project_name,
-          is_published: (result3.data as any).is_published,
-          status: (result3.data as any).status,
-          page_status: (result3.data as any).page_status,
-          city_id: (result3.data as any).city_id
+        error: result2.error,
+        errorDetails: result2.error ? JSON.stringify(result2.error, null, 2) : null,
+        data: result2.data ? {
+          name: (result2.data as any).project_name,
+          status: (result2.data as any).status,
+          page_status: (result2.data as any).page_status,
+          city_id: (result2.data as any).city_id
         } : null
       });
       
-      // If Query 3 failed with an error, log it but don't return null yet
-      if (result3.error) {
-        console.error(`[getCityLevelProjectBySlug] Query 3 error for ${slugToTry}:`, result3.error);
+      // If Query 2 failed with an error, log it but don't return null yet
+      if (result2.error) {
+        console.error(`[getCityLevelProjectBySlug] Query 2 error for ${slugToTry}:`, result2.error);
       }
       
-      if (result3.data) {
-        console.warn(`[getCityLevelProjectBySlug] Found project but it may not be published: ${(result3.data as any).project_name}`, {
-          is_published: (result3.data as any).is_published,
-          status: (result3.data as any).status,
-          page_status: (result3.data as any).page_status
+      if (result2.data) {
+        console.warn(`[getCityLevelProjectBySlug] Found project but it may not be published: ${(result2.data as any).project_name}`, {
+          status: (result2.data as any).status,
+          page_status: (result2.data as any).page_status
         });
-        return result3.data;
+        return result2.data;
       }
       
       // If we still don't have data, log what we tried
       console.error(`[getCityLevelProjectBySlug] All queries failed for ${slugToTry}`, {
         skipCityCheck,
         cityId: cityData?.id,
-        queriesAttempted: ['is_published=true', 'status filters', 'no filters']
+        queriesAttempted: ['status filters', 'no filters']
       });
       
       return null;
@@ -442,9 +428,9 @@ export const projectService = {
             micro_market:micro_markets!projects_micromarket_id_fkey(*)
           `)
           .eq('city_id', cityData.id)
-          .ilike('project_name', `%${projectNameFromSlug.split(' ').slice(0, 2).join(' ')}%`)
-          .eq('is_published', true)
-          .limit(5)
+        .ilike('project_name', `%${projectNameFromSlug.split(' ').slice(0, 2).join(' ')}%`)
+        .or('status.ilike.published,status.ilike.%under construction%')
+        .limit(5)
           .maybeSingle();
         
         if (nameMatchData) {
