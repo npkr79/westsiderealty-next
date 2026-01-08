@@ -18,7 +18,12 @@ export default function DeveloperProjectCard({
     return null;
   }
   
-  const defaultCitySlug = citySlug || project.city_slug || 'hyderabad';
+  // Guard against undefined citySlug - try multiple sources
+  const defaultCitySlug = citySlug || project.city_slug || project.city?.url_slug || 'hyderabad';
+  if (!defaultCitySlug) {
+    return null;
+  }
+  
   // Use canonical project URL: /citySlug/projects/projectSlug
   const projectHref = `/${defaultCitySlug}/projects/${project.url_slug}`;
   

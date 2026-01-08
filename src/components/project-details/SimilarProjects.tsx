@@ -79,9 +79,11 @@ export default function SimilarProjects({
         {projects.map((project) => {
           if (!project.url_slug) return null;
 
-          const projectCitySlug = project.city?.url_slug || citySlug;
+          const projectCitySlug = project.city?.url_slug || citySlug || 'hyderabad';
           // Always use city-level project route: /citySlug/projects/projectSlug
           // The micro-market route redirects to city-level anyway
+          // Guard against undefined citySlug
+          if (!projectCitySlug) return null;
           const href = `/${projectCitySlug}/projects/${project.url_slug}`;
 
           return (

@@ -313,7 +313,7 @@ export default async function ProjectsHubPage({ searchParams }: PageProps) {
                       ...project,
                       city: project.city || { city_name: "Unknown", url_slug: "" },
                     }}
-                    citySlug={project.city?.url_slug || ""}
+                    citySlug={project.city?.url_slug || project.citySlug || "hyderabad"}
                   />
                 ))}
               </div>

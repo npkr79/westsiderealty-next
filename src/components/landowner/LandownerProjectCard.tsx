@@ -11,6 +11,11 @@ interface Props {
 }
 
 export function LandownerProjectCard({ project }: Props) {
+  // Guard against undefined url_slug
+  if (!project.url_slug) {
+    return null;
+  }
+  
   const citySlug = project.city?.url_slug || "hyderabad";
   
   // Construct project URL - use standard project route

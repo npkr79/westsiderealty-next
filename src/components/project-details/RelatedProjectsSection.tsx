@@ -76,7 +76,11 @@ export default function RelatedProjectsSection({
             return null;
           }
           
-          const projectCitySlug = project?.city?.url_slug || citySlug;
+          const projectCitySlug = project?.city?.url_slug || citySlug || 'hyderabad';
+          // Guard against undefined citySlug
+          if (!projectCitySlug) {
+            return null;
+          }
           const href = `/${projectCitySlug}/projects/${project.url_slug}`;
 
           return (

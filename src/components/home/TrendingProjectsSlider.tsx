@@ -272,7 +272,14 @@ export default function TrendingProjectsSlider() {
                 } else if (projectName.includes("aerocidade")) {
                   projectUrl = "/landing/aerocidade-studio-apartments-dabolim";
                 } else if (project.source === "project") {
-                  projectUrl = `/${project.city_slug}/projects/${project.slug}`;
+                  // Guard against undefined city_slug or slug
+                  const citySlug = project.city_slug || 'hyderabad';
+                  const slug = project.slug;
+                  if (!slug) {
+                    projectUrl = `/landing/${project.slug}`;
+                  } else {
+                    projectUrl = `/${citySlug}/projects/${slug}`;
+                  }
                 } else {
                   projectUrl = `/landing/${project.slug}`;
                 }

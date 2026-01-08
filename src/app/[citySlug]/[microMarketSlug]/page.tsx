@@ -822,20 +822,23 @@ export default async function MicroMarketPage({ params }: PageProps) {
                       </TableHeader>
                       <TableBody>
                         {(microMarketProjects ?? [])
-                          .filter((project: any) => project != null && project !== undefined)
-                          .map((project: any) => (
+                          .filter((project: any) => project != null && project !== undefined && project?.url_slug)
+                          .map((project: any) => {
+                            // Guard against undefined citySlug
+                            const validCitySlug = citySlug || project.city?.url_slug || 'hyderabad';
+                            if (!validCitySlug || !project.url_slug) {
+                              return null;
+                            }
+                            
+                            return (
                           <TableRow key={project?.id || Math.random()}>
                             <TableCell>
-                              {project?.url_slug ? (
-                                <Link
-                                  href={`/${citySlug}/projects/${project.url_slug}`}
-                                  className="font-medium text-primary underline decoration-primary/50 underline-offset-2 hover:decoration-primary hover:text-primary transition-colors"
-                                >
+                              <Link
+                                href={`/${validCitySlug}/projects/${project.url_slug}`}
+                                className="font-medium text-primary underline decoration-primary/50 underline-offset-2 hover:decoration-primary hover:text-primary transition-colors"
+                              >
                                   {project?.project_name || "Project"}
                                 </Link>
-                              ) : (
-                                <span className="font-medium">{project?.project_name || "Project"}</span>
-                              )}
                             </TableCell>
                             <TableCell>{project?.unit_size_range || "—"}</TableCell>
                             <TableCell>
@@ -854,7 +857,8 @@ export default async function MicroMarketPage({ params }: PageProps) {
                               {project?.price_range_text || "Enquire for Price"}
                             </TableCell>
                           </TableRow>
-                        ))}
+                          );
+                          })}
                       </TableBody>
                     </Table>
                   </div>

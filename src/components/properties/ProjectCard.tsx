@@ -29,10 +29,13 @@ export default function ProjectCard({ project, citySlug }: ProjectCardProps) {
     );
   }
   
+  // Guard against undefined citySlug
+  const validCitySlug = citySlug || project.city?.url_slug || 'hyderabad';
+  
   // For Goa properties, use /goa/buy/ URL format
   const href = (project as any)._isGoaProperty 
     ? `/goa/buy/${project.url_slug}`
-    : `/${citySlug}/projects/${project.url_slug}`;
+    : `/${validCitySlug}/projects/${project.url_slug}`;
   
   // Get primary image - use parseJsonb to safely extract from gallery_images_json
   // Parse gallery_images_json if it exists

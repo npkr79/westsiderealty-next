@@ -422,11 +422,18 @@ export default async function DeveloperPage({ params }: PageProps) {
                       Projects by {developer.developer_name}
                     </h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {projects.filter((p: any) => p && p.id && p.project_name).map((project: any) => (
+                      {projects.filter((p: any) => p && p.id && p.project_name && p.url_slug).map((project: any) => {
+                        // Guard against undefined city slug
+                        const projectCitySlug = project.city?.url_slug || 'hyderabad';
+                        if (!projectCitySlug || !project.url_slug) {
+                          return null;
+                        }
+                        
+                        return (
                         <div key={project.id} className="border rounded-lg p-4 hover:shadow-lg transition-shadow">
                           <h3 className="text-xl font-semibold text-heading-blue mb-2">
                             <Link 
-                              href={`/${project.city?.url_slug || 'hyderabad'}/projects/${project.url_slug || ''}`}
+                              href={`/${projectCitySlug}/projects/${project.url_slug}`}
                               className="hover:underline"
                             >
                               {project.project_name || 'Project'}
@@ -449,7 +456,8 @@ export default async function DeveloperPage({ params }: PageProps) {
                             </p>
                           )}
                         </div>
-                      ))}
+                      );
+                      })}
                     </div>
                   </CardContent>
                 </Card>
