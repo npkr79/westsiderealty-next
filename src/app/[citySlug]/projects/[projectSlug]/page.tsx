@@ -30,7 +30,6 @@ import ProjectLeadForm from "@/components/project-details/ProjectLeadForm";
 import AboutDeveloperSection from "@/components/project-details/AboutDeveloperSection";
 import AboutMicroMarketSection from "@/components/project-details/AboutMicroMarketSection";
 import ProjectHighlights from "@/components/project-details/ProjectHighlights";
-import ProjectStickyCard from "@/components/project-details/ProjectStickyCard";
 import DebugClient from "./DebugClient";
 
 interface PageProps {
