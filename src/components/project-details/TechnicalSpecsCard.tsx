@@ -56,7 +56,7 @@ export default function TechnicalSpecsCard({ projectSnapshot }: TechnicalSpecsCa
     ];
 
     specs = commonFields
-      .map(field => {
+      .map((field): SpecItem | null => {
         const value = projectSnapshot[field.key] || projectSnapshot[field.key.toLowerCase()];
         if (!value) return null;
         return {
