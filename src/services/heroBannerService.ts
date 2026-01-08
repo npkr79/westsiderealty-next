@@ -34,7 +34,8 @@ export interface HeroBannerOffer {
  */
 export const heroBannerService = {
   /**
-   * Fetch active hero banner offers ordered by display_order (max 3)
+   * Fetch all active hero banner offers ordered by display_order
+   * Returns all rows where is_active = true (no limit)
    */
   async getActiveOffers(): Promise<HeroBannerOffer[]> {
     const supabase = createClient();
