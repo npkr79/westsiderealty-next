@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { ProjectWithRelations } from "@/services/projectService";
 import ImageWithFallback from "@/components/common/ImageWithFallback";
+import { parseJsonb, asArray } from "@/lib/parse-jsonb";
 
 interface ProjectCardProps {
   project: ProjectWithRelations | any;
@@ -32,12 +33,19 @@ export default function ProjectCard({ project, citySlug }: ProjectCardProps) {
   const href = (project as any)._isGoaProperty 
     ? `/goa/buy/${project.url_slug}`
     : `/${citySlug}/projects/${project.url_slug}`;
-  // Get primary image - return null instead of placeholder so ImageWithFallback uses agency logo
+  
+  // Get primary image - use parseJsonb to safely extract from gallery_images_json
+  // Parse gallery_images_json if it exists
+  const galleryImagesJson = parseJsonb((project as any).gallery_images_json, []);
+  const galleryImages = asArray<string | { url?: string; image_url?: string; src?: string }>(galleryImagesJson);
+  const galleryFirstImage = galleryImages.length > 0
+    ? (typeof galleryImages[0] === 'string' 
+        ? galleryImages[0] 
+        : galleryImages[0]?.url || galleryImages[0]?.image_url || galleryImages[0]?.src || null)
+    : null;
+  
+  // Priority: hero_image_url > main_image_url > first gallery image
   const imageUrl = project.hero_image_url || project.main_image_url || null;
-  // Also check gallery if needed
-  const galleryFirstImage = (project as any).gallery_images_json?.[0] || 
-                            (project as any).gallery_images?.[0] || 
-                            (project as any).images?.[0] || null;
   const image = imageUrl || galleryFirstImage || null;
   const isFeatured = project.is_featured || project.show_on_city_page;
   const developerName = project.developer?.developer_name;

@@ -80,9 +80,9 @@ export default function SimilarProjects({
           if (!project.url_slug) return null;
 
           const projectCitySlug = project.city?.url_slug || citySlug;
-          const href = microMarketSlug && project.micro_market?.url_slug === microMarketSlug
-            ? `/${projectCitySlug}/${microMarketSlug}/projects/${project.url_slug}`
-            : `/${projectCitySlug}/projects/${project.url_slug}`;
+          // Always use city-level project route: /citySlug/projects/projectSlug
+          // The micro-market route redirects to city-level anyway
+          const href = `/${projectCitySlug}/projects/${project.url_slug}`;
 
           return (
             <Link

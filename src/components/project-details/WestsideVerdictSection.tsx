@@ -18,13 +18,15 @@ export default function WestsideVerdictSection({ review }: WestsideVerdictSectio
             </div>
           </div>
           <div className="flex-1">
-            <div className="flex items-center gap-2 mb-2">
-              <h3 className="text-lg font-bold text-foreground">Westside Realty Verdict</h3>
-              <span className="text-xs text-muted-foreground">Expert Review</span>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="bg-primary text-primary-foreground px-3 py-1.5 rounded-md font-semibold text-sm">
+                Westside Realty Verdict
+              </div>
+              <span className="text-sm text-muted-foreground">Expert Review</span>
             </div>
             <div className="prose prose-sm max-w-none text-foreground">
               {typeof review === 'string' ? (
-                <p className="whitespace-pre-line">{review}</p>
+                <div className="whitespace-pre-line leading-relaxed">{review}</div>
               ) : (
                 <div dangerouslySetInnerHTML={{ __html: String(review) }} />
               )}

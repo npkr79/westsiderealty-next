@@ -50,10 +50,25 @@ export default function LocationAdvantages({ locationAdvantages, locationHighlig
   let items: LocationAdvantage[] = [];
 
   // Parse locationAdvantages - handle category/items structure
-  // JSONB from Supabase is already parsed, but handle string cases
-  const parsedAdvantages = typeof locationAdvantages === 'string' 
-    ? (() => { try { return JSON.parse(locationAdvantages); } catch { return locationAdvantages; } })()
-    : locationAdvantages;
+  // Use parseJsonb utility for consistent parsing
+  let parsedAdvantages: any = locationAdvantages;
+  
+  // If it's a string, parse it; if it's already an object/array, use as-is
+  if (typeof locationAdvantages === 'string') {
+    parsedAdvantages = parseJsonb(locationAdvantages, null);
+  } else if (locationAdvantages != null) {
+    parsedAdvantages = locationAdvantages;
+  }
+  
+  // Debug logging
+  if (process.env.NODE_ENV === 'development') {
+    console.log('[LocationAdvantages] Parsed data:', { 
+      original: locationAdvantages, 
+      parsed: parsedAdvantages, 
+      isArray: Array.isArray(parsedAdvantages),
+      isObject: typeof parsedAdvantages === 'object' && parsedAdvantages !== null && !Array.isArray(parsedAdvantages)
+    });
+  }
 
   if (parsedAdvantages) {
     if (Array.isArray(parsedAdvantages)) {
