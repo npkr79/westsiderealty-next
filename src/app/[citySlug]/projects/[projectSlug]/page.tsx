@@ -323,6 +323,16 @@ export default async function ProjectDetailPage({ params }: PageProps) {
   const amenities = parseJsonb((project as any).amenities_json, []);
   const specifications: any = parseJsonb((project as any).specifications_json, null);
   const floorPlansRaw = asArray<any>(parseJsonb((project as any).floor_plan_images, []));
+  
+  // Debug: Log floor plans to help troubleshoot
+  if (floorPlansRaw && floorPlansRaw.length > 0) {
+    console.log(`[Project Page] Floor plans found for ${project.project_name}:`, {
+      count: floorPlansRaw.length,
+      firstItem: floorPlansRaw[0],
+      rawType: typeof (project as any).floor_plan_images,
+    });
+  }
+  
   const locationAdvantages: any = parseJsonb((project as any).location_advantages_json, null);
   const investmentAnalysis = parseJsonb((project as any).investment_analysis_json, {});
   const projectHighlights: any = parseJsonb((project as any).project_highlights, null);
@@ -560,5 +570,5 @@ export default async function ProjectDetailPage({ params }: PageProps) {
   );
 }
 
-// Revalidate every 24 hours
-export const revalidate = 86400;
+// Revalidate every 60 seconds to allow database changes to reflect quickly
+export const revalidate = 60;

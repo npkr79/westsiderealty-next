@@ -9,9 +9,11 @@ interface RawFloorPlan {
   label?: string;
   title?: string;
   name?: string;
+  plan_name?: string;
   url?: string;
   image_url?: string;
   src?: string;
+  image?: string;
 }
 
 interface NormalizedFloorPlan {
@@ -28,28 +30,70 @@ export default function FloorPlansGallery({ floorPlanImages }: FloorPlansGallery
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
 
-  if (!floorPlanImages || !Array.isArray(floorPlanImages) || floorPlanImages.length === 0) {
+  // Handle various input formats: array, object, string, or null/undefined
+  const normalizeInput = (input: any): Array<string | RawFloorPlan> => {
+    if (!input) return [];
+    
+    // If it's already an array, return it
+    if (Array.isArray(input)) {
+      return input;
+    }
+    
+    // If it's a string, wrap it in an array
+    if (typeof input === "string") {
+      return [input];
+    }
+    
+    // If it's an object, try to extract array from common property names
+    if (typeof input === "object" && input !== null) {
+      // Check for common array property names
+      if (Array.isArray(input.plans)) return input.plans;
+      if (Array.isArray(input.images)) return input.images;
+      if (Array.isArray(input.floor_plans)) return input.floor_plans;
+      if (Array.isArray(input.floorPlans)) return input.floorPlans;
+      
+      // If object has url/image_url/src, treat as single floor plan
+      if (input.url || input.image_url || input.src) {
+        return [input];
+      }
+    }
+    
+    return [];
+  };
+
+  const normalizedInput = normalizeInput(floorPlanImages);
+  
+  if (!normalizedInput || normalizedInput.length === 0) {
     return null;
   }
 
-  const plans: NormalizedFloorPlan[] = (floorPlanImages as Array<string | RawFloorPlan>)
+  const plans: NormalizedFloorPlan[] = (normalizedInput as Array<string | RawFloorPlan>)
     .map((item, idx) => {
+      // Handle string URLs
       if (typeof item === "string") {
+        const trimmed = item.trim();
+        if (!trimmed) return null;
         return {
           label: `Floor Plan ${idx + 1}`,
-          url: item,
+          url: trimmed,
         };
       }
 
-      const url = item.url || item.image_url || item.src || "";
-      const label = item.label || item.title || item.name || `Floor Plan ${idx + 1}`;
+      // Handle object format
+      if (typeof item === "object" && item !== null) {
+        const url = item.url || item.image_url || item.src || item.image || "";
+        const label = item.label || item.title || item.name || item.plan_name || `Floor Plan ${idx + 1}`;
+        const trimmedUrl = typeof url === "string" ? url.trim() : "";
 
-      return url
-        ? {
-            label,
-            url,
-          }
-        : null;
+        return trimmedUrl
+          ? {
+              label,
+              url: trimmedUrl,
+            }
+          : null;
+      }
+
+      return null;
     })
     .filter((p): p is NormalizedFloorPlan => !!p && typeof p.url === "string" && p.url.trim() !== "");
 
