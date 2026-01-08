@@ -57,7 +57,9 @@ export default function ProjectDetailClientActions({
 
       {/* Mobile Actions */}
       <ProjectMobileActions
-        onWhatsApp={handleWhatsApp}
+        projectName={projectName}
+        whatsappNumber="919866085831"
+        phoneNumber="919866085831"
         onEnquire={() => setIsLeadFormOpen(true)}
       />
 
