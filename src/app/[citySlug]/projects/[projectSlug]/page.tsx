@@ -25,6 +25,7 @@ import ProjectFAQs from "@/components/project-details/ProjectFAQs";
 import SimilarProjects from "@/components/project-details/SimilarProjects";
 import ProjectStickySidebar from "@/components/project-details/ProjectStickySidebar";
 import ProjectMobileActions from "@/components/project-details/ProjectMobileActions";
+import ProjectStickyCard from "@/components/project-details/ProjectStickyCard";
 import ProjectLeadForm from "@/components/project-details/ProjectLeadForm";
 import AboutDeveloperSection from "@/components/project-details/AboutDeveloperSection";
 import AboutMicroMarketSection from "@/components/project-details/AboutMicroMarketSection";
