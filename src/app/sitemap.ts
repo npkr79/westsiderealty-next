@@ -76,7 +76,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       { url: `${baseUrl}/blog`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.7 },
       { url: `${baseUrl}/properties`, lastModified: new Date(), changeFrequency: "daily", priority: 0.9 },
       { url: `${baseUrl}/hyderabad/properties`, lastModified: new Date(), changeFrequency: "daily", priority: 0.9 },
-      { url: `${baseUrl}/privacy-policy`, lastModified: new Date(), changeFrequency: "yearly", priority: 0.3 }
+      { url: `${baseUrl}/privacy-policy`, lastModified: new Date(), changeFrequency: "yearly", priority: 0.3 },
+      { url: `${baseUrl}/sell-property`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.8 },
+      { url: `${baseUrl}/buying-requirement`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.8 },
+      { url: `${baseUrl}/hyderabad/landowner-investor-share-flats`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.7 }
     );
 
     // Cities and city-specific pages
@@ -86,7 +89,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         { url: `${baseUrl}/${c.url_slug}/projects`, lastModified: c.updated_at ? new Date(c.updated_at) : new Date(), changeFrequency: "daily", priority: 0.8 },
         { url: `${baseUrl}/${c.url_slug}/areas`, lastModified: c.updated_at ? new Date(c.updated_at) : new Date(), changeFrequency: "weekly", priority: 0.7 },
         { url: `${baseUrl}/${c.url_slug}/buy`, lastModified: c.updated_at ? new Date(c.updated_at) : new Date(), changeFrequency: "daily", priority: 0.9 },
-        { url: `${baseUrl}/${c.url_slug}/micro-markets`, lastModified: c.updated_at ? new Date(c.updated_at) : new Date(), changeFrequency: "weekly", priority: 0.8 }
+        { url: `${baseUrl}/${c.url_slug}/micro-markets`, lastModified: c.updated_at ? new Date(c.updated_at) : new Date(), changeFrequency: "weekly", priority: 0.8 },
+        { url: `${baseUrl}/${c.url_slug}/developers`, lastModified: c.updated_at ? new Date(c.updated_at) : new Date(), changeFrequency: "weekly", priority: 0.7 }
       );
     });
 
