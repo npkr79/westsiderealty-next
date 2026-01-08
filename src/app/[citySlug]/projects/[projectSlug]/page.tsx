@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { buildMetadata } from "@/components/common/SEO";
 import { JsonLd } from "@/components/common/SEO";
 import { generateUnifiedSchema } from "@/lib/seo-utils";
-import { optimizeSupabaseImage } from "@/utils/imageOptimization";
+import { optimizeSupabaseImage, getHeroImageUrl } from "@/utils/imageOptimization";
 import CityHubBacklink from "@/components/seo/CityHubBacklink";
 import BreadcrumbNav from "@/components/layout/BreadcrumbNav";
 import { getProjectImageUrls } from "@/lib/project-images";
@@ -318,14 +318,23 @@ export default async function ProjectDetailPage({ params }: PageProps) {
     ],
   });
 
-  // Parse JSON fields safely (faqs already parsed above for schema)
-  const technicalSpecs = safeJsonParse((project as any).project_snapshot_json, []);
-  const amenities = safeJsonParse((project as any).amenities_json, []);
-  const specifications = safeJsonParse((project as any).specifications_json, []);
-  const floorPlans = safeJsonParse((project as any).floor_plan_images, []);
-  const locationAdvantages = safeJsonParse((project as any).location_advantages_json, null);
-  const investmentAnalysis = safeJsonParse((project as any).investment_analysis_json, {});
-  const projectHighlights = safeJsonParse((project as any).project_highlights, null);
+  // Parse JSON fields safely (JSONB fields from Supabase are already parsed, but handle string cases)
+  // Only parse if it's a string, otherwise use as-is
+  const parseJsonbField = <T,>(value: any, fallback: T): T => {
+    if (value === null || value === undefined) return fallback;
+    if (typeof value === 'string') {
+      return safeJsonParse(value, fallback);
+    }
+    return value as T;
+  };
+
+  const technicalSpecs = parseJsonbField((project as any).project_snapshot_json, []);
+  const amenities = parseJsonbField((project as any).amenities_json, []);
+  const specifications = parseJsonbField((project as any).specifications_json, null);
+  const floorPlans = parseJsonbField((project as any).floor_plan_images, []);
+  const locationAdvantages = parseJsonbField((project as any).location_advantages_json, null);
+  const investmentAnalysis = parseJsonbField((project as any).investment_analysis_json, {});
+  const projectHighlights = parseJsonbField((project as any).project_highlights, null);
   const faqs = faqsRaw; // Reuse the already parsed FAQs
   const galleryImages = getProjectImageUrls(project);
 
@@ -368,7 +377,7 @@ export default async function ProjectDetailPage({ params }: PageProps) {
             <div className="space-y-8">
               {/* 1. Hero Image */}
               <ProjectHeroImage
-                heroImageUrl={project.hero_image_url}
+                heroImageUrl={project.hero_image_url ? getHeroImageUrl(project.hero_image_url) : null}
                 galleryImages={galleryImages}
               />
 

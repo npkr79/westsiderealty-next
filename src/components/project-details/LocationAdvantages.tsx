@@ -50,13 +50,18 @@ export default function LocationAdvantages({ locationAdvantages, locationHighlig
   let items: LocationAdvantage[] = [];
 
   // Parse locationAdvantages - handle category/items structure
-  if (locationAdvantages) {
-    if (Array.isArray(locationAdvantages)) {
+  // JSONB from Supabase is already parsed, but handle string cases
+  const parsedAdvantages = typeof locationAdvantages === 'string' 
+    ? (() => { try { return JSON.parse(locationAdvantages); } catch { return locationAdvantages; } })()
+    : locationAdvantages;
+
+  if (parsedAdvantages) {
+    if (Array.isArray(parsedAdvantages)) {
       // Check if it's an array of categories with items
-      const firstItem = locationAdvantages[0];
+      const firstItem = parsedAdvantages[0];
       if (firstItem && typeof firstItem === 'object' && firstItem.category && Array.isArray(firstItem.items)) {
         // Structure: [{category: "Schools", items: [{name: "...", distance: "..."}]}]
-        items = locationAdvantages.flatMap((cat: any) => {
+        items = parsedAdvantages.flatMap((cat: any) => {
           if (cat.category && Array.isArray(cat.items)) {
             return cat.items.map((item: any) => ({
               name: typeof item === 'string' 
@@ -71,7 +76,7 @@ export default function LocationAdvantages({ locationAdvantages, locationHighlig
         });
       } else {
         // Simple array of items
-        items = locationAdvantages.map((item: any) => {
+        items = parsedAdvantages.map((item: any) => {
           let name: string;
           let distance: string | undefined;
           let time: string | undefined;
@@ -130,9 +135,9 @@ export default function LocationAdvantages({ locationAdvantages, locationHighlig
         });
       }
       items = items.filter(item => item.name && item.name !== 'undefined' && item.name !== 'null' && item.name !== '[object Object]');
-    } else if (typeof locationAdvantages === 'object') {
+    } else if (typeof parsedAdvantages === 'object' && parsedAdvantages !== null) {
       // Handle object format: {category: {items: [...]}} or {key: value}
-      items = Object.entries(locationAdvantages).flatMap(([key, value]: [string, any]) => {
+      items = Object.entries(parsedAdvantages).flatMap(([key, value]: [string, any]) => {
         // If value has items array, it's a category structure
         if (value && typeof value === 'object' && Array.isArray(value.items)) {
           return value.items.map((item: any) => ({

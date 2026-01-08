@@ -12,24 +12,41 @@ interface AmenitiesCardProps {
 // Common amenity icons (emoji fallback)
 const amenityIconMap: Record<string, string> = {
   swimming: "🏊",
+  pool: "🏊",
+  infinity: "🏊",
   gym: "💪",
+  fitness: "💪",
   park: "🌳",
   security: "🔒",
   parking: "🅿️",
   lift: "🛗",
   clubhouse: "🏛️",
+  rooftop: "🏛️",
   play: "🎯",
   garden: "🌿",
-  pool: "🏊‍♀️",
   gymnasium: "💪",
   sports: "⚽",
+  cricket: "🏏",
   jogging: "🏃",
   library: "📚",
   spa: "💆",
   restaurant: "🍽️",
   shopping: "🛒",
   medical: "🏥",
+  hospital: "🏥",
   school: "🏫",
+  lounge: "🍸",
+  sky: "☁️",
+  amphitheater: "🎭",
+  amphitheatre: "🎭",
+  theatre: "🎬",
+  theater: "🎬",
+  mini: "🎬",
+  smart: "🏠",
+  automation: "🏠",
+  ev: "🔌",
+  charging: "🔌",
+  station: "🔌",
 };
 
 function getAmenityIcon(name: string): string {
@@ -45,23 +62,41 @@ function getAmenityIcon(name: string): string {
 export default function AmenitiesCard({ amenities }: AmenitiesCardProps) {
   if (!amenities) return null;
 
+  // Parse if it's a string (JSONB from Supabase is already parsed)
+  const parsed = typeof amenities === 'string' ? JSON.parse(amenities) : amenities;
+
   let items: Amenity[] = [];
 
-  if (Array.isArray(amenities)) {
-    items = amenities.map((item: any) => {
+  if (Array.isArray(parsed)) {
+    items = parsed.map((item: any) => {
       if (typeof item === 'string') {
         return { name: item, icon: getAmenityIcon(item) };
       }
+      const name = item.name || item.label || item.title || String(item);
       return {
-        name: item.name || item.label || item,
-        icon: item.icon || getAmenityIcon(item.name || item.label || String(item)),
+        name: name,
+        icon: item.icon || item.emoji || getAmenityIcon(name),
       };
     });
-  } else if (typeof amenities === 'object' && amenities.items && Array.isArray(amenities.items)) {
-    items = amenities.items.map((item: any) => ({
-      name: typeof item === 'string' ? item : item.name || item.label,
-      icon: typeof item === 'string' ? getAmenityIcon(item) : (item.icon || getAmenityIcon(item.name || item.label)),
-    }));
+  } else if (typeof parsed === 'object' && parsed !== null) {
+    if (Array.isArray(parsed.items)) {
+      items = parsed.items.map((item: any) => {
+        const name = typeof item === 'string' ? item : (item.name || item.label || item.title);
+        return {
+          name: name,
+          icon: typeof item === 'string' ? getAmenityIcon(item) : (item.icon || item.emoji || getAmenityIcon(name)),
+        };
+      });
+    } else {
+      // Convert object to array
+      items = Object.entries(parsed).map(([key, value]) => {
+        const name = typeof value === 'string' ? value : key;
+        return {
+          name: name,
+          icon: getAmenityIcon(name),
+        };
+      });
+    }
   }
 
   if (items.length === 0) return null;

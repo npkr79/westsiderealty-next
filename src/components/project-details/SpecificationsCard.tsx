@@ -13,8 +13,8 @@ interface SpecificationsCardProps {
 export default function SpecificationsCard({ specifications }: SpecificationsCardProps) {
   if (!specifications) return null;
 
-  // Parse if it's a string
-  const parsed = safeJsonParse(specifications, specifications);
+  // Parse if it's a string (JSONB from Supabase is already parsed)
+  const parsed = typeof specifications === 'string' ? safeJsonParse(specifications, specifications) : specifications;
   
   let entries: Specification[] = [];
 
