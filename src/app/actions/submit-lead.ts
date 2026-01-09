@@ -53,8 +53,16 @@ export async function submitLead(formData: SubmitLeadData): Promise<SubmitLeadRe
     // Get Supabase client
     const supabase = await createClient();
 
-    // Prepare data for insertion
-    const insertData = {
+    // Prepare data for insertion - ONLY include fields that exist in the leads table
+    // Explicitly exclude any agent_id or other fields that might cause trigger errors
+    const insertData: {
+      name: string;
+      phone: string;
+      email: string | null;
+      type: string;
+      source_page: string;
+      details: Record<string, any>;
+    } = {
       name: formData.name.trim(),
       phone: normalizedPhone,
       email: formData.email?.trim() || null,
@@ -63,11 +71,54 @@ export async function submitLead(formData: SubmitLeadData): Promise<SubmitLeadRe
       details: formData.details || {},
     };
 
-    // Insert into leads table
-    const { error } = await supabase.from("leads").insert(insertData);
+    // Log the insert payload for debugging (excluding sensitive data)
+    console.log("Inserting lead with payload:", {
+      ...insertData,
+      phone: "***", // Mask phone for privacy
+      email: insertData.email ? "***" : null,
+    });
+
+    // Insert into leads table with explicit error handling
+    let error: any = null;
+    try {
+      const { error: insertError } = await supabase.from("leads").insert(insertData);
+      error = insertError;
+    } catch (dbError: any) {
+      // Catch any unexpected errors during the insert operation
+      console.error("Unexpected error during Supabase insert:", {
+        error: dbError,
+        message: dbError?.message,
+        code: dbError?.code,
+        details: dbError?.details,
+        hint: dbError?.hint,
+        stack: dbError?.stack,
+      });
+      return {
+        success: false,
+        error: dbError?.message || "Database error occurred. Please try again.",
+      };
+    }
 
     if (error) {
-      console.error("Error submitting lead to Supabase:", error);
+      // Enhanced error logging for database/trigger errors
+      console.error("Supabase insert error - Full error object:", {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint,
+        // PostgreSQL error codes:
+        // 42703 = undefined_column
+        // P0001 = raise_exception (trigger error)
+      });
+
+      // Check if this is a trigger-related error
+      if (error.message?.includes("has no field") || error.message?.includes("agent_id")) {
+        return {
+          success: false,
+          error: "Database configuration error detected. Please contact support.",
+        };
+      }
+
       return {
         success: false,
         error: error.message || "Failed to submit lead. Please try again.",
