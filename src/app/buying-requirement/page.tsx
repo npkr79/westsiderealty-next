@@ -100,8 +100,8 @@ export default function BuyingRequirementPage() {
       }
 
       toast({
-        title: "Thank you!",
-        description: "Our team will find the best matches for you and contact you soon.",
+        title: "Request Received!",
+        description: "We are scanning our network for properties that match your needs.",
       });
 
       // Reset form

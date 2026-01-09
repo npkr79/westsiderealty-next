@@ -84,8 +84,8 @@ export default function SellPropertyPage() {
       }
 
       toast({
-        title: "Thank you!",
-        description: "We'll contact you soon with your property valuation and buyer list.",
+        title: "Thanks!",
+        description: "We have received your property details. Our valuation expert will call you shortly.",
       });
 
       // Reset form

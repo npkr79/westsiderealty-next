@@ -61,8 +61,8 @@ export default function AerocidadeHero({ data }: AerocidadeHeroProps) {
       }
 
       toast({
-        title: "Thank you!",
-        description: "Our team will contact you shortly.",
+        title: "Interest Registered!",
+        description: `A sales representative for ${data.projectName} will contact you soon.`,
       });
 
       setFormData({ name: "", phone: "", email: "" });

@@ -70,8 +70,8 @@ export default function ProjectLeadForm({ projectName, projectId, developerName,
       }
 
       toast({
-        title: "Thank you!",
-        description: brochureUrl ? "Brochure downloading..." : "Our team will contact you shortly.",
+        title: "Interest Registered!",
+        description: `A sales representative for ${projectName} will contact you soon.${brochureUrl ? " Brochure downloading..." : ""}`,
       });
 
       // Trigger brochure download if available

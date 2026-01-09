@@ -55,8 +55,8 @@ export default function GoaLeadForm({ landingPage }: GoaLeadFormProps) {
       }
 
       toast({
-        title: "Thank you!",
-        description: "Our team will contact you shortly.",
+        title: "Interest Registered!",
+        description: `A sales representative for ${landingPage.title} will contact you soon.`,
       });
 
       setSubmitted(true);

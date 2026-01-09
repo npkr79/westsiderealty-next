@@ -215,6 +215,7 @@ export default function PropertyDetailsClient({
             <ContactForm 
               propertyId={property.id} 
               agentId={property.agent_id || 'default-agent-id'}
+              projectName={property.title || property.project_name || property.name}
             />
           </div>
         </div>

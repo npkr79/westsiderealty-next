@@ -14,9 +14,10 @@ import { submitLead } from "@/app/actions/submit-lead";
 interface ContactFormProps {
   propertyId?: string;
   agentId?: string;
+  projectName?: string; // For project inquiry forms
 }
 
-export default function ContactForm({ propertyId, agentId }: ContactFormProps = {}) {
+export default function ContactForm({ propertyId, agentId, projectName }: ContactFormProps = {}) {
   const [contactInfo, setContactInfo] = useState<any>({});
   const [formData, setFormData] = useState({
     name: "",
@@ -30,7 +31,22 @@ export default function ContactForm({ propertyId, agentId }: ContactFormProps = 
 
   useEffect(() => {
     setContactInfo(contactService.getContactInfo());
-  }, []);
+    
+    // If this is a project inquiry form (propertyId exists), pre-fill the message
+    if (propertyId) {
+      // Use provided projectName, or try to get from page title, or use fallback
+      let nameToUse = projectName;
+      if (!nameToUse && typeof window !== "undefined") {
+        const pageTitle = document.title;
+        nameToUse = pageTitle.split("|")[0]?.trim() || pageTitle.split("-")[0]?.trim() || null;
+      }
+      const finalProjectName = nameToUse || "this project";
+      setFormData(prev => ({
+        ...prev,
+        message: `I am interested in ${finalProjectName}. Please share more details.`,
+      }));
+    }
+  }, [propertyId]);
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -62,6 +78,7 @@ export default function ContactForm({ propertyId, agentId }: ContactFormProps = 
         interest: formData.interest,
         propertyId: propertyId || null,
         agentId: agentId || null,
+        projectName: projectName || (propertyId ? (typeof window !== "undefined" ? document.title.split("|")[0]?.trim() : null) : null),
         formType: propertyId ? "property_inquiry" : "contact_form",
       };
 
@@ -81,9 +98,20 @@ export default function ContactForm({ propertyId, agentId }: ContactFormProps = 
         throw new Error(result.error || "Failed to submit form");
       }
 
+      // Determine success message based on context
+      let successTitle = "Message Sent!";
+      let successDescription = "We will get back to you within 24 hours.";
+      
+      if (propertyId) {
+        // This is a project inquiry
+        const displayProjectName = projectName || "this project";
+        successTitle = "Interest Registered!";
+        successDescription = `A sales representative for ${displayProjectName} will contact you soon.`;
+      }
+
       toast({
-        title: "Message Sent Successfully!",
-        description: "Thank you for your inquiry. We'll get back to you within 24 hours.",
+        title: successTitle,
+        description: successDescription,
       });
 
       setFormData({
@@ -166,25 +194,28 @@ export default function ContactForm({ propertyId, agentId }: ContactFormProps = 
             />
           </div>
 
-          <div>
-            <label htmlFor="interest" className="block text-sm font-medium mb-2">
-              What are you looking for?
-            </label>
-            <select
-              id="interest"
-              name="interest"
-              value={formData.interest}
-              onChange={handleInputChange}
-              disabled={isSubmitting}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-remax-red focus:border-transparent disabled:opacity-50"
-            >
-              <option value="">Select your interest</option>
-              <option value="hyderabad-resale">Resale Properties in Hyderabad</option>
-              <option value="goa-investment">Investment Properties in Goa</option>
-              <option value="dubai-investment">Dubai Investment Properties</option>
-              <option value="general-consultation">General Consultation</option>
-            </select>
-          </div>
+          {/* Only show "What are you looking for?" dropdown if NOT a project inquiry */}
+          {!propertyId && (
+            <div>
+              <label htmlFor="interest" className="block text-sm font-medium mb-2">
+                What are you looking for?
+              </label>
+              <select
+                id="interest"
+                name="interest"
+                value={formData.interest}
+                onChange={handleInputChange}
+                disabled={isSubmitting}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-remax-red focus:border-transparent disabled:opacity-50"
+              >
+                <option value="">Select your interest</option>
+                <option value="hyderabad-resale">Properties in Hyderabad</option>
+                <option value="goa-investment">Investment Properties in Goa</option>
+                <option value="dubai-investment">Dubai Investment Properties</option>
+                <option value="general-consultation">General Consultation</option>
+              </select>
+            </div>
+          )}
 
           <div>
             <label htmlFor="message" className="block text-sm font-medium mb-2">
