@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { MessageSquare, Send, Loader2 } from "lucide-react";
+import { MessageSquare, Send, Loader2, CheckCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { contactService } from "@/services/admin/contactService";
 import { locationSettingsService } from "@/services/admin/locationSettingsService";
@@ -27,6 +27,7 @@ export default function ContactForm({ propertyId, agentId, projectName }: Contac
     interest: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -98,21 +99,8 @@ export default function ContactForm({ propertyId, agentId, projectName }: Contac
         throw new Error(result.error || "Failed to submit form");
       }
 
-      // Determine success message based on context
-      let successTitle = "Message Sent!";
-      let successDescription = "We will get back to you within 24 hours.";
-      
-      if (propertyId) {
-        // This is a project inquiry
-        const displayProjectName = projectName || "this project";
-        successTitle = "Interest Registered!";
-        successDescription = `A sales representative for ${displayProjectName} will contact you soon.`;
-      }
-
-      toast({
-        title: successTitle,
-        description: successDescription,
-      });
+      // Show success state
+      setIsSubmitted(true);
 
       setFormData({
         name: "",
@@ -144,6 +132,40 @@ export default function ContactForm({ propertyId, agentId, projectName }: Contac
         </CardTitle>
       </CardHeader>
       <CardContent>
+        {isSubmitted ? (
+          // Success Message
+          <div className="text-center py-8">
+            <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
+            {propertyId ? (
+              // Project Inquiry Success
+              <>
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                  Interest Registered!
+                </h2>
+                <p className="text-lg text-gray-700 mb-6">
+                  A sales representative for {projectName || "this project"} will contact you soon.
+                </p>
+              </>
+            ) : (
+              // General Contact Success
+              <>
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                  Message Sent!
+                </h2>
+                <p className="text-lg text-gray-700 mb-6">
+                  We will get back to you within 24 hours.
+                </p>
+              </>
+            )}
+            <Button
+              onClick={() => setIsSubmitted(false)}
+              variant="outline"
+              size="lg"
+            >
+              Send Another Message
+            </Button>
+          </div>
+        ) : (
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -247,6 +269,7 @@ export default function ContactForm({ propertyId, agentId, projectName }: Contac
             )}
           </Button>
         </form>
+        )}
       </CardContent>
     </Card>
   );

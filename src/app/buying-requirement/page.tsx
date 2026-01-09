@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Home, TrendingUp, Shield, Users, Phone, Mail, ArrowRight, Loader2 } from "lucide-react";
+import { Home, TrendingUp, Shield, Users, Phone, Mail, ArrowRight, Loader2, CheckCircle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,6 +44,7 @@ const purposeOptions = [
 export default function BuyingRequirementPage() {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
   const [formData, setFormData] = useState<BuyingRequirementFormData>({
     location: "",
     propertyTypes: [],
@@ -99,10 +100,8 @@ export default function BuyingRequirementPage() {
         throw new Error(result.error || "Failed to submit form");
       }
 
-      toast({
-        title: "Request Received!",
-        description: "We are scanning our network for properties that match your needs.",
-      });
+      // Show success state
+      setIsSubmitted(true);
 
       // Reset form
       setFormData({
@@ -136,6 +135,26 @@ export default function BuyingRequirementPage() {
           {/* Left: Form */}
           <Card className="shadow-xl">
             <CardContent className="p-8">
+              {isSubmitted ? (
+                // Success Message
+                <div className="text-center py-12">
+                  <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-6" />
+                  <h2 className="text-2xl font-bold text-gray-900 mb-4">
+                    Request Received!
+                  </h2>
+                  <p className="text-lg text-gray-700 mb-8">
+                    We are scanning our network for properties that match your needs.
+                  </p>
+                  <Button
+                    onClick={() => setIsSubmitted(false)}
+                    variant="outline"
+                    size="lg"
+                  >
+                    Submit Another Requirement
+                  </Button>
+                </div>
+              ) : (
+                <>
               <h1 className="text-3xl font-bold mb-2">Find Your Perfect Property</h1>
               <p className="text-muted-foreground mb-8">Tell us what you're looking for, and we'll match you with the best options.</p>
 
@@ -295,6 +314,8 @@ export default function BuyingRequirementPage() {
                   )}
                 </Button>
               </form>
+                </>
+              )}
             </CardContent>
           </Card>
 

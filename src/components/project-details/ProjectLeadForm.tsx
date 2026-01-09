@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Building2, Loader2 } from "lucide-react";
+import { Building2, Loader2, CheckCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { submitLead } from "@/app/actions/submit-lead";
 import { z } from "zod";
@@ -30,6 +30,7 @@ const leadSchema = z.object({
 export default function ProjectLeadForm({ projectName, projectId, developerName, developerLogo, inModal = false, brochureUrl }: ProjectLeadFormProps) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     phone: "",
@@ -69,10 +70,8 @@ export default function ProjectLeadForm({ projectName, projectId, developerName,
         throw new Error(result.error || "Failed to submit form");
       }
 
-      toast({
-        title: "Interest Registered!",
-        description: `A sales representative for ${projectName} will contact you soon.${brochureUrl ? " Brochure downloading..." : ""}`,
-      });
+      // Show success state
+      setIsSubmitted(true);
 
       // Trigger brochure download if available
       if (brochureUrl) {
@@ -103,7 +102,28 @@ export default function ProjectLeadForm({ projectName, projectId, developerName,
 
   // Render form content without Card wrapper when in modal
   const formContent = (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <>
+      {isSubmitted ? (
+        // Success Message
+        <div className="text-center py-8">
+          <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-gray-900 mb-2">
+            Interest Registered!
+          </h2>
+          <p className="text-base text-gray-700 mb-6">
+            A sales representative for {projectName} will contact you soon.
+            {brochureUrl && " Brochure downloading..."}
+          </p>
+          <Button
+            onClick={() => setIsSubmitted(false)}
+            variant="outline"
+            size="sm"
+          >
+            Submit Another
+          </Button>
+        </div>
+      ) : (
+        <form onSubmit={handleSubmit} className="space-y-4">
       <div className="space-y-2">
         <Label htmlFor="name">Name *</Label>
         <Input
@@ -158,6 +178,8 @@ export default function ProjectLeadForm({ projectName, projectId, developerName,
         )}
       </Button>
     </form>
+      )}
+    </>
   );
 
   if (inModal) {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Building2, Home, LandPlot, Store, Phone, Mail, ArrowRight, ArrowLeft, Check, Loader2 } from "lucide-react";
+import { Building2, Home, LandPlot, Store, Phone, Mail, ArrowRight, ArrowLeft, Check, Loader2, CheckCircle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,6 +34,7 @@ export default function SellPropertyPage() {
   const { toast } = useToast();
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
   const [formData, setFormData] = useState<SellPropertyFormData>({
     propertyType: null,
     location: "",
@@ -83,11 +84,9 @@ export default function SellPropertyPage() {
         throw new Error(result.error || "Failed to submit form");
       }
 
-      toast({
-        title: "Thanks!",
-        description: "We have received your property details. Our valuation expert will call you shortly.",
-      });
-
+      // Show success state
+      setIsSubmitted(true);
+      
       // Reset form
       setFormData({
         propertyType: null,
@@ -148,6 +147,29 @@ export default function SellPropertyPage() {
         {/* Form Card */}
         <Card className="shadow-xl">
           <CardContent className="p-8">
+            {isSubmitted ? (
+              // Success Message
+              <div className="text-center py-12">
+                <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-6" />
+                <h2 className="text-2xl font-bold text-gray-900 mb-4">
+                  Thanks!
+                </h2>
+                <p className="text-lg text-gray-700 mb-8">
+                  We have received your property details. Our valuation expert will call you shortly.
+                </p>
+                <Button
+                  onClick={() => {
+                    setIsSubmitted(false);
+                    setStep(1);
+                  }}
+                  variant="outline"
+                  size="lg"
+                >
+                  Submit Another Property
+                </Button>
+              </div>
+            ) : (
+              <>
             {/* Step 1: Property Type */}
             {step === 1 && (
               <div className="space-y-6">
@@ -345,6 +367,8 @@ export default function SellPropertyPage() {
                   </Button>
                 </div>
               </form>
+            )}
+              </>
             )}
           </CardContent>
         </Card>
