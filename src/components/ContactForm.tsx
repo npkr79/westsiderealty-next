@@ -35,10 +35,10 @@ export default function ContactForm({ propertyId, agentId, projectName }: Contac
     // If this is a project inquiry form (propertyId exists), pre-fill the message
     if (propertyId) {
       // Use provided projectName, or try to get from page title, or use fallback
-      let nameToUse = projectName;
+      let nameToUse: string | undefined = projectName;
       if (!nameToUse && typeof window !== "undefined") {
         const pageTitle = document.title;
-        nameToUse = pageTitle.split("|")[0]?.trim() || pageTitle.split("-")[0]?.trim() || null;
+        nameToUse = pageTitle.split("|")[0]?.trim() || pageTitle.split("-")[0]?.trim() || undefined;
       }
       const finalProjectName = nameToUse || "this project";
       setFormData(prev => ({
