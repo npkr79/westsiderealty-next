@@ -8,8 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Building2, Loader2 } from "lucide-react";
-import { landingPageLeadsService } from "@/services/admin/landingPageLeadsService";
 import { useToast } from "@/hooks/use-toast";
+import { submitLead } from "@/app/actions/submit-lead";
 import { z } from "zod";
 
 interface ProjectLeadFormProps {
@@ -45,19 +45,29 @@ export default function ProjectLeadForm({ projectName, projectId, developerName,
       const validated = leadSchema.parse(formData);
       setLoading(true);
 
-      // Submit to all_leads table for unified lead management
-      const { supabase } = await import('@/integrations/supabase/client');
-      const { error: insertError } = await supabase.from('all_leads').insert({
-        full_name: validated.name,
+      // Prepare details object
+      const details: Record<string, any> = {
+        projectName,
+        projectId,
+        developerName: developerName || null,
+        brochureUrl: brochureUrl || null,
+      };
+
+      // Get current page URL
+      const sourcePage = typeof window !== "undefined" ? window.location.href : `/projects/${projectId}`;
+
+      const result = await submitLead({
+        name: validated.name,
         phone: validated.phone,
         email: validated.email,
-        lead_type: 'project',
-        project_id: projectId,
-        source_page_url: window.location.href,
-        status: 'new',
+        type: "PROJECT_INTEREST",
+        source_page: sourcePage,
+        details,
       });
-      
-      if (insertError) throw insertError;
+
+      if (!result.success) {
+        throw new Error(result.error || "Failed to submit form");
+      }
 
       toast({
         title: "Thank you!",
@@ -82,7 +92,7 @@ export default function ProjectLeadForm({ projectName, projectId, developerName,
       } else {
         toast({
           title: "Error",
-          description: "Failed to submit. Please try again.",
+          description: error instanceof Error ? error.message : "Failed to submit. Please try again.",
           variant: "destructive",
         });
       }

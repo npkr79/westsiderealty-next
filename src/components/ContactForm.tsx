@@ -9,9 +9,7 @@ import { MessageSquare, Send, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { contactService } from "@/services/admin/contactService";
 import { locationSettingsService } from "@/services/admin/locationSettingsService";
-import { createClient } from "@/lib/supabase/client";
-
-const supabase = createClient();
+import { submitLead } from "@/app/actions/submit-lead";
 
 interface ContactFormProps {
   propertyId?: string;
@@ -49,21 +47,38 @@ export default function ContactForm({ propertyId, agentId }: ContactFormProps = 
     setIsSubmitting(true);
 
     try {
-      const { error } = await supabase.functions.invoke("send-contact-email", {
-        body: {
-          name: formData.name,
-          email: formData.email,
-          phone: formData.phone,
-          message: formData.message,
-          interest: formData.interest,
-          form_type: propertyId ? "property_inquiry" : "contact_form",
-          property_id: propertyId,
-          agent_id: agentId,
-        },
+      // Determine lead type based on context
+      let leadType: "GENERAL_CONTACT" | "PROJECT_INTEREST" | "DEVELOPER_INQUIRY" = "GENERAL_CONTACT";
+      if (propertyId) {
+        leadType = "PROJECT_INTEREST";
+      } else if (agentId) {
+        // If agentId is provided (could be developer), use developer inquiry
+        leadType = "DEVELOPER_INQUIRY";
+      }
+
+      // Prepare details object with all extra fields
+      const details: Record<string, any> = {
+        message: formData.message,
+        interest: formData.interest,
+        propertyId: propertyId || null,
+        agentId: agentId || null,
+        formType: propertyId ? "property_inquiry" : "contact_form",
+      };
+
+      // Get current page URL
+      const sourcePage = typeof window !== "undefined" ? window.location.pathname : "/contact";
+
+      const result = await submitLead({
+        name: formData.name,
+        phone: formData.phone,
+        email: formData.email || null,
+        type: leadType,
+        source_page: sourcePage,
+        details,
       });
 
-      if (error) {
-        throw error;
+      if (!result.success) {
+        throw new Error(result.error || "Failed to submit form");
       }
 
       toast({

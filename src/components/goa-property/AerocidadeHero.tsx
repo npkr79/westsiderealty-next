@@ -5,8 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Shield, MessageCircle } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { submitLead } from "@/app/actions/submit-lead";
 
 interface AerocidadeHeroProps {
   data: {
@@ -35,17 +35,30 @@ export default function AerocidadeHero({ data }: AerocidadeHeroProps) {
     setLoading(true);
 
     try {
-      const supabase = createClient();
-      const { error } = await supabase.from("all_leads").insert({
-        full_name: formData.name,
+      // Prepare details object
+      const details: Record<string, any> = {
+        projectName: data.projectName,
+        tagline: data.tagline,
+        headline: data.headline,
+      };
+
+      // Get current page URL
+      const sourcePage = typeof window !== "undefined" 
+        ? window.location.pathname 
+        : "/goa/aerocidade-studio-apartments-dabolim";
+
+      const result = await submitLead({
+        name: formData.name,
         phone: formData.phone,
-        email: formData.email,
-        lead_type: "goa_property",
-        source_page_url: "/goa/aerocidade-studio-apartments-dabolim",
-        status: "new",
+        email: formData.email || null,
+        type: "GOA_PROPERTY",
+        source_page: sourcePage,
+        details,
       });
 
-      if (error) throw error;
+      if (!result.success) {
+        throw new Error(result.error || "Failed to submit form");
+      }
 
       toast({
         title: "Thank you!",
@@ -53,11 +66,11 @@ export default function AerocidadeHero({ data }: AerocidadeHeroProps) {
       });
 
       setFormData({ name: "", phone: "", email: "" });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error submitting form:", error);
       toast({
         title: "Error",
-        description: "Failed to submit. Please try again.",
+        description: error?.message || "Failed to submit. Please try again.",
         variant: "destructive",
       });
     } finally {

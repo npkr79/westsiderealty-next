@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { Building2, Home, LandPlot, Store, Phone, Mail, ArrowRight, ArrowLeft, Check } from "lucide-react";
+import { Building2, Home, LandPlot, Store, Phone, Mail, ArrowRight, ArrowLeft, Check, Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
+import { submitLead } from "@/app/actions/submit-lead";
 
 type PropertyType = "apartment" | "villa" | "plot" | "commercial" | null;
 
@@ -29,7 +31,9 @@ const propertyTypes = [
 ];
 
 export default function SellPropertyPage() {
+  const { toast } = useToast();
   const [step, setStep] = useState(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState<SellPropertyFormData>({
     propertyType: null,
     location: "",
@@ -49,11 +53,63 @@ export default function SellPropertyPage() {
     setFormData({ ...formData, [field]: value });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Sell Property Form Data:", formData);
-    // Show success message or redirect
-    alert("Thank you! We'll contact you soon with your property valuation.");
+    setIsSubmitting(true);
+
+    try {
+      // Prepare details object with all extra fields
+      const details: Record<string, any> = {
+        propertyType: formData.propertyType,
+        location: formData.location,
+        configuration: formData.configuration,
+        expectedPrice: formData.expectedPrice,
+        additionalDetails: formData.additionalDetails,
+      };
+
+      // Get current page URL
+      const sourcePage = typeof window !== "undefined" ? window.location.pathname : "/sell-property";
+
+      const result = await submitLead({
+        name: formData.name,
+        phone: formData.phone,
+        email: formData.email || null,
+        type: "SELLER_VALUATION",
+        source_page: sourcePage,
+        details,
+      });
+
+      if (!result.success) {
+        throw new Error(result.error || "Failed to submit form");
+      }
+
+      toast({
+        title: "Thank you!",
+        description: "We'll contact you soon with your property valuation and buyer list.",
+      });
+
+      // Reset form
+      setFormData({
+        propertyType: null,
+        location: "",
+        configuration: "",
+        expectedPrice: "",
+        additionalDetails: "",
+        name: "",
+        phone: "",
+        email: "",
+      });
+      setStep(1);
+    } catch (error: any) {
+      console.error("Error submitting sell property form:", error);
+      toast({
+        title: "Error",
+        description: error?.message || "Failed to submit. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const canProceedStep1 = formData.propertyType !== null;
@@ -272,11 +328,20 @@ export default function SellPropertyPage() {
                   </Button>
                   <Button
                     type="submit"
-                    disabled={!canProceedStep3}
+                    disabled={!canProceedStep3 || isSubmitting}
                     size="lg"
                     className="min-w-[220px] bg-primary hover:bg-primary/90"
                   >
-                    Get Free Valuation & Buyer List <ArrowRight className="ml-2 w-4 h-4" />
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+                        Submitting...
+                      </>
+                    ) : (
+                      <>
+                        Get Free Valuation & Buyer List <ArrowRight className="ml-2 w-4 h-4" />
+                      </>
+                    )}
                   </Button>
                 </div>
               </form>

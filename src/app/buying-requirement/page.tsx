@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { Home, TrendingUp, Shield, Users, Phone, Mail, ArrowRight } from "lucide-react";
+import { Home, TrendingUp, Shield, Users, Phone, Mail, ArrowRight, Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
+import { submitLead } from "@/app/actions/submit-lead";
 
 type PropertyType = "apartment" | "villa" | "commercial" | "plot";
 
@@ -40,6 +42,8 @@ const purposeOptions = [
 ];
 
 export default function BuyingRequirementPage() {
+  const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState<BuyingRequirementFormData>({
     location: "",
     propertyTypes: [],
@@ -64,11 +68,63 @@ export default function BuyingRequirementPage() {
     setFormData({ ...formData, [field]: value });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Buying Requirement Form Data:", formData);
-    // Show success message or redirect
-    alert("Thank you! Our team will find the best matches for you and contact you soon.");
+    setIsSubmitting(true);
+
+    try {
+      // Prepare details object with all extra fields
+      const details: Record<string, any> = {
+        location: formData.location,
+        propertyTypes: formData.propertyTypes,
+        budgetMin: formData.budgetMin,
+        budgetMax: formData.budgetMax,
+        timeline: formData.timeline,
+        purpose: formData.purpose,
+      };
+
+      // Get current page URL
+      const sourcePage = typeof window !== "undefined" ? window.location.pathname : "/buying-requirement";
+
+      const result = await submitLead({
+        name: formData.name,
+        phone: formData.phone,
+        email: null,
+        type: "BUYER_REQUIREMENT",
+        source_page: sourcePage,
+        details,
+      });
+
+      if (!result.success) {
+        throw new Error(result.error || "Failed to submit form");
+      }
+
+      toast({
+        title: "Thank you!",
+        description: "Our team will find the best matches for you and contact you soon.",
+      });
+
+      // Reset form
+      setFormData({
+        location: "",
+        propertyTypes: [],
+        budgetMin: "",
+        budgetMax: "",
+        timeline: "",
+        purpose: "",
+        name: "",
+        phone: "",
+      });
+    } catch (error: any) {
+      console.error("Error submitting buying requirement form:", error);
+      toast({
+        title: "Error",
+        description: error?.message || "Failed to submit. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const canSubmit = formData.location.trim() !== "" && formData.propertyTypes.length > 0 && formData.name.trim() !== "" && formData.phone.trim() !== "";
@@ -223,11 +279,20 @@ export default function BuyingRequirementPage() {
 
                 <Button
                   type="submit"
-                  disabled={!canSubmit}
+                  disabled={!canSubmit || isSubmitting}
                   size="lg"
                   className="w-full bg-primary hover:bg-primary/90 text-lg py-6"
                 >
-                  Find My Match <ArrowRight className="ml-2 w-5 h-5" />
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="mr-2 w-5 h-5 animate-spin" />
+                      Submitting...
+                    </>
+                  ) : (
+                    <>
+                      Find My Match <ArrowRight className="ml-2 w-5 h-5" />
+                    </>
+                  )}
                 </Button>
               </form>
             </CardContent>

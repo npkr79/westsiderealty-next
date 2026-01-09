@@ -3,9 +3,9 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { MessageCircle, CheckCircle2 } from "lucide-react";
+import { submitLead } from "@/app/actions/submit-lead";
 import type { LandingPage } from "@/types/landingPage";
 
 interface GoaLeadFormProps {
@@ -28,18 +28,31 @@ export default function GoaLeadForm({ landingPage }: GoaLeadFormProps) {
     setLoading(true);
 
     try {
-      const supabase = createClient();
-      const { error } = await supabase.from("all_leads").insert({
-        full_name: formData.name,
+      // Prepare details object
+      const details: Record<string, any> = {
+        message: formData.message || null,
+        landingPageUri: landingPage.uri,
+        landingPageTitle: landingPage.title,
+        location: landingPage.location_info || null,
+      };
+
+      // Get current page URL
+      const sourcePage = typeof window !== "undefined" 
+        ? window.location.pathname 
+        : `/landing/${landingPage.uri}`;
+
+      const result = await submitLead({
+        name: formData.name,
         phone: formData.phone,
-        email: formData.email,
-        requirements_message: formData.message || null,
-        lead_type: "goa_property",
-        source_page_url: `/landing/${landingPage.uri}`,
-        status: "new",
+        email: formData.email || null,
+        type: "GOA_PROPERTY",
+        source_page: sourcePage,
+        details,
       });
 
-      if (error) throw error;
+      if (!result.success) {
+        throw new Error(result.error || "Failed to submit form");
+      }
 
       toast({
         title: "Thank you!",
