@@ -26,13 +26,18 @@ export default async function OldPropertyRedirectPage({ params }: PageProps) {
     notFound();
   }
 
+  // EXCLUDE: Don't handle micro-markets routes - they should be handled by [microMarketSlug] route
+  if (slug.startsWith('micro-markets/')) {
+    notFound();
+  }
+
   const supabase = await createClient();
 
   // FIRST: Check if it's a micro-market page (to avoid conflicts with micro-market route)
   // Micro-market routes are more specific, so we should not handle them here
   const { data: microMarket, error: microMarketError } = await supabase
-    .from('micro_market_pages')
-    .select('url_slug, city:cities(url_slug)')
+    .from('micro_markets')
+    .select('url_slug, city_id, city:cities(url_slug)')
     .eq('url_slug', slug)
     .maybeSingle();
 
@@ -41,6 +46,7 @@ export default async function OldPropertyRedirectPage({ params }: PageProps) {
   }
 
   if (microMarket) {
+    // Handle city relationship - could be object or array
     const cityData = (microMarket as any).city;
     const citySlugFromMM = Array.isArray(cityData) 
       ? cityData[0]?.url_slug 

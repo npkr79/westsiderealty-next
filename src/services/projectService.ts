@@ -251,8 +251,6 @@ export const projectService = {
       return null;
     }
 
-    console.log(`[getCityLevelProjectBySlug] Found city ID: ${cityData.id}`);
-
     // First, let's check if the project exists at all (without city filter) for debugging
     const { data: debugProject, error: debugError } = await supabase
       .from('projects')
@@ -260,31 +258,15 @@ export const projectService = {
       .eq('url_slug', correctedSlug)
       .maybeSingle();
     
-    console.log('[getCityLevelProjectBySlug] Debug query result:', {
-      slug: correctedSlug,
-      found: !!debugProject,
-      error: debugError,
-      projectData: debugProject ? {
-        id: debugProject.id,
-        name: debugProject.project_name,
-        url_slug: debugProject.url_slug,
-        city_id: debugProject.city_id,
-        micro_market_id: debugProject.micro_market_id,
-        developer_id: debugProject.developer_id,
-        status: debugProject.status,
-        page_status: debugProject.page_status,
-        requested_city_id: cityData.id,
-        city_matches: debugProject.city_id === cityData.id
-      } : null
-    });
+    if (debugError) {
+      console.error('[getCityLevelProjectBySlug] Error checking project existence:', debugError);
+    }
     
     if (debugProject) {
       const debugCity = Array.isArray(debugProject.city) ? debugProject.city[0] : debugProject.city;
       if (debugProject.city_id !== cityData.id) {
         console.warn(`[getCityLevelProjectBySlug] ⚠️ City mismatch! Project belongs to city_id ${debugProject.city_id} (${debugCity?.url_slug}) but requested ${cityData.id} (${citySlug})`);
       }
-    } else {
-      console.warn(`[getCityLevelProjectBySlug] ⚠️ Project not found in database with url_slug: ${correctedSlug}`);
     }
 
     // Helper function to try finding project with various slug patterns
@@ -303,9 +285,6 @@ export const projectService = {
         
         if (!skipCityCheck) {
           q = q.eq('city_id', cityData.id);
-          console.log(`[getCityLevelProjectBySlug] Building query with city_id filter: ${cityData.id} for slug: ${slugToTry}`);
-        } else {
-          console.log(`[getCityLevelProjectBySlug] Building query WITHOUT city_id filter for slug: ${slugToTry}`);
         }
         return q;
       };
@@ -314,30 +293,14 @@ export const projectService = {
       // Detail pages should show projects regardless of page_status (draft/published)
       const query1 = buildQuery().or('status.ilike.published,status.ilike.%under construction%');
       const result1 = await query1.maybeSingle();
-      console.log(`[getCityLevelProjectBySlug] Query 1 (status filters):`, { 
-        slug: slugToTry, 
-        found: !!result1.data,
-        error: result1.error 
-      });
+      if (result1.error) {
+        console.error(`[getCityLevelProjectBySlug] Query 1 error for ${slugToTry}:`, result1.error);
+      }
       if (result1.data) return result1.data;
       
       // Try without any status filters (fallback - includes everything, better than 404)
       const query2 = buildQuery();
       const result2 = await query2.maybeSingle();
-      console.log(`[getCityLevelProjectBySlug] Query 2 (no status filters):`, { 
-        slug: slugToTry, 
-        found: !!result2.data,
-        error: result2.error,
-        errorDetails: result2.error ? JSON.stringify(result2.error, null, 2) : null,
-        data: result2.data ? {
-          name: (result2.data as any).project_name,
-          status: (result2.data as any).status,
-          page_status: (result2.data as any).page_status,
-          city_id: (result2.data as any).city_id
-        } : null
-      });
-      
-      // If Query 2 failed with an error, log it but don't return null yet
       if (result2.error) {
         console.error(`[getCityLevelProjectBySlug] Query 2 error for ${slugToTry}:`, result2.error);
       }
@@ -350,31 +313,19 @@ export const projectService = {
         return result2.data;
       }
       
-      // If we still don't have data, log what we tried
-      console.error(`[getCityLevelProjectBySlug] All queries failed for ${slugToTry}`, {
-        skipCityCheck,
-        cityId: cityData?.id,
-        queriesAttempted: ['status filters', 'no filters']
-      });
-      
       return null;
     };
 
     // Try to find project with exact slug first (with city filter)
-    console.log(`[getCityLevelProjectBySlug] Attempting to find project with city filter...`);
     let data = await tryFindProject(correctedSlug, false);
     
     // If not found and project exists but city_id is NULL, try without city filter
     if (!data && debugProject && !debugProject.city_id) {
-      console.log(`[getCityLevelProjectBySlug] Project has NULL city_id, trying without city filter...`);
       data = await tryFindProject(correctedSlug, true);
     }
     
-    let error = null;
-    
     // If not found, try stripping common location suffixes
     if (!data) {
-      console.log('[getCityLevelProjectBySlug] Exact slug not found, trying slug variations...');
       
       // Common patterns: "-mokila-hyderabad", "-hyderabad", "-kokapet-hyderabad", etc.
       // Try removing location suffixes
@@ -394,22 +345,14 @@ export const projectService = {
       for (const variation of uniqueVariations) {
         data = await tryFindProject(variation, false);
         if (data) {
-          console.log(`[getCityLevelProjectBySlug] ✅ Found project with slug variation: ${variation} (original: ${correctedSlug})`);
           break;
         }
       }
     }
 
-    // If still not found, log for debugging
+    // If still not found, try one more time: search by project name if slug looks like it was generated from name
+    // This is a last resort fallback
     if (!data) {
-      console.warn('[getCityLevelProjectBySlug] ⚠️ Project not found with any slug variation:', {
-        requestedSlug: correctedSlug,
-        citySlug,
-        cityId: cityData.id
-      });
-      
-      // Try one more time: search by project name if slug looks like it was generated from name
-      // This is a last resort fallback
       const projectNameFromSlug = correctedSlug
         .replace(/-mokila-hyderabad$/i, '')
         .replace(/-kokapet-hyderabad$/i, '')
@@ -418,7 +361,6 @@ export const projectService = {
         .replace(/-/g, ' ');
       
       if (projectNameFromSlug.length > 5) {
-        console.log('[getCityLevelProjectBySlug] Trying fallback search by project name pattern...');
         const { data: nameMatchData } = await supabase
           .from('projects')
           .select(`
@@ -435,21 +377,38 @@ export const projectService = {
           .maybeSingle();
         
         if (nameMatchData) {
-          console.log('[getCityLevelProjectBySlug] ⚠️ Found project by name match (slug mismatch):', {
-            requestedSlug: correctedSlug,
-            foundSlug: (nameMatchData as any).url_slug,
-            projectName: (nameMatchData as any).project_name
-          });
-          // Don't return this - it's likely the wrong project
+          const foundSlug = (nameMatchData as any).url_slug;
+          const foundCity = Array.isArray(nameMatchData.city) ? nameMatchData.city[0] : nameMatchData.city;
+          const foundCitySlug = foundCity?.url_slug;
+          
+          // If we found a project by name and have the correct city, return it
+          // The page component will handle the redirect to the correct slug
+          if (foundCitySlug === citySlug && foundSlug) {
+            console.log('[getCityLevelProjectBySlug] ✅ Found project by name match, returning for redirect:', {
+              requestedSlug: correctedSlug,
+              foundSlug: foundSlug,
+              projectName: (nameMatchData as any).project_name
+            });
+            // Return the found project - the page component will redirect
+            return nameMatchData as ProjectWithRelations;
+          } else {
+            console.log('[getCityLevelProjectBySlug] ⚠️ Found project by name match but city/slug mismatch:', {
+              requestedSlug: correctedSlug,
+              foundSlug: foundSlug,
+              foundCitySlug: foundCitySlug,
+              requestedCitySlug: citySlug,
+              projectName: (nameMatchData as any).project_name
+            });
+          }
         }
       }
     }
 
     if (data) {
-      console.log('[getCityLevelProjectBySlug] ✅ Successfully loaded project:', (data as any).project_name);
       return data as ProjectWithRelations;
     }
 
+    // Only log warning if we've exhausted all search attempts
     console.warn('[getCityLevelProjectBySlug] ⚠️ Project not found after all attempts:', { 
       citySlug, 
       projectSlug: correctedSlug, 

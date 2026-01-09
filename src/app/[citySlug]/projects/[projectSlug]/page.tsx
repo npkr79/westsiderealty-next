@@ -84,6 +84,15 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   let project = await projectService.getCityLevelProjectBySlug(citySlug, projectSlug);
 
+  // If project found but slug doesn't match, redirect to correct slug
+  if (project && project.url_slug && project.url_slug !== projectSlug) {
+    const { permanentRedirect } = await import('next/navigation');
+    const projectCity = Array.isArray(project.city) ? project.city[0] : project.city;
+    const projectCitySlug = projectCity?.url_slug || citySlug;
+    console.log(`[ProjectDetailPage] Redirecting to correct slug: ${projectSlug} → ${project.url_slug}`);
+    permanentRedirect(`/${projectCitySlug}/projects/${project.url_slug}`);
+  }
+
   // If not found, try stripping location suffixes (handle legacy slugs)
   if (!project) {
     // Try common location suffix patterns: -mokila-hyderabad, -hyderabad, etc.
@@ -197,6 +206,15 @@ export default async function ProjectDetailPage({ params }: PageProps) {
   try {
     console.log(`[ProjectDetailPage] Fetching project: citySlug=${citySlug}, projectSlug=${projectSlug}`);
     project = await projectService.getCityLevelProjectBySlug(citySlug, projectSlug);
+    
+    // If project found but slug doesn't match, redirect to correct slug
+    if (project && project.url_slug && project.url_slug !== projectSlug) {
+      const { permanentRedirect } = await import('next/navigation');
+      const projectCity = Array.isArray(project.city) ? project.city[0] : project.city;
+      const projectCitySlug = projectCity?.url_slug || citySlug;
+      console.log(`[ProjectDetailPage] Redirecting to correct slug: ${projectSlug} → ${project.url_slug}`);
+      permanentRedirect(`/${projectCitySlug}/projects/${project.url_slug}`);
+    }
     
     if (!project) {
       console.error(`[ProjectDetailPage] Project not found: citySlug=${citySlug}, projectSlug=${projectSlug}`);
