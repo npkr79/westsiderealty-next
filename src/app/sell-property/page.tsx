@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Building2, Home, LandPlot, Store, Phone, Mail, ArrowRight, ArrowLeft, Check, Loader2, CheckCircle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -157,16 +158,14 @@ export default function SellPropertyPage() {
                 <p className="text-lg text-gray-700 mb-8">
                   We have received your property details. Our valuation expert will call you shortly.
                 </p>
-                <Button
-                  onClick={() => {
-                    setIsSubmitted(false);
-                    setStep(1);
-                  }}
-                  variant="outline"
-                  size="lg"
-                >
-                  Submit Another Property
-                </Button>
+                <Link href="/">
+                  <Button
+                    variant="outline"
+                    size="lg"
+                  >
+                    Back to Homepage
+                  </Button>
+                </Link>
               </div>
             ) : (
               <>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -157,13 +158,14 @@ export default function ContactForm({ propertyId, agentId, projectName }: Contac
                 </p>
               </>
             )}
-            <Button
-              onClick={() => setIsSubmitted(false)}
-              variant="outline"
-              size="lg"
-            >
-              Send Another Message
-            </Button>
+            <Link href="/">
+              <Button
+                variant="outline"
+                size="lg"
+              >
+                Continue Browsing
+              </Button>
+            </Link>
           </div>
         ) : (
         <form onSubmit={handleSubmit} className="space-y-6">

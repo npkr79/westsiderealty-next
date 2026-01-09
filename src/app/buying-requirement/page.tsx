@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Home, TrendingUp, Shield, Users, Phone, Mail, ArrowRight, Loader2, CheckCircle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -145,13 +146,14 @@ export default function BuyingRequirementPage() {
                   <p className="text-lg text-gray-700 mb-8">
                     We are scanning our network for properties that match your needs.
                   </p>
-                  <Button
-                    onClick={() => setIsSubmitted(false)}
-                    variant="outline"
-                    size="lg"
-                  >
-                    Submit Another Requirement
-                  </Button>
+                  <Link href="/hyderabad/landowner-investor-share-flats">
+                    <Button
+                      size="lg"
+                      className="bg-primary hover:bg-primary/90"
+                    >
+                      Explore Properties
+                    </Button>
+                  </Link>
                 </div>
               ) : (
                 <>
