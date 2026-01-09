@@ -152,9 +152,20 @@ export default function LocationAdvantages({ locationAdvantages, locationHighlig
       }
       items = items.filter(item => item.name && item.name !== 'undefined' && item.name !== 'null' && item.name !== '[object Object]');
     } else if (typeof parsedAdvantages === 'object' && parsedAdvantages !== null) {
-      // Handle object format: {category: {items: [...]}} or {key: value}
+      // Handle object format: {category: [items]}, {category: {items: [...]}}, or {key: value}
       items = Object.entries(parsedAdvantages).flatMap(([key, value]: [string, any]) => {
-        // If value has items array, it's a category structure
+        // If value is directly an array, it's a category with items: {category: [items]}
+        if (Array.isArray(value)) {
+          return value.map((item: any) => ({
+            name: typeof item === 'string' 
+              ? item 
+              : String(item.name || item.title || item.landmark || item.label || 'Location'),
+            distance: typeof item === 'object' && typeof item.distance === 'string' ? item.distance : undefined,
+            time: typeof item === 'object' && typeof item.time === 'string' ? item.time : undefined,
+            category: key,
+          }));
+        }
+        // If value has items array, it's a category structure: {category: {items: [...]}}
         if (value && typeof value === 'object' && Array.isArray(value.items)) {
           return value.items.map((item: any) => ({
             name: typeof item === 'string' 

@@ -208,6 +208,7 @@ export default async function ProjectDetailPage({ params }: PageProps) {
     project = await projectService.getCityLevelProjectBySlug(citySlug, projectSlug);
     
     // If project found but slug doesn't match, redirect to correct slug
+    // Note: Next.js redirects throw errors that must be re-thrown, not caught
     if (project && project.url_slug && project.url_slug !== projectSlug) {
       const { permanentRedirect } = await import('next/navigation');
       const projectCity = Array.isArray(project.city) ? project.city[0] : project.city;
@@ -230,7 +231,11 @@ export default async function ProjectDetailPage({ params }: PageProps) {
       // Ignore brochure errors
       console.warn(`[ProjectDetailPage] Brochure not found for: ${project.project_name}`);
     }
-  } catch (error) {
+  } catch (error: any) {
+    // Re-throw redirect errors (Next.js redirects throw errors that must propagate)
+    if (error?.digest?.startsWith('NEXT_REDIRECT')) {
+      throw error;
+    }
     console.error("[ProjectDetailPage] ❌ Error fetching project:", error);
     console.error("[ProjectDetailPage] Error details:", JSON.stringify(error, null, 2));
     throw error; // Let error boundary catch it
