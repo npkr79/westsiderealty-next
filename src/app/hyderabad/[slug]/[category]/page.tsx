@@ -67,23 +67,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const categoryConfig = CATEGORY_FILTERS[category];
   if (!categoryConfig) return { title: "Page Not Found" };
 
-  const supabase = await createClient();
-  
-  // Lightweight query for Metadata
-  const { data: mm } = await supabase
-    .from("micro_markets")
-    .select("micro_market_name")
-    .eq("url_slug", slug)
-    .maybeSingle();
-
-  const marketName = mm?.micro_market_name || safeCapitalize(slug);
-  const cityName = safeCapitalize(citySlug);
-
-  return buildMetadata({
-    title: `${categoryConfig.title} ${marketName}, ${cityName} | RE/MAX Westside Realty`,
-    description: categoryConfig.description.replace('{market}', marketName),
-    canonicalUrl: `https://www.westsiderealty.in/${citySlug}/${slug}/${category}`,
-  });
+  // Simple Metadata Logic
+  return {
+    title: `${categoryConfig.title} ${safeCapitalize(slug)} | Westside Realty`,
+    description: categoryConfig.description.replace('{market}', safeCapitalize(slug)),
+  };
 }
 
 export default async function CategoryComparisonPage({ params }: PageProps) {
@@ -98,19 +86,16 @@ export default async function CategoryComparisonPage({ params }: PageProps) {
 
   const supabase = await createClient();
 
-  // 🟢 STEP 1: Get City ID (Simple)
+  // 1. Get City ID
   const { data: city } = await supabase
     .from("cities")
     .select("id, city_name, url_slug")
     .eq("url_slug", citySlug) 
     .maybeSingle();
 
-  if (!city) {
-    console.error(`[Page] City not found: ${citySlug}`);
-    notFound();
-  }
+  if (!city) notFound();
 
-  // 🟢 STEP 2: Get Micro Market ID (Simple)
+  // 2. Get Micro Market ID
   const { data: microMarket } = await supabase
     .from("micro_markets")
     .select("id, micro_market_name, url_slug")
@@ -118,15 +103,11 @@ export default async function CategoryComparisonPage({ params }: PageProps) {
     .eq("city_id", city.id)
     .maybeSingle();
 
-  if (!microMarket) {
-    console.error(`[Page] Market not found: ${slug}`);
-    notFound();
-  }
+  if (!microMarket) notFound();
 
-  // 🟢 STEP 3: Fetch Projects (No Joins, Just IDs)
-  // We fetch relations separately or let the client handle it, but for now
-  // we use basic relation syntax without !inner to prevent locking.
-  let query = supabase
+  // 3. Fetch ALL Projects for this Market (Simpler Query = Safer)
+  // We removed the complex .or() filters causing the crash.
+  const { data: projects, error: projError } = await supabase
     .from("projects")
     .select(`
       *,
@@ -135,23 +116,29 @@ export default async function CategoryComparisonPage({ params }: PageProps) {
       developer:developers(developer_name, url_slug)
     `)
     .eq("micro_market_id", microMarket.id)
-    .or("status.ilike.published,status.ilike.%under construction%");
-
-  if (categoryConfig.status) {
-    query = query.or(`completion_status.ilike.%${categoryConfig.status}%,status.ilike.%${categoryConfig.status}%`);
-  }
-
-  const { data: projects, error: projError } = await query
     .order("display_order", { ascending: true });
 
   if (projError) console.error("[Page] Projects Error:", projError);
 
   console.log(`[Page] Fetched ${projects?.length || 0} projects`);
 
-  // 🟢 STEP 4: In-Memory Filter (Safe)
+  // 4. Heavy Filtering in JavaScript (Reliable)
   const filteredProjects: ProjectWithRelations[] = (projects || [])
     .filter((p: any) => {
-      // Logic for client-side filtering
+      
+      // Filter Status (Moved from DB to here)
+      if (categoryConfig.status) {
+        const s1 = p.status?.toLowerCase() || "";
+        const s2 = p.completion_status?.toLowerCase() || "";
+        const target = categoryConfig.status.toLowerCase();
+        if (!s1.includes(target) && !s2.includes(target)) return false;
+      } else {
+        // Default: Show Published or Under Construction
+        const s = p.status?.toLowerCase() || "";
+        if (!s.includes('published') && !s.includes('construction')) return false;
+      }
+
+      // Filter Type
       if (categoryConfig.type) {
         const pTypes = parseJsonb(p.property_types, []);
         const typeMatch = Array.isArray(pTypes) 
@@ -160,6 +147,7 @@ export default async function CategoryComparisonPage({ params }: PageProps) {
         if (!typeMatch) return false;
       }
       
+      // Filter Config
       if (categoryConfig.config) {
         const configs = parseJsonb(p.configurations, []);
         const configMatch = Array.isArray(configs) && configs.length > 0
@@ -168,6 +156,7 @@ export default async function CategoryComparisonPage({ params }: PageProps) {
         if (!configMatch) return false;
       }
       
+      // Filter Price
       if (categoryConfig.minPrice) {
         if (p.min_price && p.min_price >= categoryConfig.minPrice) return true;
         if (!p.min_price && p.price_range_text) {
@@ -185,7 +174,7 @@ export default async function CategoryComparisonPage({ params }: PageProps) {
       return true;
     }) as ProjectWithRelations[];
 
-  // 🟢 STEP 5: Render
+  // 5. Render
   const pageTitle = `${categoryConfig.title} ${microMarket.micro_market_name}`;
   
   const breadcrumbItems = [
@@ -206,14 +195,10 @@ export default async function CategoryComparisonPage({ params }: PageProps) {
       <main className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-8 max-w-6xl">
           <BreadcrumbNav items={breadcrumbItems} />
-          
           <header className="mb-12 mt-8">
             <h1 className="text-4xl font-bold mb-6 text-foreground">{pageTitle}</h1>
-            <p className="text-lg text-muted-foreground leading-relaxed mb-8">
-              {categoryConfig.intro}
-            </p>
+            <p className="text-lg text-muted-foreground leading-relaxed mb-8">{categoryConfig.intro}</p>
           </header>
-          
           {filteredProjects.length > 0 ? (
             <>
               <section className="mb-12">
@@ -223,7 +208,6 @@ export default async function CategoryComparisonPage({ params }: PageProps) {
                       key={project.id}
                       project={{
                         ...project,
-                        // Ensure relations are present even if join failed
                         city: Array.isArray(project.city) ? project.city[0] : (project.city || city),
                         micro_market: Array.isArray(project.micro_market) ? project.micro_market[0] : (project.micro_market || microMarket)
                       }}
@@ -232,52 +216,34 @@ export default async function CategoryComparisonPage({ params }: PageProps) {
                   ))}
                 </div>
               </section>
-              
               <section className="mb-12">
                 <h2 className="text-3xl font-bold mb-6 text-foreground">Compare Projects</h2>
-                <Card>
-                  <CardContent className="pt-6 p-0">
-                    <div className="overflow-x-auto">
-                      <Table>
-                        <TableHeader>
-                          <TableRow className="table-header-accent">
-                            <TableHead className="font-bold">Project Name</TableHead>
-                            <TableHead className="font-bold">Price Range</TableHead>
-                            <TableHead className="font-bold">Configurations</TableHead>
-                            <TableHead className="font-bold">Status</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {filteredProjects.map((project) => (
-                            <TableRow key={project.id}>
-                              <TableCell className="font-medium text-primary">
-                                <Link href={`/${city.url_slug}/projects/${project.url_slug}`}>
-                                  {project.project_name}
-                                </Link>
-                              </TableCell>
-                              <TableCell className="font-semibold">{project.price_range_text || "Enquire"}</TableCell>
-                              <TableCell className="text-muted-foreground">{formatConfigs(project)}</TableCell>
-                              <TableCell className="text-muted-foreground">{project.completion_status || project.status}</TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  </CardContent>
-                </Card>
+                <Card><CardContent className="pt-6 p-0"><div className="overflow-x-auto">
+                  <Table><TableHeader><TableRow className="table-header-accent">
+                    <TableHead className="font-bold">Project Name</TableHead>
+                    <TableHead className="font-bold">Price Range</TableHead>
+                    <TableHead className="font-bold">Configurations</TableHead>
+                    <TableHead className="font-bold">Status</TableHead>
+                  </TableRow></TableHeader><TableBody>
+                    {filteredProjects.map((project) => (
+                      <TableRow key={project.id}>
+                        <TableCell className="font-medium text-primary">
+                          <Link href={`/${city.url_slug}/projects/${project.url_slug}`}>{project.project_name}</Link>
+                        </TableCell>
+                        <TableCell className="font-semibold">{project.price_range_text || "Enquire"}</TableCell>
+                        <TableCell className="text-muted-foreground">{formatConfigs(project)}</TableCell>
+                        <TableCell className="text-muted-foreground">{project.completion_status || project.status}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody></Table>
+                </div></CardContent></Card>
               </section>
             </>
           ) : (
-            <Card>
-              <CardContent className="pt-6 text-center py-12">
-                <p className="text-lg text-muted-foreground">
-                  No projects found matching your criteria in {microMarket.micro_market_name}.
-                </p>
-                <Link href={`/${city.url_slug}/${microMarket.url_slug}`} className="mt-4 inline-block text-primary hover:underline">
-                  View all projects in {microMarket.micro_market_name}
-                </Link>
-              </CardContent>
-            </Card>
+            <Card><CardContent className="pt-6 text-center py-12">
+              <p className="text-lg text-muted-foreground">No projects found matching your criteria in {microMarket.micro_market_name}.</p>
+              <Link href={`/${city.url_slug}/${microMarket.url_slug}`} className="mt-4 inline-block text-primary hover:underline">View all projects in {microMarket.micro_market_name}</Link>
+            </CardContent></Card>
           )}
         </div>
       </main>
