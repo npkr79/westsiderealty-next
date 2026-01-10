@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 
 interface SafeImageProps {
@@ -11,13 +11,35 @@ interface SafeImageProps {
   className?: string;
   priority?: boolean;
   loading?: "lazy" | "eager";
-  onError?: () => void;
   unoptimized?: boolean;
+  hideOnError?: boolean;
+  containerId?: string;
 }
 
-export default function SafeImage({ src, alt, width, height, className, priority, loading, onError, unoptimized }: SafeImageProps) {
+export default function SafeImage({ 
+  src, 
+  alt, 
+  width, 
+  height, 
+  className, 
+  priority, 
+  loading, 
+  unoptimized,
+  hideOnError = false,
+  containerId
+}: SafeImageProps) {
   const [hasError, setHasError] = useState(false);
-  const [imageSrc, setImageSrc] = useState(src);
+  const [imageSrc] = useState(src);
+
+  useEffect(() => {
+    if (hasError && hideOnError && containerId) {
+      // Hide the container if image fails to load
+      const container = document.getElementById(containerId);
+      if (container) {
+        container.style.display = 'none';
+      }
+    }
+  }, [hasError, hideOnError, containerId]);
 
   if (hasError || !imageSrc) {
     return null;
@@ -37,11 +59,8 @@ export default function SafeImage({ src, alt, width, height, className, priority
       priority={priority}
       loading={loading}
       unoptimized={shouldUnoptimize}
-      onError={(e) => {
+      onError={() => {
         setHasError(true);
-        if (onError) {
-          onError();
-        }
       }}
     />
   );

@@ -856,13 +856,8 @@ export default async function MicroMarketPage({ params }: PageProps) {
                     height={600}
                     className="w-full h-auto object-contain"
                     loading="lazy"
-                    onError={() => {
-                      // If image fails to load, hide the entire section
-                      const container = document.getElementById('connectivity-map-container');
-                      if (container) {
-                        container.style.display = 'none';
-                      }
-                    }}
+                    hideOnError={true}
+                    containerId="connectivity-map-container"
                   />
                 </div>
               </div>
