@@ -70,7 +70,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   const supabase = await createClient();
   
-  // Lightweight Metadata Query
+  // Fast lightweight query just for Metadata
   const { data: mm } = await supabase
     .from("micro_markets")
     .select("micro_market_name")
@@ -88,19 +88,32 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 }
 
 export default async function CategoryComparisonPage({ params }: PageProps) {
+<<<<<<< HEAD
   const resolvedParams = await params;
   // 🟢 FIX: Default to 'hyderabad'
   const citySlug = resolvedParams.citySlug || "hyderabad";
   const { slug, category } = resolvedParams;
 
   console.log(`[Page] Loading: ${citySlug}/${slug}/${category}`);
+=======
+  const start = Date.now();
+  const { citySlug, slug, category } = await params;
+  
+  console.log(`[CategoryPage] Starting: ${citySlug}/${slug}/${category}`);
+>>>>>>> 799728a607d706e06868c19d46b35afd32ba06a2
 
   const categoryConfig = CATEGORY_FILTERS[category];
   if (!categoryConfig) notFound();
 
   const supabase = await createClient();
 
+<<<<<<< HEAD
   // 1. Fetch Market & City (Single Query)
+=======
+  // --- OPTIMIZED QUERY 1: Fetch Market & City together ---
+  console.log(`[CategoryPage] Fetching Market Context...`);
+  
+>>>>>>> 799728a607d706e06868c19d46b35afd32ba06a2
   const { data: microMarket, error: mmError } = await supabase
     .from("micro_markets")
     .select(`
@@ -111,6 +124,7 @@ export default async function CategoryComparisonPage({ params }: PageProps) {
       city:cities!inner(id, city_name, url_slug)
     `)
     .eq("url_slug", slug)
+<<<<<<< HEAD
     .eq("city.url_slug", citySlug) 
     .maybeSingle();
 
@@ -120,6 +134,22 @@ export default async function CategoryComparisonPage({ params }: PageProps) {
   const cityData = Array.isArray(microMarket.city) ? microMarket.city[0] : microMarket.city;
 
   // 2. Fetch Projects
+=======
+    .eq("city.url_slug", citySlug) // Filter city via relation
+    .single();
+
+  if (mmError || !microMarket) {
+    console.error("[CategoryPage] Market not found or Error:", mmError);
+    notFound();
+  }
+  
+  // Type assertion since we know city exists due to !inner join
+  const cityData = Array.isArray(microMarket.city) ? microMarket.city[0] : microMarket.city;
+
+  // --- OPTIMIZED QUERY 2: Fetch Projects ---
+  console.log(`[CategoryPage] Fetching Projects...`);
+  
+>>>>>>> 799728a607d706e06868c19d46b35afd32ba06a2
   let query = supabase
     .from("projects")
     .select(`
@@ -128,10 +158,17 @@ export default async function CategoryComparisonPage({ params }: PageProps) {
       micro_market:micro_markets!inner(micro_market_name, url_slug),
       developer:developers(developer_name, url_slug)
     `)
+<<<<<<< HEAD
     .eq("micro_market_id", microMarket.id)
     .or("status.ilike.published,status.ilike.%under construction%");
 
   // Apply DB-level Status filter
+=======
+    .eq("micro_market_id", microMarket.id) // More efficient than filtering by city AND market
+    .or("status.ilike.published,status.ilike.%under construction%");
+
+  // Apply DB-level Status filter if applicable
+>>>>>>> 799728a607d706e06868c19d46b35afd32ba06a2
   if (categoryConfig.status) {
     query = query.or(`completion_status.ilike.%${categoryConfig.status}%,status.ilike.%${categoryConfig.status}%`);
   }
@@ -139,6 +176,7 @@ export default async function CategoryComparisonPage({ params }: PageProps) {
   const { data: projects, error: projError } = await query
     .order("display_order", { ascending: true });
 
+<<<<<<< HEAD
   if (projError) console.error("[Page] Project Error:", projError);
 
   // 3. Filter Logic (In-Memory)
@@ -154,11 +192,35 @@ export default async function CategoryComparisonPage({ params }: PageProps) {
       }
       
       // Config Filter
+=======
+  if (projError) {
+    console.error("[CategoryPage] Project Fetch Error:", projError);
+  }
+
+  console.log(`[CategoryPage] Fetched ${projects?.length || 0} projects. Filtering...`);
+
+  // --- IN-MEMORY FILTERING ---
+  const filteredProjects: ProjectWithRelations[] = (projects || [])
+    .filter((p: any) => {
+      // 1. Property Type Filter
+      if (categoryConfig.type) {
+        const pTypes = parseJsonb(p.property_types, []);
+        // Check JSON array OR string match
+        const typeMatch = Array.isArray(pTypes) 
+          ? pTypes.some((t: string) => t?.toLowerCase().includes(categoryConfig.type!.toLowerCase()))
+          : (typeof p.property_types === 'string' && p.property_types.toLowerCase().includes(categoryConfig.type!.toLowerCase()));
+        
+        if (!typeMatch) return false;
+      }
+      
+      // 2. Configuration Filter
+>>>>>>> 799728a607d706e06868c19d46b35afd32ba06a2
       if (categoryConfig.config) {
         const configs = parseJsonb(p.configurations, []);
         const configMatch = Array.isArray(configs) && configs.length > 0
           ? configs.some((c: string) => c?.toUpperCase().includes(categoryConfig.config!.toUpperCase()))
           : p.unit_size_range?.toUpperCase().includes(categoryConfig.config!.toUpperCase());
+<<<<<<< HEAD
         if (!configMatch) return false;
       }
       
@@ -166,22 +228,46 @@ export default async function CategoryComparisonPage({ params }: PageProps) {
       if (categoryConfig.minPrice) {
         if (p.min_price && p.min_price >= categoryConfig.minPrice) return true;
         if (!p.min_price && p.price_range_text) {
+=======
+          
+        if (!configMatch) return false;
+      }
+      
+      // 3. Price Filter (Uses your NEW numeric columns)
+      if (categoryConfig.minPrice) {
+        // Prefer the numeric column, fallback to parsing text
+        if (p.min_price && p.min_price >= categoryConfig.minPrice) return true;
+        if (!p.min_price && p.price_range_text) {
+           // Basic fallback parsing if column is empty
+>>>>>>> 799728a607d706e06868c19d46b35afd32ba06a2
            const match = p.price_range_text.match(/(\d+\.?\d*)\s*Cr/i);
            if (match && (parseFloat(match[1]) * 10000000) >= categoryConfig.minPrice) return true;
         }
         if (p.min_price && p.min_price < categoryConfig.minPrice) return false;
       }
 
+<<<<<<< HEAD
       // Price Filter (Max)
       if (categoryConfig.maxPrice) {
         if (p.max_price && p.max_price <= categoryConfig.maxPrice) return true;
+=======
+      if (categoryConfig.maxPrice) {
+        if (p.max_price && p.max_price <= categoryConfig.maxPrice) return true;
+        // Logic: if max_price exists and is too high, exclude.
+>>>>>>> 799728a607d706e06868c19d46b35afd32ba06a2
         if (p.max_price && p.max_price > categoryConfig.maxPrice) return false;
       }
       
       return true;
     }) as ProjectWithRelations[];
 
+<<<<<<< HEAD
   // 4. Render
+=======
+  console.log(`[CategoryPage] Render Ready. Time elapsed: ${Date.now() - start}ms`);
+
+  // --- RENDER HELPERS ---
+>>>>>>> 799728a607d706e06868c19d46b35afd32ba06a2
   const pageTitle = `${categoryConfig.title} ${microMarket.micro_market_name}`;
   
   const breadcrumbItems = [
@@ -219,8 +305,13 @@ export default async function CategoryComparisonPage({ params }: PageProps) {
                       key={project.id}
                       project={{
                         ...project,
+<<<<<<< HEAD
                         city: cityData,
                         micro_market: microMarket
+=======
+                        city: cityData, // Use the fetched city data
+                        micro_market: microMarket // Use the fetched market data
+>>>>>>> 799728a607d706e06868c19d46b35afd32ba06a2
                       }}
                       citySlug={cityData.url_slug}
                     />
@@ -281,4 +372,8 @@ export default async function CategoryComparisonPage({ params }: PageProps) {
   );
 }
 
+<<<<<<< HEAD
 export const revalidate = 60;
+=======
+export const revalidate = 60;
+>>>>>>> 799728a607d706e06868c19d46b35afd32ba06a2
