@@ -643,31 +643,6 @@ export default async function MicroMarketPage({ params }: PageProps) {
 
           {/* Hero Section */}
           <header className="mb-12 mt-8">
-            {isValidImageUrl(pageData.hero_image_url) ? (
-              <div className="mb-6 rounded-lg overflow-hidden">
-                <SafeImage
-                  src={pageData.hero_image_url!}
-                  alt={isNeopolis 
-                    ? "Aerial view of Neopolis Hyderabad high-rise corridor showing ultra-luxury residential towers in Kokapet"
-                    : `Aerial view of ${pageData.micro_market_name || ""} ultra-luxury residential township in ${pageData.key_adjacent_areas?.[0] || "West " + (safeCapitalize(citySlug) || "City")}, ${safeCapitalize(citySlug) || "City"}`
-                  }
-                  width={1200}
-                  height={400}
-                  className="w-full h-64 object-cover"
-                  priority
-                  unoptimized={false}
-                />
-              </div>
-            ) : (
-              <div className="mb-6 rounded-lg overflow-hidden bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900 h-64 flex items-center justify-center">
-                <div className="text-center px-4">
-                  <Building2 className="h-16 w-16 text-white/20 mx-auto mb-4" />
-                  <p className="text-white/60 text-lg font-medium">Westside Realty</p>
-                  <p className="text-white/40 text-sm mt-1">{pageData.micro_market_name || "Premium Properties"}</p>
-                </div>
-              </div>
-            )}
-
             <h1 className="text-4xl font-bold mb-6 text-foreground">{h1Title}</h1>
             {isNeopolis ? (
               <p className="text-lg text-muted-foreground leading-relaxed">
