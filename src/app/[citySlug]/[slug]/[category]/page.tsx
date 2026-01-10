@@ -84,11 +84,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const cityName = safeCapitalize(citySlug) || "City";
   const title = `${categoryConfig.title} ${marketName}, ${cityName} | RE/MAX Westside Realty`;
   const description = categoryConfig.description.replace('{market}', marketName);
+  const canonicalUrl = `https://www.westsiderealty.in/${citySlug}/${slug}/${category}`;
   
   return buildMetadata({
     title,
     description,
-    path: `/${citySlug}/${slug}/${category}`,
+    canonicalUrl,
   });
 }
 
