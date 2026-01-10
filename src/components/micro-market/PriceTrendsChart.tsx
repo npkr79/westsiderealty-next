@@ -42,7 +42,10 @@ export default function PriceTrendsChart({ data }: PriceTrendsChartProps) {
         <YAxis
           className="text-xs"
           tick={{ fill: "hsl(var(--muted-foreground))" }}
-          tickFormatter={(value) => `₹${value.toLocaleString()}`}
+          tickFormatter={(value) => {
+            if (value === undefined || isNaN(value)) return "N/A";
+            return `₹${value.toLocaleString()}`;
+          }}
         />
         <Tooltip
           contentStyle={{
@@ -51,7 +54,10 @@ export default function PriceTrendsChart({ data }: PriceTrendsChartProps) {
             borderRadius: "8px",
             padding: "12px",
           }}
-          formatter={(value: number) => [`₹${value.toLocaleString()}/sft`, "Price"]}
+          formatter={(value: number | undefined) => {
+            if (value === undefined || isNaN(value)) return ["N/A", "Price"];
+            return [`₹${value.toLocaleString()}/sft`, "Price"];
+          }}
           labelFormatter={(label) => `Year: ${label}`}
         />
         <Area
