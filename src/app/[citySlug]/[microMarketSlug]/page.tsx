@@ -646,7 +646,7 @@ export default async function MicroMarketPage({ params }: PageProps) {
             {isValidImageUrl(pageData.hero_image_url) ? (
               <div className="mb-6 rounded-lg overflow-hidden">
                 <SafeImage
-                  src={getHeroImageUrl(pageData.hero_image_url!)}
+                  src={pageData.hero_image_url!}
                   alt={isNeopolis 
                     ? "Aerial view of Neopolis Hyderabad high-rise corridor showing ultra-luxury residential towers in Kokapet"
                     : `Aerial view of ${pageData.micro_market_name || ""} ultra-luxury residential township in ${pageData.key_adjacent_areas?.[0] || "West " + (safeCapitalize(citySlug) || "City")}, ${safeCapitalize(citySlug) || "City"}`
@@ -655,6 +655,7 @@ export default async function MicroMarketPage({ params }: PageProps) {
                   height={400}
                   className="w-full h-64 object-cover"
                   priority
+                  unoptimized={false}
                 />
               </div>
             ) : (
