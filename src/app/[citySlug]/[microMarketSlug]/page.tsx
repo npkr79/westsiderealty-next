@@ -1006,9 +1006,9 @@ export default async function MicroMarketPage({ params }: PageProps) {
                           <div className="flex items-center gap-4">
                             {pageData.developer_logo_urls?.[developer.name] && 
                              typeof pageData.developer_logo_urls[developer.name] === 'string' &&
-                             pageData.developer_logo_urls[developer.name].trim() && (
+                             isValidImageUrl(pageData.developer_logo_urls[developer.name]) && (
                               <Image
-                                src={safeImageSrc(pageData.developer_logo_urls[developer.name])}
+                                src={pageData.developer_logo_urls[developer.name]}
                                 alt={`${developer.name} logo`}
                                 width={100}
                                 height={50}
