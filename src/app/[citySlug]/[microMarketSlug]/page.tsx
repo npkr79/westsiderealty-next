@@ -22,6 +22,7 @@ import QuickFactsModule from "@/components/micro-market/QuickFactsModule";
 import StrategicInfrastructureSection from "@/components/micro-market/StrategicInfrastructureSection";
 import NeopolisEditorialContent from "@/components/micro-market/NeopolisEditorialContent";
 import PriceTrendsChart from "@/components/micro-market/PriceTrendsChart";
+import SafeImage from "@/components/common/SafeImage";
 import { buildMetadata } from "@/components/common/SEO";
 import { JsonLd } from "@/components/common/SEO";
 import { getHeroImageUrl } from "@/utils/imageOptimization";
@@ -611,7 +612,19 @@ export default async function MicroMarketPage({ params }: PageProps) {
     ],
   });
 
-  const safeImageSrc = (src: string | null | undefined) => (src && src.trim() ? src : "/placeholder.svg");
+  // Validate if URL is actually a valid image URL (not just non-empty string)
+  const isValidImageUrl = (url: string | null | undefined): boolean => {
+    if (!url || typeof url !== 'string') return false;
+    const trimmed = url.trim();
+    // Reject obviously invalid values
+    if (trimmed === '' || trimmed === 'null' || trimmed === 'undefined' || trimmed.toLowerCase() === 'none') {
+      return false;
+    }
+    // Check if it's a valid URL format (http/https) or starts with /
+    const isValidFormat = (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('/'));
+    // Must be at least 5 characters (minimum valid URL length)
+    return isValidFormat && trimmed.length > 5;
+  };
 
   // For Neopolis, use the same FAQ items for both visible section and JSON-LD
   // This ensures perfect synchronization between visible FAQs and schema markup
@@ -630,10 +643,10 @@ export default async function MicroMarketPage({ params }: PageProps) {
 
           {/* Hero Section */}
           <header className="mb-12 mt-8">
-            {pageData.hero_image_url && pageData.hero_image_url.trim() ? (
+            {isValidImageUrl(pageData.hero_image_url) ? (
               <div className="mb-6 rounded-lg overflow-hidden">
-                <Image
-                  src={safeImageSrc(getHeroImageUrl(pageData.hero_image_url))}
+                <SafeImage
+                  src={getHeroImageUrl(pageData.hero_image_url!)}
                   alt={isNeopolis 
                     ? "Aerial view of Neopolis Hyderabad high-rise corridor showing ultra-luxury residential towers in Kokapet"
                     : `Aerial view of ${pageData.micro_market_name || ""} ultra-luxury residential township in ${pageData.key_adjacent_areas?.[0] || "West " + (safeCapitalize(citySlug) || "City")}, ${safeCapitalize(citySlug) || "City"}`
@@ -832,16 +845,23 @@ export default async function MicroMarketPage({ params }: PageProps) {
             )}
 
             {/* Connectivity Map - Only render if URL is valid */}
-            {pageData.connectivity_map_url && pageData.connectivity_map_url.trim() && (
-              <div className="mt-8 max-w-md mx-auto">
+            {isValidImageUrl(pageData.connectivity_map_url) && (
+              <div className="mt-8 max-w-md mx-auto" id="connectivity-map-container">
                 <div className="rounded-lg overflow-hidden shadow-md border border-border">
-                  <Image
-                    src={safeImageSrc(pageData.connectivity_map_url)}
+                  <SafeImage
+                    src={pageData.connectivity_map_url!}
                     alt={`${pageData.micro_market_name} Connectivity Map`}
                     width={800}
                     height={600}
                     className="w-full h-auto object-contain"
                     loading="lazy"
+                    onError={() => {
+                      // If image fails to load, hide the entire section
+                      const container = document.getElementById('connectivity-map-container');
+                      if (container) {
+                        container.style.display = 'none';
+                      }
+                    }}
                   />
                 </div>
               </div>
