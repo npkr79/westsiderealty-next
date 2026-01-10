@@ -51,9 +51,10 @@ export interface InfrastructureItem {
 }
 
 export interface CommuteMatrixItem {
-  destination: string;
-  time: string;
-  distance: string;
+  destination?: string;
+  name?: string;
+  time?: string;
+  distance?: string;
   type?: string;
 }
 

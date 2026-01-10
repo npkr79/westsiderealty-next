@@ -566,7 +566,7 @@ export default async function MicroMarketPage({ params }: PageProps) {
       "@type": "RealEstateListing",
       name: `Properties in ${pageData.micro_market_name}, ${cityName}`,
       description: seoDescription + (commuteMatrix.length > 0 
-        ? ` Key commute times: ${commuteMatrix.slice(0, 3).map(item => `${item.destination || item.name}: ${item.time || ''}`).filter(Boolean).join(', ')}.`
+        ? ` Key commute times: ${commuteMatrix.slice(0, 3).map(item => `${(item as any).destination || (item as any).name || 'Location'}: ${(item as any).time || ''}`).filter(Boolean).join(', ')}.`
         : ''),
       url: canonicalUrl,
       image: pageData.hero_image_url || pageData.connectivity_map_url || undefined,
