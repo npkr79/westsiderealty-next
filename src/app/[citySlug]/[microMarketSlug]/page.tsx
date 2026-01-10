@@ -5,13 +5,15 @@ import Image from "next/image";
 import { microMarketPagesService, type MicroMarketPage, type FeaturedProject } from "@/services/microMarketPagesService";
 import { parseJsonb, safeLower, asArray, asObject, safeCapitalize } from "@/lib/parse-jsonb";
 import { projectService, ProjectWithRelations } from "@/services/projectService";
+import type { CommuteMatrixItem, LivabilityScores } from "@/services/microMarketPagesService";
 import BreadcrumbNav from "@/components/layout/BreadcrumbNav";
-import { Building2, TrendingUp, MapPin, School, Hospital, ShoppingBag } from "lucide-react";
+import { Building2, TrendingUp, MapPin, School, Hospital, ShoppingBag, Clock, Car, BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Progress } from "@/components/ui/progress";
 import CityHubBacklink from "@/components/seo/CityHubBacklink";
 import MasterPlanSection from "@/components/micro-market/MasterPlanSection";
 import InfrastructureTimeline from "@/components/micro-market/InfrastructureTimeline";
@@ -328,9 +330,49 @@ export default async function MicroMarketPage({ params }: PageProps) {
   const keyInfrastructure = asArray(parseJsonb((pageData as any).key_infrastructure_json, []));
   const marketTable = asArray(parseJsonb((pageData as any).market_analysis_table, []));
   const masterPlan = asObject(parseJsonb(pageData.master_plan_json, {}));
+  
+  // Parse new fields: commute_matrix and livability_scores
+  const commuteMatrixRaw = parseJsonb((pageData as any).commute_matrix, null);
+  const commuteMatrix: CommuteMatrixItem[] = Array.isArray(commuteMatrixRaw)
+    ? commuteMatrixRaw.filter((item: any) => item && (item.destination || item.name))
+    : [];
+  
+  const livabilityScoresRaw = parseJsonb((pageData as any).livability_scores, null);
+  const livabilityScores: LivabilityScores | null = 
+    livabilityScoresRaw && typeof livabilityScoresRaw === 'object' && !Array.isArray(livabilityScoresRaw)
+      ? (livabilityScoresRaw as LivabilityScores)
+      : null;
 
   // Fetch featured projects
   const featuredProjects = await microMarketPagesService.getFeaturedProjectsForPage(pageData.id);
+
+  // Fetch featured projects by IDs if provided
+  let featuredProjectsByIds: ProjectWithRelations[] = [];
+  if ((pageData as any).featured_project_ids && Array.isArray((pageData as any).featured_project_ids) && (pageData as any).featured_project_ids.length > 0) {
+    const { createClient } = await import("@/lib/supabase/server");
+    const supabase = await createClient();
+    const { data: featuredProjectsData, error: featuredError } = await supabase
+      .from("projects")
+      .select(`
+        *,
+        floor_plan_images,
+        city:cities(*),
+        developer:developers(*),
+        micro_market:micro_markets!projects_micromarket_id_fkey(*)
+      `)
+      .in("id", (pageData as any).featured_project_ids)
+      .or("status.ilike.published,status.ilike.%under construction%");
+    
+    if (!featuredError && featuredProjectsData) {
+      featuredProjectsByIds = featuredProjectsData.map((p: any) => {
+        // Normalize relations
+        if (p.city) p.city = Array.isArray(p.city) ? p.city[0] : p.city;
+        if (p.developer) p.developer = Array.isArray(p.developer) ? p.developer[0] : p.developer;
+        if (p.micro_market) p.micro_market = Array.isArray(p.micro_market) ? p.micro_market[0] : p.micro_market;
+        return p;
+      }) as ProjectWithRelations[];
+    }
+  }
 
   // Fetch projects for this micro-market - ensure citySlug and microMarketSlug are strings
   const safeCitySlug = typeof citySlug === "string" ? citySlug : "";
@@ -507,13 +549,25 @@ export default async function MicroMarketPage({ params }: PageProps) {
           longitude: (pageData as any).longitude,
         },
       }),
+      // Add AggregateRating from livability_scores if available
+      ...(livabilityScores?.overall !== undefined && {
+        aggregateRating: {
+          "@type": "AggregateRating",
+          ratingValue: livabilityScores.overall,
+          bestRating: 10,
+          worstRating: 0,
+          ratingCount: 1,
+        },
+      }),
     };
   } else {
     // For other micro-markets, use RealEstateListing
     primaryEntity = {
       "@type": "RealEstateListing",
       name: `Properties in ${pageData.micro_market_name}, ${cityName}`,
-      description: seoDescription,
+      description: seoDescription + (commuteMatrix.length > 0 
+        ? ` Key commute times: ${commuteMatrix.slice(0, 3).map(item => `${item.destination || item.name}: ${item.time || ''}`).filter(Boolean).join(', ')}.`
+        : ''),
       url: canonicalUrl,
       image: pageData.hero_image_url || pageData.connectivity_map_url || undefined,
       address: {
@@ -537,6 +591,16 @@ export default async function MicroMarketPage({ params }: PageProps) {
             },
           },
         }),
+      // Add AggregateRating from livability_scores if available
+      ...(livabilityScores?.overall !== undefined && {
+        aggregateRating: {
+          "@type": "AggregateRating",
+          ratingValue: livabilityScores.overall,
+          bestRating: 10,
+          worstRating: 0,
+          ratingCount: 1,
+        },
+      }),
       areaServed: {
         "@type": "City",
         name: cityName,
@@ -661,6 +725,102 @@ export default async function MicroMarketPage({ params }: PageProps) {
                 <p className="text-xs text-muted-foreground mt-4 text-center">
                   Indicative values as of late 2025. Actual prices and returns vary by project, tower, floor, view and market conditions.
                 </p>
+              </div>
+            )}
+
+            {/* Market Pulse Section */}
+            {(commuteMatrix.length > 0 || livabilityScores) && (
+              <div className="mt-12 mb-12">
+                <h2 className="text-3xl font-bold mb-8 text-foreground">Market Pulse</h2>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                  {/* Commute Matrix */}
+                  {commuteMatrix.length > 0 && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <Car className="h-5 w-5 text-primary" />
+                          Commute Times
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-3">
+                          {commuteMatrix.map((item, idx) => (
+                            <div
+                              key={idx}
+                              className="flex items-center justify-between p-3 rounded-lg border bg-card"
+                            >
+                              <div className="flex-1">
+                                <div className="font-medium text-foreground">{item.destination || item.name || "Location"}</div>
+                                {item.type && (
+                                  <div className="text-xs text-muted-foreground mt-1">{item.type}</div>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                                {item.time && (
+                                  <span className="flex items-center gap-1">
+                                    <Clock className="h-4 w-4" />
+                                    {item.time}
+                                  </span>
+                                )}
+                                {item.distance && (
+                                  <span className="flex items-center gap-1">
+                                    <Car className="h-4 w-4" />
+                                    {item.distance}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Livability Scores */}
+                  {livabilityScores && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <BarChart3 className="h-5 w-5 text-primary" />
+                          Livability Scorecard
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-4">
+                          {livabilityScores.overall !== undefined && (
+                            <div className="pb-4 border-b">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="font-semibold text-foreground">Overall Score</span>
+                                <span className="text-2xl font-bold text-primary">
+                                  {livabilityScores.overall.toFixed(1)}/10
+                                </span>
+                              </div>
+                              <Progress value={livabilityScores.overall} max={10} className="h-3" />
+                            </div>
+                          )}
+                          
+                          {Object.entries(livabilityScores)
+                            .filter(([key]) => key !== 'overall')
+                            .map(([key, value]) => {
+                              if (value === undefined || typeof value !== 'number') return null;
+                              const displayName = key
+                                .replace(/_/g, ' ')
+                                .replace(/\b\w/g, (l) => l.toUpperCase());
+                              return (
+                                <div key={key} className="space-y-2">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-sm font-medium text-foreground">{displayName}</span>
+                                    <span className="text-sm text-muted-foreground">{value.toFixed(1)}/10</span>
+                                  </div>
+                                  <Progress value={value} max={10} className="h-2" />
+                                </div>
+                              );
+                            })}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
               </div>
             )}
 
@@ -1047,6 +1207,41 @@ export default async function MicroMarketPage({ params }: PageProps) {
                     </CardContent>
                   </Card>
                 )}
+              </div>
+            </section>
+          )}
+
+          {/* Featured Projects by IDs */}
+          {featuredProjectsByIds.length > 0 && (
+            <section className="mb-12">
+              <h2 className="text-3xl font-bold mb-6 text-foreground">Featured Projects</h2>
+              <p className="text-muted-foreground mb-8 max-w-3xl">
+                Handpicked premium projects in {pageData.micro_market_name} offering exceptional value and lifestyle.
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {featuredProjectsByIds.map((project) => {
+                  const projectCity = Array.isArray(project.city) ? project.city[0] : project.city;
+                  const projectCitySlug = projectCity?.url_slug || citySlug;
+                  const validProjectSlug = project.url_slug || project.id;
+                  
+                  return (
+                    <ProjectCard
+                      key={project.id}
+                      project={{
+                        id: project.id,
+                        project_name: project.project_name,
+                        url_slug: validProjectSlug,
+                        hero_image_url: project.hero_image_url,
+                        price_range_text: project.price_range_text,
+                        status: project.status || project.completion_status || null,
+                        city: projectCity || { city_name: citySlug, url_slug: citySlug },
+                        micro_market: Array.isArray(project.micro_market) ? project.micro_market[0] : project.micro_market,
+                        developer: Array.isArray(project.developer) ? project.developer[0] : project.developer,
+                      }}
+                      citySlug={projectCitySlug}
+                    />
+                  );
+                })}
               </div>
             </section>
           )}

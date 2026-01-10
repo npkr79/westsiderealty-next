@@ -50,6 +50,25 @@ export interface InfrastructureItem {
   impact: string;
 }
 
+export interface CommuteMatrixItem {
+  destination: string;
+  time: string;
+  distance: string;
+  type?: string;
+}
+
+export interface LivabilityScores {
+  overall?: number;
+  connectivity?: number;
+  infrastructure?: number;
+  schools?: number;
+  healthcare?: number;
+  shopping?: number;
+  entertainment?: number;
+  safety?: number;
+  [key: string]: number | undefined;
+}
+
 export interface MicroMarketPage {
   id: string;
   url_slug: string;
@@ -92,6 +111,10 @@ export interface MicroMarketPage {
   master_plan_json?: MasterPlanData;
   infrastructure_json?: InfrastructureItem[];
   mm_authority_content?: string;
+  // New fields
+  commute_matrix?: CommuteMatrixItem[] | any;
+  livability_scores?: LivabilityScores | any;
+  featured_project_ids?: string[];
   status: string;
   word_count?: number;
   created_at: string;
