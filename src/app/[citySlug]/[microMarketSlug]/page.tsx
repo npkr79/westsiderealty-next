@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
-import { microMarketPagesService, type MicroMarketPage, type FeaturedProject } from "@/services/microMarketPagesService";
+import { microMarketPagesService, type MicroMarketPage } from "@/services/microMarketPagesService";
 import { parseJsonb, safeLower, asArray, asObject, safeCapitalize } from "@/lib/parse-jsonb";
 import { projectService, ProjectWithRelations } from "@/services/projectService";
 import type { CommuteMatrixItem, LivabilityScores } from "@/services/microMarketPagesService";
@@ -12,7 +12,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
 import CityHubBacklink from "@/components/seo/CityHubBacklink";
 import MasterPlanSection from "@/components/micro-market/MasterPlanSection";
@@ -328,7 +327,6 @@ export default async function MicroMarketPage({ params }: PageProps) {
   const faqs = asArray(parseJsonb(pageData.faqs, []));
   const infrastructure = asArray(parseJsonb(pageData.infrastructure_json, []));
   const keyInfrastructure = asArray(parseJsonb((pageData as any).key_infrastructure_json, []));
-  const marketTable = asArray(parseJsonb((pageData as any).market_analysis_table, []));
   const masterPlan = asObject(parseJsonb(pageData.master_plan_json, {}));
   
   // Parse new fields: commute_matrix and livability_scores
@@ -342,9 +340,6 @@ export default async function MicroMarketPage({ params }: PageProps) {
     livabilityScoresRaw && typeof livabilityScoresRaw === 'object' && !Array.isArray(livabilityScoresRaw)
       ? (livabilityScoresRaw as LivabilityScores)
       : null;
-
-  // Fetch featured projects
-  const featuredProjects = await microMarketPagesService.getFeaturedProjectsForPage(pageData.id);
 
   // Fetch featured projects by IDs if provided
   let featuredProjectsByIds: ProjectWithRelations[] = [];
@@ -374,43 +369,14 @@ export default async function MicroMarketPage({ params }: PageProps) {
     }
   }
 
-  // Fetch projects for this micro-market - ensure citySlug and microMarketSlug are strings
-  const safeCitySlug = typeof citySlug === "string" ? citySlug : "";
-  const safeMicroMarketSlug = typeof microMarketSlug === "string" ? microMarketSlug : "";
-  
-  if (!safeCitySlug || !safeMicroMarketSlug) {
+  // Validate slugs
+  if (!citySlug || !microMarketSlug || typeof citySlug !== "string" || typeof microMarketSlug !== "string") {
     console.error("[MicroMarketPage] Invalid slugs:", { citySlug, microMarketSlug });
     notFound();
   }
 
-  const mmProjects = await projectService.getProjectsByMicroMarket(safeCitySlug, safeMicroMarketSlug);
-
-  // Normalize projects - handle cases where micro_market might be null or array
-  // Filter out any null/undefined projects first
-  const normalizedProjects = (mmProjects || [])
-    .filter((project: any) => project != null && project !== undefined)
-    .map((project: any) => {
-      // Normalize micro_market relation (could be object, array, or null)
-      if (project.micro_market) {
-        project.micro_market = Array.isArray(project.micro_market) 
-          ? project.micro_market[0] 
-          : project.micro_market;
-      }
-      // Normalize developer relation (could be object, array, or null)
-      if (project.developer) {
-        project.developer = Array.isArray(project.developer) 
-          ? project.developer[0] 
-          : project.developer;
-      }
-      return project;
-    })
-    .filter((project: any) => project != null && project !== undefined);
-
-  // For Neopolis, show all projects; for other micro-markets, limit to 9 random projects
+  // Check if Neopolis for special handling
   const isNeopolis = safeLower(microMarketSlug) === "neopolis";
-  const microMarketProjects = isNeopolis
-      ? normalizedProjects
-      : [...normalizedProjects].sort(() => Math.random() - 0.5).slice(0, 9);
   const seoTitle = isNeopolis
     ? "Neopolis Hyderabad: Kokapet Projects, Prices & Master Plan | RE/MAX"
     : pageData.seo_title;
@@ -931,101 +897,6 @@ export default async function MicroMarketPage({ params }: PageProps) {
             nearestMmtsStatus={pageData.nearest_mmts_status}
           />
 
-          {/* Featured Projects Section - Below the Fold */}
-          {microMarketProjects.length > 0 && (
-            <section className="mb-12" id="featured-projects">
-              <h2 className="micro-market-h2">Featured Projects in {pageData.micro_market_name}</h2>
-              
-              {isNeopolis ? (
-                <p className="text-muted-foreground mb-6">
-                  This is a curated list of premium projects in Neopolis Hyderabad. The following table provides an at-a-glance overview of key luxury developments, including configurations, developers, and price ranges. This is not an exhaustive inventory—contact us for complete project listings and availability.
-                </p>
-              ) : (
-                <p className="text-muted-foreground mb-6">
-                  We specialize in showcasing the finest properties in the region. Here is a quick, at-a-glance overview of some of
-                  the key <strong className="metric-highlight">{pageData.micro_market_name} projects</strong> currently listed with
-                  us, demonstrating the variety of luxury and premium inventory available:
-                </p>
-              )}
-
-              {/* Price Trend Chart */}
-              {pageData.market_analysis_chart_url && (
-                <div className="chart-container mb-8">
-                  <h3 className="text-xl font-semibold mb-4 text-center">
-                    {pageData.micro_market_name} Price Trend (2020-2025)
-                  </h3>
-                  <Image
-                    src={safeImageSrc(pageData.market_analysis_chart_url)}
-                    alt={`${pageData.micro_market_name} real estate price trend analysis chart showing year-over-year appreciation from 2020 to 2025`}
-                    width={1200}
-                    height={600}
-                    className="mx-auto"
-                    loading="lazy"
-                  />
-                  <p className="text-xs text-muted-foreground text-center mt-3">
-                    *Data compiled from internal market research and public records. Chart shows average price per sq. ft. trends.
-                  </p>
-                </div>
-              )}
-
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="table-header-accent">
-                          <TableHead className="font-bold">Project Name</TableHead>
-                          <TableHead className="font-bold">Configuration</TableHead>
-                          <TableHead className="font-bold">Developer</TableHead>
-                          <TableHead className="font-bold">Price Range</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {(microMarketProjects ?? [])
-                          .filter((project: any) => project != null && project !== undefined && project?.url_slug)
-                          .map((project: any) => {
-                            // Guard against undefined citySlug
-                            const validCitySlug = citySlug || project.city?.url_slug || 'hyderabad';
-                            if (!validCitySlug || !project.url_slug) {
-                              return null;
-                            }
-                            
-                            return (
-                          <TableRow key={project?.id || Math.random()}>
-                            <TableCell>
-                              <Link
-                                href={`/${validCitySlug}/projects/${project.url_slug}`}
-                                className="font-medium text-primary underline decoration-primary/50 underline-offset-2 hover:decoration-primary hover:text-primary transition-colors"
-                              >
-                                  {project?.project_name || "Project"}
-                                </Link>
-                            </TableCell>
-                            <TableCell>{project?.unit_size_range || "—"}</TableCell>
-                            <TableCell>
-                              {project?.developer?.url_slug ? (
-                                <Link
-                                  href={`/developers/${project.developer.url_slug}`}
-                                  className="text-primary/80 underline decoration-primary/30 underline-offset-2 hover:text-primary hover:decoration-primary transition-colors"
-                                >
-                                  {project.developer?.developer_name || "—"}
-                                </Link>
-                              ) : (
-                                <span className="text-muted-foreground">{project?.developer?.developer_name || "—"}</span>
-                              )}
-                            </TableCell>
-                            <TableCell className="font-semibold text-foreground">
-                              {project?.price_range_text || "Enquire for Price"}
-                            </TableCell>
-                          </TableRow>
-                          );
-                          })}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </CardContent>
-              </Card>
-            </section>
-          )}
 
           {/* Inventory Snapshot with CTA */}
           {pageData.inventory_description && (
@@ -1117,29 +988,6 @@ export default async function MicroMarketPage({ params }: PageProps) {
             </section>
           )}
 
-          {/* Featured Projects */}
-          {featuredProjects.length > 0 && (
-            <section className="mb-12">
-              <h2 className="micro-market-h2">Featured Projects in {pageData.micro_market_name}</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {(featuredProjects ?? []).map((project) => (
-                  <Card key={project.id}>
-                    <CardHeader>
-                      <CardTitle>
-                        <span className="text-foreground">{project.project_name}</span>
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      {project.project_summary && <p className="text-muted-foreground mb-4">{project.project_summary}</p>}
-                      <Button variant="outline" className="w-full" disabled>
-                        View Details
-                      </Button>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </section>
-          )}
 
           {/* Social Infrastructure */}
           {((Array.isArray(pageData.top_schools) && pageData.top_schools.length > 0) ||
@@ -1212,7 +1060,7 @@ export default async function MicroMarketPage({ params }: PageProps) {
           )}
 
           {/* Featured Projects by IDs */}
-          {featuredProjectsByIds.length > 0 && (
+          {featuredProjectsByIds && featuredProjectsByIds.length > 0 && (
             <section className="mb-12">
               <h2 className="text-3xl font-bold mb-6 text-foreground">Featured Projects</h2>
               <p className="text-muted-foreground mb-8 max-w-3xl">
@@ -1245,27 +1093,6 @@ export default async function MicroMarketPage({ params }: PageProps) {
               </div>
             </section>
           )}
-
-          {/* Projects Section */}
-          <section className="mb-12">
-            <h2 className="micro-market-h2">Explore Projects in {pageData.micro_market_name}</h2>
-            <p className="text-muted-foreground mb-8 max-w-3xl">
-              Discover premium residential projects in {pageData.micro_market_name}. Each project offers world-class amenities
-              and excellent investment potential.
-            </p>
-
-            {microMarketProjects.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {(microMarketProjects ?? [])
-                  .filter((project: any) => project != null && project !== undefined)
-                  .map((project: any) => (
-                  <ProjectCard key={project?.id || Math.random()} project={project} citySlug={citySlug} />
-                ))}
-              </div>
-            ) : (
-              <p className="text-muted-foreground text-center py-8">No projects found in this micro-market.</p>
-            )}
-          </section>
 
           {/* FAQ Section */}
           {Array.isArray(finalFAQs) && finalFAQs.length > 0 && (
