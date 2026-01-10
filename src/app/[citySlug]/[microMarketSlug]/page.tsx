@@ -5,9 +5,9 @@ import Image from "next/image";
 import { microMarketPagesService, type MicroMarketPage } from "@/services/microMarketPagesService";
 import { parseJsonb, safeLower, asArray, asObject, safeCapitalize } from "@/lib/parse-jsonb";
 import { projectService, ProjectWithRelations } from "@/services/projectService";
-import type { CommuteMatrixItem, LivabilityScores } from "@/services/microMarketPagesService";
+import type { CommuteMatrixItem, LivabilityScores, PriceTrendItem } from "@/services/microMarketPagesService";
 import BreadcrumbNav from "@/components/layout/BreadcrumbNav";
-import { Building2, TrendingUp, MapPin, School, Hospital, ShoppingBag, Clock, Car, BarChart3 } from "lucide-react";
+import { Building2, TrendingUp, MapPin, School, Hospital, ShoppingBag, Clock, Car, BarChart3, TrendingDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,6 +21,7 @@ import ProjectCard from "@/components/properties/ProjectCard";
 import QuickFactsModule from "@/components/micro-market/QuickFactsModule";
 import StrategicInfrastructureSection from "@/components/micro-market/StrategicInfrastructureSection";
 import NeopolisEditorialContent from "@/components/micro-market/NeopolisEditorialContent";
+import PriceTrendsChart from "@/components/micro-market/PriceTrendsChart";
 import { buildMetadata } from "@/components/common/SEO";
 import { JsonLd } from "@/components/common/SEO";
 import { getHeroImageUrl } from "@/utils/imageOptimization";
@@ -340,6 +341,16 @@ export default async function MicroMarketPage({ params }: PageProps) {
     livabilityScoresRaw && typeof livabilityScoresRaw === 'object' && !Array.isArray(livabilityScoresRaw)
       ? (livabilityScoresRaw as LivabilityScores)
       : null;
+  
+  // Parse price_trends data
+  const priceTrendsRaw: any = parseJsonb((pageData as any).price_trends, null);
+  const priceTrends: PriceTrendItem[] = Array.isArray(priceTrendsRaw)
+    ? (priceTrendsRaw as any[]).filter((item: any) => item && (item.year !== undefined && item.price !== undefined))
+    : [];
+  
+  // Extract latitude and longitude
+  const latitude = typeof (pageData as any).latitude === 'number' ? (pageData as any).latitude : null;
+  const longitude = typeof (pageData as any).longitude === 'number' ? (pageData as any).longitude : null;
 
   // Fetch featured projects by IDs if provided
   let featuredProjectsByIds: ProjectWithRelations[] = [];
@@ -508,12 +519,13 @@ export default async function MicroMarketPage({ params }: PageProps) {
           value: masterPlanData.fsi_policy,
         },
       } : {}),
-      ...((pageData as any).latitude && (pageData as any).longitude && {
+      ...(latitude !== null && longitude !== null && typeof latitude === 'number' && typeof longitude === 'number' && !isNaN(latitude) && !isNaN(longitude) && {
         geo: {
           "@type": "GeoCoordinates",
-          latitude: (pageData as any).latitude,
-          longitude: (pageData as any).longitude,
+          latitude: latitude,
+          longitude: longitude,
         },
+        hasMap: `https://maps.google.com/maps?q=${latitude},${longitude}`,
       }),
       // Add AggregateRating from livability_scores if available
       ...(livabilityScores?.overall !== undefined && {
@@ -566,6 +578,15 @@ export default async function MicroMarketPage({ params }: PageProps) {
           worstRating: 0,
           ratingCount: 1,
         },
+      }),
+      // Add geo coordinates and map if available
+      ...(latitude !== null && longitude !== null && typeof latitude === 'number' && typeof longitude === 'number' && !isNaN(latitude) && !isNaN(longitude) && {
+        geo: {
+          "@type": "GeoCoordinates",
+          latitude: latitude,
+          longitude: longitude,
+        },
+        hasMap: `https://maps.google.com/maps?q=${latitude},${longitude}`,
       }),
       areaServed: {
         "@type": "City",
@@ -790,6 +811,18 @@ export default async function MicroMarketPage({ params }: PageProps) {
               </div>
             )}
 
+            {/* Price Trends Section */}
+            {priceTrends && priceTrends.length > 0 && (
+              <div className="mt-12 mb-12">
+                <h2 className="text-3xl font-bold mb-6 text-foreground">Property Price Trends (3-Year History)</h2>
+                <Card>
+                  <CardContent className="pt-6">
+                    <PriceTrendsChart data={priceTrends} />
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
             {/* Connectivity Map */}
             {pageData.connectivity_map_url && (
               <div className="mt-8 max-w-md mx-auto">
@@ -896,7 +929,6 @@ export default async function MicroMarketPage({ params }: PageProps) {
             microMarketName={pageData.micro_market_name}
             nearestMmtsStatus={pageData.nearest_mmts_status}
           />
-
 
           {/* Inventory Snapshot with CTA */}
           {pageData.inventory_description && (
@@ -1124,6 +1156,27 @@ export default async function MicroMarketPage({ params }: PageProps) {
                       );
                     })}
                   </Accordion>
+                </CardContent>
+              </Card>
+            </section>
+          )}
+
+          {/* Location Map Section */}
+          {latitude !== null && longitude !== null && typeof latitude === 'number' && typeof longitude === 'number' && !isNaN(latitude) && !isNaN(longitude) && (
+            <section className="mb-12">
+              <h2 className="text-3xl font-bold mb-6 text-foreground">Location & Connectivity</h2>
+              <Card>
+                <CardContent className="pt-6 p-0">
+                  <iframe
+                    src={`https://maps.google.com/maps?q=${latitude},${longitude}&hl=en&z=14&output=embed`}
+                    width="100%"
+                    height="400"
+                    style={{ border: 0 }}
+                    allowFullScreen
+                    loading="lazy"
+                    referrerPolicy="no-referrer-when-downgrade"
+                    className="rounded-xl"
+                  />
                 </CardContent>
               </Card>
             </section>

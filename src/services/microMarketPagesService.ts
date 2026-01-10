@@ -70,6 +70,12 @@ export interface LivabilityScores {
   [key: string]: number | undefined;
 }
 
+export interface PriceTrendItem {
+  year: string | number;
+  price: number;
+  [key: string]: any;
+}
+
 export interface MicroMarketPage {
   id: string;
   url_slug: string;
@@ -116,6 +122,9 @@ export interface MicroMarketPage {
   commute_matrix?: CommuteMatrixItem[] | any;
   livability_scores?: LivabilityScores | any;
   featured_project_ids?: string[];
+  price_trends?: PriceTrendItem[] | any;
+  latitude?: number | null;
+  longitude?: number | null;
   status: string;
   word_count?: number;
   created_at: string;
