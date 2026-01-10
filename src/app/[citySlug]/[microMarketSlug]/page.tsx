@@ -332,12 +332,12 @@ export default async function MicroMarketPage({ params }: PageProps) {
   const masterPlan = asObject(parseJsonb(pageData.master_plan_json, {}));
   
   // Parse new fields: commute_matrix and livability_scores
-  const commuteMatrixRaw = parseJsonb((pageData as any).commute_matrix, null);
+  const commuteMatrixRaw: any = parseJsonb((pageData as any).commute_matrix, null);
   const commuteMatrix: CommuteMatrixItem[] = Array.isArray(commuteMatrixRaw)
-    ? commuteMatrixRaw.filter((item: any) => item && (item.destination || item.name))
+    ? (commuteMatrixRaw as any[]).filter((item: any) => item && (item.destination || item.name))
     : [];
   
-  const livabilityScoresRaw = parseJsonb((pageData as any).livability_scores, null);
+  const livabilityScoresRaw: any = parseJsonb((pageData as any).livability_scores, null);
   const livabilityScores: LivabilityScores | null = 
     livabilityScoresRaw && typeof livabilityScoresRaw === 'object' && !Array.isArray(livabilityScoresRaw)
       ? (livabilityScoresRaw as LivabilityScores)
