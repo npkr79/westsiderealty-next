@@ -630,7 +630,7 @@ export default async function MicroMarketPage({ params }: PageProps) {
 
           {/* Hero Section */}
           <header className="mb-12 mt-8">
-            {pageData.hero_image_url && (
+            {pageData.hero_image_url && pageData.hero_image_url.trim() ? (
               <div className="mb-6 rounded-lg overflow-hidden">
                 <Image
                   src={safeImageSrc(getHeroImageUrl(pageData.hero_image_url))}
@@ -643,6 +643,14 @@ export default async function MicroMarketPage({ params }: PageProps) {
                   className="w-full h-64 object-cover"
                   priority
                 />
+              </div>
+            ) : (
+              <div className="mb-6 rounded-lg overflow-hidden bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900 h-64 flex items-center justify-center">
+                <div className="text-center px-4">
+                  <Building2 className="h-16 w-16 text-white/20 mx-auto mb-4" />
+                  <p className="text-white/60 text-lg font-medium">Westside Realty</p>
+                  <p className="text-white/40 text-sm mt-1">{pageData.micro_market_name || "Premium Properties"}</p>
+                </div>
               </div>
             )}
 
@@ -823,8 +831,8 @@ export default async function MicroMarketPage({ params }: PageProps) {
               </div>
             )}
 
-            {/* Connectivity Map */}
-            {pageData.connectivity_map_url && (
+            {/* Connectivity Map - Only render if URL is valid */}
+            {pageData.connectivity_map_url && pageData.connectivity_map_url.trim() && (
               <div className="mt-8 max-w-md mx-auto">
                 <div className="rounded-lg overflow-hidden shadow-md border border-border">
                   <Image
@@ -975,7 +983,9 @@ export default async function MicroMarketPage({ params }: PageProps) {
                       <CardHeader>
                         <CardTitle>
                           <div className="flex items-center gap-4">
-                            {pageData.developer_logo_urls?.[developer.name] && (
+                            {pageData.developer_logo_urls?.[developer.name] && 
+                             typeof pageData.developer_logo_urls[developer.name] === 'string' &&
+                             pageData.developer_logo_urls[developer.name].trim() && (
                               <Image
                                 src={safeImageSrc(pageData.developer_logo_urls[developer.name])}
                                 alt={`${developer.name} logo`}

@@ -1,11 +1,28 @@
 "use client";
 
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import type { PriceTrendItem } from "@/services/microMarketPagesService";
 
 interface PriceTrendsChartProps {
   data: PriceTrendItem[];
 }
+
+// Custom Tooltip Component
+const CustomTooltip = ({ active, payload }: any) => {
+  if (active && payload && payload.length) {
+    const value = payload[0].value;
+    if (value === undefined || isNaN(value)) return null;
+    
+    return (
+      <div className="bg-white rounded-lg shadow-lg border border-gray-200 px-4 py-3">
+        <p className="text-sm font-bold text-blue-600">
+          ₹{value.toLocaleString()} / sq.ft
+        </p>
+      </div>
+    );
+  }
+  return null;
+};
 
 export default function PriceTrendsChart({ data }: PriceTrendsChartProps) {
   if (!data || data.length === 0) return null;
@@ -21,54 +38,49 @@ export default function PriceTrendsChart({ data }: PriceTrendsChartProps) {
 
   if (chartData.length === 0) return null;
 
+  // Modern blue color for bars
+  const barColor = "#0ea5e9";
+
   return (
     <ResponsiveContainer width="100%" height={400}>
-      <AreaChart
+      <BarChart
         data={chartData}
-        margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+        margin={{ top: 20, right: 30, left: 0, bottom: 10 }}
       >
-        <defs>
-          <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor="#6366f1" stopOpacity={0.8} />
-            <stop offset="95%" stopColor="#6366f1" stopOpacity={0.1} />
-          </linearGradient>
-        </defs>
-        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+        <CartesianGrid 
+          strokeDasharray="3 3" 
+          stroke="#e5e7eb" 
+          vertical={false}
+          horizontal={true}
+        />
         <XAxis
           dataKey="year"
-          className="text-xs"
-          tick={{ fill: "hsl(var(--muted-foreground))" }}
+          tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
+          tickLine={false}
+          axisLine={false}
         />
         <YAxis
-          className="text-xs"
-          tick={{ fill: "hsl(var(--muted-foreground))" }}
+          tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
+          tickLine={false}
+          axisLine={false}
           tickFormatter={(value) => {
             if (value === undefined || isNaN(value)) return "N/A";
-            return `₹${value.toLocaleString()}`;
+            return `₹${(value / 1000).toFixed(0)}k`;
           }}
         />
-        <Tooltip
-          contentStyle={{
-            backgroundColor: "hsl(var(--background))",
-            border: "1px solid hsl(var(--border))",
-            borderRadius: "8px",
-            padding: "12px",
-          }}
-          formatter={(value: number | undefined) => {
-            if (value === undefined || isNaN(value)) return ["N/A", "Price"];
-            return [`₹${value.toLocaleString()}/sft`, "Price"];
-          }}
-          labelFormatter={(label) => `Year: ${label}`}
-        />
-        <Area
-          type="monotone"
+        <Tooltip content={<CustomTooltip />} />
+        <Bar
           dataKey="price"
-          stroke="#6366f1"
-          strokeWidth={2}
-          fillOpacity={1}
-          fill="url(#colorPrice)"
-        />
-      </AreaChart>
+          fill={barColor}
+          radius={[8, 8, 0, 0]}
+          animationDuration={1000}
+          animationEasing="ease-in-out"
+        >
+          {chartData.map((entry, index) => (
+            <Cell key={`cell-${index}`} fill={barColor} />
+          ))}
+        </Bar>
+      </BarChart>
     </ResponsiveContainer>
   );
 }
