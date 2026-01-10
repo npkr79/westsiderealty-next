@@ -229,8 +229,6 @@ export const projectService = {
   ): Promise<ProjectWithRelations | null> {
     const supabase = createClient();
     
-    console.log(`[getCityLevelProjectBySlug] Fetching project: citySlug=${citySlug}, projectSlug=${projectSlug}`);
-    
     // Handle spelling correction: sumachura -> sumadhura
     const correctedSlug = projectSlug === 'sumachura-the-olympus' ? 'sumadhura-the-olympus' : projectSlug;
     
@@ -242,32 +240,23 @@ export const projectService = {
       .maybeSingle();
 
     if (cityError) {
-      console.error('[getCityLevelProjectBySlug] Error fetching city:', cityError);
+      // Only log actual errors (not 404s)
+      if (cityError.code !== 'PGRST116') {
+        console.error('[getCityLevelProjectBySlug] Error fetching city:', cityError);
+      }
       return null;
     }
 
     if (!cityData?.id) {
-      console.error('[getCityLevelProjectBySlug] City not found for slug:', citySlug);
       return null;
     }
 
-    // First, let's check if the project exists at all (without city filter) for debugging
-    const { data: debugProject, error: debugError } = await supabase
+    // Check if the project exists at all (without city filter) for debugging
+    const { data: debugProject } = await supabase
       .from('projects')
       .select('id, project_name, url_slug, city_id, status, page_status, micro_market_id, developer_id, city:cities(id, url_slug)')
       .eq('url_slug', correctedSlug)
       .maybeSingle();
-    
-    if (debugError) {
-      console.error('[getCityLevelProjectBySlug] Error checking project existence:', debugError);
-    }
-    
-    if (debugProject) {
-      const debugCity = Array.isArray(debugProject.city) ? debugProject.city[0] : debugProject.city;
-      if (debugProject.city_id !== cityData.id) {
-        console.warn(`[getCityLevelProjectBySlug] ⚠️ City mismatch! Project belongs to city_id ${debugProject.city_id} (${debugCity?.url_slug}) but requested ${cityData.id} (${citySlug})`);
-      }
-    }
 
     // Helper function to try finding project with various slug patterns
     const tryFindProject = async (slugToTry: string, skipCityCheck = false) => {
@@ -293,23 +282,21 @@ export const projectService = {
       // Detail pages should show projects regardless of page_status (draft/published)
       const query1 = buildQuery().or('status.ilike.published,status.ilike.%under construction%');
       const result1 = await query1.maybeSingle();
-      if (result1.error) {
-        console.error(`[getCityLevelProjectBySlug] Query 1 error for ${slugToTry}:`, result1.error);
+      if (result1.error && result1.error.code !== 'PGRST116') {
+        // Only log non-404 errors
+        console.error(`[getCityLevelProjectBySlug] Query error for ${slugToTry}:`, result1.error);
       }
       if (result1.data) return result1.data;
       
       // Try without any status filters (fallback - includes everything, better than 404)
       const query2 = buildQuery();
       const result2 = await query2.maybeSingle();
-      if (result2.error) {
-        console.error(`[getCityLevelProjectBySlug] Query 2 error for ${slugToTry}:`, result2.error);
+      if (result2.error && result2.error.code !== 'PGRST116') {
+        // Only log non-404 errors
+        console.error(`[getCityLevelProjectBySlug] Query error for ${slugToTry}:`, result2.error);
       }
       
       if (result2.data) {
-        console.warn(`[getCityLevelProjectBySlug] Found project but it may not be published: ${(result2.data as any).project_name}`, {
-          status: (result2.data as any).status,
-          page_status: (result2.data as any).page_status
-        });
         return result2.data;
       }
       
@@ -408,12 +395,14 @@ export const projectService = {
       return data as ProjectWithRelations;
     }
 
-    // Only log warning if we've exhausted all search attempts
-    console.warn('[getCityLevelProjectBySlug] ⚠️ Project not found after all attempts:', { 
-      citySlug, 
-      projectSlug: correctedSlug, 
-      cityId: cityData.id 
-    });
+    // If not found, return null (don't log - 404s are expected and handled by notFound())
+    // Only log if there's a debug project but city mismatch
+    if (!data && debugProject && debugProject.city_id && debugProject.city_id !== cityData.id) {
+      // This is a legitimate mismatch case that might need attention
+      const debugCity = Array.isArray(debugProject.city) ? debugProject.city[0] : debugProject.city;
+      console.warn(`[getCityLevelProjectBySlug] Project "${correctedSlug}" exists but belongs to different city: ${debugCity?.url_slug} (requested: ${citySlug})`);
+    }
+    
     return null;
   },
 

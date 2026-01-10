@@ -204,7 +204,6 @@ export default async function ProjectDetailPage({ params }: PageProps) {
   let brochureUrl: string | null = null;
 
   try {
-    console.log(`[ProjectDetailPage] Fetching project: citySlug=${citySlug}, projectSlug=${projectSlug}`);
     project = await projectService.getCityLevelProjectBySlug(citySlug, projectSlug);
     
     // If project found but slug doesn't match, redirect to correct slug
@@ -213,16 +212,13 @@ export default async function ProjectDetailPage({ params }: PageProps) {
       const { permanentRedirect } = await import('next/navigation');
       const projectCity = Array.isArray(project.city) ? project.city[0] : project.city;
       const projectCitySlug = projectCity?.url_slug || citySlug;
-      console.log(`[ProjectDetailPage] Redirecting to correct slug: ${projectSlug} → ${project.url_slug}`);
       permanentRedirect(`/${projectCitySlug}/projects/${project.url_slug}`);
     }
     
     if (!project) {
-      console.error(`[ProjectDetailPage] Project not found: citySlug=${citySlug}, projectSlug=${projectSlug}`);
+      // Silently return 404 - don't log as error (expected behavior)
       notFound();
     }
-
-    console.log(`[ProjectDetailPage] ✅ Project found: ${project.project_name}`);
 
     // Fetch brochure (non-blocking)
     try {
@@ -236,8 +232,12 @@ export default async function ProjectDetailPage({ params }: PageProps) {
     if (error?.digest?.startsWith('NEXT_REDIRECT')) {
       throw error;
     }
+    // Re-throw 404 errors (NEXT_HTTP_ERROR_FALLBACK;404) - these are expected, don't log
+    if (error?.digest?.includes('404') || error?.digest?.includes('NEXT_HTTP_ERROR_FALLBACK')) {
+      throw error;
+    }
+    // Only log actual errors (not expected 404s)
     console.error("[ProjectDetailPage] ❌ Error fetching project:", error);
-    console.error("[ProjectDetailPage] Error details:", JSON.stringify(error, null, 2));
     throw error; // Let error boundary catch it
   }
 
