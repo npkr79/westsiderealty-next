@@ -8,7 +8,7 @@ import {
   NavigationMenuItem,
   NavigationMenuTrigger,
 } from "@/components/ui/navigation-menu";
-import { navigationService, NavCity } from "@/services/navigationService";
+import { navigationService, NavCity } from "@/services/client/navigationService";
 import { Badge } from "@/components/ui/badge";
 
 const BuyDropdown = () => {

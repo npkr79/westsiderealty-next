@@ -8,7 +8,7 @@ import {
   NavigationMenuItem,
   NavigationMenuTrigger,
 } from "@/components/ui/navigation-menu";
-import { navigationService, NavMicroMarket, NavDeveloper, NavCity } from "@/services/navigationService";
+import { navigationService, NavMicroMarket, NavDeveloper, NavCity } from "@/services/client/navigationService";
 
 const ExploreDropdown = () => {
   const [microMarkets, setMicroMarkets] = useState<NavMicroMarket[]>([]);

@@ -17,7 +17,7 @@ import TestimonialsSection from "@/components/home/TestimonialsSection";
 import CtaSection from "@/components/home/CtaSection";
 import CityCardsSection from "@/components/home/CityCardsSection";
 import { supabaseTestimonialClientService } from "@/services/admin/supabaseTestimonialClientService";
-import { siteImagesService } from "@/services/adminService";
+import { siteImagesService } from "@/services/admin/siteImagesService";
 import HeroBannerSlider from "@/components/home/HeroBannerSlider";
 import IntentCards from "@/components/home/IntentCards";
 import type { HeroBannerOffer } from "@/services/heroBannerService";

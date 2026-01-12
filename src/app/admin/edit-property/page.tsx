@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { ArrowLeft, Save, Upload, X } from "lucide-react";
 import { toast } from "sonner";
-import { locationPropertyService } from "@/services/locationPropertyService";
+import { locationPropertyService } from "@/services/client/locationPropertyService";
 import { supabase } from "@/integrations/supabase/client";
 import AmenitiesSelector from "@/components/admin/AmenitiesSelector";
 import LocationDetailsEditor from "@/components/admin/LocationDetailsEditor";

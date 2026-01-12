@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { MapPin } from "lucide-react";
-import { projectService, type ProjectWithRelations } from "@/services/projectService";
+import type { ProjectWithRelations } from "@/services/projectService";
 import ImageWithFallback from "@/components/common/ImageWithFallback";
 
 interface SimilarProjectsProps {
@@ -34,7 +34,14 @@ export default function SimilarProjects({
 
         // First try: Same micro-market
         if (microMarketId) {
-          similar = await projectService.getRelatedProjectsByMicroMarketId(String(microMarketId));
+          const response = await fetch('/api/projects/related', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ microMarketId: String(microMarketId) }),
+          });
+          if (response.ok) {
+            similar = await response.json();
+          }
         }
 
         // Filter by price range (±20%)

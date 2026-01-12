@@ -126,7 +126,7 @@ export const agentProfileService = {
 
     if (error) throw error;
 
-    return data.map(agent => ({
+    return data.map((agent: any) => ({
       ...agent,
       service_areas: parseJsonField(agent.service_areas, [])
     }));
@@ -143,7 +143,7 @@ export const agentProfileService = {
 
     if (error) throw error;
 
-    return data.map(agent => ({
+    return data.map((agent: any) => ({
       ...agent,
       service_areas: parseJsonField(agent.service_areas, [])
     }));
@@ -161,7 +161,7 @@ export const agentProfileService = {
 
     if (error) throw error;
 
-    return data.map(agent => ({
+    return data.map((agent: any) => ({
       ...agent,
       service_areas: parseJsonField(agent.service_areas, [])
     }));

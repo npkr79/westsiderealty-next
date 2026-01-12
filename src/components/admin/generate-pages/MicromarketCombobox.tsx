@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { microMarketService } from "@/services/microMarketService";
+import { microMarketService } from "@/services/client/microMarketService";
 
 interface MicromarketComboboxProps {
   citySlug?: string;

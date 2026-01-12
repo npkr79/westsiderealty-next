@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { projectService, ProjectWithRelations } from "@/services/projectService";
-import { locationPropertyService, HyderabadProperty } from "@/services/locationPropertyService";
+import { locationPropertyService, HyderabadProperty } from "@/services/client/locationPropertyService";
 import { findBrochureByProjectName } from "@/services/brochureService";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";

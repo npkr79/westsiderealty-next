@@ -74,7 +74,7 @@ export const developersHubService = {
       return [];
     }
 
-    const uniqueCities = [...new Set(data?.map(d => d.primary_city_focus).filter(Boolean) as string[])];
+    const uniqueCities = [...new Set(data?.map((d: any) => d.primary_city_focus).filter(Boolean) as string[])];
     return uniqueCities.sort();
   }
 };

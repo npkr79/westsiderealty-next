@@ -6,8 +6,8 @@ import Image from "next/image";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Building2, MapPin } from "lucide-react";
-import { navigationService, NavCity } from "@/services/navigationService";
-import { cityService } from "@/services/cityService";
+import { navigationService, NavCity } from "@/services/client/navigationService";
+import { cityService } from "@/services/client/cityService";
 import { getMultipleCityCounts, formatCount } from "@/services/cityProjectCountsService";
 
 interface CityCardProps {

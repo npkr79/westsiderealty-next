@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/navigation-menu";
 import { Menu, Phone } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { siteImagesService } from "@/services/adminService";
+import { siteImagesService } from "@/services/admin/siteImagesService";
 import BuyDropdown from "./BuyDropdown";
 import NewProjectsDropdown from "./NewProjectsDropdown";
 import ExploreDropdown from "./ExploreDropdown";

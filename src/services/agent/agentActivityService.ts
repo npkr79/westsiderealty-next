@@ -40,7 +40,7 @@ export const agentActivityService = {
 
     if (error) throw error;
     
-    return (data || []).map(activity => ({
+    return (data || []).map((activity: any) => ({
       ...activity,
       metadata: parseJsonField(activity.metadata, {})
     }));

@@ -8,7 +8,7 @@ import {
   NavigationMenuItem,
   NavigationMenuTrigger,
 } from "@/components/ui/navigation-menu";
-import { navigationService, NavCity, NavMicroMarket } from "@/services/navigationService";
+import { navigationService, NavCity, NavMicroMarket } from "@/services/client/navigationService";
 
 const MegaMenuProperties = () => {
   const [cities, setCities] = useState<NavCity[]>([]);

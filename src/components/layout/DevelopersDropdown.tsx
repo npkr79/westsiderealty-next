@@ -8,7 +8,7 @@ import {
   NavigationMenuItem,
   NavigationMenuTrigger,
 } from "@/components/ui/navigation-menu";
-import { navigationService, NavDeveloper } from "@/services/navigationService";
+import { navigationService, NavDeveloper } from "@/services/client/navigationService";
 
 const DevelopersDropdown = () => {
   const [developers, setDevelopers] = useState<NavDeveloper[]>([]);

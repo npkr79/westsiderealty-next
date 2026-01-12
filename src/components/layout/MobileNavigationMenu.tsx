@@ -9,7 +9,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
-import { navigationService, NavCity, NavMicroMarket, NavDeveloper } from "@/services/navigationService";
+import { navigationService, NavCity, NavMicroMarket, NavDeveloper } from "@/services/client/navigationService";
 import { Badge } from "@/components/ui/badge";
 import { createClient } from "@/lib/supabase/client";
 

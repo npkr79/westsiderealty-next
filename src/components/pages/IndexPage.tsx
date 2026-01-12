@@ -18,7 +18,7 @@ import CtaSection from "@/components/home/CtaSection";
 import CityCardsSection from "@/components/home/CityCardsSection";
 import FeaturedProjects from "@/components/home/FeaturedProjects";
 import { supabaseTestimonialClientService } from "@/services/admin/supabaseTestimonialClientService";
-import { siteImagesService } from "@/services/adminService";
+import { siteImagesService } from "@/services/admin/siteImagesService";
 
 const fallbackImage = "/placeholder.svg";
 

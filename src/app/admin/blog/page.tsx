@@ -41,7 +41,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { supabaseImageService, UploadedImage } from "@/services/client/supabaseImageService";
+import { supabaseImageService } from "@/services/client/supabaseImageService";
+import type { UploadedImage } from "@/services/shared/types";
 import { blogServiceClient, BlogArticle } from "@/services/blogServiceClient";
 import QuillEditorClient from "@/components/blog/QuillEditorClient";
 import {
