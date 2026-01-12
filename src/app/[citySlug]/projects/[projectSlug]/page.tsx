@@ -60,67 +60,66 @@ export async function generateStaticParams() {
 
 // Generate metadata server-side
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const { citySlug: citySlugParam, projectSlug: projectSlugParam } = await params;
-  const citySlug = Array.isArray(citySlugParam) ? citySlugParam[0] : citySlugParam;
-  const projectSlug = Array.isArray(projectSlugParam) ? projectSlugParam[0] : projectSlugParam;
+  try {
+    const { citySlug: citySlugParam, projectSlug: projectSlugParam } = await params;
+    const citySlug = Array.isArray(citySlugParam) ? citySlugParam[0] : citySlugParam;
+    const projectSlug = Array.isArray(projectSlugParam) ? projectSlugParam[0] : projectSlugParam;
 
-  if (!citySlug || !projectSlug) {
-    return {
-      title: "Project Not Found",
-    };
-  }
+    if (!citySlug || !projectSlug) {
+      return { title: "Project Not Found" };
+    }
 
-  const project = await projectService.getCityLevelProjectBySlug(citySlug, projectSlug);
+    const project = await projectService.getCityLevelProjectBySlug(citySlug, projectSlug);
 
-  if (!project) {
-    return {
-      title: "Project Not Found",
-    };
-  }
+    if (!project) {
+      return { title: "Project Not Found" };
+    }
 
-  const canonicalUrl = `https://www.westsiderealty.in/${citySlug}/projects/${projectSlug}`;
-  const cityName = project.city?.city_name || citySlug;
-  const seoTitle = project.seo_title || `${project.project_name} ${cityName}: Price, Floor Plans & Reviews | RE/MAX`;
-  const seoDescription = project.meta_description || `Explore ${project.project_name} - Premium residential project in ${cityName}`;
-  
-  // Optimize OG image
-  const rawOgImage = project.hero_image_url || "https://www.westsiderealty.in/placeholder.svg";
-  const optimizedOgImage = optimizeSupabaseImage(rawOgImage, {
-    width: 1200,
-    height: 630,
-    quality: 80,
-    format: "webp",
-  });
+    const canonicalUrl = `https://www.westsiderealty.in/${citySlug}/projects/${projectSlug}`;
+    const cityName = project.city?.city_name || citySlug;
+    const seoTitle = project.seo_title || `${project.project_name} ${cityName}: Price, Floor Plans & Reviews | RE/MAX`;
+    const seoDescription = project.meta_description || `Explore ${project.project_name} - Premium residential project in ${cityName}`;
 
-  return {
-    title: seoTitle,
-    description: seoDescription,
-    alternates: {
-      canonical: canonicalUrl,
-    },
-    openGraph: {
-      title: seoTitle,
-      description: seoDescription,
-      url: canonicalUrl,
-      siteName: "RE/MAX Westside Realty",
-      type: "website",
-      locale: "en_IN",
-      images: [
-        {
-          url: optimizedOgImage,
+    // Safe image URL - use getHeroImageUrl which handles relative paths
+    let optimizedOgImage = "https://www.westsiderealty.in/placeholder.svg";
+    try {
+      if (project.hero_image_url) {
+        const heroUrl = getHeroImageUrl(project.hero_image_url) || "https://www.westsiderealty.in/placeholder.svg";
+        optimizedOgImage = optimizeSupabaseImage(heroUrl, {
           width: 1200,
           height: 630,
-          alt: project.project_name,
-        },
-      ],
-    },
-    twitter: {
-      card: "summary_large_image",
+          quality: 80,
+          format: "webp",
+        });
+      }
+    } catch (imgErr) {
+      console.warn("[generateMetadata] Image optimization failed:", imgErr);
+    }
+
+    return {
       title: seoTitle,
       description: seoDescription,
-      images: [optimizedOgImage],
-    },
-  };
+      alternates: { canonical: canonicalUrl },
+      openGraph: {
+        title: seoTitle,
+        description: seoDescription,
+        url: canonicalUrl,
+        siteName: "RE/MAX Westside Realty",
+        type: "website",
+        locale: "en_IN",
+        images: [{ url: optimizedOgImage, width: 1200, height: 630, alt: project.project_name }],
+      },
+      twitter: {
+        card: "summary_large_image",
+        title: seoTitle,
+        description: seoDescription,
+        images: [optimizedOgImage],
+      },
+    };
+  } catch (err) {
+    console.error("[generateMetadata] Fatal error:", err);
+    return { title: "Project Details" };
+  }
 }
 
 export default async function ProjectDetailPage({ params }: PageProps) {
@@ -150,7 +149,13 @@ export default async function ProjectDetailPage({ params }: PageProps) {
     console.warn(`[ProjectDetailPage] Brochure not found for: ${project.project_name}`);
   }
 
-  const microMarketSlug = project.micro_market?.url_slug;
+  // Safe relation access guards
+  const developer = project.developer ?? null;
+  const microMarket = project.micro_market ?? null;
+  const cityData = project.city ?? null;
+
+  const cityName = cityData?.city_name || citySlug;
+  const microMarketSlug = microMarket?.url_slug ?? null;
   const landmarks = Array.isArray((project as any).landmarks_json)
     ? (project as any).landmarks_json
     : [];
@@ -162,7 +167,6 @@ export default async function ProjectDetailPage({ params }: PageProps) {
   }
 
   // Derive SEO helpers for schema (mirror generateMetadata logic)
-  const cityName = project.city?.city_name || citySlug;
   const canonicalUrl = `https://www.westsiderealty.in/${citySlug}/projects/${projectSlug}`;
   const seoTitle =
     project.seo_title ||
@@ -173,9 +177,9 @@ export default async function ProjectDetailPage({ params }: PageProps) {
 
   const breadcrumbItems = [
     { name: "Home", href: "/" },
-    { name: project.city?.city_name || citySlug, href: `/${citySlug}` },
-    ...(microMarketSlug
-      ? [{ name: project.micro_market?.micro_market_name || microMarketSlug, href: `/${citySlug}/${microMarketSlug}` }]
+    { name: cityName, href: `/${citySlug}` },
+    ...(microMarketSlug && microMarket
+      ? [{ name: microMarket.micro_market_name || microMarketSlug, href: `/${citySlug}/${microMarketSlug}` }]
       : []),
     { name: "Projects", href: `/${citySlug}/projects` },
     { name: project.project_name, href: `/${citySlug}/projects/${projectSlug}` },
@@ -206,12 +210,12 @@ export default async function ProjectDetailPage({ params }: PageProps) {
     description: seoDescription,
     image: project.hero_image_url || undefined,
     url: canonicalUrl,
-    address: {
-      "@type": "PostalAddress",
-      addressLocality: project.city?.city_name || citySlug,
-      addressRegion: project.micro_market?.micro_market_name || "",
-      addressCountry: "IN",
-    },
+      address: {
+        "@type": "PostalAddress",
+        addressLocality: cityName,
+        addressRegion: microMarket?.micro_market_name || "",
+        addressCountry: "IN",
+      },
     ...(project.price_range_text && {
       offers: {
         "@type": "AggregateOffer",
@@ -233,8 +237,8 @@ export default async function ProjectDetailPage({ params }: PageProps) {
     breadcrumbs: [
       { name: "Home", item: "https://www.westsiderealty.in" },
       { name: cityName, item: `https://www.westsiderealty.in/${citySlug}` },
-      ...(microMarketSlug
-        ? [{ name: project.micro_market?.micro_market_name || microMarketSlug, item: `https://www.westsiderealty.in/${citySlug}/${microMarketSlug}` }]
+      ...(microMarketSlug && microMarket
+        ? [{ name: microMarket.micro_market_name || microMarketSlug, item: `https://www.westsiderealty.in/${citySlug}/${microMarketSlug}` }]
         : []),
       { name: "Projects", item: `https://www.westsiderealty.in/${citySlug}/projects` },
       { name: project.project_name, item: canonicalUrl },
@@ -288,8 +292,8 @@ export default async function ProjectDetailPage({ params }: PageProps) {
 
   // Build address string
   const addressParts = [
-    project.micro_market?.micro_market_name,
-    project.city?.city_name,
+    microMarket?.micro_market_name,
+    cityName,
   ].filter(Boolean);
   const address = addressParts.join(", ");
 
@@ -337,7 +341,7 @@ export default async function ProjectDetailPage({ params }: PageProps) {
                   priceMax={(project as any).price_max}
                   priceRangeText={project.price_range_text}
                   reraNumber={(project as any).rera_number || (project as any).rera_id}
-                  developerName={project.developer?.developer_name}
+                  developerName={developer?.developer_name}
                 />
               </div>
 
@@ -397,27 +401,27 @@ export default async function ProjectDetailPage({ params }: PageProps) {
                   priceMin={(project as any).price_min}
                   priceMax={(project as any).price_max}
                   citySlug={citySlug}
-                  microMarketSlug={project.micro_market?.url_slug}
+                  microMarketSlug={microMarketSlug || undefined}
                 />
               )}
 
-              {/* About Developer */}
-              {project.developer && (
+              {/* About Developer - only render if developer exists */}
+              {developer && (
                 <AboutDeveloperSection
-                  developerName={project.developer.developer_name}
+                  developerName={developer.developer_name}
                   citySlug={citySlug}
-                  developerSlug={project.developer.url_slug}
-                  logoUrl={project.developer.logo_url}
-                  tagline={project.developer.tagline}
-                  yearsInBusiness={project.developer.years_in_business}
-                  totalProjects={project.developer.total_projects}
-                  totalSftDelivered={(project.developer as any).total_sft_delivered}
-                  description={(project.developer as any).developer_profile_seo || project.developer.meta_description}
+                  developerSlug={developer.url_slug}
+                  logoUrl={developer.logo_url}
+                  tagline={developer.tagline}
+                  yearsInBusiness={developer.years_in_business}
+                  totalProjects={developer.total_projects}
+                  totalSftDelivered={(developer as any).total_sft_delivered}
+                  description={(developer as any).developer_profile_seo || developer.meta_description}
                   notableProjects={
-                    project.developer.notable_projects_json && 
-                    Array.isArray(project.developer.notable_projects_json) && 
-                    project.developer.notable_projects_json.length > 0
-                      ? project.developer.notable_projects_json
+                    developer.notable_projects_json && 
+                    Array.isArray(developer.notable_projects_json) && 
+                    developer.notable_projects_json.length > 0
+                      ? developer.notable_projects_json
                           .map((p: any) => typeof p === 'string' ? p : p?.project_name)
                           .filter(Boolean)
                           .join(', ')
@@ -426,21 +430,21 @@ export default async function ProjectDetailPage({ params }: PageProps) {
                 />
               )}
 
-              {/* About Micro Market */}
-              {project.micro_market && citySlug && (
+              {/* About Micro Market - only render if microMarket exists */}
+              {microMarket && citySlug && (
                 <section>
                   <h3 className="text-xl font-bold text-slate-900 mb-6">
-                    Micro-Market Context: {project.micro_market.micro_market_name}
+                    Micro-Market Context: {microMarket.micro_market_name}
                   </h3>
                   <AboutMicroMarketSection
-                    microMarketName={project.micro_market.micro_market_name}
+                    microMarketName={microMarket.micro_market_name}
                     citySlug={citySlug}
-                    microMarketSlug={project.micro_market.url_slug}
-                    heroHook={project.micro_market.hero_hook}
-                    growthStory={project.micro_market.growth_story}
-                    pricePerSqftMin={project.micro_market.price_per_sqft_min}
-                    pricePerSqftMax={project.micro_market.price_per_sqft_max}
-                    appreciationRate={project.micro_market.annual_appreciation_min}
+                    microMarketSlug={microMarket.url_slug}
+                    heroHook={microMarket.hero_hook}
+                    growthStory={microMarket.growth_story}
+                    pricePerSqftMin={microMarket.price_per_sqft_min}
+                    pricePerSqftMax={microMarket.price_per_sqft_max}
+                    appreciationRate={microMarket.annual_appreciation_min}
                   />
                 </section>
               )}
@@ -461,8 +465,8 @@ export default async function ProjectDetailPage({ params }: PageProps) {
                 priceMax={(project as any).price_max}
                 priceRangeText={project.price_range_text}
                 reraNumber={(project as any).rera_number || (project as any).rera_id}
-                developerName={project.developer?.developer_name}
-                developerLogo={project.developer?.logo_url}
+                developerName={developer?.developer_name}
+                developerLogo={developer?.logo_url}
                 brochureUrl={brochureUrl || undefined}
               />
             </div>
@@ -472,8 +476,8 @@ export default async function ProjectDetailPage({ params }: PageProps) {
               <ProjectLeadForm
                 projectName={project.project_name}
                 projectId={project.id}
-                developerName={project.developer?.developer_name ?? undefined}
-                developerLogo={project.developer?.logo_url}
+                developerName={developer?.developer_name ?? undefined}
+                developerLogo={developer?.logo_url}
                 brochureUrl={brochureUrl || undefined}
               />
             </div>
