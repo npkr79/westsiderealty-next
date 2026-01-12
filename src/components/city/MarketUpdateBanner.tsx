@@ -32,15 +32,23 @@ export default function MarketUpdateBanner({
     const fetchUpdate = async () => {
       try {
         const supabase = createClient();
-        // Try to fetch from a market_updates table or use city data
+        // Fetch market snapshot data from cities table
         const { data, error } = await supabase
           .from('cities')
-          .select('market_update_json')
+          .select('market_snapshot_json, market_trends_json')
           .eq('url_slug', citySlug)
           .maybeSingle();
 
-        if (!error && data?.market_update_json) {
-          setUpdate(data.market_update_json as MarketUpdate);
+        if (error) {
+          console.error('Error fetching market update:', error);
+          return;
+        }
+
+        // Use market_snapshot_json if available, otherwise try market_trends_json
+        if (data?.market_snapshot_json) {
+          setUpdate(data.market_snapshot_json as MarketUpdate);
+        } else if (data?.market_trends_json) {
+          setUpdate(data.market_trends_json as MarketUpdate);
         }
       } catch (error) {
         console.error('Error fetching market update:', error);

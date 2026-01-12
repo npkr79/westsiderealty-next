@@ -97,6 +97,17 @@ export default function TabbedSearch() {
   useEffect(() => {
     const loadLocations = async () => {
       const supabase = createClient();
+      // Step 1: Get city ID for hyderabad
+      const { data: hyderabadCity, error: cityError } = await supabase
+        .from("cities")
+        .select("id")
+        .eq("url_slug", "hyderabad")
+        .maybeSingle();
+
+      if (cityError) {
+        console.error("Error fetching hyderabad city:", cityError);
+      }
+
       const [citiesResult, microMarketsResult] = await Promise.all([
         supabase
           .from("cities")
@@ -104,12 +115,15 @@ export default function TabbedSearch() {
           .in("url_slug", ["hyderabad", "goa", "dubai"])
           .eq("page_status", "published")
           .limit(5),
-        supabase
-          .from("micro_markets")
-          .select("id, micro_market_name, url_slug, city:cities(url_slug)")
-          .eq("status", "published")
-          .in("city:cities(url_slug)", ["hyderabad"])
-          .limit(10),
+        // Step 2: Query micro_markets by city_id (not by relation filter)
+        hyderabadCity?.id
+          ? supabase
+              .from("micro_markets")
+              .select("id, micro_market_name, url_slug, city_id")
+              .eq("status", "published")
+              .eq("city_id", hyderabadCity.id)
+              .limit(10)
+          : Promise.resolve({ data: null, error: null }),
       ]);
 
       const options: LocationOption[] = [];
@@ -125,13 +139,12 @@ export default function TabbedSearch() {
       }
       if (microMarketsResult.data) {
         microMarketsResult.data.forEach((mm: any) => {
-          const citySlug = Array.isArray(mm.city) ? mm.city[0]?.url_slug : mm.city?.url_slug;
           options.push({
             id: mm.id,
             name: mm.micro_market_name,
             type: "micro_market",
             slug: mm.url_slug,
-            citySlug: citySlug,
+            citySlug: "hyderabad", // We filtered by hyderabad city_id, so hardcode the slug
           });
         });
       }
