@@ -1,5 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
-const supabase = await createClient();
+import { createClient } from '@/lib/supabase/client';
 
 
 export interface DeveloperListItem {
@@ -23,6 +22,7 @@ export interface DeveloperFilters {
 
 export const developersHubService = {
   async getDevelopers(filters: DeveloperFilters = {}): Promise<DeveloperListItem[]> {
+    const supabase = createClient();
     let query = supabase
       .from("developers")
       .select(`
@@ -63,6 +63,7 @@ export const developersHubService = {
   },
 
   async getCityFocusOptions(): Promise<string[]> {
+    const supabase = createClient();
     const { data, error } = await supabase
       .from("developers")
       .select("primary_city_focus")
