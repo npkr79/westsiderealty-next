@@ -191,8 +191,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export async function generateStaticParams() {
   try {
-    const { createClient } = await import("@/lib/supabase/server");
-    const supabase = await createClient();
+    const { createBuildClient } = await import("@/lib/supabase/buildClient");
+    const supabase = createBuildClient();
     const { data: microMarkets, error } = await supabase
       .from("micro_markets")
       .select("url_slug, cities!inner(url_slug)")

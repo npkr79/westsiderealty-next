@@ -51,7 +51,8 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
 }
 
 export async function generateStaticParams() {
-  const supabase = await createClient();
+  const { createBuildClient } = await import('@/lib/supabase/buildClient');
+  const supabase = createBuildClient();
   const { data: cities } = await supabase
     .from("cities")
     .select("url_slug")

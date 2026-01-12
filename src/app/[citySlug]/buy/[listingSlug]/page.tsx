@@ -12,6 +12,7 @@ type PageProps = {
 
 // Fetch property data server-side
 async function getProperty(citySlug: string, listingSlug: string) {
+  const { createClient } = await import('@/lib/supabase/server');
   const supabase = await createClient();
   
   // Determine table name based on city
@@ -253,7 +254,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 // Generate static params for all properties (optional - for SSG)
 export async function generateStaticParams() {
-  const supabase = await createClient();
+  const { createBuildClient } = await import('@/lib/supabase/buildClient');
+  const supabase = createBuildClient();
   const params: { citySlug: string; listingSlug: string }[] = [];
 
   // Fetch from all city tables

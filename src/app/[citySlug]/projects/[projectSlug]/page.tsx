@@ -39,7 +39,8 @@ interface PageProps {
 // Generate all project URLs at build time
 // Note: This is for static generation. Dynamic routes will still work at runtime even if not listed here.
 export async function generateStaticParams() {
-  const supabase = await createClient();
+  const { createBuildClient } = await import('@/lib/supabase/buildClient');
+  const supabase = createBuildClient();
   
   // Get all projects (including unpublished ones) to ensure newly added projects are included
   // The page component will handle filtering/publishing logic
