@@ -233,12 +233,13 @@ export const projectService = {
     console.log(`[getCityLevelProjectBySlug] Fetching project: citySlug=${citySlug}, projectSlug=${projectSlug}`);
     
     // Query project by url_slug only (no city filter in query)
+    // Use auto-detected relationship syntax (matches pattern used in sitemap.ts, search/page.tsx, etc.)
     const { data, error } = await supabase
       .from('projects')
       .select(`
         *,
         floor_plan_images,
-        city:cities!projects_city_id_fkey(*),
+        city:cities(*),
         developer:developers(*),
         micro_market:micro_markets!projects_micromarket_id_fkey(*)
       `)

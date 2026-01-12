@@ -44,9 +44,10 @@ export async function generateStaticParams() {
   
   // Get all projects (including unpublished ones) to ensure newly added projects are included
   // The page component will handle filtering/publishing logic
+  // Use auto-detected relationship syntax for consistency with getCityLevelProjectBySlug
   const { data: projects } = await supabase
     .from("projects")
-    .select("url_slug, city:cities!projects_city_id_fkey(url_slug), micro_market:micro_markets(url_slug)")
+    .select("url_slug, city:cities(url_slug), micro_market:micro_markets(url_slug)")
     .limit(2000); // Increased limit to include more projects
 
   if (!projects) return [];
