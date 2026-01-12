@@ -53,8 +53,8 @@ const CATEGORY_FILTERS: Record<string, {
 
 interface PageProps {
   params: Promise<{
-    citySlug?: string; // Optional because folder might be hardcoded
-    slug: string;
+    citySlug?: string;
+    microMarketSlug: string;
     category: string;
   }>;
 }
@@ -63,7 +63,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const resolvedParams = await params;
   // 🟢 FIX: Default to 'hyderabad' if param is missing
   const citySlug = resolvedParams.citySlug || "hyderabad";
-  const { slug, category } = resolvedParams;
+  const { microMarketSlug, category } = resolvedParams;
+  const slug = microMarketSlug; // Keep slug variable for compatibility with existing code
 
   const categoryConfig = CATEGORY_FILTERS[category];
   if (!categoryConfig) return { title: "Page Not Found" };
@@ -91,7 +92,8 @@ export default async function CategoryComparisonPage({ params }: PageProps) {
   const resolvedParams = await params;
   // 🟢 FIX: Default to 'hyderabad'
   const citySlug = resolvedParams.citySlug || "hyderabad";
-  const { slug, category } = resolvedParams;
+  const { microMarketSlug, category } = resolvedParams;
+  const slug = microMarketSlug; // Keep slug variable for compatibility with existing code
 
   const categoryConfig = CATEGORY_FILTERS[category];
   if (!categoryConfig) notFound();
