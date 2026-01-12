@@ -222,6 +222,7 @@ export const projectService = {
 
   /**
    * Get city-level project by slug (no micro-market)
+   * Query by url_slug only, validate city match in code
    */
   async getCityLevelProjectBySlug(
     citySlug: string,
@@ -229,181 +230,41 @@ export const projectService = {
   ): Promise<ProjectWithRelations | null> {
     const supabase = createClient();
     
-    // Handle spelling correction: sumachura -> sumadhura
-    const correctedSlug = projectSlug === 'sumachura-the-olympus' ? 'sumadhura-the-olympus' : projectSlug;
-    
-    // First, get the city ID to avoid complex joins
-    const { data: cityData, error: cityError } = await supabase
-      .from('cities')
-      .select('id')
-      .eq('url_slug', citySlug)
-      .maybeSingle();
-
-    if (cityError) {
-      // Only log actual errors (not 404s)
-      if (cityError.code !== 'PGRST116') {
-        console.error('[getCityLevelProjectBySlug] Error fetching city:', cityError);
-      }
-      return null;
-    }
-
-    if (!cityData?.id) {
-      return null;
-    }
-
-    // Check if the project exists at all (without city filter) for debugging
-    const { data: debugProject } = await supabase
+    // Query project by url_slug only (no city filter in query)
+    const { data, error } = await supabase
       .from('projects')
-      .select('id, project_name, url_slug, city_id, status, page_status, micro_market_id, developer_id, city:cities(id, url_slug)')
-      .eq('url_slug', correctedSlug)
+      .select(`
+        *,
+        floor_plan_images,
+        city:cities(*),
+        developer:developers(*),
+        micro_market:micro_markets!projects_micromarket_id_fkey(*)
+      `)
+      .eq('url_slug', projectSlug)
       .maybeSingle();
 
-    // Helper function to try finding project with various slug patterns
-    const tryFindProject = async (slugToTry: string, skipCityCheck = false) => {
-      const buildQuery = () => {
-        let q = supabase
-          .from('projects')
-          .select(`
-            *,
-            floor_plan_images,
-            city:cities(*),
-            developer:developers(*),
-            micro_market:micro_markets!projects_micromarket_id_fkey(*)
-          `)
-          .eq('url_slug', slugToTry);
-        
-        if (!skipCityCheck) {
-          q = q.eq('city_id', cityData.id);
-        }
-        return q;
-      };
-      
-      // Try with status filters (published or under construction projects)
-      // Detail pages should show projects regardless of page_status (draft/published)
-      const query1 = buildQuery().or('status.ilike.published,status.ilike.%under construction%');
-      const result1 = await query1.maybeSingle();
-      if (result1.error && result1.error.code !== 'PGRST116') {
-        // Only log non-404 errors
-        console.error(`[getCityLevelProjectBySlug] Query error for ${slugToTry}:`, result1.error);
+    if (error) {
+      // Only log actual errors (not 404s)
+      if (error.code !== 'PGRST116') {
+        console.error('[getCityLevelProjectBySlug] Error fetching project:', error);
       }
-      if (result1.data) return result1.data;
-      
-      // Try without any status filters (fallback - includes everything, better than 404)
-      const query2 = buildQuery();
-      const result2 = await query2.maybeSingle();
-      if (result2.error && result2.error.code !== 'PGRST116') {
-        // Only log non-404 errors
-        console.error(`[getCityLevelProjectBySlug] Query error for ${slugToTry}:`, result2.error);
-      }
-      
-      if (result2.data) {
-        return result2.data;
-      }
-      
       return null;
-    };
-
-    // Try to find project with exact slug first (with city filter)
-    let data = await tryFindProject(correctedSlug, false);
-    
-    // If not found and project exists but city_id is NULL, try without city filter
-    if (!data && debugProject && !debugProject.city_id) {
-      data = await tryFindProject(correctedSlug, true);
     }
-    
-    // If not found, try stripping common location suffixes
+
     if (!data) {
-      
-      // Common patterns: "-mokila-hyderabad", "-hyderabad", "-kokapet-hyderabad", etc.
-      // Try removing location suffixes
-      const slugVariations = [
-        correctedSlug.replace(/-mokila-hyderabad$/i, ''),
-        correctedSlug.replace(/-kokapet-hyderabad$/i, ''),
-        correctedSlug.replace(/-gachibowli-hyderabad$/i, ''),
-        correctedSlug.replace(/-hyderabad$/i, ''),
-        correctedSlug.replace(/-mokila$/i, ''),
-        correctedSlug.replace(/-kokapet$/i, ''),
-        correctedSlug.replace(/-gachibowli$/i, ''),
-      ].filter(s => s && s !== correctedSlug && s.length > 0);
-      
-      // Remove duplicates
-      const uniqueVariations = [...new Set(slugVariations)];
-      
-      for (const variation of uniqueVariations) {
-        data = await tryFindProject(variation, false);
-        if (data) {
-          break;
-        }
-      }
+      return null;
     }
 
-    // If still not found, try one more time: search by project name if slug looks like it was generated from name
-    // This is a last resort fallback
-    if (!data) {
-      const projectNameFromSlug = correctedSlug
-        .replace(/-mokila-hyderabad$/i, '')
-        .replace(/-kokapet-hyderabad$/i, '')
-        .replace(/-gachibowli-hyderabad$/i, '')
-        .replace(/-hyderabad$/i, '')
-        .replace(/-/g, ' ');
-      
-      if (projectNameFromSlug.length > 5) {
-        const { data: nameMatchData } = await supabase
-          .from('projects')
-          .select(`
-            *,
-            floor_plan_images,
-            city:cities(*),
-            developer:developers(*),
-            micro_market:micro_markets!projects_micromarket_id_fkey(*)
-          `)
-          .eq('city_id', cityData.id)
-        .ilike('project_name', `%${projectNameFromSlug.split(' ').slice(0, 2).join(' ')}%`)
-        .or('status.ilike.published,status.ilike.%under construction%')
-        .limit(5)
-          .maybeSingle();
-        
-        if (nameMatchData) {
-          const foundSlug = (nameMatchData as any).url_slug;
-          const foundCity = Array.isArray(nameMatchData.city) ? nameMatchData.city[0] : nameMatchData.city;
-          const foundCitySlug = foundCity?.url_slug;
-          
-          // If we found a project by name and have the correct city, return it
-          // The page component will handle the redirect to the correct slug
-          if (foundCitySlug === citySlug && foundSlug) {
-            console.log('[getCityLevelProjectBySlug] ✅ Found project by name match, returning for redirect:', {
-              requestedSlug: correctedSlug,
-              foundSlug: foundSlug,
-              projectName: (nameMatchData as any).project_name
-            });
-            // Return the found project - the page component will redirect
-            return nameMatchData as ProjectWithRelations;
-          } else {
-            console.log('[getCityLevelProjectBySlug] ⚠️ Found project by name match but city/slug mismatch:', {
-              requestedSlug: correctedSlug,
-              foundSlug: foundSlug,
-              foundCitySlug: foundCitySlug,
-              requestedCitySlug: citySlug,
-              projectName: (nameMatchData as any).project_name
-            });
-          }
-        }
-      }
+    // Validate city match in code after fetch
+    const projectCity = Array.isArray(data.city) ? data.city[0] : data.city;
+    const projectCitySlug = projectCity?.url_slug;
+
+    // Return null if city doesn't match
+    if (!projectCitySlug || projectCitySlug !== citySlug) {
+      return null;
     }
 
-    if (data) {
-      return data as ProjectWithRelations;
-    }
-
-    // If not found, return null (don't log - 404s are expected and handled by notFound())
-    // Only log if there's a debug project but city mismatch
-    if (!data && debugProject && debugProject.city_id && debugProject.city_id !== cityData.id) {
-      // This is a legitimate mismatch case that might need attention
-      const debugCity = Array.isArray(debugProject.city) ? debugProject.city[0] : debugProject.city;
-      console.warn(`[getCityLevelProjectBySlug] Project "${correctedSlug}" exists but belongs to different city: ${debugCity?.url_slug} (requested: ${citySlug})`);
-    }
-    
-    return null;
+    return data as ProjectWithRelations;
   },
 
   /**

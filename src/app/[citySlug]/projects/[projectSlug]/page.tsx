@@ -62,7 +62,7 @@ export async function generateStaticParams() {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { citySlug: citySlugParam, projectSlug: projectSlugParam } = await params;
   const citySlug = Array.isArray(citySlugParam) ? citySlugParam[0] : citySlugParam;
-  let projectSlug = Array.isArray(projectSlugParam) ? projectSlugParam[0] : projectSlugParam;
+  const projectSlug = Array.isArray(projectSlugParam) ? projectSlugParam[0] : projectSlugParam;
 
   if (!citySlug || !projectSlug) {
     return {
@@ -70,50 +70,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     };
   }
 
-  // Handle spelling correction: sumachura -> sumadhura
-  if (projectSlug === 'sumachura-the-olympus') {
-    projectSlug = 'sumadhura-the-olympus';
-  }
-
-  // Handle spelling correction: sumachura -> sumadhura
-  // If old slug is used, redirect to new one
-  if (projectSlug === 'sumachura-the-olympus') {
-    const { redirect } = await import('next/navigation');
-    redirect(`/${citySlug}/projects/sumadhura-the-olympus`);
-  }
-
-  let project = await projectService.getCityLevelProjectBySlug(citySlug, projectSlug);
-
-  // If project found but slug doesn't match, redirect to correct slug
-  if (project && project.url_slug && project.url_slug !== projectSlug) {
-    const { permanentRedirect } = await import('next/navigation');
-    const projectCity = Array.isArray(project.city) ? project.city[0] : project.city;
-    const projectCitySlug = projectCity?.url_slug || citySlug;
-    console.log(`[ProjectDetailPage] Redirecting to correct slug: ${projectSlug} → ${project.url_slug}`);
-    permanentRedirect(`/${projectCitySlug}/projects/${project.url_slug}`);
-  }
-
-  // If not found, try stripping location suffixes (handle legacy slugs)
-  if (!project) {
-    // Try common location suffix patterns: -mokila-hyderabad, -hyderabad, etc.
-    const slugWithoutSuffix = projectSlug
-      .replace(/-mokila-hyderabad$/i, '')
-      .replace(/-kokapet-hyderabad$/i, '')
-      .replace(/-gachibowli-hyderabad$/i, '')
-      .replace(/-hyderabad$/i, '')
-      .replace(/-mokila$/i, '')
-      .replace(/-kokapet$/i, '')
-      .replace(/-gachibowli$/i, '');
-    
-    if (slugWithoutSuffix && slugWithoutSuffix !== projectSlug) {
-      project = await projectService.getCityLevelProjectBySlug(citySlug, slugWithoutSuffix);
-      if (project) {
-        // Redirect to canonical URL (without location suffix)
-        const { redirect } = await import('next/navigation');
-        redirect(`/${citySlug}/projects/${slugWithoutSuffix}`);
-      }
-    }
-  }
+  const project = await projectService.getCityLevelProjectBySlug(citySlug, projectSlug);
 
   if (!project) {
     return {
@@ -121,19 +78,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     };
   }
 
-  const microMarketSlug = project.micro_market?.url_slug;
-  // Use corrected slug for canonical URL
-  const correctedSlug = projectSlug === 'sumachura-the-olympus' ? 'sumadhura-the-olympus' : projectSlug;
-  const canonicalUrl = microMarketSlug
-    ? `https://www.westsiderealty.in/${citySlug}/${microMarketSlug}/projects/${correctedSlug}`
-    : `https://www.westsiderealty.in/${citySlug}/projects/${correctedSlug}`;
-
-  // Standardized title format: "{Project Name} {Location}: Price, Floor Plans & Reviews | RE/MAX"
+  const canonicalUrl = `https://www.westsiderealty.in/${citySlug}/projects/${projectSlug}`;
   const cityName = project.city?.city_name || citySlug;
-  // Fix project name spelling
-  const correctedProjectName = project.project_name?.replace(/sumachura/gi, 'sumadhura') || project.project_name;
-  const seoTitle = (project.seo_title?.replace(/sumachura/gi, 'sumadhura')) || `${correctedProjectName} ${cityName}: Price, Floor Plans & Reviews | RE/MAX`;
-  const seoDescription = (project.meta_description?.replace(/sumachura/gi, 'sumadhura')) || `Explore ${correctedProjectName} - Premium residential project in ${cityName}`;
+  const seoTitle = project.seo_title || `${project.project_name} ${cityName}: Price, Floor Plans & Reviews | RE/MAX`;
+  const seoDescription = project.meta_description || `Explore ${project.project_name} - Premium residential project in ${cityName}`;
   
   // Optimize OG image
   const rawOgImage = project.hero_image_url || "https://www.westsiderealty.in/placeholder.svg";
@@ -162,7 +110,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
           url: optimizedOgImage,
           width: 1200,
           height: 630,
-          alt: correctedProjectName,
+          alt: project.project_name,
         },
       ],
     },
@@ -176,69 +124,30 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 }
 
 export default async function ProjectDetailPage({ params }: PageProps) {
-  // Log on server-side (check your terminal/server logs)
-  console.log('[ProjectDetailPage] 🚀 Page component started');
-  
   const { citySlug: citySlugParam, projectSlug: projectSlugParam } = await params;
   
   // Normalize params from string | string[] to string
   const citySlug = Array.isArray(citySlugParam) ? citySlugParam[0] : citySlugParam;
-  let projectSlug = Array.isArray(projectSlugParam) ? projectSlugParam[0] : projectSlugParam;
-
-  // Handle spelling correction: sumachura -> sumadhura
-  // Redirect old URL to new one
-  if (projectSlug === 'sumachura-the-olympus') {
-    const { redirect } = await import('next/navigation');
-    redirect(`/${citySlug}/projects/sumadhura-the-olympus`);
-  }
-
-  console.log('[ProjectDetailPage] 📝 Normalized params:', { citySlug, projectSlug });
+  const projectSlug = Array.isArray(projectSlugParam) ? projectSlugParam[0] : projectSlugParam;
 
   if (!citySlug || !projectSlug) {
-    console.error('[ProjectDetailPage] ❌ Missing required params');
     notFound();
   }
 
   // Fetch project data on the server
-  let project: ProjectWithRelations | null = null;
+  const project = await projectService.getCityLevelProjectBySlug(citySlug, projectSlug);
+  
+  if (!project) {
+    notFound();
+  }
+
+  // Fetch brochure (non-blocking)
   let brochureUrl: string | null = null;
-
   try {
-    project = await projectService.getCityLevelProjectBySlug(citySlug, projectSlug);
-    
-    // If project found but slug doesn't match, redirect to correct slug
-    // Note: Next.js redirects throw errors that must be re-thrown, not caught
-    if (project && project.url_slug && project.url_slug !== projectSlug) {
-      const { permanentRedirect } = await import('next/navigation');
-      const projectCity = Array.isArray(project.city) ? project.city[0] : project.city;
-      const projectCitySlug = projectCity?.url_slug || citySlug;
-      permanentRedirect(`/${projectCitySlug}/projects/${project.url_slug}`);
-    }
-    
-    if (!project) {
-      // Silently return 404 - don't log as error (expected behavior)
-      notFound();
-    }
-
-    // Fetch brochure (non-blocking)
-    try {
-      brochureUrl = await findBrochureByProjectName(project.project_name);
-    } catch (err) {
-      // Ignore brochure errors
-      console.warn(`[ProjectDetailPage] Brochure not found for: ${project.project_name}`);
-    }
-  } catch (error: any) {
-    // Re-throw redirect errors (Next.js redirects throw errors that must propagate)
-    if (error?.digest?.startsWith('NEXT_REDIRECT')) {
-      throw error;
-    }
-    // Re-throw 404 errors (NEXT_HTTP_ERROR_FALLBACK;404) - these are expected, don't log
-    if (error?.digest?.includes('404') || error?.digest?.includes('NEXT_HTTP_ERROR_FALLBACK')) {
-      throw error;
-    }
-    // Only log actual errors (not expected 404s)
-    console.error("[ProjectDetailPage] ❌ Error fetching project:", error);
-    throw error; // Let error boundary catch it
+    brochureUrl = await findBrochureByProjectName(project.project_name);
+  } catch (err) {
+    // Ignore brochure errors
+    console.warn(`[ProjectDetailPage] Brochure not found for: ${project.project_name}`);
   }
 
   const microMarketSlug = project.micro_market?.url_slug;
@@ -252,23 +161,15 @@ export default async function ProjectDetailPage({ params }: PageProps) {
     notFound();
   }
 
-  // Fix project name spelling if it contains the incorrect spelling
-  // This must be defined early as it's used throughout the component
-  const correctedProjectName = project.project_name?.replace(/sumachura/gi, 'sumadhura') || project.project_name;
-
   // Derive SEO helpers for schema (mirror generateMetadata logic)
   const cityName = project.city?.city_name || citySlug;
-  // Use corrected slug for canonical URL if old slug was used
-  const finalProjectSlug = projectSlug === 'sumachura-the-olympus' ? 'sumadhura-the-olympus' : projectSlug;
-  const canonicalUrl = microMarketSlug
-    ? `https://www.westsiderealty.in/${citySlug}/${microMarketSlug}/projects/${finalProjectSlug}`
-    : `https://www.westsiderealty.in/${citySlug}/projects/${finalProjectSlug}`;
+  const canonicalUrl = `https://www.westsiderealty.in/${citySlug}/projects/${projectSlug}`;
   const seoTitle =
-    project.seo_title?.replace(/sumachura/gi, 'sumadhura') ||
-    `${correctedProjectName} ${cityName}: Price, Floor Plans & Reviews | RE/MAX`;
+    project.seo_title ||
+    `${project.project_name} ${cityName}: Price, Floor Plans & Reviews | RE/MAX`;
   const seoDescription =
-    project.meta_description?.replace(/sumachura/gi, 'sumadhura') ||
-    `Explore ${correctedProjectName} - Premium residential project in ${cityName}`;
+    project.meta_description ||
+    `Explore ${project.project_name} - Premium residential project in ${cityName}`;
 
   const breadcrumbItems = [
     { name: "Home", href: "/" },
@@ -277,7 +178,7 @@ export default async function ProjectDetailPage({ params }: PageProps) {
       ? [{ name: project.micro_market?.micro_market_name || microMarketSlug, href: `/${citySlug}/${microMarketSlug}` }]
       : []),
     { name: "Projects", href: `/${citySlug}/projects` },
-    { name: correctedProjectName, href: `/${citySlug}/projects/${finalProjectSlug}` },
+    { name: project.project_name, href: `/${citySlug}/projects/${projectSlug}` },
   ];
 
   // Extract FAQs for schema generation (parse early)
@@ -299,10 +200,9 @@ export default async function ProjectDetailPage({ params }: PageProps) {
   }
 
   // Build primary entity (RealEstateListing)
-  // correctedProjectName is already defined above
   const primaryEntity: Record<string, any> = {
     "@type": "RealEstateListing",
-    name: correctedProjectName,
+    name: project.project_name,
     description: seoDescription,
     image: project.hero_image_url || undefined,
     url: canonicalUrl,
@@ -337,7 +237,7 @@ export default async function ProjectDetailPage({ params }: PageProps) {
         ? [{ name: project.micro_market?.micro_market_name || microMarketSlug, item: `https://www.westsiderealty.in/${citySlug}/${microMarketSlug}` }]
         : []),
       { name: "Projects", item: `https://www.westsiderealty.in/${citySlug}/projects` },
-      { name: correctedProjectName, item: canonicalUrl },
+      { name: project.project_name, item: canonicalUrl },
     ],
   });
 
@@ -426,7 +326,7 @@ export default async function ProjectDetailPage({ params }: PageProps) {
               {/* Mobile-only: Key Details shown after hero */}
               <div className="lg:hidden">
                 <ProjectStickyCard
-                  projectName={correctedProjectName}
+                  projectName={project.project_name}
                   address={address}
                   bhkConfig={(project as any).bhk_config}
                   carpetArea={(project as any).carpet_area}
@@ -481,13 +381,13 @@ export default async function ProjectDetailPage({ params }: PageProps) {
               />
 
               {/* 9. Why Invest Section */}
-              <WhyInvestSection investmentAnalysis={investmentAnalysis} projectName={correctedProjectName} />
+              <WhyInvestSection investmentAnalysis={investmentAnalysis} projectName={project.project_name} />
 
               {/* 10. Westside Realty Verdict */}
               <WestsideVerdictSection review={(project as any).westside_realty_review} />
 
               {/* 11. FAQs Accordion */}
-              <ProjectFAQs faqs={faqs} projectName={correctedProjectName} />
+              <ProjectFAQs faqs={faqs} projectName={project.project_name} />
 
               {/* 12. Similar Properties */}
               {citySlug && project.id && (
@@ -549,7 +449,7 @@ export default async function ProjectDetailPage({ params }: PageProps) {
             {/* Right Column - Sticky Sidebar (35%) - Desktop Only */}
             <div className="hidden lg:block">
               <ProjectStickySidebar
-                projectName={correctedProjectName}
+                projectName={project.project_name}
                 projectId={project.id}
                 address={address}
                 bhkConfig={(project as any).bhk_config}
@@ -570,7 +470,7 @@ export default async function ProjectDetailPage({ params }: PageProps) {
             {/* Mobile-only: Lead Form at bottom */}
             <div className="lg:hidden mt-8">
               <ProjectLeadForm
-                projectName={correctedProjectName}
+                projectName={project.project_name}
                 projectId={project.id}
                 developerName={project.developer?.developer_name ?? undefined}
                 developerLogo={project.developer?.logo_url}
@@ -584,7 +484,7 @@ export default async function ProjectDetailPage({ params }: PageProps) {
 
         {/* Mobile Sticky Actions */}
         <ProjectMobileActions
-          projectName={correctedProjectName}
+          projectName={project.project_name}
           whatsappNumber="919866085831"
           phoneNumber="919866085831"
         />
