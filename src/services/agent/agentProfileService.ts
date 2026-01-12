@@ -1,5 +1,5 @@
 
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/supabase/client';
 
 import type { Database } from '@/integrations/supabase/types';
 
@@ -42,7 +42,7 @@ const parseJsonField = (field: any, defaultValue: any = null) => {
 export const agentProfileService = {
   // Create a new agent profile
   async createAgent(agentData: Partial<AgentProfile>): Promise<AgentProfile> {
-    const supabase = await createClient();
+    const supabase = createClient();
     const { data, error } = await supabase
       .from('agents')
       .insert([{
@@ -73,7 +73,7 @@ export const agentProfileService = {
 
   // Get agent by ID
   async getAgentById(agentId: string): Promise<AgentProfile | null> {
-    const supabase = await createClient();
+    const supabase = createClient();
     const { data, error } = await supabase
       .from('agents')
       .select('*')
@@ -93,7 +93,7 @@ export const agentProfileService = {
 
   // Update agent profile
   async updateAgent(agentId: string, updates: Partial<AgentProfile>): Promise<AgentProfile> {
-    const supabase = await createClient();
+    const supabase = createClient();
     const updateData: any = { ...updates };
     
     // Convert service_areas to JSON string if it's an array
@@ -118,7 +118,7 @@ export const agentProfileService = {
 
   // Get all agents (for admin)
   async getAllAgents(): Promise<AgentProfile[]> {
-    const supabase = await createClient();
+    const supabase = createClient();
     const { data, error } = await supabase
       .from('agents')
       .select('*')
@@ -134,7 +134,7 @@ export const agentProfileService = {
 
   // Get public agent profiles
   async getPublicAgents(): Promise<AgentProfile[]> {
-    const supabase = await createClient();
+    const supabase = createClient();
     const { data, error } = await supabase
       .from('agents')
       .select('*')
@@ -151,7 +151,7 @@ export const agentProfileService = {
 
   // Search agents
   async searchAgents(query: string): Promise<AgentProfile[]> {
-    const supabase = await createClient();
+    const supabase = createClient();
     const { data, error } = await supabase
       .from('agents')
       .select('*')
@@ -169,7 +169,7 @@ export const agentProfileService = {
 
   // Utility methods
   async deleteAgent(agentId: string): Promise<void> {
-    const supabase = await createClient();
+    const supabase = createClient();
     const { error } = await supabase
       .from('agents')
       .delete()
@@ -179,7 +179,7 @@ export const agentProfileService = {
   },
 
   async activateAgent(agentId: string): Promise<void> {
-    const supabase = await createClient();
+    const supabase = createClient();
     const { error } = await supabase
       .from('agents')
       .update({ active: true })
@@ -189,7 +189,7 @@ export const agentProfileService = {
   },
 
   async deactivateAgent(agentId: string): Promise<void> {
-    const supabase = await createClient();
+    const supabase = createClient();
     const { error } = await supabase
       .from('agents')
       .update({ active: false })

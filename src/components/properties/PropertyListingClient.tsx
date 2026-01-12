@@ -14,7 +14,7 @@ import HyderabadPropertyFilters from "@/components/properties/HyderabadPropertyF
 import LandownerSEOContent from "@/components/properties/LandownerSEOContent";
 import type { UnifiedProperty, UnifiedPropertyFilters, CitySlug } from "@/types/unifiedProperty";
 import { CITY_CONFIGS } from "@/types/unifiedProperty";
-import { projectService, type ProjectInfo } from "@/services/projectService";
+import type { ProjectInfo } from "@/services/projectService";
 import { truncateWords } from "@/lib/textUtils";
 
 interface PropertyListingClientProps {
@@ -289,8 +289,21 @@ export default function PropertyListingClient({
           .filter(Boolean) as string[]
       )];
 
-      const descriptions = await projectService.getMultipleProjects(projectNames);
-      setProjectDescriptions(descriptions);
+      // Fetch project descriptions via API route (since projectService uses server client)
+      const response = await fetch('/api/projects/multiple', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectNames }),
+      });
+      
+      if (response.ok) {
+        const projectsObject = await response.json();
+        const descriptions = new Map<string, ProjectInfo>();
+        Object.entries(projectsObject).forEach(([key, value]) => {
+          descriptions.set(key, value as ProjectInfo);
+        });
+        setProjectDescriptions(descriptions);
+      }
     };
 
     fetchProjectDescriptions();
