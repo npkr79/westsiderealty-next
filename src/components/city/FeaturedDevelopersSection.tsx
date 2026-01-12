@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { developersHubService } from "@/services/developersHubService";
+import { developersHubService } from "@/services/client/developersHubService";
 import Link from "next/link";
 
 interface FeaturedDevelopersSectionProps {

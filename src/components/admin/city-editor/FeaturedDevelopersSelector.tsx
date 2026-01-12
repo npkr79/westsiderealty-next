@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { developersHubService } from "@/services/developersHubService";
+import { developersHubService } from "@/services/client/developersHubService";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 

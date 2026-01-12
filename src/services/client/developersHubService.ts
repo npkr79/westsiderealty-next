@@ -1,6 +1,5 @@
 import { createClient } from '@/lib/supabase/client';
 
-
 export interface DeveloperListItem {
   id: string;
   developer_name: string;

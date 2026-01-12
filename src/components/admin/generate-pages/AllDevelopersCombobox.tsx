@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { developersHubService } from "@/services/developersHubService";
+import { developersHubService } from "@/services/client/developersHubService";
 
 interface AllDevelopersComboboxProps {
   value?: string;
