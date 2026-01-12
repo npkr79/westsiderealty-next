@@ -1,6 +1,5 @@
 
-import { createClient } from '@/lib/supabase/server';
-const supabase = await createClient();
+import { createClient } from '@/lib/supabase/client';
 
 
 export interface AgentActivity {
@@ -31,6 +30,7 @@ const parseJsonField = (field: any, defaultValue: any = null) => {
 
 export const agentActivityService = {
   async getAgentActivities(agentId: string, limit: number = 50): Promise<AgentActivity[]> {
+    const supabase = createClient();
     const { data, error } = await supabase
       .from('agent_activities')
       .select('*')
@@ -47,6 +47,7 @@ export const agentActivityService = {
   },
 
   async logAgentActivity(activity: Omit<AgentActivity, 'id' | 'created_at'>): Promise<AgentActivity> {
+    const supabase = createClient();
     const { data, error } = await supabase
       .from('agent_activities')
       .insert([{

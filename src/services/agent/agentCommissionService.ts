@@ -1,6 +1,5 @@
 
-import { createClient } from '@/lib/supabase/server';
-const supabase = await createClient();
+import { createClient } from '@/lib/supabase/client';
 
 
 export interface AgentCommission {
@@ -19,6 +18,7 @@ export interface AgentCommission {
 
 export const agentCommissionService = {
   async getAgentCommissions(agentId: string): Promise<AgentCommission[]> {
+    const supabase = createClient();
     const { data, error } = await supabase
       .from('agent_commissions')
       .select('*')
@@ -30,6 +30,7 @@ export const agentCommissionService = {
   },
 
   async createCommission(commission: Omit<AgentCommission, 'id' | 'created_at'>): Promise<AgentCommission> {
+    const supabase = createClient();
     const { data, error } = await supabase
       .from('agent_commissions')
       .insert([commission])

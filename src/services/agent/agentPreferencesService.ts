@@ -1,6 +1,5 @@
 
-import { createClient } from '@/lib/supabase/server';
-const supabase = await createClient();
+import { createClient } from '@/lib/supabase/client';
 
 
 export interface AgentPreferences {
@@ -36,6 +35,7 @@ const parseJsonField = (field: any, defaultValue: any = null) => {
 
 export const agentPreferencesService = {
   async getAgentPreferences(agentId: string): Promise<AgentPreferences | null> {
+    const supabase = createClient();
     const { data, error } = await supabase
       .from('agent_preferences')
       .select('*')
@@ -56,6 +56,7 @@ export const agentPreferencesService = {
   },
 
   async updateAgentPreferences(agentId: string, preferences: Partial<AgentPreferences>): Promise<AgentPreferences> {
+    const supabase = createClient();
     const updateData: any = { ...preferences };
     
     // Convert JSON fields to strings if they're objects

@@ -1,6 +1,5 @@
 
-import { createClient } from '@/lib/supabase/server';
-const supabase = await createClient();
+import { createClient } from '@/lib/supabase/client';
 
 
 export interface AgentPerformance {
@@ -19,6 +18,7 @@ export interface AgentPerformance {
 
 export const agentPerformanceService = {
   async getAgentPerformance(agentId: string): Promise<AgentPerformance | null> {
+    const supabase = createClient();
     const { data, error } = await supabase
       .from('agent_performance')
       .select('*')
@@ -34,6 +34,7 @@ export const agentPerformanceService = {
   },
 
   async updateAgentPerformance(agentId: string, performance: Partial<AgentPerformance>): Promise<AgentPerformance> {
+    const supabase = createClient();
     const { data, error } = await supabase
       .from('agent_performance')
       .upsert({
