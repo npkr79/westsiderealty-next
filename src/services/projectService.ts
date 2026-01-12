@@ -230,13 +230,15 @@ export const projectService = {
   ): Promise<ProjectWithRelations | null> {
     const supabase = await createClient();
     
+    console.log(`[getCityLevelProjectBySlug] Fetching project: citySlug=${citySlug}, projectSlug=${projectSlug}`);
+    
     // Query project by url_slug only (no city filter in query)
     const { data, error } = await supabase
       .from('projects')
       .select(`
         *,
         floor_plan_images,
-        city:cities(*),
+        city:cities!projects_city_id_fkey(*),
         developer:developers(*),
         micro_market:micro_markets!projects_micromarket_id_fkey(*)
       `)
@@ -247,23 +249,32 @@ export const projectService = {
       // Only log actual errors (not 404s)
       if (error.code !== 'PGRST116') {
         console.error('[getCityLevelProjectBySlug] Error fetching project:', error);
+      } else {
+        console.log(`[getCityLevelProjectBySlug] Project not found (PGRST116) for slug: ${projectSlug}`);
       }
       return null;
     }
 
     if (!data) {
+      console.log(`[getCityLevelProjectBySlug] No data returned for slug: ${projectSlug}`);
       return null;
     }
+
+    console.log(`[getCityLevelProjectBySlug] Project found: ${data.project_name}, city relation type: ${Array.isArray(data.city) ? 'array' : typeof data.city}`);
 
     // Validate city match in code after fetch
     const projectCity = Array.isArray(data.city) ? data.city[0] : data.city;
     const projectCitySlug = projectCity?.url_slug;
 
+    console.log(`[getCityLevelProjectBySlug] Project city slug: ${projectCitySlug}, expected: ${citySlug}`);
+
     // Return null if city doesn't match
     if (!projectCitySlug || projectCitySlug !== citySlug) {
+      console.log(`[getCityLevelProjectBySlug] City mismatch - returning null`);
       return null;
     }
 
+    console.log(`[getCityLevelProjectBySlug] ✅ Project found and validated: ${data.project_name}`);
     return data as ProjectWithRelations;
   },
 

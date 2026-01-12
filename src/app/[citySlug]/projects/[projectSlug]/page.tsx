@@ -46,17 +46,25 @@ export async function generateStaticParams() {
   // The page component will handle filtering/publishing logic
   const { data: projects } = await supabase
     .from("projects")
-    .select("url_slug, city:cities(url_slug), micro_market:micro_markets(url_slug)")
+    .select("url_slug, city:cities!projects_city_id_fkey(url_slug), micro_market:micro_markets(url_slug)")
     .limit(2000); // Increased limit to include more projects
 
   if (!projects) return [];
 
   return projects
-    .filter((p: any) => p.city?.url_slug && p.url_slug)
-    .map((p: any) => ({
-      citySlug: p.city.url_slug,
-      projectSlug: p.url_slug,
-    }));
+    .filter((p: any) => {
+      // Handle city relation - can be object or array
+      const city = Array.isArray(p.city) ? p.city[0] : p.city;
+      return city?.url_slug && p.url_slug;
+    })
+    .map((p: any) => {
+      // Handle city relation - can be object or array
+      const city = Array.isArray(p.city) ? p.city[0] : p.city;
+      return {
+        citySlug: city.url_slug,
+        projectSlug: p.url_slug,
+      };
+    });
 }
 
 // Generate metadata server-side
