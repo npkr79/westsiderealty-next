@@ -1,9 +1,9 @@
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+// createClient imported dynamically where needed
 import { optimizeSupabaseImage } from '@/utils/imageOptimization';
 import PropertyDetailsClient from '@/components/property/PropertyDetailsClient';
-import { microMarketService } from '@/services/microMarketService';
+// microMarketService imported dynamically to avoid top-level await in server service
 import { getPropertyFAQsFromProject } from '@/services/propertyFAQService';
 
 type PageProps = {
@@ -396,6 +396,7 @@ export default async function PropertyDetailsPage({ params }: PageProps) {
   // Fetch micro market data if available
   let microMarketData = null;
   if (property.micro_market) {
+    const { microMarketService } = await import('@/services/client/microMarketService');
     microMarketData = await microMarketService.getMicroMarketByName(property.micro_market);
   }
 

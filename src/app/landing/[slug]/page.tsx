@@ -5,8 +5,8 @@ import LandingPageComponent from "./LandingPageComponent";
 import { JsonLd } from "@/components/common/SEO";
 import { optimizeSupabaseImage } from "@/utils/imageOptimization";
 import { generateUnifiedSchema } from "@/lib/seo-utils";
-import { supabaseLandingPagesService, type LandingPage, type LandingPageImage, type LandingPageHighlight, type LandingPageConfiguration, type LandingPageSpecification, type LandingPageLocationPoint, type LandingPageFAQ, type LandingPageFloorPlan } from "@/services/admin/supabaseLandingPagesService";
-import { supabaseLandingPagesContentService } from "@/services/admin/supabaseLandingPagesContentService";
+import type { LandingPage, LandingPageImage, LandingPageHighlight, LandingPageConfiguration, LandingPageSpecification, LandingPageLocationPoint, LandingPageFAQ, LandingPageFloorPlan } from "@/services/admin/supabaseLandingPagesService";
+// Services imported dynamically to avoid top-level await
 import type { Amenity, ContentBlock } from "@/types/landingPageTemplate";
 
 interface PageProps {
@@ -16,7 +16,9 @@ interface PageProps {
 // Fetch all landing page data server-side
 async function fetchLandingPageData(slug: string) {
   try {
+    const { createClient } = await import('@/lib/supabase/server');
     const supabase = await createClient();
+    const { supabaseLandingPagesService } = await import('@/services/admin/supabaseLandingPagesService');
 
     // Fetch main landing page
     const pageData = await supabaseLandingPagesService.getLandingPageByUri(slug);
@@ -32,6 +34,7 @@ async function fetchLandingPageData(slug: string) {
     }
 
   // Fetch all related data in parallel
+  const { supabaseLandingPagesContentService } = await import('@/services/admin/supabaseLandingPagesContentService');
   const [
     images,
     highlights,

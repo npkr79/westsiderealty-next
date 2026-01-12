@@ -4,7 +4,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calendar, ArrowRight } from "lucide-react";
 import Link from "next/link";
-import { blogService, BlogArticle } from "@/services/blogService";
+import type { BlogArticle } from "@/services/blogService";
+// blogService imported dynamically to avoid top-level await
 import NewsletterCtaSection from "@/components/blog/NewsletterCtaSection";
 import { JsonLd } from "@/components/common/SEO";
 import { buildMetadata } from "@/components/common/SEO";
@@ -175,6 +176,7 @@ const BlogListPage = ({
 export default async function BlogPage() {
   let articles: BlogArticle[] = [];
   try {
+    const { blogService } = await import('@/services/blogService');
     articles = await blogService.getPublishedArticles();
   } catch (error) {
     console.error("Error fetching blog articles:", error);

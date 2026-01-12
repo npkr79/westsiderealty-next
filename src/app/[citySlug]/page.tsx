@@ -5,7 +5,8 @@ import Image from "next/image";
 import { cityService, CityInfo } from "@/services/cityService";
 import { projectService, ProjectInfo } from "@/services/projectService";
 import { goaHolidayPropertyService } from "@/services/goaHolidayPropertyService";
-import { microMarketService, MicroMarketGridItem } from "@/services/microMarketService";
+import type { MicroMarketGridItem } from "@/services/microMarketService";
+// microMarketService imported dynamically to avoid top-level await
 import { UnifiedPropertyService } from "@/services/unifiedPropertyService";
 import type { UnifiedProperty } from "@/types/unifiedProperty";
 import { Button } from "@/components/ui/button";
@@ -155,6 +156,7 @@ export default async function CityPage({ params }: PageProps) {
     featuredProjects = projects.slice(0, 6);
 
     // Fetch micro-markets for the city
+    const { microMarketService } = await import('@/services/client/microMarketService');
     const markets = await microMarketService.getMicroMarketsByCity(slug);
     microMarkets = Array.isArray(markets) ? markets : [];
 

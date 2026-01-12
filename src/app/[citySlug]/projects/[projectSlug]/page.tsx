@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { projectService, ProjectWithRelations } from "@/services/projectService";
-import { findBrochureByProjectName } from "@/services/brochureService";
+// findBrochureByProjectName imported dynamically to avoid top-level await
 import { createClient } from "@/lib/supabase/server";
 import { buildMetadata } from "@/components/common/SEO";
 import { JsonLd } from "@/components/common/SEO";
@@ -147,6 +147,7 @@ export default async function ProjectDetailPage({ params }: PageProps) {
   // Fetch brochure (non-blocking)
   let brochureUrl: string | null = null;
   try {
+    const { findBrochureByProjectName } = await import('@/services/brochureService');
     brochureUrl = await findBrochureByProjectName(project.project_name);
   } catch (err) {
     // Ignore brochure errors
