@@ -1,0 +1,6 @@
+# Server-only services
+# Services in this directory use @/lib/supabase/server and can only be imported in:
+# - Server Components (page.tsx, layout.tsx without "use client")
+# - API Routes (route.ts)
+# - Server Actions ("use server")
+# - Other server-only services

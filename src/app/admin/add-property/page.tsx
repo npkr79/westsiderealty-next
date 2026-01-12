@@ -18,7 +18,7 @@ import { ArrowLeft, Save } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { slugify, ensureUniqueSlug } from "@/utils/seoUrlGenerator";
-import type { UploadedImage } from "@/services/supabaseImageService";
+import type { UploadedImage } from "@/services/shared/types";
 import ImageUploadSection from "@/components/property/ImageUploadSection";
 import { VideoUploadSection } from "@/components/property/VideoUploadSection";
 import RichTextEditor from "@/components/property/RichTextEditor";

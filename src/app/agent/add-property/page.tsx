@@ -16,7 +16,7 @@ import PropertyFeaturesSection from "@/components/property/PropertyFeaturesSecti
 import ImageUploadSection from "@/components/property/ImageUploadSection";
 import AIDescriptionGenerator from "@/components/property/AIDescriptionGenerator";
 import RichTextEditor from "@/components/property/RichTextEditor";
-import { supabaseImageService, UploadedImage } from "@/services/supabaseImageService";
+import { supabaseImageService, UploadedImage } from "@/services/client/supabaseImageService";
 
 export default function AddProperty() {
   const router = useRouter();

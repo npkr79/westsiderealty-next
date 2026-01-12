@@ -1,0 +1,6 @@
+# Client-compatible services
+# Services in this directory use @/lib/supabase/client and can be imported in:
+# - Client Components ("use client")
+# - Server Components (but prefer server services when possible)
+# - Hooks
+# - Utility functions

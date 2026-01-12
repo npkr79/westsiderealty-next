@@ -17,7 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabaseImageService } from "@/services/supabaseImageService";
+import { supabaseImageService } from "@/services/client/supabaseImageService";
 
 interface AgentProfileData {
   id: string;

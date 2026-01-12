@@ -3,8 +3,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
-import { supabasePropertyService, supabaseImageService } from "@/services";
-import type { UploadedImage } from "@/services/supabaseImageService";
+import { supabasePropertyService } from "@/services";
+import { supabaseImageService } from "@/services/client/supabaseImageService";
+import type { UploadedImage } from "@/services/shared/types";
 
 export interface PropertyFormData {
   title: string;

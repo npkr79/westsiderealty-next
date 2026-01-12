@@ -41,7 +41,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { supabaseImageServiceClient, UploadedImage } from "@/services/supabaseImageServiceClient";
+import { supabaseImageService, UploadedImage } from "@/services/client/supabaseImageService";
 import { blogServiceClient, BlogArticle } from "@/services/blogServiceClient";
 import QuillEditorClient from "@/components/blog/QuillEditorClient";
 import {
@@ -162,7 +162,7 @@ const BlogManagement = () => {
     setIsUploading(true);
     try {
       // Upload to blog-images bucket as specified
-      const uploaded = await supabaseImageServiceClient.uploadSingleImage(file, 'blog-images');
+      const uploaded = await supabaseImageService.uploadSingleImage(file, 'blog-images');
       setUploadedImage(uploaded);
       setFormData(prev => ({ ...prev, image_url: uploaded.url }));
       toast({
@@ -184,7 +184,7 @@ const BlogManagement = () => {
   const removeUploadedImage = async () => {
     if (uploadedImage) {
       try {
-        await supabaseImageServiceClient.removeUploadedImage(uploadedImage.id);
+        await supabaseImageService.removeUploadedImage(uploadedImage.id);
         setUploadedImage(null);
         setFormData(prev => ({ ...prev, image_url: "" }));
       } catch (error) {

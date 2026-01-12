@@ -1,0 +1,3 @@
+# Shared types and interfaces
+# Only TypeScript types, interfaces, and type-only code
+# No runtime code, no imports from server/client specific modules
