@@ -136,7 +136,10 @@ export default async function ProjectDetailPage({ params }: PageProps) {
   // Fetch project data on the server
   const project = await projectService.getCityLevelProjectBySlug(citySlug, projectSlug);
   
+  console.log(`[ProjectPage] citySlug=${citySlug}, projectSlug=${projectSlug}, found=${!!project}`);
+  
   if (!project) {
+    console.error(`[ProjectPage] 404 - Project not found`);
     notFound();
   }
 
