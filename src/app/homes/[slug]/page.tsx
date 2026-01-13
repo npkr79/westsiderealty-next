@@ -264,7 +264,7 @@ export default async function HomesFilterPage({ params }: PageProps) {
     { label: "Home", href: "/" },
     { label: city.city_name, href: `/${city.url_slug}` },
     { label: microMarket.micro_market_name, href: `/${city.url_slug}/${microMarket.url_slug}` },
-    { label: pageTitle, href: null },
+    { label: pageTitle },
   ];
 
   return (
