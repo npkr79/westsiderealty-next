@@ -265,6 +265,7 @@ export default async function PropertyDetailsPage({ params }: PageProps) {
   let developerId: string | null = null;
   let developerSlug: string | null = null;
 
+  const { createClient } = await import('@/lib/supabase/server');
   const supabase = await createClient();
 
   // Get city ID
