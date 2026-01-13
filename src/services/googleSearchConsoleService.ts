@@ -30,48 +30,43 @@ class GoogleSearchConsoleService {
   }
 
   /**
-   * Submit sitemap to Google Search Console using Indexing API
-   * Note: This uses a simplified approach. For production, use proper OAuth2 or service account
+   * Submit sitemap to Google Search Console
+   * 
+   * Note: Google deprecated the ping method in June 2023.
+   * Sitemaps must be submitted manually via Google Search Console UI or using the GSC API.
+   * 
+   * For automatic submission, implement submitSitemapViaAPI with proper service account setup.
+   * For manual submission, go to: https://search.google.com/search-console
    */
   async submitSitemap(sitemapUrl: string): Promise<GSCSubmissionResult> {
     try {
-      // If credentials are not configured, return a helpful message
-      if (!this.serviceAccountEmail || !this.privateKey) {
-        console.warn("Google Search Console credentials not configured. Skipping GSC submission.");
-        return {
-          success: false,
-          message: "GSC credentials not configured. Please set GOOGLE_SERVICE_ACCOUNT_EMAIL and GOOGLE_PRIVATE_KEY environment variables.",
-        };
-      }
-
-      // For now, we'll use the sitemap ping method
-      // Full implementation would require Google API client library
-      const pingUrl = `https://www.google.com/ping?sitemap=${encodeURIComponent(sitemapUrl)}`;
-      
-      const response = await fetch(pingUrl, {
+      // Verify sitemap is accessible
+      const sitemapCheck = await fetch(sitemapUrl, {
         method: 'GET',
         headers: {
           'User-Agent': 'Mozilla/5.0 (compatible; WestsideRealtyBot/1.0)',
         },
       });
 
-      if (response.ok) {
-        return {
-          success: true,
-          message: `Sitemap successfully submitted to Google: ${sitemapUrl}`,
-        };
-      } else {
+      if (!sitemapCheck.ok) {
         return {
           success: false,
-          message: `Failed to submit sitemap. Status: ${response.status}`,
-          error: await response.text(),
+          message: `Sitemap is not accessible. Status: ${sitemapCheck.status}`,
+          error: `Sitemap URL returned ${sitemapCheck.status}`,
         };
       }
+
+      // Return success with instructions for manual submission
+      // The sitemap is generated and accessible, but must be submitted via GSC UI or API
+      return {
+        success: true,
+        message: `Sitemap generated successfully at ${sitemapUrl}. Please submit it manually in Google Search Console: https://search.google.com/search-console → Sitemaps → Add sitemap → Enter "sitemap.xml"`,
+      };
     } catch (error: any) {
-      console.error("Error submitting sitemap to GSC:", error);
+      console.error("Error checking sitemap:", error);
       return {
         success: false,
-        message: "Error submitting sitemap to Google Search Console",
+        message: "Error verifying sitemap accessibility",
         error: error.message,
       };
     }
