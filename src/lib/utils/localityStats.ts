@@ -73,12 +73,12 @@ function normalizePropertyType(type: string): { category: "residential" | "comme
 }
 
 /**
- * Get price range bucket for a project based on price_min or price_range_text
+ * Get price range bucket for a project based on min_price or price_range_text
  */
 function getPriceBucket(project: any): string | null {
-  // Try price_min first
-  if (project.price_min && typeof project.price_min === 'number') {
-    const price = project.price_min;
+  // Try min_price first (correct column name)
+  if (project.min_price && typeof project.min_price === 'number') {
+    const price = project.min_price;
     for (const bucket of PRICE_BUCKETS) {
       if (bucket.min !== undefined && bucket.max !== undefined) {
         if (price >= bucket.min && price < bucket.max) return bucket.label;
@@ -116,17 +116,32 @@ export async function getLocalityStats(
   microMarketId: string,
   cityId: string
 ): Promise<LocalityStats> {
+  // Validate inputs
+  if (!microMarketId || !cityId) {
+    console.error("[getLocalityStats] Missing required IDs:", { microMarketId, cityId });
+    return {
+      residentialTypes: [],
+      commercialTypes: [],
+      priceRanges: [],
+      statuses: [],
+      totalProjects: 0,
+    };
+  }
+
   const supabase = await createClient();
+
+  console.log(`[getLocalityStats] Querying with microMarketId=${microMarketId}, cityId=${cityId}`);
 
   // Fetch all projects for this micro-market (need price data too)
   // Use same status filter pattern as projectService.getProjectsByMicroMarket
+  // FIXED: Use correct column names min_price and max_price
   const { data: projects, error } = await supabase
     .from("projects")
     .select(`
       id,
       property_types,
-      price_min,
-      price_max,
+      min_price,
+      max_price,
       price_range_text,
       completion_status,
       status,
@@ -140,6 +155,8 @@ export async function getLocalityStats(
     console.error("[getLocalityStats] Error fetching projects:", error, {
       microMarketId,
       cityId,
+      errorCode: error.code,
+      errorMessage: error.message,
     });
     return {
       residentialTypes: [],
@@ -152,16 +169,16 @@ export async function getLocalityStats(
 
   console.log(`[getLocalityStats] Found ${projects?.length || 0} projects for microMarketId=${microMarketId}, cityId=${cityId}`);
 
+  // The query already filters by status, so we can be less strict here
+  // Just ensure we have valid projects with some data
   const validProjects = (projects || []).filter((p: any) => {
-    const status = (p.status || "").toLowerCase();
-    const completionStatus = (p.completion_status || "").toLowerCase();
-    return (
-      status.includes("published") ||
-      status.includes("construction") ||
-      completionStatus.includes("construction") ||
-      completionStatus.includes("ready")
-    );
+    // Include all projects returned by the query (they already match status filter)
+    // But exclude if both status fields are completely empty
+    const hasStatus = (p.status || "").trim() || (p.completion_status || "").trim();
+    return hasStatus || p.property_types; // Include if has status or property types
   });
+
+  console.log(`[getLocalityStats] After filtering: ${validProjects.length} valid projects`);
 
   // Extract unique types, price ranges, and statuses
   const residentialSet = new Set<string>();
@@ -169,10 +186,17 @@ export async function getLocalityStats(
   const priceRangeSet = new Set<string>();
   const statusSet = new Set<string>();
 
+  let projectsWithTypes = 0;
+  let projectsWithPrice = 0;
+
   validProjects.forEach((project: any) => {
     // Parse property types
     const types = parseJsonb(project.property_types, []);
     const typeArray = asArray<string>(types);
+    
+    if (typeArray.length > 0) {
+      projectsWithTypes++;
+    }
     
     typeArray.forEach((type: string) => {
       if (type && typeof type === "string") {
@@ -188,6 +212,7 @@ export async function getLocalityStats(
     // Extract price range bucket
     const priceBucket = getPriceBucket(project);
     if (priceBucket) {
+      projectsWithPrice++;
       priceRangeSet.add(priceBucket);
     }
 
@@ -201,13 +226,25 @@ export async function getLocalityStats(
     }
   });
 
-  return {
+  const result = {
     residentialTypes: Array.from(residentialSet).sort(),
     commercialTypes: Array.from(commercialSet).sort(),
     priceRanges: Array.from(priceRangeSet).sort(),
     statuses: Array.from(statusSet).sort(),
     totalProjects: validProjects.length,
   };
+
+  console.log(`[getLocalityStats] Final stats:`, {
+    totalProjects: result.totalProjects,
+    projectsWithTypes,
+    projectsWithPrice,
+    residentialTypes: result.residentialTypes.length,
+    commercialTypes: result.commercialTypes.length,
+    priceRanges: result.priceRanges.length,
+    statuses: result.statuses.length,
+  });
+
+  return result;
 }
 
 /**

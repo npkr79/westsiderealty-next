@@ -239,7 +239,7 @@ export default async function HomesFilterPage({ params, searchParams }: PageProp
       } else if (filterType === "price") {
         // Parse price range from filterValue (e.g., "Under 1 Cr", "1-2 Cr")
         const priceText = filterValue.toLowerCase();
-        const projectPrice = p.price_min || 0;
+        const projectPrice = p.min_price || 0; // FIXED: Use min_price instead of price_min
         
         if (priceText.includes("under 1")) {
           if (projectPrice >= 10000000) return false;
