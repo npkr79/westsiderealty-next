@@ -16,11 +16,11 @@ export interface LocalityStats {
   totalProjects: number;
 }
 
-// Residential property types
-const RESIDENTIAL_TYPES = ["Apartment", "Villa", "Gated Community", "Plot"];
+// Residential property types (case-insensitive matching)
+const RESIDENTIAL_KEYWORDS = ["apartment", "villa", "gated community", "plot", "residential"];
 
-// Commercial property types
-const COMMERCIAL_TYPES = ["Office Space", "Shop", "Showroom", "Office", "Retail"];
+// Commercial property types (case-insensitive matching)
+const COMMERCIAL_KEYWORDS = ["office", "shop", "showroom", "retail", "commercial"];
 
 // Price range buckets (in crores)
 const PRICE_BUCKETS = [
@@ -33,35 +33,43 @@ const PRICE_BUCKETS = [
 
 /**
  * Normalize property type by stripping "Luxury" prefix and matching to known types
+ * Returns the original type value and category
  */
 function normalizePropertyType(type: string): { category: "residential" | "commercial" | null; normalizedType: string } {
-  const normalized = type.trim();
+  const normalized = type.trim().toLowerCase();
   
   // Strip "Luxury" prefix
-  const withoutLuxury = normalized.replace(/^luxury\s+/i, "").trim();
+  const withoutLuxury = normalized.replace(/^luxury\s+/, "").trim();
   
-  // Check if it matches residential types
-  for (const residentialType of RESIDENTIAL_TYPES) {
-    if (withoutLuxury.toLowerCase().includes(residentialType.toLowerCase()) || 
-        normalized.toLowerCase().includes(residentialType.toLowerCase())) {
-      return { category: "residential", normalizedType: residentialType };
+  // Check if it matches residential keywords
+  for (const keyword of RESIDENTIAL_KEYWORDS) {
+    if (withoutLuxury.includes(keyword) || normalized.includes(keyword)) {
+      // Return capitalized version of the original type (without "Luxury")
+      const displayType = withoutLuxury
+        .split(" ")
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(" ");
+      return { category: "residential", normalizedType: displayType || type };
     }
   }
   
-  // Check if it matches commercial types
-  for (const commercialType of COMMERCIAL_TYPES) {
-    const normalizedCommercial = commercialType.toLowerCase();
-    if (withoutLuxury.toLowerCase().includes(normalizedCommercial) ||
-        normalized.toLowerCase().includes(normalizedCommercial)) {
-      // Map variations to standard names
-      if (normalizedCommercial.includes("office")) return { category: "commercial", normalizedType: "Office Space" };
-      if (normalizedCommercial.includes("shop") || normalizedCommercial.includes("retail")) return { category: "commercial", normalizedType: "Shop" };
-      if (normalizedCommercial.includes("showroom")) return { category: "commercial", normalizedType: "Showroom" };
-      return { category: "commercial", normalizedType: commercialType };
+  // Check if it matches commercial keywords
+  for (const keyword of COMMERCIAL_KEYWORDS) {
+    if (withoutLuxury.includes(keyword) || normalized.includes(keyword)) {
+      // Map to standard names
+      if (keyword === "office") return { category: "commercial", normalizedType: "Office Space" };
+      if (keyword === "shop" || keyword === "retail") return { category: "commercial", normalizedType: "Shop" };
+      if (keyword === "showroom") return { category: "commercial", normalizedType: "Showroom" };
+      const displayType = withoutLuxury
+        .split(" ")
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(" ");
+      return { category: "commercial", normalizedType: displayType || type };
     }
   }
   
-  return { category: null, normalizedType: normalized };
+  // Default: assume residential if no match (most projects are residential)
+  return { category: "residential", normalizedType: type };
 }
 
 /**
@@ -111,6 +119,7 @@ export async function getLocalityStats(
   const supabase = await createClient();
 
   // Fetch all projects for this micro-market (need price data too)
+  // Use same status filter pattern as projectService.getProjectsByMicroMarket
   const { data: projects, error } = await supabase
     .from("projects")
     .select(`
@@ -125,10 +134,13 @@ export async function getLocalityStats(
     `)
     .eq("micro_market_id", microMarketId)
     .eq("city_id", cityId)
-    .eq("page_status", "published");
+    .or("status.ilike.published,status.ilike.%under construction%");
 
   if (error) {
-    console.error("[getLocalityStats] Error fetching projects:", error);
+    console.error("[getLocalityStats] Error fetching projects:", error, {
+      microMarketId,
+      cityId,
+    });
     return {
       residentialTypes: [],
       commercialTypes: [],
@@ -137,6 +149,8 @@ export async function getLocalityStats(
       totalProjects: 0,
     };
   }
+
+  console.log(`[getLocalityStats] Found ${projects?.length || 0} projects for microMarketId=${microMarketId}, cityId=${cityId}`);
 
   const validProjects = (projects || []).filter((p: any) => {
     const status = (p.status || "").toLowerCase();
@@ -310,26 +324,54 @@ export function parseFilterSlug(slug: string): {
   }
 
   // Check for residential/commercial pattern: {type}-in-{market}
-  // Try to match against known types
+  // Try to match against known keywords
   const normalizedFilter = filterPart.replace(/-/g, " ").toLowerCase();
   
-  // Check residential types
-  for (const resType of RESIDENTIAL_TYPES) {
-    if (normalizedFilter.includes(resType.toLowerCase())) {
+  // Check residential keywords
+  for (const keyword of RESIDENTIAL_KEYWORDS) {
+    if (normalizedFilter.includes(keyword)) {
+      // Return capitalized version
+      const capitalizedType = keyword
+        .split(" ")
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(" ");
       return {
         filterType: "residential",
-        filterValue: resType,
+        filterValue: capitalizedType,
         microMarketSlug,
       };
     }
   }
   
-  // Check commercial types
-  for (const commType of COMMERCIAL_TYPES) {
-    if (normalizedFilter.includes(commType.toLowerCase().replace(" ", ""))) {
+  // Check commercial keywords
+  for (const keyword of COMMERCIAL_KEYWORDS) {
+    if (normalizedFilter.includes(keyword)) {
+      // Map to standard names
+      if (keyword === "office") {
+        return {
+          filterType: "commercial",
+          filterValue: "Office Space",
+          microMarketSlug,
+        };
+      }
+      if (keyword === "shop" || keyword === "retail") {
+        return {
+          filterType: "commercial",
+          filterValue: "Shop",
+          microMarketSlug,
+        };
+      }
+      if (keyword === "showroom") {
+        return {
+          filterType: "commercial",
+          filterValue: "Showroom",
+          microMarketSlug,
+        };
+      }
+      const capitalizedType = keyword.charAt(0).toUpperCase() + keyword.slice(1);
       return {
         filterType: "commercial",
-        filterValue: commType === "Office" ? "Office Space" : commType,
+        filterValue: capitalizedType,
         microMarketSlug,
       };
     }
