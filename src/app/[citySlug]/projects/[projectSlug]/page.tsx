@@ -30,6 +30,7 @@ import ProjectLeadForm from "@/components/project-details/ProjectLeadForm";
 import AboutDeveloperSection from "@/components/project-details/AboutDeveloperSection";
 import AboutMicroMarketSection from "@/components/project-details/AboutMicroMarketSection";
 import ProjectHighlights from "@/components/project-details/ProjectHighlights";
+import SmartLinkGrid from "@/components/shared/SmartLinkGrid";
 import DebugClient from "./DebugClient";
 
 interface PageProps {
@@ -497,6 +498,18 @@ export default async function ProjectDetailPage({ params }: PageProps) {
             </div>
           </div>
         </div>
+
+        {/* Smart Link Grid */}
+        {microMarket && citySlug && project.city_id && project.micro_market_id && (
+          <SmartLinkGrid
+            microMarketId={project.micro_market_id}
+            cityId={project.city_id}
+            microMarketName={microMarket.micro_market_name || ""}
+            microMarketSlug={microMarket.url_slug || ""}
+            citySlug={citySlug}
+            cityName={cityData?.city_name || citySlug}
+          />
+        )}
 
         <CityHubBacklink />
 

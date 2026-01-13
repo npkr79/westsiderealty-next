@@ -27,25 +27,38 @@ export default async function SmartLinkGrid({
   }
 
   // Generate links for each category
-  const configLinks = stats.availableConfigs
-    .filter((config) => config && config.trim() !== "")
-    .map((config) => {
-      const slug = generateFilterSlug("config", config, microMarketName);
-      const label = `${config} Apartments in ${microMarketName}`;
-      return { slug, label };
-    });
-
-  const typeLinks = stats.availableTypes
+  const residentialLinks = stats.residentialTypes
     .filter((type) => type && type.trim() !== "")
     .map((type) => {
-      const slug = generateFilterSlug("type", type, microMarketName);
-      // Capitalize first letter for display
-      const displayType = type.charAt(0).toUpperCase() + type.slice(1);
-      const label = `Luxury ${displayType}s in ${microMarketName}`;
+      const slug = generateFilterSlug("residential", type, microMarketName);
+      // Format: "{Type} in {Market}"
+      const label = `${type} in ${microMarketName}`;
       return { slug, label };
     });
 
-  const statusLinks = stats.availableStatuses
+  const commercialLinks = stats.commercialTypes
+    .filter((type) => type && type.trim() !== "")
+    .map((type) => {
+      const slug = generateFilterSlug("commercial", type, microMarketName);
+      // Format: "{Type}s in {Market}" (pluralize)
+      const pluralType = type.endsWith("Space") 
+        ? type.replace("Space", "Spaces")
+        : type.endsWith("s")
+        ? type
+        : `${type}s`;
+      const label = `${pluralType} in ${microMarketName}`;
+      return { slug, label };
+    });
+
+  const priceLinks = stats.priceRanges
+    .filter((price) => price && price.trim() !== "")
+    .map((price) => {
+      const slug = generateFilterSlug("price", price, microMarketName);
+      const label = `Properties ${price} in ${microMarketName}`;
+      return { slug, label };
+    });
+
+  const statusLinks = stats.statuses
     .filter((status) => status && status.trim() !== "")
     .map((status) => {
       const slug = generateFilterSlug("status", status, microMarketName);
@@ -54,7 +67,7 @@ export default async function SmartLinkGrid({
     });
 
   // Don't render if no links available
-  if (configLinks.length === 0 && typeLinks.length === 0 && statusLinks.length === 0) {
+  if (residentialLinks.length === 0 && commercialLinks.length === 0 && priceLinks.length === 0 && statusLinks.length === 0) {
     return null;
   }
 
@@ -65,13 +78,13 @@ export default async function SmartLinkGrid({
           EXPLORE PROPERTIES IN {microMarketName.toUpperCase()}
         </h2>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {/* By Configuration */}
-          {configLinks.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+          {/* Residential Properties */}
+          {residentialLinks.length > 0 && (
             <div>
-              <h3 className="text-base font-semibold text-gray-900 mb-3">By Configuration</h3>
+              <h3 className="text-base font-semibold text-gray-900 mb-3">Residential Properties in {microMarketName}</h3>
               <div className="space-y-2">
-                {configLinks.map((link) => (
+                {residentialLinks.map((link) => (
                   <Link
                     key={link.slug}
                     href={`/homes/${link.slug}`}
@@ -84,12 +97,12 @@ export default async function SmartLinkGrid({
             </div>
           )}
 
-          {/* By Property Type */}
-          {typeLinks.length > 0 && (
+          {/* Commercial Properties */}
+          {commercialLinks.length > 0 && (
             <div>
-              <h3 className="text-base font-semibold text-gray-900 mb-3">By Property Type</h3>
+              <h3 className="text-base font-semibold text-gray-900 mb-3">Commercial Properties in {microMarketName}</h3>
               <div className="space-y-2">
-                {typeLinks.map((link) => (
+                {commercialLinks.map((link) => (
                   <Link
                     key={link.slug}
                     href={`/homes/${link.slug}`}
@@ -102,10 +115,28 @@ export default async function SmartLinkGrid({
             </div>
           )}
 
-          {/* By Status */}
+          {/* Browse by Price */}
+          {priceLinks.length > 0 && (
+            <div>
+              <h3 className="text-base font-semibold text-gray-900 mb-3">Browse by Price in {microMarketName}</h3>
+              <div className="space-y-2">
+                {priceLinks.map((link) => (
+                  <Link
+                    key={link.slug}
+                    href={`/homes/${link.slug}`}
+                    className="text-sm text-gray-600 hover:text-blue-600 transition-colors py-1 block"
+                  >
+                    {link.label}
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Browse by Status */}
           {statusLinks.length > 0 && (
             <div>
-              <h3 className="text-base font-semibold text-gray-900 mb-3">By Status</h3>
+              <h3 className="text-base font-semibold text-gray-900 mb-3">Browse by Status in {microMarketName}</h3>
               <div className="space-y-2">
                 {statusLinks.map((link) => (
                   <Link

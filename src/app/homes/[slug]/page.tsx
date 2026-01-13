@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { parseFilterSlug } from "@/lib/utils/localityStats";
 import { parseJsonb, asArray } from "@/lib/parse-jsonb";
@@ -8,19 +9,47 @@ import ProjectCard from "@/components/properties/ProjectCard";
 import SmartLinkGrid from "@/components/shared/SmartLinkGrid";
 import type { ProjectWithRelations } from "@/services/projectService";
 import { optimizeSupabaseImage } from "@/utils/imageOptimization";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+  PaginationEllipsis,
+} from "@/components/ui/pagination";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ page?: string }>;
+}
+
+const ITEMS_PER_PAGE = 20;
+
+/**
+ * Check if project has valid images
+ */
+function hasImages(project: any): boolean {
+  if (project.hero_image_url || project.main_image_url) return true;
+  const galleryImages = parseJsonb(project.gallery_images_json, []);
+  const galleryArray = asArray<string | { url?: string; image_url?: string; src?: string }>(galleryImages);
+  return galleryArray.length > 0 && galleryArray.some((img: any) => {
+    const url = typeof img === 'string' ? img : (img?.url || img?.image_url || img?.src);
+    return url && typeof url === 'string' && url.trim() !== '';
+  });
 }
 
 /**
  * Generate page title from filter type and value
  */
-function getPageTitle(filterType: "config" | "type" | "status", filterValue: string, microMarketName: string, cityName: string): string {
-  if (filterType === "config") {
-    return `${filterValue} Apartments in ${microMarketName}, ${cityName} | RE/MAX`;
-  } else if (filterType === "type") {
-    return `Luxury ${filterValue}s in ${microMarketName}, ${cityName} | RE/MAX`;
+function getPageTitle(filterType: "residential" | "commercial" | "price" | "status", filterValue: string, microMarketName: string, cityName: string): string {
+  if (filterType === "residential") {
+    return `${filterValue} in ${microMarketName}, ${cityName} | RE/MAX`;
+  } else if (filterType === "commercial") {
+    const pluralType = filterValue.endsWith("s") ? filterValue : `${filterValue}s`;
+    return `${pluralType} in ${microMarketName}, ${cityName} | RE/MAX`;
+  } else if (filterType === "price") {
+    return `Properties ${filterValue} in ${microMarketName}, ${cityName} | RE/MAX`;
   } else {
     return `${filterValue} Projects in ${microMarketName}, ${cityName} | RE/MAX`;
   }
@@ -29,12 +58,18 @@ function getPageTitle(filterType: "config" | "type" | "status", filterValue: str
 /**
  * Generate page description
  */
-function getPageDescription(filterType: "config" | "type" | "status", filterValue: string, microMarketName: string, cityName: string, count?: number): string {
-  const filterLabel = filterType === "config" 
-    ? `${filterValue} Apartments`
-    : filterType === "type"
-    ? `Luxury ${filterValue}s`
-    : `${filterValue} Projects`;
+function getPageDescription(filterType: "residential" | "commercial" | "price" | "status", filterValue: string, microMarketName: string, cityName: string, count?: number): string {
+  let filterLabel = "";
+  if (filterType === "residential") {
+    filterLabel = filterValue;
+  } else if (filterType === "commercial") {
+    const pluralType = filterValue.endsWith("s") ? filterValue : `${filterValue}s`;
+    filterLabel = pluralType;
+  } else if (filterType === "price") {
+    filterLabel = `Properties ${filterValue}`;
+  } else {
+    filterLabel = `${filterValue} Projects`;
+  }
   
   const countText = count !== undefined && count > 0 ? `${count}+ ` : "";
   
@@ -118,8 +153,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
-export default async function HomesFilterPage({ params }: PageProps) {
+export default async function HomesFilterPage({ params, searchParams }: PageProps) {
   const { slug } = await params;
+  const resolvedSearchParams = await searchParams;
   const parsed = parseFilterSlug(slug);
 
   if (!parsed) {
@@ -128,6 +164,9 @@ export default async function HomesFilterPage({ params }: PageProps) {
 
   const { filterType, filterValue, microMarketSlug } = parsed;
   const supabase = await createClient();
+
+  // Get current page number
+  const currentPage = Math.max(1, parseInt(resolvedSearchParams.page || "1", 10));
 
   // Fetch micro-market
   const { data: microMarket } = await supabase
@@ -168,8 +207,8 @@ export default async function HomesFilterPage({ params }: PageProps) {
     console.error("[HomesFilterPage] Error fetching projects:", projError);
   }
 
-  // Filter projects based on filter type (JavaScript filtering like hyderabad/[slug]/[category])
-  const filteredProjects: ProjectWithRelations[] = (projects || [])
+  // Filter projects based on filter type
+  let filteredProjects: ProjectWithRelations[] = (projects || [])
     .filter((p: any) => {
       // Basic status filter (published or under construction)
       const status = (p.status || "").toLowerCase();
@@ -179,20 +218,40 @@ export default async function HomesFilterPage({ params }: PageProps) {
       }
 
       // Apply filter based on filterType
-      if (filterType === "config") {
-        const configs = parseJsonb(p.configurations, []);
-        const configArray = asArray<string>(configs);
-        const configMatch = configArray.length > 0
-          ? configArray.some((c: string) => c?.toUpperCase().includes(filterValue.toUpperCase()))
-          : p.unit_size_range?.toUpperCase().includes(filterValue.toUpperCase());
-        if (!configMatch) return false;
-      } else if (filterType === "type") {
+      if (filterType === "residential") {
         const types = parseJsonb(p.property_types, []);
         const typeArray = asArray<string>(types);
-        const typeMatch = Array.isArray(typeArray)
-          ? typeArray.some((t: string) => t?.toLowerCase().includes(filterValue.toLowerCase()))
-          : (typeof p.property_types === 'string' && p.property_types.toLowerCase().includes(filterValue.toLowerCase()));
+        const typeMatch = typeArray.some((t: string) => {
+          const normalizedType = t.toLowerCase().replace(/^luxury\s+/i, "").trim();
+          return normalizedType.includes(filterValue.toLowerCase()) || 
+                 t.toLowerCase().includes(filterValue.toLowerCase());
+        });
         if (!typeMatch) return false;
+      } else if (filterType === "commercial") {
+        const types = parseJsonb(p.property_types, []);
+        const typeArray = asArray<string>(types);
+        const typeMatch = typeArray.some((t: string) => {
+          const normalizedType = t.toLowerCase().replace(/^luxury\s+/i, "").trim();
+          return normalizedType.includes(filterValue.toLowerCase()) ||
+                 t.toLowerCase().includes(filterValue.toLowerCase());
+        });
+        if (!typeMatch) return false;
+      } else if (filterType === "price") {
+        // Parse price range from filterValue (e.g., "Under 1 Cr", "1-2 Cr")
+        const priceText = filterValue.toLowerCase();
+        const projectPrice = p.price_min || 0;
+        
+        if (priceText.includes("under 1")) {
+          if (projectPrice >= 10000000) return false;
+        } else if (priceText.includes("1-2")) {
+          if (projectPrice < 10000000 || projectPrice >= 20000000) return false;
+        } else if (priceText.includes("2-3")) {
+          if (projectPrice < 20000000 || projectPrice >= 30000000) return false;
+        } else if (priceText.includes("3-5")) {
+          if (projectPrice < 30000000 || projectPrice >= 50000000) return false;
+        } else if (priceText.includes("5+")) {
+          if (projectPrice < 50000000) return false;
+        }
       } else if (filterType === "status") {
         const status1 = (p.completion_status || "").toLowerCase();
         const status2 = (p.status || "").toLowerCase();
@@ -210,17 +269,29 @@ export default async function HomesFilterPage({ params }: PageProps) {
       return p;
     }) as ProjectWithRelations[];
 
-  // Sort by display_order, then project_name
+  // Sort by image availability first (projects with images at top), then display_order, then project_name
   filteredProjects.sort((a, b) => {
+    const aHasImages = hasImages(a);
+    const bHasImages = hasImages(b);
+    if (aHasImages !== bHasImages) {
+      return bHasImages ? 1 : -1; // Projects with images first
+    }
     const orderA = (a as any).display_order || 9999;
     const orderB = (b as any).display_order || 9999;
     if (orderA !== orderB) return orderA - orderB;
     return (a.project_name || "").localeCompare(b.project_name || "");
   });
 
-  // Fetch backup projects if needed (sparse content handling)
+  // Calculate pagination
+  const totalItems = filteredProjects.length;
+  const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const endIndex = startIndex + ITEMS_PER_PAGE;
+  const paginatedProjects = filteredProjects.slice(startIndex, endIndex);
+
+  // Fetch backup projects if needed (sparse content handling) - only on first page
   let backupProjects: ProjectWithRelations[] = [];
-  if (filteredProjects.length < 3) {
+  if (currentPage === 1 && paginatedProjects.length < 3) {
     try {
       const { data: backupData, error: backupError } = await supabase
         .from("projects")
@@ -253,11 +324,17 @@ export default async function HomesFilterPage({ params }: PageProps) {
   }
 
   // Generate page title
-  const pageTitle = filterType === "config"
-    ? `${filterValue} Apartments in ${microMarket.micro_market_name}`
-    : filterType === "type"
-    ? `Luxury ${filterValue}s in ${microMarket.micro_market_name}`
-    : `${filterValue} Projects in ${microMarket.micro_market_name}`;
+  let pageTitle = "";
+  if (filterType === "residential") {
+    pageTitle = `${filterValue} in ${microMarket.micro_market_name}`;
+  } else if (filterType === "commercial") {
+    const pluralType = filterValue.endsWith("s") ? filterValue : `${filterValue}s`;
+    pageTitle = `${pluralType} in ${microMarket.micro_market_name}`;
+  } else if (filterType === "price") {
+    pageTitle = `Properties ${filterValue} in ${microMarket.micro_market_name}`;
+  } else {
+    pageTitle = `${filterValue} Projects in ${microMarket.micro_market_name}`;
+  }
 
   // Build breadcrumbs
   const breadcrumbItems = [
@@ -266,6 +343,12 @@ export default async function HomesFilterPage({ params }: PageProps) {
     { label: microMarket.micro_market_name, href: `/${city.url_slug}/${microMarket.url_slug}` },
     { label: pageTitle },
   ];
+
+  // Generate pagination URLs
+  const getPageUrl = (page: number) => {
+    if (page === 1) return `/homes/${slug}`;
+    return `/homes/${slug}?page=${page}`;
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -276,17 +359,60 @@ export default async function HomesFilterPage({ params }: PageProps) {
         <div className="py-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">{pageTitle}</h1>
           <p className="text-base text-gray-600">
-            Showing {filteredProjects.length} {filteredProjects.length === 1 ? "result" : "results"}
+            Showing {totalItems} {totalItems === 1 ? "result" : "results"}
           </p>
         </div>
 
         {/* Projects Grid */}
-        {filteredProjects.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
-            {filteredProjects.map((project) => (
-              <ProjectCard key={project.id} project={project} citySlug={city.url_slug} />
-            ))}
-          </div>
+        {paginatedProjects.length > 0 ? (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+              {paginatedProjects.map((project) => (
+                <ProjectCard key={project.id} project={project} citySlug={city.url_slug} />
+              ))}
+            </div>
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <Pagination className="mb-12">
+                <PaginationContent>
+                  {currentPage > 1 && (
+                    <PaginationItem>
+                      <PaginationPrevious href={getPageUrl(currentPage - 1)} />
+                    </PaginationItem>
+                  )}
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                    // Show first page, last page, current page, and pages around current
+                    if (
+                      page === 1 ||
+                      page === totalPages ||
+                      (page >= currentPage - 1 && page <= currentPage + 1)
+                    ) {
+                      return (
+                        <PaginationItem key={page}>
+                          <PaginationLink href={getPageUrl(page)} isActive={page === currentPage}>
+                            {page}
+                          </PaginationLink>
+                        </PaginationItem>
+                      );
+                    } else if (page === currentPage - 2 || page === currentPage + 2) {
+                      return (
+                        <PaginationItem key={page}>
+                          <PaginationEllipsis />
+                        </PaginationItem>
+                      );
+                    }
+                    return null;
+                  })}
+                  {currentPage < totalPages && (
+                    <PaginationItem>
+                      <PaginationNext href={getPageUrl(currentPage + 1)} />
+                    </PaginationItem>
+                  )}
+                </PaginationContent>
+              </Pagination>
+            )}
+          </>
         ) : (
           <div className="text-center py-12 text-gray-600 mb-12">
             No projects found matching this filter.
@@ -298,7 +424,7 @@ export default async function HomesFilterPage({ params }: PageProps) {
           <>
             <hr className="my-12 border-gray-200" />
             <h2 className="text-2xl font-bold text-gray-900 mb-6">Popular in {city.city_name}</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
               {backupProjects.map((project) => (
                 <ProjectCard key={project.id} project={project} citySlug={city.url_slug} />
               ))}
