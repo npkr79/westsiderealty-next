@@ -1,4 +1,4 @@
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
@@ -88,13 +88,9 @@ export default async function CategoryComparisonPage({ params }: PageProps) {
   console.log(`[Page] Init: ${citySlug}/${slug}/${category}`);
 
   // IMPORTANT: Exclude "projects" and "buy" slugs - they should be handled by other routes
-  // When slug is "buy", redirect to the correct route handler
-  // The category parameter becomes the listingSlug in the correct route
-  if (slug === "buy") {
-    redirect(`/${citySlug}/buy/${category}`);
-  }
-  
-  if (slug === "projects") {
+  // "buy" should be handled by /hyderabad/buy/[listingSlug] route (more specific)
+  // "projects" should be handled by /hyderabad/projects/[projectSlug] route
+  if (slug === "projects" || slug === "buy") {
     notFound();
   }
 
