@@ -28,6 +28,7 @@ import { JsonLd } from "@/components/common/SEO";
 import { getHeroImageUrl } from "@/utils/imageOptimization";
 import { generateUnifiedSchema } from "@/lib/seo-utils";
 import { optimizeSupabaseImage } from "@/utils/imageOptimization";
+import SmartLinkGrid from "@/components/shared/SmartLinkGrid";
 
 interface PageProps {
   params: Promise<{ citySlug: string; microMarketSlug: string }>;
@@ -387,6 +388,15 @@ export default async function MicroMarketPage({ params }: PageProps) {
     notFound();
   }
 
+  // Fetch city data for SmartLinkGrid (reuse existing cityName declaration later)
+  const { createClient: createSupabaseClient } = await import("@/lib/supabase/server");
+  const supabaseForCity = await createSupabaseClient();
+  const { data: cityData } = await supabaseForCity
+    .from("cities")
+    .select("city_name")
+    .eq("url_slug", citySlug)
+    .maybeSingle();
+
   // Check if Neopolis for special handling
   const isNeopolis = safeLower(microMarketSlug) === "neopolis";
   const seoTitle = isNeopolis
@@ -487,7 +497,7 @@ export default async function MicroMarketPage({ params }: PageProps) {
   // Build primary entity based on page type
   let primaryEntity: Record<string, any> | null = null;
   let primaryEntityType: "Place" | "RealEstateListing" = "RealEstateListing";
-  const cityName = safeCapitalize(citySlug) || "City";
+  const cityName = cityData?.city_name || safeCapitalize(citySlug) || "City";
 
   if (isNeopolis) {
     // For Neopolis, use Place schema with master plan data
@@ -1204,6 +1214,16 @@ export default async function MicroMarketPage({ params }: PageProps) {
           </section>
         </div>
       </main>
+
+      {/* Smart Link Grid */}
+      <SmartLinkGrid
+        microMarketId={pageData.id}
+        cityId={pageData.city_id}
+        microMarketName={pageData.micro_market_name}
+        microMarketSlug={pageData.url_slug}
+        citySlug={citySlug}
+        cityName={cityName}
+      />
 
       <CityHubBacklink citySlug={citySlug} cityName={safeCapitalize(citySlug) || "City"} />
     </>
