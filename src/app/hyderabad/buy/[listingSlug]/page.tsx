@@ -31,9 +31,8 @@ async function getProperty(listingSlug: string) {
   if (isUUID) {
     query = query.eq('id', listingSlug);
   } else {
-    // For Hyderabad, check seo_slug, slug, and url column
-    // url column might contain full path like /hyderabad/buy/... or just the slug
-    query = query.or(`seo_slug.eq.${listingSlug},slug.eq.${listingSlug},url.eq.${listingSlug},url.ilike.%/${listingSlug}%`);
+    // For Hyderabad, check seo_slug and slug columns
+    query = query.or(`seo_slug.eq.${listingSlug},slug.eq.${listingSlug}`);
   }
 
   // Apply status filter
@@ -46,21 +45,6 @@ async function getProperty(listingSlug: string) {
     return null;
   }
 
-  // If not found, try checking url column with different patterns
-  if (!data && !isUUID) {
-    // Try exact match with url column or url ending with the listingSlug
-    const { data: urlMatch, error: urlError } = await supabase
-      .from(tableName)
-      .select('*')
-      .eq('status', statusFilter)
-      .or(`url.eq.${listingSlug},url.ilike.%/${listingSlug},url.ilike.%/${CITY_SLUG}/buy/${listingSlug}%`)
-      .maybeSingle();
-    
-    if (!urlError && urlMatch) {
-      console.log(`[PropertyDetailsPage] Found Hyderabad property by url column: "${urlMatch.title}" (url: ${urlMatch.url || 'NULL'})`);
-      data = urlMatch;
-    }
-  }
 
   if (!data) {
     // Check redirects table
