@@ -64,8 +64,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const citySlug = resolvedParams.citySlug || "hyderabad";
   const { slug, category } = resolvedParams;
 
-  // IMPORTANT: Exclude "projects" slug - it should be handled by /[citySlug]/projects/[projectSlug] route
-  if (slug === "projects") {
+  // IMPORTANT: Exclude "projects" and "buy" slugs - they should be handled by other routes
+  // "buy" should be handled by /[citySlug]/buy/[listingSlug] route
+  if (slug === "projects" || slug === "buy") {
     return { title: "Page Not Found" };
   }
 
@@ -86,8 +87,9 @@ export default async function CategoryComparisonPage({ params }: PageProps) {
 
   console.log(`[Page] Init: ${citySlug}/${slug}/${category}`);
 
-  // IMPORTANT: Exclude "projects" slug - it should be handled by /[citySlug]/projects/[projectSlug] route
-  if (slug === "projects") {
+  // IMPORTANT: Exclude "projects" and "buy" slugs - they should be handled by other routes
+  // "buy" should be handled by /[citySlug]/buy/[listingSlug] route
+  if (slug === "projects" || slug === "buy") {
     notFound();
   }
 
