@@ -500,14 +500,18 @@ export default async function ProjectDetailPage({ params }: PageProps) {
         </div>
 
         {/* Smart Link Grid */}
-        {microMarket && citySlug && project.city_id && project.micro_market_id && (
+        {(microMarket || developer) && citySlug && project.city_id && (
           <SmartLinkGrid
-            microMarketId={project.micro_market_id}
+            microMarketId={project.micro_market_id || undefined}
             cityId={project.city_id}
-            microMarketName={microMarket.micro_market_name || ""}
-            microMarketSlug={microMarket.url_slug || ""}
+            microMarketName={microMarket?.micro_market_name || undefined}
+            microMarketSlug={microMarket?.url_slug || undefined}
             citySlug={citySlug}
             cityName={cityData?.city_name || citySlug}
+            developerId={project.developer_id || undefined}
+            developerName={developer?.developer_name || undefined}
+            developerSlug={developer?.url_slug || undefined}
+            mode={project.micro_market_id && project.developer_id ? "microMarketDeveloper" : project.micro_market_id ? "microMarket" : "developer"}
           />
         )}
 

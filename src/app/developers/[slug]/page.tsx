@@ -15,6 +15,7 @@ import CityHubBacklink from "@/components/seo/CityHubBacklink";
 import DeveloperProjectCard from "@/components/developer/DeveloperProjectCard";
 import DeveloperContactForm from "@/components/developer/DeveloperContactForm";
 import ImageWithFallback from "@/components/common/ImageWithFallback";
+import SmartLinkGrid from "@/components/shared/SmartLinkGrid";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -190,6 +191,19 @@ export default async function DeveloperPage({ params }: PageProps) {
 
   // Fetch developer projects
   const projects = await getDeveloperProjects(developer.id);
+
+  // Get city ID for SmartLinkGrid (use primary city or default to Hyderabad)
+  const supabase = await createClient();
+  const primaryCity = developer.primary_city_focus || "Hyderabad";
+  const { data: cityData } = await supabase
+    .from('cities')
+    .select('id, url_slug, city_name')
+    .ilike('city_name', primaryCity)
+    .maybeSingle();
+  
+  const cityId = cityData?.id || null;
+  const citySlug = cityData?.url_slug || "hyderabad";
+  const cityName = cityData?.city_name || primaryCity;
 
   const specializationText = stripHtmlTags(developer.specialization);
   const specializationSummary = truncateText(specializationText, 120);
@@ -808,6 +822,18 @@ export default async function DeveloperPage({ params }: PageProps) {
           </div>
         </div>
       </div>
+
+      {/* Smart Link Grid */}
+      {cityId && (
+        <SmartLinkGrid
+          citySlug={citySlug}
+          cityName={cityName}
+          developerId={developer.id}
+          developerName={developer.developer_name}
+          developerSlug={developer.url_slug}
+          mode="developer"
+        />
+      )}
         
       <CityHubBacklink />
     </>

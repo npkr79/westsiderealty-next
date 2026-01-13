@@ -5,6 +5,7 @@ import { optimizeSupabaseImage } from '@/utils/imageOptimization';
 import PropertyDetailsClient from '@/components/property/PropertyDetailsClient';
 // microMarketService imported dynamically to avoid top-level await in server service
 import { getPropertyFAQsFromProject } from '@/services/propertyFAQService';
+import SmartLinkGrid from '@/components/shared/SmartLinkGrid';
 
 type PageProps = {
   params: Promise<{ citySlug: string; listingSlug: string }>;
@@ -415,9 +416,56 @@ export default async function PropertyDetailsPage({ params }: PageProps) {
 
   // Fetch micro market data if available
   let microMarketData = null;
-  if (property.micro_market) {
+  let microMarketId: string | null = null;
+  let microMarketSlug: string | null = null;
+  let cityId: string | null = null;
+  let developerId: string | null = null;
+  let developerSlug: string | null = null;
+
+  const supabase = await createClient();
+
+  // Get city ID
+  const { data: city } = await supabase
+    .from('cities')
+    .select('id, city_name')
+    .eq('url_slug', citySlug)
+    .maybeSingle();
+  
+  if (city) {
+    cityId = city.id;
+  }
+
+  // Get micro market ID and slug if micro_market name exists
+  if (property.micro_market && cityId) {
     const { microMarketService } = await import('@/services/client/microMarketService');
     microMarketData = await microMarketService.getMicroMarketByName(property.micro_market);
+    
+    // Fetch micro market ID and slug
+    const { data: microMarket } = await supabase
+      .from('micro_markets')
+      .select('id, url_slug')
+      .ilike('micro_market_name', property.micro_market)
+      .eq('city_id', cityId)
+      .maybeSingle();
+    
+    if (microMarket) {
+      microMarketId = microMarket.id;
+      microMarketSlug = microMarket.url_slug;
+    }
+  }
+
+  // Get developer ID and slug if developer_name exists
+  if (property.developer_name) {
+    const { data: developer } = await supabase
+      .from('developers')
+      .select('id, url_slug')
+      .ilike('developer_name', property.developer_name)
+      .maybeSingle();
+    
+    if (developer) {
+      developerId = developer.id;
+      developerSlug = developer.url_slug;
+    }
   }
 
   // Fetch FAQs - for Goa properties, use dedicated FAQ service
@@ -529,6 +577,22 @@ export default async function PropertyDetailsPage({ params }: PageProps) {
           faqs={faqs}
         />
       </article>
+
+      {/* Smart Link Grid */}
+      {(microMarketId || developerId) && cityId && (
+        <SmartLinkGrid
+          microMarketId={microMarketId || undefined}
+          cityId={cityId}
+          microMarketName={property.micro_market || undefined}
+          microMarketSlug={microMarketSlug || undefined}
+          citySlug={citySlug}
+          cityName={citySlug === 'hyderabad' ? 'Hyderabad' : citySlug === 'goa' ? 'Goa' : 'Dubai'}
+          developerId={developerId || undefined}
+          developerName={property.developer_name || undefined}
+          developerSlug={developerSlug || undefined}
+          mode={microMarketId && developerId ? "microMarketDeveloper" : microMarketId ? "microMarket" : "developer"}
+        />
+      )}
     </>
   );
 }

@@ -31,6 +31,7 @@ import ProjectLeadForm from "@/components/project-details/ProjectLeadForm";
 import AboutDeveloperSection from "@/components/project-details/AboutDeveloperSection";
 import AboutMicroMarketSection from "@/components/project-details/AboutMicroMarketSection";
 import ProjectHighlights from "@/components/project-details/ProjectHighlights";
+import SmartLinkGrid from "@/components/shared/SmartLinkGrid";
 
 interface PageProps {
   params: Promise<{ projectSlug: string | string[] }>;
@@ -471,6 +472,22 @@ export default async function ProjectDetailPage({ params }: PageProps) {
           whatsappNumber="919866085831"
           phoneNumber="919866085831"
         />
+
+        {/* Smart Link Grid */}
+        {(microMarket || developer) && project.city_id && (
+          <SmartLinkGrid
+            microMarketId={project.micro_market_id || undefined}
+            cityId={project.city_id}
+            microMarketName={microMarket?.micro_market_name || undefined}
+            microMarketSlug={microMarket?.url_slug || undefined}
+            citySlug={CITY_SLUG}
+            cityName="Hyderabad"
+            developerId={project.developer_id || undefined}
+            developerName={developer?.developer_name || undefined}
+            developerSlug={developer?.url_slug || undefined}
+            mode={project.micro_market_id && project.developer_id ? "microMarketDeveloper" : project.micro_market_id ? "microMarket" : "developer"}
+          />
+        )}
       </div>
     </>
   );

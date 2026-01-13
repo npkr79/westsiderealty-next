@@ -29,6 +29,7 @@ import { buildMetadata } from "@/components/common/SEO";
 import { JsonLd } from "@/components/common/SEO";
 import { generateUnifiedSchema } from "@/lib/seo-utils";
 import { optimizeSupabaseImage } from "@/utils/imageOptimization";
+import SmartLinkGrid from "@/components/shared/SmartLinkGrid";
 
 interface PageProps {
   params: Promise<{ citySlug: string }>;
@@ -470,6 +471,16 @@ export default async function CityPage({ params }: PageProps) {
       {/* FAQs */}
       {Array.isArray(faqs) && faqs.length > 0 && (
         <CityFAQSection faqs={faqs} cityName={city.city_name} />
+      )}
+
+      {/* Smart Link Grid */}
+      {city.id && (
+        <SmartLinkGrid
+          cityId={city.id}
+          citySlug={slug}
+          cityName={city.city_name}
+          mode="city"
+        />
       )}
 
     </>
