@@ -345,11 +345,11 @@ export default async function SmartLinkGrid({
 
     // For microMarketDeveloper mode, show both micro market and developer sections
     if (actualMode === "microMarketDeveloper") {
-      if (hasMicroMarketStats && microMarketName) {
+      if (hasMicroMarketStats && microMarketName && microMarketStats) {
         const microMarketSections = generateSmartLinks(microMarketStats, citySlug, microMarketName, context);
         sections.push(...microMarketSections);
       }
-      if (hasDeveloperStats && developerName) {
+      if (hasDeveloperStats && developerName && developerStats) {
         const developerSections = generateSmartLinks(developerStats, citySlug, developerName, context);
         sections.push(...developerSections);
       }
