@@ -41,6 +41,10 @@ async function getProperty(citySlug: string, listingSlug: string) {
     // For Goa properties, only check seo_slug (there's no 'slug' field in goa_holiday_properties table)
     if (citySlug === 'goa') {
       query = query.eq('seo_slug', listingSlug);
+    } else if (citySlug === 'hyderabad') {
+      // For Hyderabad, check seo_slug, slug, and url column
+      // url column might contain full path like /hyderabad/buy/... or just the slug
+      query = query.or(`seo_slug.eq.${listingSlug},slug.eq.${listingSlug},url.eq.${listingSlug},url.ilike.%/${listingSlug}%`);
     } else {
       // For other cities, check both seo_slug and slug
       query = query.or(`seo_slug.eq.${listingSlug},slug.eq.${listingSlug}`);
@@ -55,6 +59,22 @@ async function getProperty(citySlug: string, listingSlug: string) {
   if (error) {
     console.error('[PropertyDetailsPage] Error fetching property:', error);
     return null;
+  }
+
+  // If not found and it's Hyderabad, try checking url column with different patterns
+  if (!data && !isUUID && citySlug === 'hyderabad') {
+    // Try exact match with url column or url ending with the listingSlug
+    const { data: urlMatch, error: urlError } = await supabase
+      .from(tableName)
+      .select('*')
+      .eq('status', statusFilter)
+      .or(`url.eq.${listingSlug},url.ilike.%/${listingSlug},url.ilike.%/${citySlug}/buy/${listingSlug}%`)
+      .maybeSingle();
+    
+    if (!urlError && urlMatch) {
+      console.log(`[PropertyDetailsPage] Found Hyderabad property by url column: "${urlMatch.title}" (url: ${urlMatch.url || 'NULL'})`);
+      data = urlMatch;
+    }
   }
 
   // If not found by exact slug match, try fuzzy matching for Goa properties
