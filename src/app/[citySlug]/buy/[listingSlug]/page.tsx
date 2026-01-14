@@ -404,6 +404,26 @@ function generateBreadcrumbJsonLd(property: any, citySlug: string) {
   };
 }
 
+// Fetch developer slug from developers table if missing
+async function fetchDeveloperSlug(developerName: string | null | undefined): Promise<string | undefined> {
+  if (!developerName) return undefined;
+  
+  try {
+    const { createClient } = await import('@/lib/supabase/server');
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from('developers')
+      .select('url_slug')
+      .eq('developer_name', developerName)
+      .maybeSingle();
+    
+    return data?.url_slug || undefined;
+  } catch (error) {
+    console.error('[PropertyDetailsPage] Error fetching developer slug:', error);
+    return undefined;
+  }
+}
+
 // Server Component - renders SEO content in HTML
 export default async function PropertyDetailsPage({ params }: PageProps) {
   const { citySlug, listingSlug } = await params;
@@ -411,6 +431,14 @@ export default async function PropertyDetailsPage({ params }: PageProps) {
 
   if (!property) {
     notFound();
+  }
+
+  // Fetch developer_slug if missing but developer_name exists
+  if (property.developer_name && !property.developer_slug) {
+    const developerSlug = await fetchDeveloperSlug(property.developer_name);
+    if (developerSlug) {
+      property.developer_slug = developerSlug;
+    }
   }
 
   // Fetch micro market data if available

@@ -36,9 +36,9 @@ export default function AboutDeveloper({
     ? stripHtml(description)
     : `${developerName} is a reputed developer associated with premium projects in this micro-market.`;
 
-  // Link to city-specific developers page if citySlug is provided, otherwise generic developers page
+  // Link to developer page if slug is provided, otherwise city-specific developers page
   const developerUrl = developerSlug 
-    ? `/${citySlug}/developers#${developerSlug}`
+    ? `/developers/${developerSlug}`
     : `/${citySlug}/developers`;
 
   return (
