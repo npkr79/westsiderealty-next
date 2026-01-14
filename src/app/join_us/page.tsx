@@ -55,14 +55,20 @@ export default async function JoinUsPage() {
   const pageUrl = CANONICAL_URL;
 
   // Generate unified schema
+  const faqItems = Array.isArray(pageContent.faqs) && pageContent.faqs.length > 0
+    ? pageContent.faqs
+        .filter((faq) => faq && typeof faq === 'object' && typeof faq.question === 'string' && typeof faq.answer === 'string')
+        .map((faq) => ({
+          question: faq.question,
+          answer: faq.answer,
+        }))
+    : [];
+
   const unifiedSchema = generateUnifiedSchema({
     pageUrl,
     title: pageContent.seo_title || pageContent.hero_headline,
     description: pageContent.seo_description || pageContent.hero_description || "",
-    faqItems: pageContent.faqs.map((faq) => ({
-      question: faq.question,
-      answer: faq.answer,
-    })),
+    faqItems,
     breadcrumbs: [
       { name: "Home", item: "https://www.westsiderealty.in" },
       { name: "Join Us", item: pageUrl },
@@ -96,10 +102,10 @@ export default async function JoinUsPage() {
         <WhyJoinUsSection
           title={pageContent.why_join_title}
           subtitle={pageContent.why_join_subtitle}
-          valuePillars={pageContent.value_pillars}
+          valuePillars={Array.isArray(pageContent.value_pillars) ? pageContent.value_pillars : []}
         />
 
-        {pageContent.success_stories.length > 0 && (
+        {Array.isArray(pageContent.success_stories) && pageContent.success_stories.length > 0 && (
           <SuccessStoriesSection
             title={pageContent.success_stories_title}
             subtitle={pageContent.success_stories_subtitle}
@@ -110,20 +116,20 @@ export default async function JoinUsPage() {
         <WhatWeOfferSection
           title={pageContent.what_we_offer_title}
           subtitle={pageContent.what_we_offer_subtitle}
-          benefits={pageContent.benefits}
+          benefits={Array.isArray(pageContent.benefits) ? pageContent.benefits : []}
         />
 
         <RequirementsSection
           title={pageContent.requirements_title}
           subtitle={pageContent.requirements_subtitle}
-          requirementsList={pageContent.requirements_list}
+          requirementsList={Array.isArray(pageContent.requirements_list) ? pageContent.requirements_list : []}
           whatWeLookFor={pageContent.what_we_look_for}
-          processSteps={pageContent.application_process_steps}
+          processSteps={Array.isArray(pageContent.application_process_steps) ? pageContent.application_process_steps : []}
         />
 
         <ApplicationForm />
 
-        {pageContent.faqs.length > 0 && (
+        {Array.isArray(pageContent.faqs) && pageContent.faqs.length > 0 && (
           <FAQSection
             title={pageContent.faq_title}
             subtitle={pageContent.faq_subtitle}

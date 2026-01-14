@@ -107,15 +107,49 @@ export const agentRecruitmentService = {
         return null;
       }
 
+      // Helper function to safely parse JSON fields
+      const parseJsonField = (field: any, defaultValue: any = []): any => {
+        if (field === null || field === undefined) {
+          return defaultValue;
+        }
+        
+        if (typeof field === 'string') {
+          try {
+            return JSON.parse(field);
+          } catch {
+            return defaultValue;
+          }
+        }
+        
+        // If it's already an object/array, return it
+        if (typeof field === 'object') {
+          return field;
+        }
+        
+        return defaultValue;
+      };
+
       // Parse JSONB fields
       return {
         ...data,
-        value_pillars: (data.value_pillars as any) || [],
-        success_stories: (data.success_stories as any) || [],
-        benefits: (data.benefits as any) || [],
-        requirements_list: (data.requirements_list as any) || [],
-        application_process_steps: (data.application_process_steps as any) || [],
-        faqs: (data.faqs as any) || [],
+        value_pillars: Array.isArray(parseJsonField(data.value_pillars)) 
+          ? parseJsonField(data.value_pillars) 
+          : [],
+        success_stories: Array.isArray(parseJsonField(data.success_stories)) 
+          ? parseJsonField(data.success_stories) 
+          : [],
+        benefits: Array.isArray(parseJsonField(data.benefits)) 
+          ? parseJsonField(data.benefits) 
+          : [],
+        requirements_list: Array.isArray(parseJsonField(data.requirements_list)) 
+          ? parseJsonField(data.requirements_list) 
+          : [],
+        application_process_steps: Array.isArray(parseJsonField(data.application_process_steps)) 
+          ? parseJsonField(data.application_process_steps) 
+          : [],
+        faqs: Array.isArray(parseJsonField(data.faqs)) 
+          ? parseJsonField(data.faqs) 
+          : [],
       } as AgentRecruitmentPage;
     } catch (error) {
       console.error('[AgentRecruitmentService] Error:', error);

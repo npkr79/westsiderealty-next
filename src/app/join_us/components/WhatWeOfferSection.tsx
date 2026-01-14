@@ -52,24 +52,40 @@ export function WhatWeOfferSection({
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {benefits.map((benefit, index) => {
-            const IconComponent = iconMap[benefit.icon] || Award;
-            return (
-              <Card key={index} className="hover:shadow-lg transition-shadow">
-                <CardContent className="p-6">
-                  <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-4">
-                    <IconComponent className="h-6 w-6 text-primary" />
-                  </div>
-                  <h3 className="text-xl font-bold text-foreground mb-2">
-                    {benefit.title}
-                  </h3>
-                  <p className="text-muted-foreground leading-relaxed">
-                    {benefit.description}
-                  </p>
-                </CardContent>
-              </Card>
-            );
-          })}
+          {benefits && Array.isArray(benefits) && benefits.length > 0 ? (
+            benefits.map((benefit, index) => {
+              // Validate benefit structure
+              if (!benefit || typeof benefit !== 'object') {
+                return null;
+              }
+              
+              const iconName = typeof benefit.icon === 'string' ? benefit.icon : 'Award';
+              const title = typeof benefit.title === 'string' ? benefit.title : '';
+              const description = typeof benefit.description === 'string' ? benefit.description : '';
+              
+              const IconComponent = iconMap[iconName] || Award;
+              
+              return (
+                <Card key={index} className="hover:shadow-lg transition-shadow">
+                  <CardContent className="p-6">
+                    <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-4">
+                      <IconComponent className="h-6 w-6 text-primary" />
+                    </div>
+                    <h3 className="text-xl font-bold text-foreground mb-2">
+                      {title}
+                    </h3>
+                    <p className="text-muted-foreground leading-relaxed">
+                      {description}
+                    </p>
+                  </CardContent>
+                </Card>
+              );
+            })
+          ) : (
+            <div className="col-span-full text-center text-muted-foreground py-8">
+              No benefits available.
+            </div>
+          )}
         </div>
       </div>
     </section>

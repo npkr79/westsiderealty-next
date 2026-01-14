@@ -55,24 +55,40 @@ export function WhyJoinUsSection({
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {valuePillars.map((pillar, index) => {
-            const IconComponent = iconMap[pillar.icon] || Award;
-            return (
-              <Card key={index} className="hover:shadow-lg transition-shadow">
-                <CardContent className="p-6">
-                  <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-4">
-                    <IconComponent className="h-6 w-6 text-primary" />
-                  </div>
-                  <h3 className="text-xl font-bold text-foreground mb-2">
-                    {pillar.title}
-                  </h3>
-                  <p className="text-muted-foreground leading-relaxed">
-                    {pillar.description}
-                  </p>
-                </CardContent>
-              </Card>
-            );
-          })}
+          {valuePillars && Array.isArray(valuePillars) && valuePillars.length > 0 ? (
+            valuePillars.map((pillar, index) => {
+              // Validate pillar structure
+              if (!pillar || typeof pillar !== 'object') {
+                return null;
+              }
+              
+              const iconName = typeof pillar.icon === 'string' ? pillar.icon : 'Award';
+              const title = typeof pillar.title === 'string' ? pillar.title : '';
+              const description = typeof pillar.description === 'string' ? pillar.description : '';
+              
+              const IconComponent = iconMap[iconName] || Award;
+              
+              return (
+                <Card key={index} className="hover:shadow-lg transition-shadow">
+                  <CardContent className="p-6">
+                    <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-4">
+                      <IconComponent className="h-6 w-6 text-primary" />
+                    </div>
+                    <h3 className="text-xl font-bold text-foreground mb-2">
+                      {title}
+                    </h3>
+                    <p className="text-muted-foreground leading-relaxed">
+                      {description}
+                    </p>
+                  </CardContent>
+                </Card>
+              );
+            })
+          ) : (
+            <div className="col-span-full text-center text-muted-foreground py-8">
+              No value pillars available.
+            </div>
+          )}
         </div>
       </div>
     </section>

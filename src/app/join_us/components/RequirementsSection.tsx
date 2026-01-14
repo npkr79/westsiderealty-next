@@ -48,12 +48,19 @@ export function RequirementsSection({
                   Requirements & Qualifications
                 </h3>
                 <ul className="space-y-3">
-                  {requirementsList.map((req, index) => (
-                    <li key={index} className="flex items-start gap-3">
-                      <CheckCircle2 className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
-                      <span className="text-muted-foreground">{req}</span>
-                    </li>
-                  ))}
+                  {requirementsList && Array.isArray(requirementsList) && requirementsList.length > 0 ? (
+                    requirementsList.map((req, index) => {
+                      const requirementText = typeof req === 'string' ? req : String(req);
+                      return (
+                        <li key={index} className="flex items-start gap-3">
+                          <CheckCircle2 className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                          <span className="text-muted-foreground">{requirementText}</span>
+                        </li>
+                      );
+                    })
+                  ) : (
+                    <li className="text-muted-foreground">No requirements listed.</li>
+                  )}
                 </ul>
               </CardContent>
             </Card>
@@ -81,21 +88,37 @@ export function RequirementsSection({
               Application Process
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {processSteps.map((step) => (
-                <Card key={step.step} className="relative">
-                  <CardContent className="p-6">
-                    <div className="absolute -top-4 -left-4 w-10 h-10 bg-primary text-primary-foreground rounded-full flex items-center justify-center font-bold text-lg">
-                      {step.step}
-                    </div>
-                    <h4 className="text-lg font-bold text-foreground mb-2 mt-2">
-                      {step.title}
-                    </h4>
-                    <p className="text-muted-foreground text-sm leading-relaxed">
-                      {step.description}
-                    </p>
-                  </CardContent>
-                </Card>
-              ))}
+              {processSteps && Array.isArray(processSteps) && processSteps.length > 0 ? (
+                processSteps.map((step) => {
+                  if (!step || typeof step !== 'object') {
+                    return null;
+                  }
+                  
+                  const stepNumber = typeof step.step === 'number' ? step.step : 0;
+                  const title = typeof step.title === 'string' ? step.title : '';
+                  const description = typeof step.description === 'string' ? step.description : '';
+                  
+                  return (
+                    <Card key={stepNumber} className="relative">
+                      <CardContent className="p-6">
+                        <div className="absolute -top-4 -left-4 w-10 h-10 bg-primary text-primary-foreground rounded-full flex items-center justify-center font-bold text-lg">
+                          {stepNumber}
+                        </div>
+                        <h4 className="text-lg font-bold text-foreground mb-2 mt-2">
+                          {title}
+                        </h4>
+                        <p className="text-muted-foreground text-sm leading-relaxed">
+                          {description}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  );
+                })
+              ) : (
+                <div className="col-span-full text-center text-muted-foreground py-8">
+                  No process steps available.
+                </div>
+              )}
             </div>
           </div>
         )}

@@ -43,7 +43,19 @@ export function SuccessStoriesSection({
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {stories.map((story, index) => (
+          {stories && Array.isArray(stories) && stories.length > 0 ? (
+            stories.map((story, index) => {
+              // Validate story structure
+              if (!story || typeof story !== 'object') {
+                return null;
+              }
+              
+              const name = typeof story.name === 'string' ? story.name : 'Anonymous';
+              const testimonial = typeof story.testimonial === 'string' ? story.testimonial : '';
+              const photoUrl = typeof story.photo_url === 'string' ? story.photo_url : null;
+              const metrics = story.metrics && typeof story.metrics === 'object' ? story.metrics : {};
+              
+              return (
             <Card key={index} className="hover:shadow-lg transition-shadow">
               <CardContent className="p-6">
                 <div className="flex items-start gap-4 mb-4">
@@ -94,7 +106,13 @@ export function SuccessStoriesSection({
                 </div>
               </CardContent>
             </Card>
-          ))}
+              );
+            })
+          ) : (
+            <div className="col-span-full text-center text-muted-foreground py-8">
+              No success stories available.
+            </div>
+          )}
         </div>
       </div>
     </section>

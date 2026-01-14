@@ -39,16 +39,31 @@ export function FAQSection({ title, subtitle, faqs }: FAQSectionProps) {
         <Card>
           <CardContent className="p-8">
             <Accordion type="single" collapsible className="w-full">
-              {faqs.map((faq, index) => (
-                <AccordionItem key={index} value={`item-${index}`}>
-                  <AccordionTrigger className="text-left font-semibold">
-                    {faq.question}
-                  </AccordionTrigger>
-                  <AccordionContent className="text-muted-foreground leading-relaxed">
-                    {faq.answer}
-                  </AccordionContent>
-                </AccordionItem>
-              ))}
+              {faqs && Array.isArray(faqs) && faqs.length > 0 ? (
+                faqs.map((faq, index) => {
+                  if (!faq || typeof faq !== 'object') {
+                    return null;
+                  }
+                  
+                  const question = typeof faq.question === 'string' ? faq.question : '';
+                  const answer = typeof faq.answer === 'string' ? faq.answer : '';
+                  
+                  return (
+                    <AccordionItem key={index} value={`item-${index}`}>
+                      <AccordionTrigger className="text-left font-semibold">
+                        {question}
+                      </AccordionTrigger>
+                      <AccordionContent className="text-muted-foreground leading-relaxed">
+                        {answer}
+                      </AccordionContent>
+                    </AccordionItem>
+                  );
+                })
+              ) : (
+                <div className="text-center text-muted-foreground py-8">
+                  No FAQs available.
+                </div>
+              )}
             </Accordion>
           </CardContent>
         </Card>
