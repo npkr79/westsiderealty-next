@@ -10,7 +10,7 @@ import LocationDetailsDisplay from "@/components/property-details/LocationDetail
 import PropertyAmenities from "@/components/property-details/PropertyAmenities";
 import PropertyHighlights from "@/components/property-details/PropertyHighlights";
 import { AboutMicroMarket } from "@/components/property/AboutMicroMarket";
-import AboutDeveloper from "@/components/property-details/AboutDeveloper";
+import AboutDeveloperSection from "@/components/project-details/AboutDeveloperSection";
 import SimilarProperties from "@/components/property-details/SimilarProperties";
 import PropertyDescription from "@/components/property-details/PropertyDescription";
 import { PropertyFAQs } from "@/components/property/PropertyFAQs";
@@ -24,13 +24,15 @@ interface PropertyDetailsClientProps {
   citySlug: string;
   microMarketData?: MicroMarketInfo | null;
   faqs?: any[];
+  developerData?: any;
 }
 
 export default function PropertyDetailsClient({ 
   property, 
   citySlug,
   microMarketData,
-  faqs = []
+  faqs = [],
+  developerData
 }: PropertyDetailsClientProps) {
   if (!property) return null;
 
@@ -169,16 +171,32 @@ export default function PropertyDetailsClient({
           )}
 
           {/* About Developer */}
-          {property.developer_name && (
-            <AboutDeveloper 
-              developerName={property.developer_name}
-              developerSlug={property.developer_slug}
+          {(developerData || property.developer_name) && (developerData?.url_slug || property.developer_slug) && (
+            <AboutDeveloperSection
+              developerName={developerData?.developer_name || property.developer_name}
               citySlug={citySlug}
-              description={property.developer_description}
-              yearsInBusiness={property.developer_years_in_business}
-              totalProjects={property.developer_total_projects}
-              totalSftDelivered={property.developer_total_sft_delivered}
-              logoUrl={property.developer_logo_url}
+              developerSlug={developerData?.url_slug || property.developer_slug}
+              logoUrl={developerData?.logo_url || property.developer_logo_url}
+              tagline={developerData?.tagline}
+              yearsInBusiness={developerData?.years_in_business || property.developer_years_in_business}
+              totalProjects={developerData?.total_projects || property.developer_total_projects}
+              totalSftDelivered={developerData?.total_sft_delivered || property.developer_total_sft_delivered}
+              description={
+                developerData?.developer_profile_seo || 
+                developerData?.meta_description || 
+                developerData?.long_description_seo ||
+                property.developer_description
+              }
+              notableProjects={
+                developerData?.notable_projects_json && 
+                Array.isArray(developerData.notable_projects_json) && 
+                developerData.notable_projects_json.length > 0
+                  ? developerData.notable_projects_json
+                      .map((p: any) => typeof p === 'string' ? p : p?.project_name)
+                      .filter(Boolean)
+                      .join(', ')
+                  : null
+              }
             />
           )}
 

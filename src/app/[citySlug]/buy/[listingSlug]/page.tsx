@@ -424,6 +424,36 @@ async function fetchDeveloperSlug(developerName: string | null | undefined): Pro
   }
 }
 
+// Fetch full developer data from developers table
+async function fetchFullDeveloperData(developerName: string | null | undefined, developerSlug: string | null | undefined) {
+  if (!developerName && !developerSlug) return null;
+  
+  try {
+    const { createClient } = await import('@/lib/supabase/server');
+    const supabase = await createClient();
+    
+    let query = supabase.from('developers').select('*');
+    
+    if (developerSlug) {
+      query = query.eq('url_slug', developerSlug);
+    } else if (developerName) {
+      query = query.eq('developer_name', developerName);
+    }
+    
+    const { data, error } = await query.maybeSingle();
+    
+    if (error) {
+      console.error('[PropertyDetailsPage] Error fetching developer data:', error);
+      return null;
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('[PropertyDetailsPage] Error fetching developer data:', error);
+    return null;
+  }
+}
+
 // Server Component - renders SEO content in HTML
 export default async function PropertyDetailsPage({ params }: PageProps) {
   const { citySlug, listingSlug } = await params;
@@ -439,6 +469,12 @@ export default async function PropertyDetailsPage({ params }: PageProps) {
     if (developerSlug) {
       property.developer_slug = developerSlug;
     }
+  }
+
+  // Fetch full developer data for the developer card
+  let developerData = null;
+  if (property.developer_name || property.developer_slug) {
+    developerData = await fetchFullDeveloperData(property.developer_name, property.developer_slug);
   }
 
   // Fetch micro market data if available
@@ -555,6 +591,7 @@ export default async function PropertyDetailsPage({ params }: PageProps) {
           citySlug={citySlug}
           microMarketData={microMarketData}
           faqs={faqs}
+          developerData={developerData}
         />
       </article>
     </>
