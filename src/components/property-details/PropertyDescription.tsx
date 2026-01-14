@@ -1,17 +1,12 @@
 "use client";
 
-import { truncateWords, splitIntoParagraphs, countWords } from "@/lib/textUtils";
+import { sanitizeHTML } from "@/lib/utils/htmlSanitizer";
 
 interface PropertyDescriptionProps {
   title: string;
   description: string;
   projectName?: string;
-  maxWords?: number; // Optional max words (default: 500)
-}
-
-function stripHtml(html: string): string {
-  if (!html) return "";
-  return html.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+  maxWords?: number; // Optional max words (default: 500) - kept for backward compatibility but not used for HTML content
 }
 
 export default function PropertyDescription({
@@ -22,25 +17,36 @@ export default function PropertyDescription({
 }: PropertyDescriptionProps) {
   if (!description) return null;
 
-  // Clean up markdown artifacts like **text::** 
+  // Check if description contains HTML tags
+  const hasHTML = /<[^>]+>/.test(description);
+  
+  // If HTML content, sanitize and render as HTML
+  if (hasHTML) {
+    const sanitizedDescription = sanitizeHTML(description);
+    
+    return (
+      <section className="space-y-4">
+        <h2 className="text-2xl font-semibold text-foreground">
+          {projectName || title}
+        </h2>
+        <div
+          className="rich-content text-muted-foreground leading-relaxed [&_h2]:text-xl [&_h2]:font-bold [&_h2]:mb-4 [&_h2]:mt-6 [&_h2]:first:mt-0 [&_h3]:text-lg [&_h3]:font-semibold [&_h3]:mb-3 [&_h3]:mt-5 [&_p]:mb-4 [&_p]:leading-relaxed [&_ul]:list-disc [&_ul]:ml-6 [&_ul]:mb-4 [&_li]:mb-2 [&_strong]:font-semibold [&_strong]:text-foreground"
+          dangerouslySetInnerHTML={{ __html: sanitizedDescription }}
+        />
+      </section>
+    );
+  }
+
+  // Fallback for plain text descriptions (backward compatibility)
+  // Clean up markdown artifacts
   let cleanDescription = description
     .replace(/\*\*(.*?)::\*\*/g, '') // Remove **text::**
     .replace(/\*\*(.*?)\*\*/g, '$1') // Convert **bold** to plain text
-    .replace(/<[^>]*>/g, '') // Remove HTML tags
     .replace(/\n{3,}/g, '\n\n') // Remove excessive line breaks
     .trim();
 
-  // Truncate to maxWords (default 500)
-  cleanDescription = truncateWords(cleanDescription, maxWords);
-
-  // Count words to determine if we should split into paragraphs
-  const wordCount = countWords(cleanDescription);
-  const shouldSplitIntoParagraphs = wordCount > 200;
-
-  // Split into paragraphs if more than 200 words
-  const paragraphs = shouldSplitIntoParagraphs 
-    ? splitIntoParagraphs(cleanDescription, 200)
-    : [cleanDescription];
+  // Split by double line breaks for paragraphs
+  const paragraphs = cleanDescription.split(/\n\n+/).filter(p => p.trim());
 
   return (
     <section className="space-y-3">
@@ -57,5 +63,3 @@ export default function PropertyDescription({
     </section>
   );
 }
-
-
