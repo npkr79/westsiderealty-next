@@ -1,0 +1,161 @@
+import { createClient } from '@/lib/supabase/server';
+
+export interface AgentRecruitmentPage {
+  id: string;
+  hero_headline: string;
+  hero_subheadline?: string | null;
+  hero_description?: string | null;
+  hero_image_url?: string | null;
+  hero_cta_primary_text: string;
+  hero_cta_secondary_text: string;
+  hero_trust_indicator?: string | null;
+  why_join_title: string;
+  why_join_subtitle?: string | null;
+  value_pillars: ValuePillar[];
+  success_stories_title: string;
+  success_stories_subtitle?: string | null;
+  success_stories: SuccessStory[];
+  what_we_offer_title: string;
+  what_we_offer_subtitle?: string | null;
+  benefits: Benefit[];
+  requirements_title: string;
+  requirements_subtitle?: string | null;
+  requirements_list: string[];
+  what_we_look_for?: string | null;
+  application_process_steps: ProcessStep[];
+  faq_title: string;
+  faq_subtitle?: string | null;
+  faqs: FAQ[];
+  final_cta_title: string;
+  final_cta_description?: string | null;
+  final_cta_button_text: string;
+  contact_email?: string | null;
+  contact_phone?: string | null;
+  contact_address?: string | null;
+  seo_title?: string | null;
+  seo_description?: string | null;
+  seo_keywords?: string | null;
+  status: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ValuePillar {
+  icon: string;
+  title: string;
+  description: string;
+}
+
+export interface SuccessStory {
+  name: string;
+  photo_url?: string | null;
+  testimonial: string;
+  metrics?: {
+    earnings?: string;
+    deals?: string;
+    years?: string;
+  };
+}
+
+export interface Benefit {
+  icon: string;
+  title: string;
+  description: string;
+}
+
+export interface ProcessStep {
+  step: number;
+  title: string;
+  description: string;
+}
+
+export interface FAQ {
+  question: string;
+  answer: string;
+}
+
+export interface AgentApplicationData {
+  full_name: string;
+  email: string;
+  phone: string;
+  experience_years?: string;
+  current_location?: string;
+  why_join?: string;
+  resume_url?: string;
+}
+
+export const agentRecruitmentService = {
+  async getPageContent(): Promise<AgentRecruitmentPage | null> {
+    try {
+      const supabase = await createClient();
+      
+      const { data, error } = await supabase
+        .from('agent_recruitment_landing_pages')
+        .select('*')
+        .eq('status', 'published')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error) {
+        console.error('[AgentRecruitmentService] Error fetching page content:', error);
+        return null;
+      }
+
+      if (!data) {
+        console.warn('[AgentRecruitmentService] No published page content found');
+        return null;
+      }
+
+      // Parse JSONB fields
+      return {
+        ...data,
+        value_pillars: (data.value_pillars as any) || [],
+        success_stories: (data.success_stories as any) || [],
+        benefits: (data.benefits as any) || [],
+        requirements_list: (data.requirements_list as any) || [],
+        application_process_steps: (data.application_process_steps as any) || [],
+        faqs: (data.faqs as any) || [],
+      } as AgentRecruitmentPage;
+    } catch (error) {
+      console.error('[AgentRecruitmentService] Error:', error);
+      return null;
+    }
+  },
+
+  async submitApplication(applicationData: AgentApplicationData): Promise<void> {
+    try {
+      const supabase = await createClient();
+      
+      // Prepare data for all_leads table
+      const leadData = {
+        full_name: applicationData.full_name.trim(),
+        email: applicationData.email.trim().toLowerCase(),
+        phone: applicationData.phone.trim(),
+        lead_type: 'agent_recruitment',
+        source_page_url: '/join_us',
+        status: 'new',
+        requirements_message: JSON.stringify({
+          experience_years: applicationData.experience_years,
+          current_location: applicationData.current_location,
+          why_join: applicationData.why_join,
+          resume_url: applicationData.resume_url,
+        }),
+      };
+
+      const { error } = await supabase
+        .from('all_leads')
+        .insert([leadData]);
+
+      if (error) {
+        console.error('[AgentRecruitmentService] Error submitting application:', error);
+        throw new Error(`Failed to submit application: ${error.message}`);
+      }
+
+      console.log('[AgentRecruitmentService] Application submitted successfully');
+    } catch (error) {
+      console.error('[AgentRecruitmentService] Error in submitApplication:', error);
+      throw error;
+    }
+  },
+};
