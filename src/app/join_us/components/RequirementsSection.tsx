@@ -50,14 +50,33 @@ export function RequirementsSection({
                 <ul className="space-y-3">
                   {requirementsList && Array.isArray(requirementsList) && requirementsList.length > 0 ? (
                     requirementsList.map((req, index) => {
-                      const requirementText = typeof req === 'string' ? req : String(req);
+                      // Handle both string and object formats
+                      let requirementText = '';
+                      if (typeof req === 'string') {
+                        requirementText = req;
+                      } else if (req && typeof req === 'object') {
+                        // Try common property names for requirement text
+                        requirementText = req.text || req.requirement || req.item || req.content || req.description || '';
+                        // If still empty, try to stringify safely
+                        if (!requirementText) {
+                          requirementText = JSON.stringify(req);
+                        }
+                      } else {
+                        requirementText = String(req || '');
+                      }
+                      
+                      // Skip if text is empty
+                      if (!requirementText || requirementText.trim() === '') {
+                        return null;
+                      }
+                      
                       return (
                         <li key={index} className="flex items-start gap-3">
                           <CheckCircle2 className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
                           <span className="text-muted-foreground">{requirementText}</span>
                         </li>
                       );
-                    })
+                    }).filter(Boolean)
                   ) : (
                     <li className="text-muted-foreground">No requirements listed.</li>
                   )}

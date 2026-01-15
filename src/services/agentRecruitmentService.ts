@@ -129,6 +129,24 @@ export const agentRecruitmentService = {
         return defaultValue;
       };
 
+      // Helper to normalize requirements list - handle both string arrays and object arrays
+      const normalizeRequirementsList = (field: any): string[] => {
+        const parsed = parseJsonField(field, []);
+        if (!Array.isArray(parsed)) {
+          return [];
+        }
+        return parsed.map((item: any) => {
+          if (typeof item === 'string') {
+            return item;
+          }
+          if (item && typeof item === 'object') {
+            // Try common property names
+            return item.text || item.requirement || item.item || item.content || item.description || JSON.stringify(item);
+          }
+          return String(item || '');
+        }).filter((text: string) => text && text.trim() !== '');
+      };
+
       // Parse JSONB fields
       return {
         ...data,
@@ -141,9 +159,7 @@ export const agentRecruitmentService = {
         benefits: Array.isArray(parseJsonField(data.benefits)) 
           ? parseJsonField(data.benefits) 
           : [],
-        requirements_list: Array.isArray(parseJsonField(data.requirements_list)) 
-          ? parseJsonField(data.requirements_list) 
-          : [],
+        requirements_list: normalizeRequirementsList(data.requirements_list),
         application_process_steps: Array.isArray(parseJsonField(data.application_process_steps)) 
           ? parseJsonField(data.application_process_steps) 
           : [],
