@@ -17,8 +17,6 @@ const ABOUT_PAGE_SCHEMA = {
       "Premier real estate advisory specializing in resale properties, investment opportunities, and holiday homes across Hyderabad, Goa & Dubai.",
     url: "https://www.westsiderealty.in",
     logo: "https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/brand-assets/remax-logo.jpg",
-    telephone: "+91-9866085831",
-    email: "npkr79@gmail.com",
     address: {
       "@type": "PostalAddress",
       addressLocality: "Hyderabad",
@@ -51,7 +49,6 @@ const ORG_SCHEMA = {
   url: "https://www.westsiderealty.in",
   logo: "https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/brand-assets//remax-favicon.png",
   image: "https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/brand-assets//remax-favicon.png",
-  telephone: "+91 9866085831",
   address: {
     "@type": "PostalAddress",
     streetAddress: "415, 4th Floor, Kokapet Terminal, Kokapet, Hyderabad – 500075",

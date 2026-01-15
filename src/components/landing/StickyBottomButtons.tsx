@@ -20,7 +20,7 @@ export default function StickyBottomButtons({
   onSubmitInterest,
   hasBrochure = false,
   primaryLabel = "Enquire Now",
-  secondaryLabel = "Call Now",
+  secondaryLabel = "Contact Us",
   onPrimaryClick,
   onSecondaryClick,
 }: StickyBottomButtonsProps) {
@@ -55,5 +55,3 @@ export default function StickyBottomButtons({
     </div>
   );
 }
-
-

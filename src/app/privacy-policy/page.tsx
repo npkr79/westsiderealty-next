@@ -2,6 +2,7 @@
 import { Metadata } from "next";
 import { Card, CardContent } from "@/components/ui/card";
 import { buildMetadata } from "@/components/common/SEO";
+import Link from "next/link";
 
 export const metadata: Metadata = buildMetadata({
   title: "Privacy Policy | RE/MAX Westside Realty",
@@ -100,8 +101,10 @@ export default function PrivacyPolicy() {
                   directly
                 </li>
                 <li>
-                  Request access, correction, or deletion of your data by contacting us at{" "}
-                  <strong>info@westsiderealty.in</strong>
+                  Request access, correction, or deletion of your data by{" "}
+                  <Link href="/contact" className="text-remax-red hover:underline">
+                    contacting us through our contact form
+                  </Link>
                 </li>
               </ul>
             </CardContent>
@@ -145,12 +148,15 @@ export default function PrivacyPolicy() {
                 contact us:
               </p>
               <div className="bg-gray-50 p-4 rounded-lg">
-                <p className="text-gray-700">
-                  📧 <strong>Email:</strong> info@westsiderealty.in
-                  <br />
-                  📞 <strong>Phone:</strong> +91 9866085831
-                  <br />
+                <p className="text-gray-700 mb-2">
                   📍 <strong>Address:</strong> 415, 4th Floor, Kokapet Terminal, Kokapet, Hyderabad – 500075
+                </p>
+                <p className="text-gray-700">
+                  Please use our{" "}
+                  <Link href="/contact" className="text-remax-red hover:underline font-semibold">
+                    contact form
+                  </Link>{" "}
+                  to reach out to us.
                 </p>
               </div>
             </CardContent>

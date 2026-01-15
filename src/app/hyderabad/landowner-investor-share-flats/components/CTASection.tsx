@@ -1,6 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Phone, MessageCircle, ArrowRight } from "lucide-react";
+import { MessageCircle, ArrowRight } from "lucide-react";
 import Link from "next/link";
 
 export function CTASection() {
@@ -18,12 +18,6 @@ export function CTASection() {
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button asChild size="lg" className="bg-slate-900 hover:bg-slate-800 text-white">
-                <Link href="tel:+919866085831">
-                  <Phone className="mr-2 h-5 w-5" />
-                  Call: +91 9866085831
-                </Link>
-              </Button>
               <Button asChild size="lg" variant="outline">
                 <Link href="https://wa.me/919866085831" target="_blank" rel="noopener noreferrer">
                   <MessageCircle className="mr-2 h-5 w-5" />
@@ -32,7 +26,7 @@ export function CTASection() {
               </Button>
               <Button asChild size="lg" variant="default">
                 <Link href="/contact">
-                  Get Expert Advice
+                  Contact Us
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Link>
               </Button>

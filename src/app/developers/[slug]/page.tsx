@@ -791,17 +791,15 @@ export default async function DeveloperPage({ params }: PageProps) {
                 <Card className="hover:shadow-lg transition-shadow">
                   <CardContent className="p-6 text-center">
                     <div className="w-12 h-12 bg-heading-blue/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <Clock className="w-6 h-6 text-heading-blue" />
+                      <MessageSquare className="w-6 h-6 text-heading-blue" />
                     </div>
-                    <h3 className="font-semibold text-heading-blue mb-2">Call Us</h3>
+                    <h3 className="font-semibold text-heading-blue mb-2">Contact Us</h3>
                     <Button 
                       variant="outline" 
                       className="w-full"
                       asChild
                     >
-                      <a href="tel:+919866085831">
-                        +91 98660 85831
-                      </a>
+                      <Link href="/contact">Contact Form</Link>
                     </Button>
                   </CardContent>
                 </Card>

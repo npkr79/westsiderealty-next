@@ -66,8 +66,6 @@ export function generateUnifiedSchema(input: UnifiedSchemaInput) {
     },
     image:
       "https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/brand-assets/remax-logo.jpg",
-    telephone: "+919866085831",
-    email: "info@westsiderealty.in",
     address: {
       "@type": "PostalAddress",
       streetAddress: "415, 4th Floor, Kokapet Terminal, Kokapet",

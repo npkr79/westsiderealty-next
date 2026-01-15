@@ -1,6 +1,6 @@
 import { Metadata } from "next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { MapPin, Phone, Mail, Clock } from "lucide-react";
+import { MapPin, Clock } from "lucide-react";
 import ContactForm from "@/components/ContactForm";
 import { JsonLd, buildMetadata } from "@/components/common/SEO";
 import WhatsAppButton from "@/components/contact/WhatsAppButton";
@@ -16,7 +16,6 @@ const CONTACT_SCHEMA = {
     "@type": "RealEstateAgent",
     name: "RE/MAX Westside Realty",
     image: "https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/brand-assets/remax-logo.jpg",
-    telephone: "+91 9866085831",
     address: {
       "@type": "PostalAddress",
       streetAddress: "415, 4th Floor, Kokapet Terminal, Kokapet, Hyderabad – 500075",
@@ -47,8 +46,6 @@ export default function Contact() {
   // Contact details remain hardcoded in JSX for SSR - DO NOT move to client-side fetch
   const defaultContactInfo = {
     address: "415, 4th Floor, Kokapet Terminal\nKokapet, Hyderabad – 500075",
-    phone: "+91 9866085831",
-    email: "info@westsiderealty.in",
     businessHours: "Monday - Saturday\n9:00 AM - 7:00 PM",
   };
 
@@ -57,16 +54,6 @@ export default function Contact() {
       icon: MapPin,
       title: "Office Address",
       content: defaultContactInfo.address,
-    },
-    {
-      icon: Phone,
-      title: "Phone Number",
-      content: defaultContactInfo.phone,
-    },
-    {
-      icon: Mail,
-      title: "Email Address",
-      content: defaultContactInfo.email,
     },
     {
       icon: Clock,

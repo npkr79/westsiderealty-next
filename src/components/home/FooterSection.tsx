@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Phone, Mail, MapPin, Facebook, Instagram, Youtube, Linkedin, Twitter } from "lucide-react";
+import { MapPin, Facebook, Instagram, Youtube, Linkedin, Twitter } from "lucide-react";
 
 const socialLinks = [
   { icon: Facebook, href: "https://www.facebook.com/remaxwestsiderealty", label: "Facebook" },
@@ -88,17 +88,10 @@ export default function FooterSection() {
                 <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0 text-slate-300" />
                 <span>415, 4th Floor, Kokapet Terminal<br />Kokapet, Hyderabad – 500075</span>
               </li>
-              <li className="flex items-center gap-2">
-                <Phone className="h-4 w-4 flex-shrink-0 text-slate-300" />
-                <a href="tel:+919866085831" className="hover:text-white transition-colors">
-                  +91 9866085831
-                </a>
-              </li>
-              <li className="flex items-center gap-2">
-                <Mail className="h-4 w-4 flex-shrink-0 text-slate-300" />
-                <a href="mailto:info@westsiderealty.in" className="hover:text-white transition-colors">
-                  info@westsiderealty.in
-                </a>
+              <li>
+                <Link href="/contact" className="hover:text-white transition-colors">
+                  Contact Form
+                </Link>
               </li>
             </ul>
           </div>
@@ -141,5 +134,3 @@ export default function FooterSection() {
     </footer>
   );
 }
-
-
