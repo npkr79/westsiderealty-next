@@ -9,10 +9,15 @@ interface ProcessStep {
   description: string;
 }
 
+// Type guard helper
+function isRequirementObject(value: unknown): value is Record<string, any> {
+  return value !== null && value !== undefined && typeof value === 'object' && !Array.isArray(value);
+}
+
 interface RequirementsSectionProps {
   title: string;
   subtitle?: string | null;
-  requirementsList: string[];
+  requirementsList: (string | Record<string, any>)[];
   whatWeLookFor?: string | null;
   processSteps: ProcessStep[];
 }
@@ -52,16 +57,22 @@ export function RequirementsSection({
                     requirementsList.map((req, index) => {
                       // Handle both string and object formats
                       let requirementText = '';
+                      
+                      // Type guard: check if it's a string first
                       if (typeof req === 'string') {
                         requirementText = req;
-                      } else if (req && typeof req === 'object') {
-                        // Try common property names for requirement text
+                      } 
+                      // Type guard: check if it's an object using helper function
+                      else if (isRequirementObject(req)) {
+                        // TypeScript now knows req is Record<string, any>
                         requirementText = req.text || req.requirement || req.item || req.content || req.description || '';
                         // If still empty, try to stringify safely
                         if (!requirementText) {
                           requirementText = JSON.stringify(req);
                         }
-                      } else {
+                      } 
+                      // Fallback: convert anything else to string
+                      else {
                         requirementText = String(req || '');
                       }
                       
