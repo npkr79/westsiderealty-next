@@ -2,15 +2,12 @@
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Phone, Mail, MapPin, ArrowRight } from "lucide-react";
-import Link from "next/link";
+import { MapPin, ArrowRight, MessageSquare } from "lucide-react";
 
 interface FinalCTASectionProps {
   title: string;
   description?: string | null;
   buttonText: string;
-  contactEmail?: string | null;
-  contactPhone?: string | null;
   contactAddress?: string | null;
 }
 
@@ -18,8 +15,6 @@ export function FinalCTASection({
   title,
   description,
   buttonText,
-  contactEmail,
-  contactPhone,
   contactAddress,
 }: FinalCTASectionProps) {
   const scrollToForm = () => {
@@ -43,49 +38,31 @@ export function FinalCTASection({
               </p>
             )}
 
-            <Button
-              size="lg"
-              onClick={scrollToForm}
-              className="mb-8 text-lg px-8 py-6"
-            >
-              {buttonText}
-              <ArrowRight className="ml-2 h-5 w-5" />
-            </Button>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
+              <Button
+                size="lg"
+                onClick={scrollToForm}
+                className="text-lg px-8 py-6"
+              >
+                {buttonText}
+                <ArrowRight className="ml-2 h-5 w-5" />
+              </Button>
+              <Button
+                size="lg"
+                variant="outline"
+                onClick={scrollToForm}
+                className="text-lg px-8 py-6"
+              >
+                <MessageSquare className="mr-2 h-5 w-5" />
+                Contact Us
+              </Button>
+            </div>
 
-            {(contactEmail || contactPhone || contactAddress) && (
+            {contactAddress && (
               <div className="border-t pt-8 mt-8">
-                <h3 className="text-xl font-semibold text-foreground mb-4">
-                  Contact Us
-                </h3>
-                <div className="flex flex-col sm:flex-row gap-6 justify-center items-start sm:items-center">
-                  {contactPhone && (
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <Phone className="h-5 w-5" />
-                      <Link
-                        href={`tel:${contactPhone.replace(/\D/g, "")}`}
-                        className="hover:text-primary"
-                      >
-                        {contactPhone}
-                      </Link>
-                    </div>
-                  )}
-                  {contactEmail && (
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <Mail className="h-5 w-5" />
-                      <Link
-                        href={`mailto:${contactEmail}`}
-                        className="hover:text-primary"
-                      >
-                        {contactEmail}
-                      </Link>
-                    </div>
-                  )}
-                  {contactAddress && (
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <MapPin className="h-5 w-5" />
-                      <span>{contactAddress}</span>
-                    </div>
-                  )}
+                <div className="flex items-center justify-center gap-2 text-muted-foreground">
+                  <MapPin className="h-5 w-5" />
+                  <span>{contactAddress}</span>
                 </div>
               </div>
             )}

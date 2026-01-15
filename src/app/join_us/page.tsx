@@ -141,8 +141,6 @@ export default async function JoinUsPage() {
           title={pageContent.final_cta_title}
           description={pageContent.final_cta_description}
           buttonText={pageContent.final_cta_button_text}
-          contactEmail={pageContent.contact_email}
-          contactPhone={pageContent.contact_phone}
           contactAddress={pageContent.contact_address}
         />
       </div>
