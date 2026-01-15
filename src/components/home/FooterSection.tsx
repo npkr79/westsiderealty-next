@@ -90,7 +90,7 @@ export default function FooterSection() {
               </li>
               <li>
                 <Link href="/contact" className="hover:text-white transition-colors">
-                  Contact Form
+                  Get In Touch
                 </Link>
               </li>
             </ul>

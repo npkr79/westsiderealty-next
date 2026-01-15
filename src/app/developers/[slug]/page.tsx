@@ -799,7 +799,7 @@ export default async function DeveloperPage({ params }: PageProps) {
                       className="w-full"
                       asChild
                     >
-                      <Link href="/contact">Contact Form</Link>
+                      <Link href="/contact">Get In Touch</Link>
                     </Button>
                   </CardContent>
                 </Card>
