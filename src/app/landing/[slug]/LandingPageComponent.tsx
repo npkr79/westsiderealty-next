@@ -337,6 +337,7 @@ const LandingPageComponent = ({
       <div className="container mx-auto max-w-6xl px-4">
         <ProjectHighlightsTable
           projectType="Luxury High-Rise Apartments"
+          projectTotalFloors={landingPage.project_total_floors}
           landArea={landingPage.uri === 'godrej-regal-pavilion-rajendra-nagar-hyderabad' ? '13 acres' : landingPage.project_land_area}
           bhkConfig={configurations.map(c => c.unit_type).join(', ')}
           minSize={configurations.length > 0 ? Math.min(...configurations.map(c => c.size_min).filter((s): s is number => typeof s === 'number' && !isNaN(s))) : undefined}
@@ -384,11 +385,11 @@ const LandingPageComponent = ({
             // 3x3 grid for Godrej Regal Pavilion with standardized values
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               <div className="text-center p-8 bg-white/10 backdrop-blur-sm rounded-lg border border-luxury-gold-light/20 hover:shadow-luxury transition-all duration-300 hover:scale-105">
-                <TrendingUp className="h-12 w-12 text-luxury-gold mx-auto mb-4" />
+                <Building2 className="h-12 w-12 text-luxury-gold mx-auto mb-4" />
                 <div className="text-3xl font-bold mb-2 text-luxury-gold">
-                  ₹1.10 Cr onwards
+                  {landingPage.project_total_floors || '4B+G+33 Floors'}
                 </div>
-                <p className="text-lg opacity-90">Starting Price (2 BHK)</p>
+                <p className="text-lg opacity-90">Total Floors</p>
               </div>
               <div className="text-center p-8 bg-white/10 backdrop-blur-sm rounded-lg border border-luxury-gold-light/20 hover:shadow-luxury transition-all duration-300 hover:scale-105">
                 <Building2 className="h-12 w-12 text-luxury-gold mx-auto mb-4" />

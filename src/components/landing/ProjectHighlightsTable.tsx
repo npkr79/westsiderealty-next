@@ -2,6 +2,7 @@ import React from 'react';
 
 interface ProjectHighlightsTableProps {
   projectType?: string;
+  projectTotalFloors?: string;
   landArea?: string;
   bhkConfig?: string;
   minSize?: number | undefined;
@@ -12,6 +13,7 @@ interface ProjectHighlightsTableProps {
 
 const ProjectHighlightsTable = ({
   projectType,
+  projectTotalFloors,
   landArea,
   bhkConfig,
   minSize,
@@ -21,8 +23,8 @@ const ProjectHighlightsTable = ({
 }: ProjectHighlightsTableProps) => {
   const highlights = [
     {
-      label: 'Project Type',
-      value: projectType || 'Luxury Apartments',
+      label: projectTotalFloors ? 'Total Floors' : 'Project Type',
+      value: projectTotalFloors || projectType || 'Luxury Apartments',
       show: true,
     },
     {
