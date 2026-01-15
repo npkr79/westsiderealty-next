@@ -355,21 +355,54 @@ const LandingPageComponent = ({
       {/* Video Section */}
       {landingPage.youtube_video_url && (
         <section className="py-16 px-4 bg-gray-50">
-          <div className="container mx-auto max-w-4xl">
+          <div className="container mx-auto max-w-6xl">
             <div className="text-center mb-8">
-              <h2 className="text-3xl font-bold mb-4">Video Tour: {landingPage.title} {extractedLocation} Hyderabad</h2>
+              <h2 className="text-3xl font-bold mb-4">Video Tours</h2>
               <p className="text-gray-600">Take a virtual walkthrough of this amazing property</p>
             </div>
-            <div className="aspect-video rounded-lg overflow-hidden shadow-lg">
-              <iframe
-                src={landingPage.youtube_video_url}
-                title="Property Video Tour"
-                className="w-full h-full"
-                frameBorder="0"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-              />
-            </div>
+            {landingPage.uri === 'godrej-regal-pavilion-rajendra-nagar-hyderabad' ? (
+              // Two videos side by side for Godrej Regal Pavilion
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <h3 className="text-lg font-semibold mb-2">Virtual tour - Godrej Regal Pavilion Rajendra Nagar Hyderabad</h3>
+                  <div className="aspect-video rounded-lg overflow-hidden shadow-lg">
+                    <iframe
+                      src={landingPage.youtube_video_url}
+                      title="Virtual tour - Godrej Regal Pavilion Rajendra Nagar Hyderabad"
+                      className="w-full h-full"
+                      frameBorder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    />
+                  </div>
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold mb-2">Godrej Regal Pavilion Clubhouse Tour | Premium Amenities in Rajendra Nagar, Hyderabad</h3>
+                  <div className="aspect-video rounded-lg overflow-hidden shadow-lg">
+                    <iframe
+                      src="https://www.youtube.com/embed/o-Wwsuy3wKA?si=enepsIAlMYxKxAuI"
+                      title="Godrej Regal Pavilion Clubhouse Tour | Premium Amenities in Rajendra Nagar, Hyderabad"
+                      className="w-full h-full"
+                      frameBorder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    />
+                  </div>
+                </div>
+              </div>
+            ) : (
+              // Single video for other projects
+              <div className="aspect-video rounded-lg overflow-hidden shadow-lg">
+                <iframe
+                  src={landingPage.youtube_video_url}
+                  title="Property Video Tour"
+                  className="w-full h-full"
+                  frameBorder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              </div>
+            )}
           </div>
         </section>
       )}
