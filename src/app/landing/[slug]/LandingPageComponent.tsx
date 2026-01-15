@@ -364,11 +364,11 @@ const LandingPageComponent = ({
               // Two videos side by side for Godrej Regal Pavilion
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <h3 className="text-lg font-semibold mb-2">Virtual tour - Godrej Regal Pavilion Rajendra Nagar Hyderabad</h3>
+                  <h3 className="text-lg font-semibold mb-2">Virtual Tour - Godrej Regal Pavilion Rajendra Nagar Hyderabad</h3>
                   <div className="aspect-video rounded-lg overflow-hidden shadow-lg">
                     <iframe
                       src={landingPage.youtube_video_url}
-                      title="Virtual tour - Godrej Regal Pavilion Rajendra Nagar Hyderabad"
+                      title="Virtual Tour - Godrej Regal Pavilion Rajendra Nagar Hyderabad"
                       className="w-full h-full"
                       frameBorder="0"
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -377,11 +377,11 @@ const LandingPageComponent = ({
                   </div>
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold mb-2">Godrej Regal Pavilion Clubhouse Tour | Premium Amenities in Rajendra Nagar, Hyderabad</h3>
+                  <h3 className="text-lg font-semibold mb-2">Godrej Regal Pavilion Clubhouse Tour | Premium Amenities</h3>
                   <div className="aspect-video rounded-lg overflow-hidden shadow-lg">
                     <iframe
                       src="https://www.youtube.com/embed/o-Wwsuy3wKA?si=enepsIAlMYxKxAuI"
-                      title="Godrej Regal Pavilion Clubhouse Tour | Premium Amenities in Rajendra Nagar, Hyderabad"
+                      title="Godrej Regal Pavilion Clubhouse Tour | Premium Amenities"
                       className="w-full h-full"
                       frameBorder="0"
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
