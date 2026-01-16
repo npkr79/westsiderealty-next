@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { submitLead } from "@/app/actions/submit-lead";
 
 export interface CampaignLeadResponse {
   success: boolean;
@@ -12,6 +12,7 @@ export async function submitGodrejLead(formData: FormData): Promise<CampaignLead
     const name = String(formData.get("name") || "").trim();
     const phone = String(formData.get("phone") || "").trim();
     const userType = String(formData.get("user_type") || "").trim();
+    const sourcePage = String(formData.get("source_page") || "").trim();
 
     if (!name || !phone) {
       return {
@@ -20,37 +21,23 @@ export async function submitGodrejLead(formData: FormData): Promise<CampaignLead
       };
     }
 
-    const phoneDigits = phone.replace(/\D/g, "");
-    if (phoneDigits.length !== 10) {
-      return {
-        success: false,
-        message: "Please enter a valid 10-digit phone number.",
-      };
-    }
-
-    const supabase = await createClient();
-
-    const insertPayload = {
+    const response = await submitLead({
       name,
-      phone: phoneDigits,
-      user_type: userType || null,
-      project_name: "Godrej Regal Pavilion",
-      source: "SEO Smart Banner",
-      campaign_id: "godrej-feb-offer",
-    };
+      phone,
+      type: "PROJECT_INTEREST",
+      source_page: sourcePage || "seo-smart-banner",
+      details: {
+        project_name: "Godrej Regal Pavilion",
+        source: "SEO Smart Banner",
+        campaign_id: "godrej-feb-offer",
+        user_type: userType || null,
+      },
+    });
 
-    const { error } = await supabase.from("leads").insert(insertPayload);
-
-    if (error) {
-      console.error("[submitGodrejLead] Supabase insert error:", {
-        message: error.message,
-        code: error.code,
-        details: error.details,
-        hint: error.hint,
-      });
+    if (!response.success) {
       return {
         success: false,
-        message: "Something went wrong. Please try again.",
+        message: response.error || "Something went wrong. Please try again.",
       };
     }
 

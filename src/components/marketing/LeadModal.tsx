@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
 import { CheckCircle2, X } from "lucide-react";
 import { submitGodrejLead } from "@/app/actions/campaignLeads";
 
@@ -10,6 +11,8 @@ interface LeadModalProps {
 }
 
 export default function LeadModal({ isOpen, onClose }: LeadModalProps) {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -88,6 +91,11 @@ export default function LeadModal({ isOpen, onClose }: LeadModalProps) {
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+            <input
+              type="hidden"
+              name="source_page"
+              value={`${pathname}${searchParams?.toString() ? `?${searchParams.toString()}` : ""}`}
+            />
             <div>
               <label className="text-sm font-medium text-gray-700">Name</label>
               <input
