@@ -144,8 +144,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     // Micro-markets
     microMarketsResult.data?.forEach((mm: any) => {
-      const cityData = Array.isArray(mm.cities) ? mm.cities[0] : mm.cities;
-      const citySlug = cityData?.url_slug;
+      const citySlug = Array.isArray(mm.cities) ? mm.cities[0]?.url_slug : mm.cities?.url_slug;
+      console.log("Processing Market:", mm.url_slug, "City Slug:", citySlug);
       if (!citySlug) {
         console.warn(`[Sitemap] Skipping market ${mm.url_slug} - No City Slug found.`);
         return;
@@ -175,8 +175,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         await Promise.all(
           batch.map(async (mm: any) => {
             try {
-              const cityData = Array.isArray(mm.cities) ? mm.cities[0] : mm.cities;
-              const citySlug = cityData?.url_slug;
+              const citySlug = Array.isArray(mm.cities) ? mm.cities[0]?.url_slug : mm.cities?.url_slug;
+              console.log("Processing Market:", mm.url_slug, "City Slug:", citySlug);
               if (!citySlug) {
                 console.warn(`[Sitemap] Skipping market ${mm.url_slug} - No City Slug found.`);
                 return;
