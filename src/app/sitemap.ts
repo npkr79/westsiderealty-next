@@ -162,6 +162,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // Smart Links (Programmatic SEO) - Generate valid filter URLs for each micro-market
     // Note: This could be heavy with many micro-markets. Consider caching or splitting if > 50,000 URLs
     console.log("[sitemap] Generating Smart Links for micro-markets...");
+    console.log(`[sitemap] Micro-markets count: ${microMarketsResult.data?.length || 0}`);
     const smartLinkUrls: MetadataRoute.Sitemap = [];
     const smartLinkSet = new Set<string>();
     
@@ -184,6 +185,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
               // Get locality stats to determine valid filters
               const stats = await getLocalityStats(mm.id, mm.city_id);
+              console.log(
+                `[sitemap] Stats for ${mm.url_slug}: residential=${stats.residentialTypes.length}, commercial=${stats.commercialTypes.length}, price=${stats.priceRanges.length}, status=${stats.statuses.length}, totalProjects=${stats.totalProjects}`
+              );
               
               // Generate URLs for each valid filter
               // Residential types
@@ -224,8 +228,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
                 .eq("micro_market_id", mm.id)
                 .eq("city_id", mm.city_id)
                 .or("status.ilike.published,status.ilike.%under construction%");
+              console.log(
+                `[sitemap] Projects for ${mm.url_slug}: ${projects?.length || 0}`
+              );
 
-              (projects as ProjectSmartLinkRow[] | null | undefined)?.forEach((project) => {
+              (projects as ProjectSmartLinkRow[] | null | undefined)?.forEach((project, idx) => {
+                if (idx === 0) {
+                  console.log(
+                    `[sitemap] Sample project for ${mm.url_slug}: property_types=${JSON.stringify(project.property_types)}, configurations=${JSON.stringify(project.configurations)}`
+                  );
+                }
                 const types = parseJsonb(project.property_types, []);
                 const typeArray = asArray<string>(types);
                 typeArray.forEach((type) => {
