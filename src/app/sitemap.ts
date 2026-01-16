@@ -7,7 +7,6 @@ const baseUrl = "https://www.westsiderealty.in";
 
 type ProjectSmartLinkRow = {
   property_types?: unknown;
-  bhk_config?: string | null;
   configurations?: unknown;
 };
 
@@ -221,7 +220,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
               const { data: projects } = await supabase
                 .from("projects")
-                .select("property_types, bhk_config, configurations")
+                .select("property_types, configurations")
                 .eq("micro_market_id", mm.id)
                 .eq("city_id", mm.city_id)
                 .or("status.ilike.published,status.ilike.%under construction%");
@@ -236,11 +235,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
                   const baseType = normalizePropertyTypeForSlug(type);
                   if (baseType) propertyTypeSet.add(baseType);
                 });
-
-                if (project.bhk_config) {
-                  const bhkToken = extractBhkToken(project.bhk_config);
-                  if (bhkToken) bhkSet.add(bhkToken);
-                }
 
                 const configs = parseJsonb(project.configurations, []);
                 const configArray = asArray<any>(configs);
