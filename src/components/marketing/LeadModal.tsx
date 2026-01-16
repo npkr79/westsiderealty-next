@@ -103,7 +103,7 @@ export default function LeadModal({ isOpen, onClose }: LeadModalProps) {
                 type="text"
                 required
                 placeholder="Your full name"
-                className="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[#D4AF37] focus:outline-none focus:ring-1 focus:ring-[#D4AF37]"
+                className="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-[#D4AF37] focus:outline-none focus:ring-1 focus:ring-[#D4AF37]"
               />
             </div>
 
@@ -116,7 +116,7 @@ export default function LeadModal({ isOpen, onClose }: LeadModalProps) {
                 type="tel"
                 required
                 placeholder="10-digit mobile number"
-                className="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[#D4AF37] focus:outline-none focus:ring-1 focus:ring-[#D4AF37]"
+                className="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-[#D4AF37] focus:outline-none focus:ring-1 focus:ring-[#D4AF37]"
               />
             </div>
 
@@ -126,7 +126,7 @@ export default function LeadModal({ isOpen, onClose }: LeadModalProps) {
                 name="email"
                 type="email"
                 placeholder="you@example.com"
-                className="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[#D4AF37] focus:outline-none focus:ring-1 focus:ring-[#D4AF37]"
+                className="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-[#D4AF37] focus:outline-none focus:ring-1 focus:ring-[#D4AF37]"
               />
             </div>
 
