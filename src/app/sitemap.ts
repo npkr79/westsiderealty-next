@@ -1,8 +1,55 @@
 import { MetadataRoute } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { getLocalityStats, generateFilterSlug } from "@/lib/utils/localityStats";
+import { parseJsonb, asArray } from "@/lib/parse-jsonb";
 
 const baseUrl = "https://www.westsiderealty.in";
+
+type ProjectSmartLinkRow = {
+  property_types?: unknown;
+  bhk_config?: string | null;
+  configurations?: unknown;
+};
+
+function slugify(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .trim();
+}
+
+function pluralize(value: string): string {
+  if (!value) return value;
+  if (value.endsWith("y")) return `${value.slice(0, -1)}ies`;
+  if (value.endsWith("s")) return value;
+  return `${value}s`;
+}
+
+function extractBhkToken(input: string): string | null {
+  const normalized = input.toLowerCase();
+  const match = normalized.match(/(\d+)\s*\+?\s*bhk/);
+  if (!match) return null;
+  const count = match[1];
+  if (normalized.includes("+") || normalized.includes("plus")) {
+    return `${count}-plus-bhk`;
+  }
+  return `${count}-bhk`;
+}
+
+function normalizePropertyTypeForSlug(input: string): string | null {
+  const normalized = input.toLowerCase();
+  const withoutBhk = normalized.replace(/\d+\s*\+?\s*bhk/gi, "").trim();
+  if (withoutBhk.includes("apartment")) return "apartment";
+  if (withoutBhk.includes("villa")) return "villa";
+  if (withoutBhk.includes("penthouse")) return "penthouse";
+  if (withoutBhk.includes("plot")) return "plot";
+  if (withoutBhk.includes("gated community")) return "gated community";
+  if (withoutBhk.includes("house")) return "house";
+  if (withoutBhk.includes("flat")) return "flat";
+  return null;
+}
 
 /**
  * Generate sitemap for the site
@@ -112,6 +159,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // Note: This could be heavy with many micro-markets. Consider caching or splitting if > 50,000 URLs
     console.log("[sitemap] Generating Smart Links for micro-markets...");
     const smartLinkUrls: MetadataRoute.Sitemap = [];
+    const smartLinkSet = new Set<string>();
     
     if (microMarketsResult.data && microMarketsResult.data.length > 0) {
       // Process micro-markets in batches to avoid overwhelming the database
@@ -132,44 +180,93 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
               // Residential types
               stats.residentialTypes.forEach((type: string) => {
                 const filterSlug = generateFilterSlug("residential", type, mm.url_slug);
-                smartLinkUrls.push({
-                  url: `${baseUrl}/homes/${filterSlug}`,
-                  lastModified: mm.updated_at ? new Date(mm.updated_at) : new Date(),
-                  changeFrequency: "weekly",
-                  priority: 0.7,
-                });
+                smartLinkSet.add(`${baseUrl}/homes/${filterSlug}`);
               });
 
               // Commercial types
               stats.commercialTypes.forEach((type: string) => {
                 const filterSlug = generateFilterSlug("commercial", type, mm.url_slug);
-                smartLinkUrls.push({
-                  url: `${baseUrl}/homes/${filterSlug}`,
-                  lastModified: mm.updated_at ? new Date(mm.updated_at) : new Date(),
-                  changeFrequency: "weekly",
-                  priority: 0.7,
-                });
+                smartLinkSet.add(`${baseUrl}/homes/${filterSlug}`);
               });
 
               // Price ranges
               stats.priceRanges.forEach((range: string) => {
                 const filterSlug = generateFilterSlug("price", range, mm.url_slug);
-                smartLinkUrls.push({
-                  url: `${baseUrl}/homes/${filterSlug}`,
-                  lastModified: mm.updated_at ? new Date(mm.updated_at) : new Date(),
-                  changeFrequency: "weekly",
-                  priority: 0.7,
-                });
+                smartLinkSet.add(`${baseUrl}/homes/${filterSlug}`);
               });
 
               // Status filters
               stats.statuses.forEach((status: string) => {
                 const filterSlug = generateFilterSlug("status", status, mm.url_slug);
-                smartLinkUrls.push({
-                  url: `${baseUrl}/homes/${filterSlug}`,
-                  lastModified: mm.updated_at ? new Date(mm.updated_at) : new Date(),
-                  changeFrequency: "weekly",
-                  priority: 0.7,
+                smartLinkSet.add(`${baseUrl}/homes/${filterSlug}`);
+              });
+
+              // Match SmartLinkGrid logic: combine bhk_config/configurations with property types
+              const propertyTypeSet = new Set<string>();
+              const bhkSet = new Set<string>();
+
+              const { data: projects } = await supabase
+                .from("projects")
+                .select("property_types, bhk_config, configurations")
+                .eq("micro_market_id", mm.id)
+                .eq("city_id", mm.city_id)
+                .or("status.ilike.published,status.ilike.%under construction%");
+
+              (projects as ProjectSmartLinkRow[] | null | undefined)?.forEach((project) => {
+                const types = parseJsonb(project.property_types, []);
+                const typeArray = asArray<string>(types);
+                typeArray.forEach((type) => {
+                  if (!type) return;
+                  const bhkToken = extractBhkToken(type);
+                  if (bhkToken) bhkSet.add(bhkToken);
+                  const baseType = normalizePropertyTypeForSlug(type);
+                  if (baseType) propertyTypeSet.add(baseType);
+                });
+
+                if (project.bhk_config) {
+                  const bhkToken = extractBhkToken(project.bhk_config);
+                  if (bhkToken) bhkSet.add(bhkToken);
+                }
+
+                const configs = parseJsonb(project.configurations, []);
+                const configArray = asArray<any>(configs);
+                configArray.forEach((config) => {
+                  if (!config) return;
+                  if (typeof config === "string") {
+                    const bhkToken = extractBhkToken(config);
+                    if (bhkToken) bhkSet.add(bhkToken);
+                    return;
+                  }
+                  const configText =
+                    config.bhk_config ||
+                    config.bhk ||
+                    config.unit_type ||
+                    config.configuration ||
+                    config.config ||
+                    config.bedrooms ||
+                    "";
+                  if (configText) {
+                    const bhkToken = extractBhkToken(String(configText));
+                    if (bhkToken) bhkSet.add(bhkToken);
+                  }
+                });
+              });
+
+              // Generate combined BHK + property type URLs
+              propertyTypeSet.forEach((type) => {
+                const typeSlug = slugify(type);
+                const pluralType = pluralize(typeSlug);
+
+                // Generic fallback: /homes/apartments-in-{market}
+                const genericSlug = `${pluralType}-in-${slugify(mm.url_slug)}`;
+                smartLinkSet.add(`${baseUrl}/homes/${genericSlug}`);
+
+                bhkSet.forEach((bhkToken) => {
+                  // Ensure no redundancy like 3-bhk-3-bhk-apartments
+                  const safeType = typeSlug.replace(/\d+-\+?-?bhk/gi, "").trim();
+                  const safePlural = pluralize(slugify(safeType || typeSlug));
+                  const combinedSlug = `${bhkToken}-${safePlural}-in-${slugify(mm.url_slug)}`;
+                  smartLinkSet.add(`${baseUrl}/homes/${combinedSlug}`);
                 });
               });
             } catch (error) {
@@ -180,6 +277,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       }
     }
     
+    smartLinkSet.forEach((url) => {
+      smartLinkUrls.push({
+        url,
+        lastModified: new Date(),
+        changeFrequency: "weekly",
+        priority: 0.7,
+      });
+    });
+
     console.log(`[sitemap] Generated ${smartLinkUrls.length} Smart Link URLs`);
     urls.push(...smartLinkUrls);
 
