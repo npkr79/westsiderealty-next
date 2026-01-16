@@ -208,26 +208,35 @@ export default async function SmartLinkGrid({
       }
 
       // Generate links using existing format
+      const cleanTypeLabel = (rawType: string) =>
+        rawType.replace(/luxurys?/gi, "").replace(/\s+/g, " ").trim();
+
       const residentialLinks = stats.residentialTypes
         .filter((type) => type && type.trim() !== "")
         .map((type) => {
-          const slug = generateFilterSlug("residential", type, microMarketName!);
-          const label = `${type} in ${microMarketName}`;
+          const cleanedType = cleanTypeLabel(type);
+          if (!cleanedType) return null;
+          const slug = generateFilterSlug("residential", cleanedType, microMarketName!);
+          const label = `${cleanedType} in ${microMarketName}`;
           return { slug, label };
-        });
+        })
+        .filter(Boolean) as Array<{ slug: string; label: string }>;
 
       const commercialLinks = stats.commercialTypes
         .filter((type) => type && type.trim() !== "")
         .map((type) => {
-          const slug = generateFilterSlug("commercial", type, microMarketName!);
-          const pluralType = type.endsWith("Space") 
-            ? type.replace("Space", "Spaces")
-            : type.endsWith("s")
-            ? type
-            : `${type}s`;
+          const cleanedType = cleanTypeLabel(type);
+          if (!cleanedType) return null;
+          const slug = generateFilterSlug("commercial", cleanedType, microMarketName!);
+          const pluralType = cleanedType.endsWith("Space") 
+            ? cleanedType.replace("Space", "Spaces")
+            : cleanedType.endsWith("s")
+            ? cleanedType
+            : `${cleanedType}s`;
           const label = `${pluralType} in ${microMarketName}`;
           return { slug, label };
-        });
+        })
+        .filter(Boolean) as Array<{ slug: string; label: string }>;
 
       const priceLinks = stats.priceRanges
         .filter((price) => price && price.trim() !== "")

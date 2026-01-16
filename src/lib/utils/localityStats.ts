@@ -37,15 +37,13 @@ const PRICE_BUCKETS = [
  */
 function normalizePropertyType(type: string): { category: "residential" | "commercial" | null; normalizedType: string } {
   const normalized = type.trim().toLowerCase();
-  
-  // Strip "Luxury" prefix
-  const withoutLuxury = normalized.replace(/^luxury\s+/, "").trim();
+  const cleaned = normalized.replace(/luxurys?/gi, "").replace(/\s+/g, " ").trim();
   
   // Check if it matches residential keywords
   for (const keyword of RESIDENTIAL_KEYWORDS) {
-    if (withoutLuxury.includes(keyword) || normalized.includes(keyword)) {
+    if (cleaned.includes(keyword) || normalized.includes(keyword)) {
       // Return capitalized version of the original type (without "Luxury")
-      const displayType = withoutLuxury
+      const displayType = cleaned
         .split(" ")
         .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
         .join(" ");
@@ -55,12 +53,12 @@ function normalizePropertyType(type: string): { category: "residential" | "comme
   
   // Check if it matches commercial keywords
   for (const keyword of COMMERCIAL_KEYWORDS) {
-    if (withoutLuxury.includes(keyword) || normalized.includes(keyword)) {
+    if (cleaned.includes(keyword) || normalized.includes(keyword)) {
       // Map to standard names
       if (keyword === "office") return { category: "commercial", normalizedType: "Office Space" };
       if (keyword === "shop" || keyword === "retail") return { category: "commercial", normalizedType: "Shop" };
       if (keyword === "showroom") return { category: "commercial", normalizedType: "Showroom" };
-      const displayType = withoutLuxury
+      const displayType = cleaned
         .split(" ")
         .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
         .join(" ");

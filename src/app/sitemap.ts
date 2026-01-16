@@ -39,7 +39,8 @@ function extractBhkToken(input: string): string | null {
 
 function normalizePropertyTypeForSlug(input: string): string | null {
   const normalized = input.toLowerCase();
-  const withoutBhk = normalized.replace(/\d+\s*\+?\s*bhk/gi, "").trim();
+  const cleaned = normalized.replace(/luxurys?/gi, "").replace(/\s+/g, " ").trim();
+  const withoutBhk = cleaned.replace(/\d+\s*\+?\s*bhk/gi, "").trim();
   if (withoutBhk.includes("apartment")) return "apartment";
   if (withoutBhk.includes("villa")) return "villa";
   if (withoutBhk.includes("penthouse")) return "penthouse";
