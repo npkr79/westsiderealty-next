@@ -1,5 +1,9 @@
+ "use client";
+
+import { useState } from "react";
 import Link from "next/link";
 import { Briefcase, Globe, TrendingUp } from "lucide-react";
+import LeadModal from "@/components/marketing/LeadModal";
 
 const CAMPAIGN_END_DATE = new Date("2026-03-01T00:00:00.000Z");
 const CTA_URL =
@@ -7,6 +11,7 @@ const CTA_URL =
 
 export default function CampaignBanner() {
   if (new Date() > CAMPAIGN_END_DATE) return null;
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   return (
     <section className="mb-8 rounded-2xl border border-[#D4AF37]/30 bg-[#0A192F] p-4 text-white shadow-xl md:p-6">
@@ -24,17 +29,22 @@ export default function CampaignBanner() {
           </p>
 
           <div className="mt-5 hidden lg:block">
-            <Link
-              href={CTA_URL}
+            <button
+              type="button"
+              onClick={() => setIsModalOpen(true)}
               className="inline-flex items-center justify-center rounded-full bg-[#D4AF37] px-5 py-2.5 text-sm font-semibold text-[#0A192F] transition hover:opacity-90"
             >
               Check My Eligibility
-            </Link>
+            </button>
           </div>
         </div>
 
         <div className="flex gap-3 overflow-x-auto pb-1 md:grid md:grid-cols-3 md:gap-4 md:overflow-visible md:pb-0 lg:w-2/3">
-          <div className="min-w-[240px] snap-start rounded-xl border border-white/10 bg-white/5 p-3 md:min-w-0 md:p-4">
+          <button
+            type="button"
+            onClick={() => setIsModalOpen(true)}
+            className="min-w-[240px] snap-start rounded-xl border border-white/10 bg-white/5 p-3 text-left transition hover:border-[#D4AF37]/60 md:min-w-0 md:p-4"
+          >
             <div className="flex items-center gap-2 text-[#D4AF37]">
               <Briefcase className="h-5 w-5" />
               <span className="text-sm font-semibold">Salaried Professionals</span>
@@ -43,22 +53,30 @@ export default function CampaignBanner() {
             <p className="mt-1 text-sm text-white/75">
               5% Now + 5% after 1 Year. Minimal burden till possession.
             </p>
-          </div>
+          </button>
 
-          <div className="min-w-[240px] snap-start rounded-xl border border-white/10 bg-white/5 p-3 md:min-w-0 md:p-4">
+          <button
+            type="button"
+            onClick={() => setIsModalOpen(true)}
+            className="min-w-[240px] snap-start rounded-xl border border-white/10 bg-white/5 p-3 text-left transition hover:border-[#D4AF37]/60 md:min-w-0 md:p-4"
+          >
             <div className="flex items-center gap-2 text-[#D4AF37]">
               <Globe className="h-5 w-5" />
               <span className="text-sm font-semibold">
-                NRI Investors (Towers 5, 6, 9)
+                NRI Investors
               </span>
             </div>
             <p className="mt-3 text-lg font-semibold">20:80 Subvention Plan</p>
             <p className="mt-1 text-sm text-white/75">
               Pay 20% Now, Zero Pre-EMI till Possession.
             </p>
-          </div>
+          </button>
 
-          <div className="min-w-[240px] snap-start rounded-xl border border-white/10 bg-white/5 p-3 md:min-w-0 md:p-4">
+          <button
+            type="button"
+            onClick={() => setIsModalOpen(true)}
+            className="min-w-[240px] snap-start rounded-xl border border-white/10 bg-white/5 p-3 text-left transition hover:border-[#D4AF37]/60 md:min-w-0 md:p-4"
+          >
             <div className="flex items-center gap-2 text-[#D4AF37]">
               <TrendingUp className="h-5 w-5" />
               <span className="text-sm font-semibold">Self-Employed</span>
@@ -67,7 +85,7 @@ export default function CampaignBanner() {
             <p className="mt-1 text-sm text-white/75">
               0% EMI for Year 1. Reduced rates (0.2%) for Year 2.
             </p>
-          </div>
+          </button>
         </div>
 
         <div className="lg:hidden" />
@@ -80,14 +98,16 @@ export default function CampaignBanner() {
           <span className="text-sm font-semibold text-gray-900">
             Godrej 5% Down Offer
           </span>
-          <Link
-            href={CTA_URL}
+          <button
+            type="button"
+            onClick={() => setIsModalOpen(true)}
             className="inline-flex items-center justify-center rounded-full bg-[#D4AF37] px-4 py-2 text-sm font-semibold text-[#0A192F] transition hover:opacity-90"
           >
             Check Eligibility
-          </Link>
+          </button>
         </div>
       </div>
+      <LeadModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
     </section>
   );
 }
