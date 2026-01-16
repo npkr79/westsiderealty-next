@@ -140,6 +140,8 @@ export async function getLocalityStats(
     .select(`
       id,
       property_types,
+      bhk_config,
+      configurations,
       min_price,
       max_price,
       price_range_text,

@@ -144,7 +144,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     // Micro-markets
     microMarketsResult.data?.forEach((mm: any) => {
-      const citySlug = mm.cities?.url_slug;
+      const cityData = Array.isArray(mm.cities) ? mm.cities[0] : mm.cities;
+      const citySlug = cityData?.url_slug;
+      if (!citySlug) {
+        console.log(`[sitemap] Skipping ${mm.url_slug} - Missing City Slug. Raw cities:`, mm.cities);
+      }
       if (citySlug && mm.url_slug) {
         urls.push({
           url: `${baseUrl}/${citySlug}/${mm.url_slug}`,
@@ -170,7 +174,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         await Promise.all(
           batch.map(async (mm: any) => {
             try {
-              const citySlug = mm.cities?.url_slug;
+              const cityData = Array.isArray(mm.cities) ? mm.cities[0] : mm.cities;
+              const citySlug = cityData?.url_slug;
+              if (!citySlug) {
+                console.log(`[sitemap] Skipping ${mm.url_slug} - Missing City Slug. Raw cities:`, mm.cities);
+              }
               if (!citySlug || !mm.url_slug || !mm.city_id || !mm.id) return;
 
               // Get locality stats to determine valid filters
