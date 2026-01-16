@@ -384,7 +384,7 @@ export default async function HomesFilterPage({ params, searchParams }: PageProp
     }
   }
 
-  // Generate page title
+  // Generate page title and description
   let pageTitle = "";
   if (filterType === "residential") {
     pageTitle = `${filterValue} in ${microMarket.micro_market_name}`;
@@ -396,6 +396,9 @@ export default async function HomesFilterPage({ params, searchParams }: PageProp
   } else {
     pageTitle = `${filterValue} Projects in ${microMarket.micro_market_name}`;
   }
+
+  // Generate page description
+  const pageDescription = getPageDescription(filterType, filterValue, microMarket.micro_market_name, city.city_name, totalItems);
 
   // Build breadcrumbs
   const breadcrumbItems = [
