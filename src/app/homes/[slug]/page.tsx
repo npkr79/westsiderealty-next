@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { parseFilterSlug } from "@/lib/utils/localityStats";
 import { parseJsonb, asArray } from "@/lib/parse-jsonb";
 import BreadcrumbNav from "@/components/layout/BreadcrumbNav";
+import CampaignBanner from "@/components/marketing/CampaignBanner";
 import ProjectCard from "@/components/properties/ProjectCard";
 import SmartLinkGrid from "@/components/shared/SmartLinkGrid";
 import type { ProjectWithRelations } from "@/services/projectService";
@@ -451,12 +452,16 @@ export default async function HomesFilterPage({ params, searchParams }: PageProp
     })),
   };
 
+  const isResidentialSlug =
+    !/(office|shop|retail|commercial|plot|land)/i.test(slug);
+
   return (
     <>
       <JsonLd jsonLd={[itemListSchema, breadcrumbSchema]} />
       <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-8 max-w-6xl">
         <BreadcrumbNav items={breadcrumbItems} />
+          {isResidentialSlug && <CampaignBanner />}
 
         {/* Hero Section */}
         <div className="py-8">
