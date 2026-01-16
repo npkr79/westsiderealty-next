@@ -74,7 +74,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       supabase.from("cities").select("url_slug, updated_at").eq("page_status", "published"),
       supabase
         .from("micro_markets")
-        .select("url_slug, updated_at, city_id, cities!inner(url_slug)")
+        .select("id, url_slug, updated_at, city_id, cities!inner(url_slug)")
         .eq("status", "published"),
       supabase
         .from("projects")
