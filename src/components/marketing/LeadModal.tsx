@@ -121,6 +121,16 @@ export default function LeadModal({ isOpen, onClose }: LeadModalProps) {
             </div>
 
             <div>
+              <label className="text-sm font-medium text-gray-700">Email</label>
+              <input
+                name="email"
+                type="email"
+                placeholder="you@example.com"
+                className="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[#D4AF37] focus:outline-none focus:ring-1 focus:ring-[#D4AF37]"
+              />
+            </div>
+
+            <div>
               <label className="text-sm font-medium text-gray-700">
                 Employment Type
               </label>

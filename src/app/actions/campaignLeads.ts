@@ -11,6 +11,7 @@ export async function submitGodrejLead(formData: FormData): Promise<CampaignLead
   try {
     const name = String(formData.get("name") || "").trim();
     const phone = String(formData.get("phone") || "").trim();
+    const email = String(formData.get("email") || "").trim();
     const userType = String(formData.get("user_type") || "").trim();
     const sourcePage = String(formData.get("source_page") || "").trim();
 
@@ -25,6 +26,7 @@ export async function submitGodrejLead(formData: FormData): Promise<CampaignLead
     const response = await submitLead({
       name,
       phone: normalizedPhone,
+      email: email || null,
       type: "PROJECT_INTEREST",
       source_page: sourcePage || "seo-smart-banner",
       details: {
