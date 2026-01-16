@@ -9,6 +9,7 @@ import ProjectCard from "@/components/properties/ProjectCard";
 import SmartLinkGrid from "@/components/shared/SmartLinkGrid";
 import type { ProjectWithRelations } from "@/services/projectService";
 import { optimizeSupabaseImage } from "@/utils/imageOptimization";
+import { JsonLd } from "@/components/common/SEO";
 import {
   Pagination,
   PaginationContent,
@@ -42,16 +43,18 @@ function hasImages(project: any): boolean {
 /**
  * Generate page title from filter type and value
  */
-function getPageTitle(filterType: "residential" | "commercial" | "price" | "status", filterValue: string, microMarketName: string, cityName: string): string {
+function getPageTitle(filterType: "residential" | "commercial" | "price" | "status", filterValue: string, microMarketName: string, cityName: string, count?: number): string {
+  const countText = count !== undefined && count > 0 ? ` - ${count} Listings` : "";
+  
   if (filterType === "residential") {
-    return `${filterValue} in ${microMarketName}, ${cityName} | RE/MAX`;
+    return `${filterValue} in ${microMarketName}, ${cityName}${countText} | RE/MAX`;
   } else if (filterType === "commercial") {
     const pluralType = filterValue.endsWith("s") ? filterValue : `${filterValue}s`;
-    return `${pluralType} in ${microMarketName}, ${cityName} | RE/MAX`;
+    return `${pluralType} in ${microMarketName}, ${cityName}${countText} | RE/MAX`;
   } else if (filterType === "price") {
-    return `Properties ${filterValue} in ${microMarketName}, ${cityName} | RE/MAX`;
+    return `Properties ${filterValue} in ${microMarketName}, ${cityName}${countText} | RE/MAX`;
   } else {
-    return `${filterValue} Projects in ${microMarketName}, ${cityName} | RE/MAX`;
+    return `${filterValue} Projects in ${microMarketName}, ${cityName}${countText} | RE/MAX`;
   }
 }
 
@@ -109,8 +112,66 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     return { title: "Page Not Found" };
   }
 
-  const pageTitle = getPageTitle(filterType, filterValue, microMarket.micro_market_name, city.city_name);
-  const pageDescription = getPageDescription(filterType, filterValue, microMarket.micro_market_name, city.city_name);
+  // Fetch project count for metadata (simplified query to get count quickly)
+  let projectCount = 0;
+  try {
+    const { data: projects } = await supabase
+      .from("projects")
+      .select("id, property_types, min_price, completion_status, status, page_status")
+      .eq("micro_market_id", microMarket.id)
+      .eq("city_id", microMarket.city_id)
+      .eq("page_status", "published");
+    
+    // Apply same filtering logic as main page
+    if (projects && projects.length > 0) {
+      const filtered = projects.filter((p: any) => {
+        const status = (p.status || "").toLowerCase();
+        const completionStatus = (p.completion_status || "").toLowerCase();
+        if (!status.includes("published") && !status.includes("construction") && !completionStatus.includes("construction")) {
+          return false;
+        }
+
+        if (filterType === "residential") {
+          const types = parseJsonb(p.property_types, []);
+          const typeArray = asArray<string>(types);
+          return typeArray.some((t: string) => {
+            const normalizedType = t.toLowerCase().replace(/^luxury\s+/i, "").trim();
+            return normalizedType.includes(filterValue.toLowerCase()) || 
+                   t.toLowerCase().includes(filterValue.toLowerCase());
+          });
+        } else if (filterType === "commercial") {
+          const types = parseJsonb(p.property_types, []);
+          const typeArray = asArray<string>(types);
+          return typeArray.some((t: string) => {
+            const normalizedType = t.toLowerCase().replace(/^luxury\s+/i, "").trim();
+            return normalizedType.includes(filterValue.toLowerCase()) ||
+                   t.toLowerCase().includes(filterValue.toLowerCase());
+          });
+        } else if (filterType === "price") {
+          const priceText = filterValue.toLowerCase();
+          const projectPrice = p.min_price || 0;
+          if (priceText.includes("under 1")) return projectPrice < 10000000;
+          if (priceText.includes("1-2")) return projectPrice >= 10000000 && projectPrice < 20000000;
+          if (priceText.includes("2-3")) return projectPrice >= 20000000 && projectPrice < 30000000;
+          if (priceText.includes("3-5")) return projectPrice >= 30000000 && projectPrice < 50000000;
+          if (priceText.includes("5+")) return projectPrice >= 50000000;
+          return false;
+        } else if (filterType === "status") {
+          const status1 = (p.completion_status || "").toLowerCase();
+          const status2 = (p.status || "").toLowerCase();
+          const target = filterValue.toLowerCase();
+          return status1.includes(target) || status2.includes(target);
+        }
+        return true;
+      });
+      projectCount = filtered.length;
+    }
+  } catch (error) {
+    console.error("[generateMetadata] Error fetching project count:", error);
+  }
+
+  const pageTitle = getPageTitle(filterType, filterValue, microMarket.micro_market_name, city.city_name, projectCount);
+  const pageDescription = getPageDescription(filterType, filterValue, microMarket.micro_market_name, city.city_name, projectCount);
   const canonicalUrl = `https://www.westsiderealty.in/homes/${slug}`;
 
   // Get OG image (prefer micro-market, fallback to city)
@@ -350,9 +411,48 @@ export default async function HomesFilterPage({ params, searchParams }: PageProp
     return `/homes/${slug}?page=${page}`;
   };
 
+  // Build JSON-LD schemas
+  const canonicalUrl = `https://www.westsiderealty.in/homes/${slug}`;
+  
+  // ItemList schema for collection page
+  const itemListSchema = {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name: pageTitle,
+    description: pageDescription,
+    url: canonicalUrl,
+    numberOfItems: totalItems,
+    itemListElement: paginatedProjects.map((project, index) => {
+      const projectCity = (project as any).city;
+      const citySlug = projectCity?.url_slug || city.url_slug;
+      const projectUrl = `https://www.westsiderealty.in/${citySlug}/projects/${project.url_slug}`;
+      
+      return {
+        "@type": "ListItem",
+        position: startIndex + index + 1,
+        url: projectUrl,
+        name: project.project_name || "Project",
+      };
+    }),
+  };
+
+  // BreadcrumbList schema
+  const breadcrumbSchema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: breadcrumbItems.map((item, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      name: item.label,
+      item: item.href ? `https://www.westsiderealty.in${item.href}` : canonicalUrl,
+    })),
+  };
+
   return (
-    <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8 max-w-6xl">
+    <>
+      <JsonLd jsonLd={[itemListSchema, breadcrumbSchema]} />
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto px-4 py-8 max-w-6xl">
         <BreadcrumbNav items={breadcrumbItems} />
 
         {/* Hero Section */}
@@ -442,7 +542,8 @@ export default async function HomesFilterPage({ params, searchParams }: PageProp
           cityName={city.city_name}
         />
       </div>
-    </div>
+      </div>
+    </>
   );
 }
 

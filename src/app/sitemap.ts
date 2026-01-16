@@ -1,5 +1,6 @@
 import { MetadataRoute } from "next";
 import { createClient } from "@/lib/supabase/server";
+import { getLocalityStats, generateFilterSlug } from "@/lib/utils/localityStats";
 
 const baseUrl = "https://www.westsiderealty.in";
 
@@ -106,6 +107,81 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         });
       }
     });
+
+    // Smart Links (Programmatic SEO) - Generate valid filter URLs for each micro-market
+    // Note: This could be heavy with many micro-markets. Consider caching or splitting if > 50,000 URLs
+    console.log("[sitemap] Generating Smart Links for micro-markets...");
+    const smartLinkUrls: MetadataRoute.Sitemap = [];
+    
+    if (microMarketsResult.data && microMarketsResult.data.length > 0) {
+      // Process micro-markets in batches to avoid overwhelming the database
+      const batchSize = 10;
+      for (let i = 0; i < microMarketsResult.data.length; i += batchSize) {
+        const batch = microMarketsResult.data.slice(i, i + batchSize);
+        
+        await Promise.all(
+          batch.map(async (mm: any) => {
+            try {
+              const citySlug = mm.cities?.url_slug;
+              if (!citySlug || !mm.url_slug || !mm.city_id || !mm.id) return;
+
+              // Get locality stats to determine valid filters
+              const stats = await getLocalityStats(mm.id, mm.city_id);
+              
+              // Generate URLs for each valid filter
+              // Residential types
+              stats.residentialTypes.forEach((type: string) => {
+                const filterSlug = generateFilterSlug("residential", type, mm.url_slug);
+                smartLinkUrls.push({
+                  url: `${baseUrl}/homes/${filterSlug}`,
+                  lastModified: mm.updated_at ? new Date(mm.updated_at) : new Date(),
+                  changeFrequency: "weekly",
+                  priority: 0.7,
+                });
+              });
+
+              // Commercial types
+              stats.commercialTypes.forEach((type: string) => {
+                const filterSlug = generateFilterSlug("commercial", type, mm.url_slug);
+                smartLinkUrls.push({
+                  url: `${baseUrl}/homes/${filterSlug}`,
+                  lastModified: mm.updated_at ? new Date(mm.updated_at) : new Date(),
+                  changeFrequency: "weekly",
+                  priority: 0.7,
+                });
+              });
+
+              // Price ranges
+              stats.priceRanges.forEach((range: string) => {
+                const filterSlug = generateFilterSlug("price", range, mm.url_slug);
+                smartLinkUrls.push({
+                  url: `${baseUrl}/homes/${filterSlug}`,
+                  lastModified: mm.updated_at ? new Date(mm.updated_at) : new Date(),
+                  changeFrequency: "weekly",
+                  priority: 0.7,
+                });
+              });
+
+              // Status filters
+              stats.statuses.forEach((status: string) => {
+                const filterSlug = generateFilterSlug("status", status, mm.url_slug);
+                smartLinkUrls.push({
+                  url: `${baseUrl}/homes/${filterSlug}`,
+                  lastModified: mm.updated_at ? new Date(mm.updated_at) : new Date(),
+                  changeFrequency: "weekly",
+                  priority: 0.7,
+                });
+              });
+            } catch (error) {
+              console.error(`[sitemap] Error generating Smart Links for micro-market ${mm.url_slug}:`, error);
+            }
+          })
+        );
+      }
+    }
+    
+    console.log(`[sitemap] Generated ${smartLinkUrls.length} Smart Link URLs`);
+    urls.push(...smartLinkUrls);
 
     // Projects
     if (projectsResult.data) {
