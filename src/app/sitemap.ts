@@ -147,7 +147,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       const cityData = Array.isArray(mm.cities) ? mm.cities[0] : mm.cities;
       const citySlug = cityData?.url_slug;
       if (!citySlug) {
-        console.log(`[sitemap] Skipping ${mm.url_slug} - Missing City Slug. Raw cities:`, mm.cities);
+        console.warn(`[Sitemap] Skipping market ${mm.url_slug} - No City Slug found.`);
+        return;
       }
       if (citySlug && mm.url_slug) {
         urls.push({
@@ -177,9 +178,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
               const cityData = Array.isArray(mm.cities) ? mm.cities[0] : mm.cities;
               const citySlug = cityData?.url_slug;
               if (!citySlug) {
-                console.log(`[sitemap] Skipping ${mm.url_slug} - Missing City Slug. Raw cities:`, mm.cities);
+                console.warn(`[Sitemap] Skipping market ${mm.url_slug} - No City Slug found.`);
+                return;
               }
-              if (!citySlug || !mm.url_slug || !mm.city_id || !mm.id) return;
+              if (!mm.url_slug || !mm.city_id || !mm.id) return;
 
               // Get locality stats to determine valid filters
               const stats = await getLocalityStats(mm.id, mm.city_id);
@@ -189,24 +191,28 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
               stats.residentialTypes.forEach((type: string) => {
                 const filterSlug = generateFilterSlug("residential", type, mm.url_slug);
                 smartLinkSet.add(`${baseUrl}/homes/${filterSlug}`);
+                console.log(`[Sitemap] Added link: ${filterSlug}`);
               });
 
               // Commercial types
               stats.commercialTypes.forEach((type: string) => {
                 const filterSlug = generateFilterSlug("commercial", type, mm.url_slug);
                 smartLinkSet.add(`${baseUrl}/homes/${filterSlug}`);
+                console.log(`[Sitemap] Added link: ${filterSlug}`);
               });
 
               // Price ranges
               stats.priceRanges.forEach((range: string) => {
                 const filterSlug = generateFilterSlug("price", range, mm.url_slug);
                 smartLinkSet.add(`${baseUrl}/homes/${filterSlug}`);
+                console.log(`[Sitemap] Added link: ${filterSlug}`);
               });
 
               // Status filters
               stats.statuses.forEach((status: string) => {
                 const filterSlug = generateFilterSlug("status", status, mm.url_slug);
                 smartLinkSet.add(`${baseUrl}/homes/${filterSlug}`);
+                console.log(`[Sitemap] Added link: ${filterSlug}`);
               });
 
               // Match SmartLinkGrid logic: combine bhk_config/configurations with property types
