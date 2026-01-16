@@ -316,7 +316,7 @@ export function generateFilterSlug(
  * Returns { filterType, filterValue, microMarketSlug } or null if invalid
  */
 export function parseFilterSlug(slug: string): {
-  filterType: "residential" | "commercial" | "price" | "status";
+  filterType: "residential" | "commercial" | "price" | "status" | "config";
   filterValue: string;
   microMarketSlug: string;
 } | null {
@@ -327,6 +327,16 @@ export function parseFilterSlug(slug: string): {
   }
 
   const [filterPart, microMarketSlug] = parts;
+
+  // Check for BHK-only pattern: "2-bhks-in-kondapur"
+  const bhkOnlyMatch = filterPart.match(/^(\d+)-bhks?$/);
+  if (bhkOnlyMatch) {
+    return {
+      filterType: "config",
+      filterValue: `${bhkOnlyMatch[1]}BHK`,
+      microMarketSlug,
+    };
+  }
 
   // Check for price pattern: properties-{price-range}-in-{market}
   const priceMatch = filterPart.match(/^properties-(.+)$/);

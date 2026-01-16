@@ -44,7 +44,13 @@ function hasImages(project: any): boolean {
 /**
  * Generate page title from filter type and value
  */
-function getPageTitle(filterType: "residential" | "commercial" | "price" | "status", filterValue: string, microMarketName: string, cityName: string, count?: number): string {
+function getPageTitle(
+  filterType: "residential" | "commercial" | "price" | "status" | "config",
+  filterValue: string,
+  microMarketName: string,
+  cityName: string,
+  count?: number
+): string {
   const countText = count !== undefined && count > 0 ? ` - ${count} Listings` : "";
   
   if (filterType === "residential") {
@@ -54,6 +60,8 @@ function getPageTitle(filterType: "residential" | "commercial" | "price" | "stat
     return `${pluralType} in ${microMarketName}, ${cityName}${countText} | RE/MAX`;
   } else if (filterType === "price") {
     return `Properties ${filterValue} in ${microMarketName}, ${cityName}${countText} | RE/MAX`;
+  } else if (filterType === "config") {
+    return `${filterValue} in ${microMarketName}, ${cityName}${countText} | RE/MAX`;
   } else {
     return `${filterValue} Projects in ${microMarketName}, ${cityName}${countText} | RE/MAX`;
   }
@@ -62,7 +70,13 @@ function getPageTitle(filterType: "residential" | "commercial" | "price" | "stat
 /**
  * Generate page description
  */
-function getPageDescription(filterType: "residential" | "commercial" | "price" | "status", filterValue: string, microMarketName: string, cityName: string, count?: number): string {
+function getPageDescription(
+  filterType: "residential" | "commercial" | "price" | "status" | "config",
+  filterValue: string,
+  microMarketName: string,
+  cityName: string,
+  count?: number
+): string {
   let filterLabel = "";
   if (filterType === "residential") {
     filterLabel = filterValue;
@@ -71,6 +85,8 @@ function getPageDescription(filterType: "residential" | "commercial" | "price" |
     filterLabel = pluralType;
   } else if (filterType === "price") {
     filterLabel = `Properties ${filterValue}`;
+  } else if (filterType === "config") {
+    filterLabel = `${filterValue} Homes`;
   } else {
     filterLabel = `${filterValue} Projects`;
   }
@@ -78,6 +94,53 @@ function getPageDescription(filterType: "residential" | "commercial" | "price" |
   const countText = count !== undefined && count > 0 ? `${count}+ ` : "";
   
   return `Explore ${countText}${filterLabel.toLowerCase()} in ${microMarketName}, ${cityName}. Premium projects with prices, floor plans, and reviews. Find your perfect home at RE/MAX.`;
+}
+
+function normalizeBhk(value: string): string | null {
+  const match = String(value).match(/(\d+)\s*\+?\s*bhk/i);
+  if (!match) return null;
+  return `${match[1]}BHK`;
+}
+
+function hasBhkMatch(project: any, filterValue: string): boolean {
+  const target = normalizeBhk(filterValue) || filterValue.replace(/\s+/g, "").toUpperCase();
+
+  const types = parseJsonb(project.property_types, []);
+  const typeArray = asArray<string>(types);
+  for (const type of typeArray) {
+    const normalized = normalizeBhk(type);
+    if (normalized && normalized.toUpperCase() === target) {
+      return true;
+    }
+  }
+
+  const configs = parseJsonb(project.configurations, []);
+  const configArray = asArray<any>(configs);
+  for (const config of configArray) {
+    if (!config) continue;
+    const text =
+      typeof config === "string"
+        ? config
+        : config.bhk_config ||
+          config.bhk ||
+          config.unit_type ||
+          config.configuration ||
+          config.config ||
+          config.bedrooms ||
+          "";
+    const normalized = normalizeBhk(text);
+    if (normalized && normalized.toUpperCase() === target) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function sanitizeImageUrl(url?: string | null): string | null {
+  if (!url) return null;
+  if (url.includes("example.com")) return null;
+  return url;
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -118,7 +181,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   try {
     const { data: projects } = await supabase
       .from("projects")
-      .select("id, property_types, min_price, completion_status, status, page_status")
+      .select("id, property_types, configurations, min_price, completion_status, status, page_status")
       .eq("micro_market_id", microMarket.id)
       .eq("city_id", microMarket.city_id)
       .eq("page_status", "published");
@@ -162,6 +225,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
           const status2 = (p.status || "").toLowerCase();
           const target = filterValue.toLowerCase();
           return status1.includes(target) || status2.includes(target);
+        } else if (filterType === "config") {
+          return hasBhkMatch(p, filterValue);
         }
         return true;
       });
@@ -319,6 +384,8 @@ export default async function HomesFilterPage({ params, searchParams }: PageProp
         const status2 = (p.status || "").toLowerCase();
         const target = filterValue.toLowerCase();
         if (!status1.includes(target) && !status2.includes(target)) return false;
+      } else if (filterType === "config") {
+        if (!hasBhkMatch(p, filterValue)) return false;
       }
 
       return true;
@@ -328,6 +395,8 @@ export default async function HomesFilterPage({ params, searchParams }: PageProp
       if (p.city) p.city = Array.isArray(p.city) ? p.city[0] : p.city;
       if (p.micro_market) p.micro_market = Array.isArray(p.micro_market) ? p.micro_market[0] : p.micro_market;
       if (p.developer) p.developer = Array.isArray(p.developer) ? p.developer[0] : p.developer;
+      p.hero_image_url = sanitizeImageUrl(p.hero_image_url);
+      p.main_image_url = sanitizeImageUrl(p.main_image_url);
       return p;
     }) as ProjectWithRelations[];
 
@@ -377,6 +446,8 @@ export default async function HomesFilterPage({ params, searchParams }: PageProp
           if (p.city) p.city = Array.isArray(p.city) ? p.city[0] : p.city;
           if (p.micro_market) p.micro_market = Array.isArray(p.micro_market) ? p.micro_market[0] : p.micro_market;
           if (p.developer) p.developer = Array.isArray(p.developer) ? p.developer[0] : p.developer;
+          p.hero_image_url = sanitizeImageUrl(p.hero_image_url);
+          p.main_image_url = sanitizeImageUrl(p.main_image_url);
           return p;
         }) as ProjectWithRelations[];
       }
@@ -394,6 +465,8 @@ export default async function HomesFilterPage({ params, searchParams }: PageProp
     pageTitle = `${pluralType} in ${microMarket.micro_market_name}`;
   } else if (filterType === "price") {
     pageTitle = `Properties ${filterValue} in ${microMarket.micro_market_name}`;
+  } else if (filterType === "config") {
+    pageTitle = `${filterValue} in ${microMarket.micro_market_name}`;
   } else {
     pageTitle = `${filterValue} Projects in ${microMarket.micro_market_name}`;
   }

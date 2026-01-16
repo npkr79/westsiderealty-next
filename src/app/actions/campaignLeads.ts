@@ -21,9 +21,10 @@ export async function submitGodrejLead(formData: FormData): Promise<CampaignLead
       };
     }
 
+    const normalizedPhone = phone.replace(/\D/g, "");
     const response = await submitLead({
       name,
-      phone,
+      phone: normalizedPhone,
       type: "PROJECT_INTEREST",
       source_page: sourcePage || "seo-smart-banner",
       details: {
