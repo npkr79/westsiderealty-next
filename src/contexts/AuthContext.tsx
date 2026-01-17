@@ -183,11 +183,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const resetPasswordForEmail = async (email: string) => {
+    const siteUrl =
+      (typeof process !== "undefined" && process.env.NEXT_PUBLIC_SITE_URL) ||
+      (typeof window !== "undefined" ? window.location.origin : "");
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo:
-        typeof window !== "undefined"
-          ? `${window.location.origin}/reset-password`
-          : undefined,
+        siteUrl ? `${siteUrl}/reset-password` : undefined,
     });
     return { error };
   };

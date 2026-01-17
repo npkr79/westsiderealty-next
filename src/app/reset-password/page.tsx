@@ -22,12 +22,22 @@ export default function ResetPasswordPage() {
       const hashParams = new URLSearchParams(window.location.hash.replace("#", ""));
       const searchParams = new URLSearchParams(window.location.search);
 
+      const code = searchParams.get("code");
+      if (code) {
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        if (error) {
+          setMessage("Invalid or expired reset link.");
+          setIsReady(true);
+          return;
+        }
+      }
+
       const accessToken =
         hashParams.get("access_token") || searchParams.get("access_token");
       const refreshToken =
         hashParams.get("refresh_token") || searchParams.get("refresh_token");
 
-      if (accessToken && refreshToken) {
+      if (!code && accessToken && refreshToken) {
         const { error } = await supabase.auth.setSession({
           access_token: accessToken,
           refresh_token: refreshToken,
