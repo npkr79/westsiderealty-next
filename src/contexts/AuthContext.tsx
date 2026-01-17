@@ -119,13 +119,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signInWithPhone = async (phone: string, password: string) => {
     const normalizedPhone = phone.replace(/\D/g, "").slice(0, 15);
+    const last10 = normalizedPhone.slice(-10);
 
     // 1) Check admin/owner roles by phone
-    const { data: roleMatch } = await supabase
+    let { data: roleMatch } = await supabase
       .from("user_roles")
-      .select("user_id, email, role")
+      .select("user_id, email, role, phone")
       .eq("phone", normalizedPhone)
       .single();
+
+    if (!roleMatch && last10) {
+      const { data: fuzzyRoleMatch } = await supabase
+        .from("user_roles")
+        .select("user_id, email, role, phone")
+        .ilike("phone", `%${last10}`)
+        .single();
+      roleMatch = fuzzyRoleMatch || null;
+    }
 
     if (roleMatch?.email) {
       const { error } = await supabase.auth.signInWithPassword({
@@ -136,11 +146,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     // 2) Check agents by phone
-    const { data: agentByPhone } = await supabase
+    let { data: agentByPhone } = await supabase
       .from("agents")
       .select("id, email, active")
       .eq("phone", normalizedPhone)
       .single();
+
+    if (!agentByPhone && last10) {
+      const { data: fuzzyAgent } = await supabase
+        .from("agents")
+        .select("id, email, active")
+        .ilike("phone", `%${last10}`)
+        .single();
+      agentByPhone = fuzzyAgent || null;
+    }
 
     if (agentByPhone?.email && agentByPhone.active) {
       const { error } = await supabase.auth.signInWithPassword({

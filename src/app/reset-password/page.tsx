@@ -99,15 +99,38 @@ export default function ResetPasswordPage() {
         return;
       }
 
-      const updatePromise = supabase.auth.updateUser({ password });
-      const timeoutPromise = new Promise<{ error: Error }>((resolve) => {
-        setTimeout(() => resolve({ error: new Error("Password update timed out.") }), 15000);
-      });
+      const accessToken = sessionData.session.access_token;
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-      const result = await Promise.race([updatePromise, timeoutPromise]);
+      if (!supabaseUrl || !supabaseAnonKey) {
+        setMessage("Missing Supabase configuration. Please contact support.");
+        return;
+      }
 
-      if (result.error) {
-        setMessage(result.error.message || "Failed to reset password.");
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(() => controller.abort(), 15000);
+
+      const response = await fetch(`${supabaseUrl}/auth/v1/user`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: supabaseAnonKey,
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ password }),
+        signal: controller.signal,
+      }).finally(() => window.clearTimeout(timeoutId));
+
+      if (!response.ok) {
+        let errorMessage = "Failed to reset password.";
+        try {
+          const errorBody = await response.json();
+          errorMessage = errorBody?.msg || errorBody?.message || errorMessage;
+        } catch {
+          // ignore parse errors
+        }
+        setMessage(errorMessage);
         return;
       }
 
@@ -115,6 +138,10 @@ export default function ResetPasswordPage() {
       setTimeout(() => router.push("/login"), 1500);
     } catch (error: any) {
       console.error("Password reset failed:", error);
+      if (error?.name === "AbortError") {
+        setMessage("Password update timed out. Please try again.");
+        return;
+      }
       setMessage(error?.message || "Failed to reset password.");
     } finally {
       setIsSubmitting(false);
