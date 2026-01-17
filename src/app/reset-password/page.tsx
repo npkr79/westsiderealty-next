@@ -19,43 +19,46 @@ export default function ResetPasswordPage() {
 
   useEffect(() => {
     const initSession = async () => {
-      const hashParams = new URLSearchParams(window.location.hash.replace("#", ""));
-      const searchParams = new URLSearchParams(window.location.search);
+      try {
+        const hashParams = new URLSearchParams(window.location.hash.replace("#", ""));
+        const searchParams = new URLSearchParams(window.location.search);
 
-      const code = searchParams.get("code");
-      if (code) {
-        const { error } = await supabase.auth.exchangeCodeForSession(code);
-        if (error) {
-          setMessage("Invalid or expired reset link.");
-          setIsReady(true);
-          return;
+        const code = searchParams.get("code");
+        if (code) {
+          const { error } = await supabase.auth.exchangeCodeForSession(code);
+          if (error) {
+            setMessage("Invalid or expired reset link.");
+            return;
+          }
         }
-      }
 
-      const accessToken =
-        hashParams.get("access_token") || searchParams.get("access_token");
-      const refreshToken =
-        hashParams.get("refresh_token") || searchParams.get("refresh_token");
+        const accessToken =
+          hashParams.get("access_token") || searchParams.get("access_token");
+        const refreshToken =
+          hashParams.get("refresh_token") || searchParams.get("refresh_token");
 
-      if (!code && accessToken && refreshToken) {
-        const { error } = await supabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken,
-        });
+        if (!code && accessToken && refreshToken) {
+          const { error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
 
-        if (error) {
-          setMessage("Invalid or expired reset link.");
-          setIsReady(true);
-          return;
+          if (error) {
+            setMessage("Invalid or expired reset link.");
+            return;
+          }
         }
-      }
 
-      const { data } = await supabase.auth.getSession();
-      if (!data.session) {
-        setMessage("Invalid or expired reset link.");
+        const { data } = await supabase.auth.getSession();
+        if (!data.session) {
+          setMessage("Invalid or expired reset link.");
+        }
+      } catch (error) {
+        console.error("Reset password init failed:", error);
+        setMessage("Unable to verify reset link. Please request a new one.");
+      } finally {
+        setIsReady(true);
       }
-
-      setIsReady(true);
     };
 
     initSession();
