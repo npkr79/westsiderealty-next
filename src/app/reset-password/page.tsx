@@ -14,7 +14,7 @@ export default function ResetPasswordPage() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [message, setMessage] = useState("");
-  const [isReady, setIsReady] = useState(false);
+  const [isChecking, setIsChecking] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -57,7 +57,7 @@ export default function ResetPasswordPage() {
         console.error("Reset password init failed:", error);
         setMessage("Unable to verify reset link. Please request a new one.");
       } finally {
-        setIsReady(true);
+        setIsChecking(false);
       }
     };
 
@@ -80,8 +80,20 @@ export default function ResetPasswordPage() {
 
     setIsSubmitting(true);
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
+      let { data: sessionData } = await supabase.auth.getSession();
       if (!sessionData.session) {
+        const searchParams = new URLSearchParams(window.location.search);
+        const code = searchParams.get("code");
+        if (code) {
+          const { error } = await supabase.auth.exchangeCodeForSession(code);
+          if (error) {
+            setMessage("Reset session not found. Please request a new link.");
+            return;
+          }
+          sessionData = await supabase.auth.getSession().then((res) => res.data);
+        }
+      }
+      if (!sessionData?.session) {
         setMessage("Reset session not found. Please request a new link.");
         return;
       }
@@ -108,14 +120,6 @@ export default function ResetPasswordPage() {
     }
   };
 
-  if (!isReady) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-lg">Loading...</div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
       <Card className="w-full max-w-md">
@@ -125,6 +129,11 @@ export default function ResetPasswordPage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleReset} className="space-y-4">
+            {isChecking && (
+              <p className="text-sm text-muted-foreground">
+                Verifying reset link...
+              </p>
+            )}
             <div className="space-y-2">
               <Label htmlFor="password">New Password</Label>
               <Input
