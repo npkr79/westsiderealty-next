@@ -16,13 +16,16 @@ export const fetchCache = 'force-no-store';
 
 const LoginContent = () => {
   const router = useRouter();
-  const { signIn, signInWithPhone, user, isAdmin, isAgent, isLoading } = useAuth();
+  const { signIn, signInWithPhone, resetPasswordForEmail, user, isAdmin, isAgent, isLoading } = useAuth();
   
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showReset, setShowReset] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
+  const [resetMessage, setResetMessage] = useState("");
 
   useEffect(() => {
     if (!isLoading && user) {
@@ -54,6 +57,23 @@ const LoginContent = () => {
     }
 
     setLoading(false);
+  };
+
+  const handlePasswordReset = async () => {
+    setResetMessage("");
+    const emailToUse = resetEmail.trim() || (identifier.includes("@") ? identifier.trim() : "");
+    if (!emailToUse) {
+      setResetMessage("Please enter your email to receive a reset link.");
+      return;
+    }
+
+    const { error } = await resetPasswordForEmail(emailToUse);
+    if (error) {
+      setResetMessage(error.message || "Failed to send reset email.");
+      return;
+    }
+
+    setResetMessage("Reset link sent. Please check your inbox.");
   };
 
   const formatPhoneNumber = (value: string) => {
@@ -133,6 +153,33 @@ const LoginContent = () => {
               {loading ? "Signing in..." : "Sign In"}
             </Button>
           </form>
+
+          <div className="mt-4 text-center">
+            <button
+              type="button"
+              className="text-sm text-blue-600 hover:underline"
+              onClick={() => setShowReset(!showReset)}
+            >
+              Forgot password?
+            </button>
+          </div>
+
+          {showReset && (
+            <div className="mt-4 space-y-3 border-t pt-4">
+              <Label htmlFor="reset-email">Email for reset link</Label>
+              <Input
+                id="reset-email"
+                type="email"
+                placeholder="you@example.com"
+                value={resetEmail}
+                onChange={(e) => setResetEmail(e.target.value)}
+              />
+              {resetMessage && <p className="text-sm text-muted-foreground">{resetMessage}</p>}
+              <Button type="button" variant="outline" onClick={handlePasswordReset}>
+                Send reset link
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
