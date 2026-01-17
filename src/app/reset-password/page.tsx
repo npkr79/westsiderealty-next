@@ -90,7 +90,8 @@ export default function ResetPasswordPage() {
             setMessage("Reset session not found. Please request a new link.");
             return;
           }
-          sessionData = await supabase.auth.getSession().then((res) => res.data);
+          const { data: refreshedSession } = await supabase.auth.getSession();
+          sessionData = refreshedSession;
         }
       }
       if (!sessionData?.session) {
