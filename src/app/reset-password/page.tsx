@@ -79,16 +79,33 @@ export default function ResetPasswordPage() {
     }
 
     setIsSubmitting(true);
-    const { error } = await supabase.auth.updateUser({ password });
-    setIsSubmitting(false);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) {
+        setMessage("Reset session not found. Please request a new link.");
+        return;
+      }
 
-    if (error) {
-      setMessage(error.message || "Failed to reset password.");
-      return;
+      const updatePromise = supabase.auth.updateUser({ password });
+      const timeoutPromise = new Promise<{ error: Error }>((resolve) => {
+        setTimeout(() => resolve({ error: new Error("Password update timed out.") }), 15000);
+      });
+
+      const result = await Promise.race([updatePromise, timeoutPromise]);
+
+      if (result.error) {
+        setMessage(result.error.message || "Failed to reset password.");
+        return;
+      }
+
+      setMessage("Password updated successfully. Redirecting to login...");
+      setTimeout(() => router.push("/login"), 1500);
+    } catch (error: any) {
+      console.error("Password reset failed:", error);
+      setMessage(error?.message || "Failed to reset password.");
+    } finally {
+      setIsSubmitting(false);
     }
-
-    setMessage("Password updated successfully. Redirecting to login...");
-    setTimeout(() => router.push("/login"), 1500);
   };
 
   if (!isReady) {
