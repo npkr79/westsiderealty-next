@@ -17,8 +17,10 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import AddAgentModal from "@/components/admin/AddAgentModal";
+import { useAuth } from "@/contexts/AuthContext";
 
 const AdminDashboard = () => {
+  const { isOwner, isDevAdmin, isLoading } = useAuth();
   const [stats] = useState({
     totalProperties: 127,
     activeAgents: 23,
@@ -27,6 +29,27 @@ const AdminDashboard = () => {
   });
 
   const [isAddAgentModalOpen, setIsAddAgentModalOpen] = useState(false);
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <p className="mt-2 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isOwner && !isDevAdmin) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <h2 className="text-xl font-semibold text-gray-800">Access restricted</h2>
+          <p className="text-sm text-muted-foreground">This page is limited to owner and dev admin.</p>
+        </div>
+      </div>
+    );
+  }
 
   const recentActivities = [
     { id: 1, type: 'property', message: 'New property listed in Kokapet', time: '2 hours ago' },

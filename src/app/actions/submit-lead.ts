@@ -54,7 +54,6 @@ export async function submitLead(formData: SubmitLeadData): Promise<SubmitLeadRe
     const supabase = await createClient();
 
     // Prepare data for insertion - ONLY include fields that exist in the leads table
-    // Explicitly exclude any agent_id or other fields that might cause trigger errors
     const insertData: {
       name: string;
       phone: string;
@@ -62,6 +61,13 @@ export async function submitLead(formData: SubmitLeadData): Promise<SubmitLeadRe
       type: string;
       source_page: string;
       details: Record<string, any>;
+      assigned_to?: string | null;
+      assigned_agent_id?: string | null;
+      interest_details?: string | null;
+      status?: string | null;
+      stage?: string | null;
+      priority?: string | null;
+      lead_source?: string | null;
     } = {
       name: formData.name.trim(),
       phone: normalizedPhone,
@@ -70,6 +76,41 @@ export async function submitLead(formData: SubmitLeadData): Promise<SubmitLeadRe
       source_page: formData.source_page || "unknown",
       details: formData.details || {},
     };
+
+    const details = formData.details || {};
+    const possibleAgentId =
+      details.assignedAgentId ||
+      details.assigned_agent_id ||
+      details.agentId ||
+      details.agent_id ||
+      null;
+
+    const projectName =
+      details.projectName ||
+      details.project_name ||
+      details.project ||
+      details.projectTitle ||
+      null;
+
+    const interestMessage =
+      details.interest_details ||
+      (projectName ? `Interested in ${projectName}.` : null) ||
+      details.message ||
+      null;
+
+    insertData.interest_details = interestMessage;
+    insertData.lead_source = details.source || details.lead_source || "website";
+
+    if (possibleAgentId) {
+      const { data: agent } = await supabase
+        .from("agents")
+        .select("id, name")
+        .eq("id", possibleAgentId)
+        .single();
+
+      insertData.assigned_agent_id = agent?.id || possibleAgentId;
+      insertData.assigned_to = agent?.name || null;
+    }
 
     // Log the insert payload for debugging (excluding sensitive data)
     console.log("Inserting lead with payload:", {

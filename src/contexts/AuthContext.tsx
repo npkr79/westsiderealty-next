@@ -10,6 +10,10 @@ interface AuthContextType {
   isLoading: boolean;
   isAgent: boolean;
   isAdmin: boolean;
+  isOwner: boolean;
+  isDevAdmin: boolean;
+  isOfficeAdmin: boolean;
+  role: string | null;
   requirePasswordChange: boolean;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signInWithPhone: (phone: string, password: string) => Promise<{ error: any; agentId?: string }>;
@@ -24,6 +28,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [isAgent, setIsAgent] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isOwner, setIsOwner] = useState(false);
+  const [isDevAdmin, setIsDevAdmin] = useState(false);
+  const [isOfficeAdmin, setIsOfficeAdmin] = useState(false);
+  const [role, setRole] = useState<string | null>(null);
   const [requirePasswordChange, setRequirePasswordChange] = useState(false);
   const router = useRouter();
   const supabase = createClient();
@@ -34,7 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(session?.user ?? null);
 
       if (session?.user) {
-        await checkUserRoles(session.user.id);
+        await checkUserRoles(session.user);
       }
 
       setIsLoading(false);
@@ -46,10 +54,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(session?.user ?? null);
 
       if (session?.user) {
-        await checkUserRoles(session.user.id);
+        await checkUserRoles(session.user);
       } else {
         setIsAgent(false);
         setIsAdmin(false);
+        setIsOwner(false);
+        setIsDevAdmin(false);
+        setIsOfficeAdmin(false);
+        setRole(null);
         setRequirePasswordChange(false);
       }
     });
@@ -57,12 +69,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, [supabase]);
 
-  const checkUserRoles = async (userId: string) => {
+  const checkUserRoles = async (authUser: User) => {
     // Check if user is an agent
     const { data: agent } = await supabase
       .from("agents")
       .select("id, active, profile_completed")
-      .eq("id", userId)
+      .eq("id", authUser.id)
       .single();
 
     if (agent && agent.active) {
@@ -73,13 +85,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     // Check if user is an admin
-    const { data: role } = await supabase
+    const { data: roleData } = await supabase
       .from("user_roles")
       .select("role")
-      .eq("user_id", userId)
+      .eq("user_id", authUser.id)
       .single();
 
-    setIsAdmin(role?.role === "admin");
+    const resolvedRole =
+      roleData?.role ||
+      (authUser.email === "npkr79@gmail.com" ? "owner" : null);
+
+    setRole(resolvedRole);
+    setIsOwner(resolvedRole === "owner");
+    setIsDevAdmin(resolvedRole === "dev_admin");
+    setIsOfficeAdmin(resolvedRole === "office_admin");
+    setIsAdmin(
+      resolvedRole === "owner" ||
+        resolvedRole === "dev_admin" ||
+        resolvedRole === "office_admin" ||
+        resolvedRole === "admin"
+    );
   };
 
   const signIn = async (email: string, password: string) => {
@@ -92,33 +117,52 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signInWithPhone = async (phone: string, password: string) => {
-    // Get agent by phone
+    const normalizedPhone = phone.replace(/\D/g, "").slice(0, 15);
+
+    // 1) Check admin/owner roles by phone
+    const { data: roleMatch } = await supabase
+      .from("user_roles")
+      .select("user_id, email, role")
+      .eq("phone", normalizedPhone)
+      .single();
+
+    if (roleMatch?.email) {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: roleMatch.email,
+        password,
+      });
+      return { error, agentId: undefined };
+    }
+
+    // 2) Check agents by phone
+    const { data: agentByPhone } = await supabase
+      .from("agents")
+      .select("id, email, active")
+      .eq("phone", normalizedPhone)
+      .single();
+
+    if (agentByPhone?.email && agentByPhone.active) {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: agentByPhone.email,
+        password,
+      });
+      return { error, agentId: agentByPhone.id };
+    }
+
+    // 3) Legacy phone_auth lookup
     const { data: phoneAuth } = await supabase
       .from("phone_auth")
-      .select("agent_id, agents(*)")
-      .eq("phone", phone)
+      .select("agent_id, agents(email, active)")
+      .eq("phone", normalizedPhone)
       .eq("active", true)
       .single();
 
-    if (!phoneAuth) {
+    if (!phoneAuth?.agents?.email || !phoneAuth?.agents?.active) {
       return { error: { message: "Invalid phone number" } };
     }
 
-    // Verify password (you'll need to implement password verification)
-    // For now, we'll use a simple approach - in production, use proper hashing
-    const { data: agent } = await supabase
-      .from("agents")
-      .select("email")
-      .eq("id", phoneAuth.agent_id)
-      .single();
-
-    if (!agent?.email) {
-      return { error: { message: "Agent not found" } };
-    }
-
-    // Sign in with email (since Supabase Auth uses email)
     const { error } = await supabase.auth.signInWithPassword({
-      email: agent.email,
+      email: phoneAuth.agents.email,
       password,
     });
 
@@ -142,6 +186,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setIsAgent(false);
     setIsAdmin(false);
+    setIsOwner(false);
+    setIsDevAdmin(false);
+    setIsOfficeAdmin(false);
+    setRole(null);
     setRequirePasswordChange(false);
     router.push("/login");
   };
@@ -153,6 +201,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading,
         isAgent,
         isAdmin,
+        isOwner,
+        isDevAdmin,
+        isOfficeAdmin,
+        role,
         requirePasswordChange,
         signIn,
         signInWithPhone,

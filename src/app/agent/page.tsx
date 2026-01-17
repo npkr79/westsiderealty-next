@@ -6,7 +6,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, ListChecks, User, LogOut } from "lucide-react";
+import { Plus, ListChecks, User, LogOut, MessageSquare } from "lucide-react";
 import Layout from "@/components/layout/Layout";
 import AgentPerformanceCard from "@/components/agent/AgentPerformanceCard";
 import { useAuth } from "@/contexts/AuthContext";
@@ -173,6 +173,24 @@ export default function Dashboard() {
 
             {/* Performance Overview Card */}
             <AgentPerformanceCard agent={{ id: user.id, name: agentProfile.name }} />
+
+            {/* Leads Card */}
+            <Card className="bg-gradient-to-br from-purple-50 to-violet-50 hover:shadow-lg transition-shadow">
+              <CardContent className="p-6 flex flex-col items-start">
+                <div className="text-purple-700 mb-4">
+                  <MessageSquare className="h-6 w-6" />
+                </div>
+                <h2 className="text-lg font-semibold text-gray-900 mb-2">
+                  My Leads
+                </h2>
+                <p className="text-gray-600 mb-4">
+                  View and update leads assigned to you.
+                </p>
+                <Link href="/agent/leads">
+                  <Button>View Leads</Button>
+                </Link>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </div>

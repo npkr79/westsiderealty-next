@@ -12,7 +12,6 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
@@ -20,11 +19,8 @@ export default function LoginPage() {
   const router = useRouter();
   const { signIn, signInWithPhone, user, isAdmin, isAgent, isLoading } = useAuth();
 
-  const [adminEmail, setAdminEmail] = useState("");
-  const [adminPassword, setAdminPassword] = useState("");
-
-  const [agentPhone, setAgentPhone] = useState("");
-  const [agentPassword, setAgentPassword] = useState("");
+  const [identifier, setIdentifier] = useState("");
+  const [password, setPassword] = useState("");
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -39,54 +35,23 @@ export default function LoginPage() {
     }
   }, [user, isAdmin, isAgent, isLoading, router]);
 
-  const handleAdminLogin = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setLoading(true);
 
-    const { error } = await signIn(adminEmail, adminPassword);
+    const isEmail = identifier.includes("@");
+    const loginResult = isEmail
+      ? await signIn(identifier, password)
+      : await signInWithPhone(identifier, password);
 
-    if (error) {
-      setError("Invalid email or password");
+    if (loginResult.error) {
+      setError("Invalid email/phone or password");
       toast.error("Login failed", {
         description: "Please check your credentials and try again.",
       });
     } else {
       toast.success("Login successful");
-      router.replace("/admin");
-    }
-
-    setLoading(false);
-  };
-
-  const handleAgentLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
-
-    if (!/^\d{10}$/.test(agentPhone)) {
-      const errorMsg = "Please enter a valid 10-digit phone number";
-      setError(errorMsg);
-      toast.error("Invalid phone number", {
-        description: "Phone number must be exactly 10 digits",
-      });
-      setLoading(false);
-      return;
-    }
-
-    const { error } = await signInWithPhone(agentPhone, agentPassword);
-
-    if (error) {
-      const errorMessage = error.message || "Invalid phone number or password";
-      setError(errorMessage);
-      toast.error("Login failed", {
-        description: errorMessage,
-      });
-    } else {
-      toast.success("Login successful", {
-        description: "Welcome! Redirecting to your dashboard...",
-      });
-      router.replace("/agent/dashboard");
     }
 
     setLoading(false);
@@ -129,84 +94,44 @@ export default function LoginPage() {
           <CardDescription>Sign in to access your dashboard</CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="admin" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="admin">Admin Login</TabsTrigger>
-              <TabsTrigger value="agent">Agent Login</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="admin">
-              <form onSubmit={handleAdminLogin} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="admin-email">Email</Label>
-                  <Input
-                    id="admin-email"
-                    type="email"
-                    placeholder="admin@example.com"
-                    value={adminEmail}
-                    onChange={(e) => setAdminEmail(e.target.value)}
-                    required
-                    disabled={loading}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="admin-password">Password</Label>
-                  <Input
-                    id="admin-password"
-                    type="password"
-                    placeholder="Enter your password"
-                    value={adminPassword}
-                    onChange={(e) => setAdminPassword(e.target.value)}
-                    required
-                    disabled={loading}
-                  />
-                </div>
-                {error && <p className="text-sm text-destructive">{error}</p>}
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? "Signing in..." : "Sign In"}
-                </Button>
-              </form>
-            </TabsContent>
-
-            <TabsContent value="agent">
-              <form onSubmit={handleAgentLogin} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="agent-phone">Phone Number</Label>
-                  <Input
-                    id="agent-phone"
-                    type="tel"
-                    placeholder="10-digit phone number"
-                    value={agentPhone}
-                    onChange={(e) => setAgentPhone(formatPhoneNumber(e.target.value))}
-                    required
-                    disabled={loading}
-                    maxLength={10}
-                  />
-                  <p className="text-xs text-muted-foreground">Enter your 10-digit phone number</p>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="agent-password">Password</Label>
-                  <Input
-                    id="agent-password"
-                    type="password"
-                    placeholder="Enter your password"
-                    value={agentPassword}
-                    onChange={(e) => setAgentPassword(e.target.value)}
-                    required
-                    disabled={loading}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    First time login? Use default password:{" "}
-                    <code className="bg-muted px-1 py-0.5 rounded">Welcome@123</code>
-                  </p>
-                </div>
-                {error && <p className="text-sm text-destructive">{error}</p>}
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? "Signing in..." : "Sign In"}
-                </Button>
-              </form>
-            </TabsContent>
-          </Tabs>
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="identifier">Email / Phone</Label>
+              <Input
+                id="identifier"
+                type="text"
+                placeholder="Enter email or phone number"
+                value={identifier}
+                onChange={(e) => {
+                  const nextValue = e.target.value;
+                  const formatted = nextValue.includes("@") ? nextValue : formatPhoneNumber(nextValue);
+                  setIdentifier(formatted);
+                }}
+                required
+                disabled={loading}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                placeholder="Enter your password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                disabled={loading}
+              />
+              <p className="text-xs text-muted-foreground">
+                Agents: first time login uses default password{" "}
+                <code className="bg-muted px-1 py-0.5 rounded">Welcome@123</code>
+              </p>
+            </div>
+            {error && <p className="text-sm text-destructive">{error}</p>}
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? "Signing in..." : "Sign In"}
+            </Button>
+          </form>
         </CardContent>
       </Card>
     </div>
