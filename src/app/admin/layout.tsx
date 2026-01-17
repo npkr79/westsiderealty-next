@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { AuthProvider } from "@/contexts/AuthContext";
 
 const allowedRoles = new Set(["owner", "dev_admin", "office_admin", "admin"]);
 
@@ -65,5 +64,5 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   if (!isAuthorized) return null;
 
-  return <AuthProvider>{children}</AuthProvider>;
+  return <>{children}</>;
 }

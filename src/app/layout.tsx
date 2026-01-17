@@ -4,6 +4,7 @@ import { Analytics } from "@vercel/analytics/next";
 import { GoogleAnalytics } from "@next/third-parties/google";
 import "./globals.css";
 import Layout from "@/components/layout/Layout";
+import ClientProviders from "@/components/providers/ClientProviders";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -91,7 +92,9 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} min-h-screen bg-background text-foreground antialiased`}
       >
-        <Layout>{children}</Layout>
+        <ClientProviders>
+          <Layout>{children}</Layout>
+        </ClientProviders>
         <GoogleAnalytics gaId="G-GYG41B6D00" />
         <Analytics />
       </body>

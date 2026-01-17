@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { AuthProvider } from "@/contexts/AuthContext";
 
 export default function AgentLayout({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
@@ -60,10 +59,6 @@ export default function AgentLayout({ children }: { children: React.ReactNode })
 
   if (!isAuthenticated) return null;
 
-  return (
-    <AuthProvider>
-      {children}
-    </AuthProvider>
-  );
+  return <>{children}</>;
 }
 
