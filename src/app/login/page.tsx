@@ -125,8 +125,8 @@ const LoginContent = () => {
                 value={identifier}
                 onChange={(e) => {
                   const nextValue = e.target.value;
-                  const formatted = nextValue.includes("@") ? nextValue : formatPhoneNumber(nextValue);
-                  setIdentifier(formatted);
+                  const isNumeric = /^\d+$/.test(nextValue);
+                  setIdentifier(isNumeric ? formatPhoneNumber(nextValue) : nextValue);
                 }}
                 required
                 disabled={loading}
