@@ -38,13 +38,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const supabase = createClient();
 
   useEffect(() => {
+    const withTimeout = async <T,>(promise: Promise<T>, timeoutMs: number): Promise<T> => {
+      return await Promise.race([
+        promise,
+        new Promise<T>((_, reject) =>
+          setTimeout(() => reject(new Error("Auth timeout")), timeoutMs)
+        ),
+      ]);
+    };
+
     const checkUser = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session } } = await withTimeout(
+          supabase.auth.getSession(),
+          8000
+        );
         setUser(session?.user ?? null);
 
         if (session?.user) {
-          await checkUserRoles(session.user);
+          // Don't block initial render on role lookups
+          checkUserRoles(session.user).catch((error) => {
+            console.error("Role lookup failed:", error);
+          });
         }
       } catch (error) {
         console.error("Auth session check failed:", error);
@@ -68,7 +83,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(session?.user ?? null);
 
         if (session?.user) {
-          await checkUserRoles(session.user);
+          await withTimeout(checkUserRoles(session.user), 8000);
         } else {
           setIsAgent(false);
           setIsAdmin(false);
