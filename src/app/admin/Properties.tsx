@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -52,7 +51,6 @@ const emptyForm = {
 };
 
 export default function Properties() {
-  const supabase = createClient();
   const { toast } = useToast();
   const { isOwner } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
@@ -81,21 +79,15 @@ export default function Properties() {
       setIsLoading(false);
       return;
     }
-    const { data, error } = await supabase
-      .from("hyderabad_properties")
-      .select(
-        "id, title, location, micro_market, price, price_display, bhk_config, area_sqft, status, property_type, project_name, developer_name, main_image_url, updated_at"
-      )
-      .or(`title.ilike.%${searchQuery.trim()}%,location.ilike.%${searchQuery.trim()}%,micro_market.ilike.%${searchQuery.trim()}%`)
-      .limit(50);
-
-    if (error) {
-      toast({ title: "Error", description: "Failed to load properties.", variant: "destructive" });
+    const response = await fetch(`/api/admin/properties?q=${encodeURIComponent(searchQuery.trim())}`);
+    const result = await response.json();
+    if (!response.ok) {
+      toast({ title: "Error", description: result?.error || "Failed to load properties.", variant: "destructive" });
       setIsLoading(false);
       return;
     }
 
-    setProperties((data || []) as PropertyRow[]);
+    setProperties((result.properties || []) as PropertyRow[]);
     setIsLoading(false);
     setHasSearched(true);
   };
@@ -126,9 +118,10 @@ export default function Properties() {
       return;
     }
     if (!confirm("Delete this property?")) return;
-    const { error } = await supabase.from("hyderabad_properties").delete().eq("id", id);
-    if (error) {
-      toast({ title: "Error", description: "Failed to delete.", variant: "destructive" });
+    const response = await fetch(`/api/admin/properties/${id}`, { method: "DELETE" });
+    const result = await response.json();
+    if (!response.ok) {
+      toast({ title: "Error", description: result?.error || "Failed to delete.", variant: "destructive" });
       return;
     }
     setProperties((prev) => prev.filter((item) => item.id !== id));
@@ -161,21 +154,19 @@ export default function Properties() {
     };
 
     if (editingId) {
-      const { error } = await supabase
-        .from("hyderabad_properties")
-        .update(payload)
-        .eq("id", editingId);
-      if (error) {
-        toast({ title: "Error", description: "Failed to update.", variant: "destructive" });
+      const response = await fetch(`/api/admin/properties/${editingId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        toast({ title: "Error", description: result?.error || "Failed to update.", variant: "destructive" });
         return;
       }
       toast({ title: "Updated", description: "Property updated." });
     } else {
-      const { data: existingSlugs } = await supabase
-        .from("hyderabad_properties")
-        .select("seo_slug, slug");
-      const slugs =
-        existingSlugs?.map((item: any) => item.seo_slug || item.slug).filter(Boolean) || [];
+      const slugs: string[] = [];
       let baseSlug = slugify(formState.title);
       const locationSlug = slugify(formState.location);
       if (!baseSlug.includes(locationSlug)) {
@@ -192,9 +183,14 @@ export default function Properties() {
         ownership_type: "Freehold",
       };
 
-      const { error } = await supabase.from("hyderabad_properties").insert([insertPayload]);
-      if (error) {
-        toast({ title: "Error", description: "Failed to add property.", variant: "destructive" });
+      const response = await fetch("/api/admin/properties", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(insertPayload),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        toast({ title: "Error", description: result?.error || "Failed to add property.", variant: "destructive" });
         return;
       }
       toast({ title: "Added", description: "Property created." });
@@ -207,11 +203,7 @@ export default function Properties() {
   };
 
   const handleBulkUpload = async (rows: Record<string, string>[]) => {
-    const { data: existingSlugs } = await supabase
-      .from("hyderabad_properties")
-      .select("seo_slug, slug");
-    const slugs =
-      existingSlugs?.map((item: any) => item.seo_slug || item.slug).filter(Boolean) || [];
+    const slugs: string[] = [];
 
     const payload = rows
       .filter((row) => row.title && row.location)
@@ -248,9 +240,14 @@ export default function Properties() {
       return { successCount: 0, errorCount: rows.length, errorMessage: "No valid rows." };
     }
 
-    const { error } = await supabase.from("hyderabad_properties").insert(payload);
-    if (error) {
-      return { successCount: 0, errorCount: payload.length, errorMessage: error.message };
+    const response = await fetch("/api/admin/properties", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ items: payload }),
+    });
+    const result = await response.json();
+    if (!response.ok) {
+      return { successCount: 0, errorCount: payload.length, errorMessage: result?.error || "Upload failed." };
     }
 
     await loadProperties();

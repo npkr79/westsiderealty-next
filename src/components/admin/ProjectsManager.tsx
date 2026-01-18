@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,7 +28,6 @@ interface ProjectRow {
 }
 
 export function ProjectsManager() {
-  const supabase = createClient();
   const { toast } = useToast();
   const { isOwner } = useAuth();
   const [projects, setProjects] = useState<ProjectRow[]>([]);
@@ -62,16 +60,13 @@ export function ProjectsManager() {
       return;
     }
 
-    const { data, error } = await supabase
-      .from("projects")
-      .select("id, project_name, url_slug, city_id, micro_market_id, developer_id, status, seo_title, meta_description, project_overview_seo")
-      .ilike("project_name", `%${searchQuery.trim()}%`)
-      .limit(50);
-    if (error) {
-      toast({ title: "Error", description: "Failed to load projects.", variant: "destructive" });
+    const response = await fetch(`/api/admin/projects?q=${encodeURIComponent(searchQuery.trim())}`);
+    const result = await response.json();
+    if (!response.ok) {
+      toast({ title: "Error", description: result?.error || "Failed to load projects.", variant: "destructive" });
       return;
     }
-    setProjects((data || []) as ProjectRow[]);
+    setProjects((result.projects || []) as ProjectRow[]);
     setHasSearched(true);
   };
 
@@ -102,19 +97,26 @@ export function ProjectsManager() {
     };
 
     if (editing) {
-      const { error } = await supabase
-        .from("projects")
-        .update(payload)
-        .eq("id", editing.id);
-      if (error) {
-        toast({ title: "Error", description: "Failed to update project.", variant: "destructive" });
+      const response = await fetch(`/api/admin/projects/${editing.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        toast({ title: "Error", description: result?.error || "Failed to update project.", variant: "destructive" });
         return;
       }
       toast({ title: "Updated", description: "Project updated." });
     } else {
-      const { error } = await supabase.from("projects").insert(payload);
-      if (error) {
-        toast({ title: "Error", description: "Failed to add project.", variant: "destructive" });
+      const response = await fetch("/api/admin/projects", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        toast({ title: "Error", description: result?.error || "Failed to add project.", variant: "destructive" });
         return;
       }
       toast({ title: "Added", description: "Project created." });
@@ -138,12 +140,14 @@ export function ProjectsManager() {
   };
 
   const handleToggle = async (row: ProjectRow, value: boolean) => {
-    const { error } = await supabase
-      .from("projects")
-      .update({ status: value ? "published" : "draft" })
-      .eq("id", row.id);
-    if (error) {
-      toast({ title: "Error", description: "Failed to update status.", variant: "destructive" });
+    const response = await fetch(`/api/admin/projects/${row.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: value ? "published" : "draft" }),
+    });
+    const result = await response.json();
+    if (!response.ok) {
+      toast({ title: "Error", description: result?.error || "Failed to update status.", variant: "destructive" });
       return;
     }
     setProjects((prev) =>
@@ -157,9 +161,10 @@ export function ProjectsManager() {
       return;
     }
     if (!confirm(`Delete ${row.project_name}?`)) return;
-    const { error } = await supabase.from("projects").delete().eq("id", row.id);
-    if (error) {
-      toast({ title: "Error", description: "Failed to delete project.", variant: "destructive" });
+    const response = await fetch(`/api/admin/projects/${row.id}`, { method: "DELETE" });
+    const result = await response.json();
+    if (!response.ok) {
+      toast({ title: "Error", description: result?.error || "Failed to delete project.", variant: "destructive" });
       return;
     }
     setProjects((prev) => prev.filter((item) => item.id !== row.id));
@@ -184,9 +189,14 @@ export function ProjectsManager() {
       return { successCount: 0, errorCount: rows.length, errorMessage: "No valid rows." };
     }
 
-    const { error } = await supabase.from("projects").insert(payload);
-    if (error) {
-      return { successCount: 0, errorCount: payload.length, errorMessage: error.message };
+    const response = await fetch("/api/admin/projects", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ items: payload }),
+    });
+    const result = await response.json();
+    if (!response.ok) {
+      return { successCount: 0, errorCount: payload.length, errorMessage: result?.error || "Upload failed." };
     }
     await loadProjects();
     return { successCount: payload.length, errorCount: 0 };

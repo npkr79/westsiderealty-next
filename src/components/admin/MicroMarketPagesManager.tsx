@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,7 +46,6 @@ const emptyForm = {
 };
 
 export function MicroMarketPagesManager() {
-  const supabase = createClient();
   const { toast } = useToast();
   const { isOwner } = useAuth();
   const [markets, setMarkets] = useState<MicroMarketRow[]>([]);
@@ -73,22 +71,21 @@ export function MicroMarketPagesManager() {
       setHasSearched(true);
       return;
     }
-    const { data, error } = await supabase
-      .from("micro_markets")
-      .select("id, micro_market_name, url_slug, city_id, status, seo_title, meta_description, h1_title, hero_hook")
-      .ilike("micro_market_name", `%${searchQuery.trim()}%`)
-      .limit(50);
-    if (error) {
-      toast({ title: "Error", description: "Failed to load micro markets.", variant: "destructive" });
+    const response = await fetch(`/api/admin/micro-markets?q=${encodeURIComponent(searchQuery.trim())}`);
+    const result = await response.json();
+    if (!response.ok) {
+      toast({ title: "Error", description: result?.error || "Failed to load micro markets.", variant: "destructive" });
       return;
     }
-    setMarkets((data || []) as MicroMarketRow[]);
+    setMarkets((result.microMarkets || []) as MicroMarketRow[]);
     setHasSearched(true);
   };
 
   const loadCities = async () => {
-    const { data, error } = await supabase.from("cities").select("id, city_name, url_slug");
-    if (!error) setCities((data || []) as CityRow[]);
+    const response = await fetch("/api/admin/cities");
+    const result = await response.json();
+    if (!response.ok) return;
+    setCities((result.cities || []) as CityRow[]);
   };
 
   useEffect(() => {
@@ -128,16 +125,26 @@ export function MicroMarketPagesManager() {
     };
 
     if (editingId) {
-      const { error } = await supabase.from("micro_markets").update(payload).eq("id", editingId);
-      if (error) {
-        toast({ title: "Error", description: "Failed to update micro market.", variant: "destructive" });
+      const response = await fetch(`/api/admin/micro-markets/${editingId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        toast({ title: "Error", description: result?.error || "Failed to update micro market.", variant: "destructive" });
         return;
       }
       toast({ title: "Updated", description: "Micro market updated." });
     } else {
-      const { error } = await supabase.from("micro_markets").insert(payload);
-      if (error) {
-        toast({ title: "Error", description: "Failed to create micro market.", variant: "destructive" });
+      const response = await fetch("/api/admin/micro-markets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        toast({ title: "Error", description: result?.error || "Failed to create micro market.", variant: "destructive" });
         return;
       }
       toast({ title: "Added", description: "Micro market created." });
@@ -155,9 +162,10 @@ export function MicroMarketPagesManager() {
       return;
     }
     if (!confirm("Delete this micro market?")) return;
-    const { error } = await supabase.from("micro_markets").delete().eq("id", id);
-    if (error) {
-      toast({ title: "Error", description: "Failed to delete micro market.", variant: "destructive" });
+    const response = await fetch(`/api/admin/micro-markets/${id}`, { method: "DELETE" });
+    const result = await response.json();
+    if (!response.ok) {
+      toast({ title: "Error", description: result?.error || "Failed to delete micro market.", variant: "destructive" });
       return;
     }
     setMarkets((prev) => prev.filter((item) => item.id !== id));
@@ -188,9 +196,14 @@ export function MicroMarketPagesManager() {
       return { successCount: 0, errorCount: rows.length, errorMessage: "No valid rows." };
     }
 
-    const { error } = await supabase.from("micro_markets").insert(payload as any[]);
-    if (error) {
-      return { successCount: 0, errorCount: payload.length, errorMessage: error.message };
+    const response = await fetch("/api/admin/micro-markets", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ items: payload }),
+    });
+    const result = await response.json();
+    if (!response.ok) {
+      return { successCount: 0, errorCount: payload.length, errorMessage: result?.error || "Upload failed." };
     }
     await loadMarkets();
     return { successCount: payload.length, errorCount: 0 };

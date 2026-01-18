@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,7 +38,6 @@ const emptyForm = {
 };
 
 export function DevelopersManager() {
-  const supabase = createClient();
   const { toast } = useToast();
   const { isOwner } = useAuth();
   const [developers, setDevelopers] = useState<DeveloperRow[]>([]);
@@ -64,16 +62,13 @@ export function DevelopersManager() {
       setHasSearched(true);
       return;
     }
-    const { data, error } = await supabase
-      .from("developers")
-      .select("id, developer_name, url_slug, website_url, logo_url, seo_title, meta_description, is_published")
-      .ilike("developer_name", `%${searchQuery.trim()}%`)
-      .limit(50);
-    if (error) {
-      toast({ title: "Error", description: "Failed to load developers.", variant: "destructive" });
+    const response = await fetch(`/api/admin/developers?q=${encodeURIComponent(searchQuery.trim())}`);
+    const result = await response.json();
+    if (!response.ok) {
+      toast({ title: "Error", description: result?.error || "Failed to load developers.", variant: "destructive" });
       return;
     }
-    setDevelopers((data || []) as DeveloperRow[]);
+    setDevelopers((result.developers || []) as DeveloperRow[]);
     setHasSearched(true);
   };
 
@@ -107,16 +102,26 @@ export function DevelopersManager() {
     };
 
     if (editingId) {
-      const { error } = await supabase.from("developers").update(payload).eq("id", editingId);
-      if (error) {
-        toast({ title: "Error", description: "Failed to update developer.", variant: "destructive" });
+      const response = await fetch(`/api/admin/developers/${editingId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        toast({ title: "Error", description: result?.error || "Failed to update developer.", variant: "destructive" });
         return;
       }
       toast({ title: "Updated", description: "Developer updated." });
     } else {
-      const { error } = await supabase.from("developers").insert(payload);
-      if (error) {
-        toast({ title: "Error", description: "Failed to add developer.", variant: "destructive" });
+      const response = await fetch("/api/admin/developers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        toast({ title: "Error", description: result?.error || "Failed to add developer.", variant: "destructive" });
         return;
       }
       toast({ title: "Added", description: "Developer created." });
@@ -134,9 +139,10 @@ export function DevelopersManager() {
       return;
     }
     if (!confirm("Delete this developer?")) return;
-    const { error } = await supabase.from("developers").delete().eq("id", id);
-    if (error) {
-      toast({ title: "Error", description: "Failed to delete developer.", variant: "destructive" });
+    const response = await fetch(`/api/admin/developers/${id}`, { method: "DELETE" });
+    const result = await response.json();
+    if (!response.ok) {
+      toast({ title: "Error", description: result?.error || "Failed to delete developer.", variant: "destructive" });
       return;
     }
     setDevelopers((prev) => prev.filter((item) => item.id !== id));
@@ -160,9 +166,14 @@ export function DevelopersManager() {
       return { successCount: 0, errorCount: rows.length, errorMessage: "No valid rows." };
     }
 
-    const { error } = await supabase.from("developers").insert(payload);
-    if (error) {
-      return { successCount: 0, errorCount: payload.length, errorMessage: error.message };
+    const response = await fetch("/api/admin/developers", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ items: payload }),
+    });
+    const result = await response.json();
+    if (!response.ok) {
+      return { successCount: 0, errorCount: payload.length, errorMessage: result?.error || "Upload failed." };
     }
     await loadDevelopers();
     return { successCount: payload.length, errorCount: 0 };

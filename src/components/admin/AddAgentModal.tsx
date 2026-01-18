@@ -5,7 +5,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { agentAuthService } from "@/services/client/agentAuthService";
 import { useToast } from "@/hooks/use-toast";
 
 interface AddAgentModalProps {
@@ -36,18 +35,23 @@ export default function AddAgentModal({ open, onOpenChange, onClose, onAgentAdde
     }
 
     setIsSubmitting(true);
-    const result = await agentAuthService.createAgentAccount({
-      name: formState.name,
-      email: formState.email,
-      phone: formState.phone,
-      specialization: formState.specialization || undefined,
+    const response = await fetch("/api/admin/agents", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: formState.name,
+        email: formState.email,
+        phone: formState.phone,
+        specialization: formState.specialization || undefined,
+      }),
     });
+    const result = await response.json();
     setIsSubmitting(false);
 
-    if (!result.success) {
+    if (!response.ok) {
       toast({
         title: "Error",
-        description: "Failed to create agent.",
+        description: result?.error || "Failed to create agent.",
         variant: "destructive",
       });
       return;
