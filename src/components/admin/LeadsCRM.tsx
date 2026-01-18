@@ -19,7 +19,6 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { createClient } from "@/lib/supabase/client";
 
 interface Lead {
   id: string;
@@ -61,7 +60,6 @@ export default function LeadsCRM() {
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [errorMessage, setErrorMessage] = useState("");
   const { toast } = useToast();
-  const supabase = createClient();
 
   useEffect(() => {
     loadLeads();
@@ -71,32 +69,15 @@ export default function LeadsCRM() {
     try {
       setLoading(true);
       setErrorMessage("");
-      const { data: sessionData } = await supabase.auth.getSession();
-      if (!sessionData.session) {
-        setErrorMessage("Session not found. Please log in again.");
-        return;
+      const response = await fetch("/api/admin/leads");
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data?.error || "Failed to load leads.");
       }
-      const [leadsRes, agentsRes] = await Promise.all([
-        supabase.from("leads").select("*").order("created_at", { ascending: false }),
-        supabase.from("agents").select("id, name, active").order("name", { ascending: true }),
-      ]);
 
-      if (leadsRes.error) throw leadsRes.error;
-      if (agentsRes.error) throw agentsRes.error;
-
-      const leadRows = (leadsRes.data || []) as Lead[];
+      const leadRows = (data.leads || []) as Lead[];
       setLeads(leadRows);
-      setAgents((agentsRes.data || []) as AgentOption[]);
-
-      if (leadRows.length) {
-        const needsDefaultAssignment = leadRows.some((lead) => !lead.assigned_to);
-        if (needsDefaultAssignment) {
-          await supabase
-            .from("leads")
-            .update({ assigned_to: "Owner / Office Admin" })
-            .is("assigned_to", null);
-        }
-      }
+      setAgents((data.agents || []) as AgentOption[]);
     } catch (error: any) {
       console.error("Error loading leads:", error);
       setErrorMessage(error?.message || "Failed to load leads.");
@@ -129,8 +110,15 @@ export default function LeadsCRM() {
 
   const updateLead = async (leadId: string, updates: Partial<Lead>) => {
     try {
-      const { error } = await supabase.from("leads").update(updates).eq("id", leadId);
-      if (error) throw error;
+      const response = await fetch(`/api/admin/leads/${leadId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updates),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data?.error || "Failed to update lead.");
+      }
 
       setLeads((prev) => prev.map((lead) => (lead.id === leadId ? { ...lead, ...updates } : lead)));
       toast({

@@ -39,24 +39,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const checkUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setUser(session?.user ?? null);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        setUser(session?.user ?? null);
 
-      if (session?.user) {
-        await checkUserRoles(session.user);
-      }
-
-      setIsLoading(false);
-    };
-
-    checkUser();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event: any, session: any) => {
-      setUser(session?.user ?? null);
-
-      if (session?.user) {
-        await checkUserRoles(session.user);
-      } else {
+        if (session?.user) {
+          await checkUserRoles(session.user);
+        }
+      } catch (error) {
+        console.error("Auth session check failed:", error);
+        setUser(null);
         setIsAgent(false);
         setIsAdmin(false);
         setIsOwner(false);
@@ -64,6 +56,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setIsOfficeAdmin(false);
         setRole(null);
         setRequirePasswordChange(false);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    checkUser();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event: any, session: any) => {
+      try {
+        setUser(session?.user ?? null);
+
+        if (session?.user) {
+          await checkUserRoles(session.user);
+        } else {
+          setIsAgent(false);
+          setIsAdmin(false);
+          setIsOwner(false);
+          setIsDevAdmin(false);
+          setIsOfficeAdmin(false);
+          setRole(null);
+          setRequirePasswordChange(false);
+        }
+      } catch (error) {
+        console.error("Auth state change failed:", error);
+      } finally {
+        setIsLoading(false);
       }
     });
 
