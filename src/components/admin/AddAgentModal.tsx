@@ -35,35 +35,49 @@ export default function AddAgentModal({ open, onOpenChange, onClose, onAgentAdde
     }
 
     setIsSubmitting(true);
-    const response = await fetch("/api/admin/agents", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: formState.name,
-        email: formState.email,
-        phone: formState.phone,
-        specialization: formState.specialization || undefined,
-      }),
-    });
-    const result = await response.json();
-    setIsSubmitting(false);
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 15000);
+      const response = await fetch("/api/admin/agents", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: formState.name,
+          email: formState.email,
+          phone: formState.phone,
+          specialization: formState.specialization || undefined,
+        }),
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+      const result = await response.json();
+      if (!response.ok) {
+        toast({
+          title: "Error",
+          description: result?.error
+            ? `${result.error}${result.step ? ` (step: ${result.step})` : ""}`
+            : "Failed to create agent.",
+          variant: "destructive",
+        });
+        return;
+      }
 
-    if (!response.ok) {
+      toast({
+        title: "Agent created",
+        description: "Agent account created with default password Welcome@123.",
+      });
+      setFormState({ name: "", email: "", phone: "", specialization: "" });
+      onAgentAdded?.();
+      onClose?.();
+    } catch (error: any) {
       toast({
         title: "Error",
-        description: result?.error || "Failed to create agent.",
+        description: error?.name === "AbortError" ? "Request timed out." : "Failed to create agent.",
         variant: "destructive",
       });
-      return;
+    } finally {
+      setIsSubmitting(false);
     }
-
-    toast({
-      title: "Agent created",
-      description: "Agent account created with default password Welcome@123.",
-    });
-    setFormState({ name: "", email: "", phone: "", specialization: "" });
-    onAgentAdded?.();
-    onClose?.();
   };
   const handleOpenChange = (newOpen: boolean) => {
     if (!newOpen) {

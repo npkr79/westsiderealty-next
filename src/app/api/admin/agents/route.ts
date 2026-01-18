@@ -51,6 +51,7 @@ export async function POST(req: Request) {
     const adminClient = getServiceClient();
     const defaultPassword = "Welcome@123";
 
+    let userId: string | null = null;
     const { data: userData, error: createError } =
       await adminClient.auth.admin.createUser({
         email,
@@ -59,40 +60,83 @@ export async function POST(req: Request) {
         user_metadata: { name, phone },
       });
 
-    if (createError || !userData.user) {
-      return NextResponse.json({ error: createError?.message || "Failed to create user" }, { status: 500 });
+    if (userData?.user?.id) {
+      userId = userData.user.id;
     }
 
-    const userId = userData.user.id;
+    if (!userId) {
+      const message = createError?.message || "";
+      if (message.toLowerCase().includes("already")) {
+        const { data: usersData, error: listError } = await adminClient.auth.admin.listUsers({
+          page: 1,
+          perPage: 200,
+        });
+        if (listError) {
+          return NextResponse.json(
+            { error: listError.message, step: "list_users" },
+            { status: 500 }
+          );
+        }
+        const existing = usersData?.users?.find((user) => user.email === email);
+        if (!existing) {
+          return NextResponse.json(
+            { error: "User already exists but cannot be resolved", step: "find_existing_user" },
+            { status: 500 }
+          );
+        }
+        userId = existing.id;
+      } else {
+        return NextResponse.json(
+          { error: createError?.message || "Failed to create user", step: "create_user" },
+          { status: 500 }
+        );
+      }
+    }
 
-    const { error: agentError } = await adminClient.from("agents").insert({
-      id: userId,
-      name,
-      email,
-      phone,
-      specialization: specialization || null,
-      active: true,
-      profile_completed: false,
-    });
+    const { error: agentError } = await adminClient
+      .from("agents")
+      .upsert(
+        {
+          id: userId,
+          name,
+          email,
+          phone,
+          specialization: specialization || null,
+          active: true,
+          profile_completed: false,
+        },
+        { onConflict: "id" }
+      );
     if (agentError) {
-      return NextResponse.json({ error: agentError.message }, { status: 500 });
+      return NextResponse.json({ error: agentError.message, step: "agents_upsert" }, { status: 500 });
     }
 
-    const { error: roleError } = await adminClient.from("user_roles").insert({
-      user_id: userId,
-      role: "agent",
-      email,
-      phone,
-    });
+    const { error: roleError } = await adminClient
+      .from("user_roles")
+      .upsert(
+        {
+          user_id: userId,
+          role: "agent",
+          email,
+          phone,
+        },
+        { onConflict: "user_id" }
+      );
     if (roleError) {
-      return NextResponse.json({ error: roleError.message }, { status: 500 });
+      return NextResponse.json({ error: roleError.message, step: "user_roles_upsert" }, { status: 500 });
     }
 
-    await adminClient.rpc("create_hashed_phone_auth", {
+    const { error: phoneAuthError } = await adminClient.rpc("create_hashed_phone_auth", {
       agent_id: userId,
       phone_number: phone,
       plain_password: defaultPassword,
     });
+    if (phoneAuthError) {
+      return NextResponse.json(
+        { success: true, warning: phoneAuthError.message, step: "phone_auth" },
+        { status: 200 }
+      );
+    }
 
     return NextResponse.json({
       success: true,
