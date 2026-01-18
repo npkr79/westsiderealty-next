@@ -354,6 +354,7 @@ export function MicroMarketPagesManager() {
                               meta_description: row.meta_description || "",
                               h1_title: row.h1_title || "",
                               hero_hook: row.hero_hook || "",
+                              additional_json: "",
                             });
                             setIsDialogOpen(true);
                           }}
