@@ -19,7 +19,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { createClient } from "@/lib/supabase/client";
 
 interface Lead {
   id: string;
@@ -59,7 +59,9 @@ export default function LeadsCRM() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [stageFilter, setStageFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
+  const [errorMessage, setErrorMessage] = useState("");
   const { toast } = useToast();
+  const supabase = createClient();
 
   useEffect(() => {
     loadLeads();
@@ -68,6 +70,12 @@ export default function LeadsCRM() {
   const loadLeads = async () => {
     try {
       setLoading(true);
+      setErrorMessage("");
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) {
+        setErrorMessage("Session not found. Please log in again.");
+        return;
+      }
       const [leadsRes, agentsRes] = await Promise.all([
         supabase.from("leads").select("*").order("created_at", { ascending: false }),
         supabase.from("agents").select("id, name, active").order("name", { ascending: true }),
@@ -76,10 +84,22 @@ export default function LeadsCRM() {
       if (leadsRes.error) throw leadsRes.error;
       if (agentsRes.error) throw agentsRes.error;
 
-      setLeads((leadsRes.data || []) as Lead[]);
+      const leadRows = (leadsRes.data || []) as Lead[];
+      setLeads(leadRows);
       setAgents((agentsRes.data || []) as AgentOption[]);
-    } catch (error) {
+
+      if (leadRows.length) {
+        const needsDefaultAssignment = leadRows.some((lead) => !lead.assigned_to);
+        if (needsDefaultAssignment) {
+          await supabase
+            .from("leads")
+            .update({ assigned_to: "Owner / Office Admin" })
+            .is("assigned_to", null);
+        }
+      }
+    } catch (error: any) {
       console.error("Error loading leads:", error);
+      setErrorMessage(error?.message || "Failed to load leads.");
       toast({
         title: "Error",
         description: "Failed to load leads.",
@@ -214,8 +234,11 @@ export default function LeadsCRM() {
 
       <Card>
         <CardContent className="pt-6">
-          <div className="border rounded-lg">
-            <Table>
+          {errorMessage ? (
+            <div className="text-sm text-muted-foreground">{errorMessage}</div>
+          ) : (
+            <div className="border rounded-lg">
+              <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Lead</TableHead>
@@ -264,6 +287,11 @@ export default function LeadsCRM() {
                             ))}
                           </SelectContent>
                         </Select>
+                        {!lead.assigned_agent_id && (
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            Default: Owner / Office Admin
+                          </p>
+                        )}
                       </TableCell>
                       <TableCell>
                         <Select
@@ -395,6 +423,7 @@ export default function LeadsCRM() {
               </TableBody>
             </Table>
           </div>
+          )}
         </CardContent>
       </Card>
     </div>
