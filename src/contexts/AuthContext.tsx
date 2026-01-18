@@ -72,11 +72,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const checkUserRoles = async (authUser: User) => {
     // Check if user is an agent
-    const { data: agent } = await supabase
+    const { data: agent, error: agentError } = await supabase
       .from("agents")
       .select("id, active, profile_completed")
       .eq("id", authUser.id)
-      .single();
+      .maybeSingle();
+
+    if (agentError && agentError.code !== "PGRST116") {
+      console.error("Agent lookup error:", agentError);
+    }
 
     if (agent && agent.active) {
       setIsAgent(true);
