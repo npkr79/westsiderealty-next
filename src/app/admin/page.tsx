@@ -22,6 +22,8 @@ import { ProjectsManager } from "@/components/admin/ProjectsManager";
 import { DevelopersManager } from "@/components/admin/DevelopersManager";
 import { MicroMarketPagesManager } from "@/components/admin/MicroMarketPagesManager";
 import BlogManagement from "./BlogManagement";
+import AddAgentModal from "@/components/admin/AddAgentModal";
+import CreateUserModal from "@/components/admin/CreateUserModal";
 
 interface AdminDashboardProps {
   onLogout?: () => void;
@@ -30,6 +32,8 @@ interface AdminDashboardProps {
 const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
   const { isOwner, isDevAdmin, isOfficeAdmin, isLoading, signOut } = useAuth();
   const [activeTab, setActiveTab] = useState("leads");
+  const [showAgentModal, setShowAgentModal] = useState(false);
+  const [showUserModal, setShowUserModal] = useState(false);
 
   const tabs = useMemo(() => {
     if (isOwner) {
@@ -159,6 +163,21 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
         </div>
 
         <div className="flex-1 p-8">
+          <div className="flex items-center justify-between mb-6">
+            <div className="text-xl font-semibold text-gray-900">Admin Workspace</div>
+            <div className="flex gap-2">
+              {(isOwner || isDevAdmin || isOfficeAdmin) && (
+                <Button variant="outline" onClick={() => setShowAgentModal(true)}>
+                  Create Agent
+                </Button>
+              )}
+              {isOwner && (
+                <Button onClick={() => setShowUserModal(true)}>
+                  Create User
+                </Button>
+              )}
+            </div>
+          </div>
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             {tabs.map((tab) => (
               <TabsContent key={tab.id} value={tab.id}>
@@ -168,6 +187,16 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
           </Tabs>
         </div>
       </div>
+
+      <AddAgentModal
+        open={showAgentModal}
+        onOpenChange={setShowAgentModal}
+        onClose={() => setShowAgentModal(false)}
+      />
+      <CreateUserModal
+        open={showUserModal}
+        onClose={() => setShowUserModal(false)}
+      />
     </div>
   );
 };

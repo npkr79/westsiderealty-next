@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Plus, Search, Trash2, Edit } from "lucide-react";
 import BulkCsvUpload from "@/components/admin/BulkCsvUpload";
 import { slugify } from "@/utils/seoUrlGenerator";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface MicroMarketRow {
   id: string;
@@ -42,16 +43,19 @@ const emptyForm = {
   meta_description: "",
   h1_title: "",
   hero_hook: "",
+  additional_json: "",
 };
 
 export function MicroMarketPagesManager() {
   const supabase = createClient();
   const { toast } = useToast();
+  const { isOwner } = useAuth();
   const [markets, setMarkets] = useState<MicroMarketRow[]>([]);
   const [cities, setCities] = useState<CityRow[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [hasSearched, setHasSearched] = useState(false);
   const [formState, setFormState] = useState({ ...emptyForm });
 
   const filtered = useMemo(() => {
@@ -64,15 +68,22 @@ export function MicroMarketPagesManager() {
   }, [markets, searchQuery]);
 
   const loadMarkets = async () => {
+    if (!searchQuery.trim()) {
+      setMarkets([]);
+      setHasSearched(true);
+      return;
+    }
     const { data, error } = await supabase
       .from("micro_markets")
       .select("id, micro_market_name, url_slug, city_id, status, seo_title, meta_description, h1_title, hero_hook")
-      .order("micro_market_name", { ascending: true });
+      .ilike("micro_market_name", `%${searchQuery.trim()}%`)
+      .limit(50);
     if (error) {
       toast({ title: "Error", description: "Failed to load micro markets.", variant: "destructive" });
       return;
     }
     setMarkets((data || []) as MicroMarketRow[]);
+    setHasSearched(true);
   };
 
   const loadCities = async () => {
@@ -81,12 +92,21 @@ export function MicroMarketPagesManager() {
   };
 
   useEffect(() => {
-    loadMarkets();
     loadCities();
   }, []);
 
   const handleSave = async () => {
     if (!formState.micro_market_name || !formState.city_id) return;
+
+    let extraFields: Record<string, any> = {};
+    if (formState.additional_json.trim()) {
+      try {
+        extraFields = JSON.parse(formState.additional_json);
+      } catch (error) {
+        toast({ title: "Error", description: "Additional JSON is invalid.", variant: "destructive" });
+        return;
+      }
+    }
 
     const urlSlug = formState.url_slug || slugify(formState.micro_market_name);
     const seoTitle = formState.seo_title || `${formState.micro_market_name} Real Estate`;
@@ -104,6 +124,7 @@ export function MicroMarketPagesManager() {
       meta_description: metaDescription,
       h1_title: h1Title,
       hero_hook: heroHook,
+      ...extraFields,
     };
 
     if (editingId) {
@@ -129,6 +150,10 @@ export function MicroMarketPagesManager() {
   };
 
   const handleDelete = async (id: string) => {
+    if (!isOwner) {
+      toast({ title: "Not allowed", description: "Only owner can delete.", variant: "destructive" });
+      return;
+    }
     if (!confirm("Delete this micro market?")) return;
     const { error } = await supabase.from("micro_markets").delete().eq("id", id);
     if (error) {
@@ -241,6 +266,13 @@ export function MicroMarketPagesManager() {
                 <Label>Hero Hook</Label>
                 <Input value={formState.hero_hook} onChange={(e) => setFormState({ ...formState, hero_hook: e.target.value })} />
               </div>
+              <div className="space-y-2 md:col-span-2">
+                <Label>Additional Fields (JSON)</Label>
+                <Input
+                  value={formState.additional_json}
+                  onChange={(e) => setFormState({ ...formState, additional_json: e.target.value })}
+                />
+              </div>
             </div>
             <div className="flex justify-end">
               <Button onClick={handleSave}>{editingId ? "Update" : "Create"}</Button>
@@ -251,14 +283,19 @@ export function MicroMarketPagesManager() {
 
       <Card>
         <CardContent className="pt-6 space-y-4">
-          <div className="relative max-w-md">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search micro markets..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
+          <div className="flex gap-2 max-w-md">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search micro markets..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <Button variant="outline" onClick={loadMarkets}>
+              Search
+            </Button>
           </div>
 
           <BulkCsvUpload
@@ -276,7 +313,8 @@ export function MicroMarketPagesManager() {
             onUpload={handleBulkUpload}
           />
 
-          <div className="border rounded-lg">
+          {hasSearched && (
+            <div className="border rounded-lg">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -322,9 +360,11 @@ export function MicroMarketPagesManager() {
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
-                        <Button size="sm" variant="ghost" onClick={() => handleDelete(row.id)}>
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
+                        {isOwner && (
+                          <Button size="sm" variant="ghost" onClick={() => handleDelete(row.id)}>
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))
@@ -332,6 +372,7 @@ export function MicroMarketPagesManager() {
               </TableBody>
             </Table>
           </div>
+          )}
         </CardContent>
       </Card>
     </div>

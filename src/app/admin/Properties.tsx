@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Plus, Search, Trash2, Edit } from "lucide-react";
 import BulkCsvUpload from "@/components/admin/BulkCsvUpload";
 import { slugify, ensureUniqueSlug } from "@/utils/seoUrlGenerator";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface PropertyRow {
   id: string;
@@ -47,16 +48,19 @@ const emptyForm = {
   project_name: "",
   developer_name: "",
   main_image_url: "",
+  additional_json: "",
 };
 
 export default function Properties() {
   const supabase = createClient();
   const { toast } = useToast();
+  const { isOwner } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [properties, setProperties] = useState<PropertyRow[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [hasSearched, setHasSearched] = useState(false);
   const [formState, setFormState] = useState({ ...emptyForm });
 
   const filtered = useMemo(() => {
@@ -71,12 +75,19 @@ export default function Properties() {
 
   const loadProperties = async () => {
     setIsLoading(true);
+    if (!searchQuery.trim()) {
+      setProperties([]);
+      setHasSearched(true);
+      setIsLoading(false);
+      return;
+    }
     const { data, error } = await supabase
       .from("hyderabad_properties")
       .select(
         "id, title, location, micro_market, price, price_display, bhk_config, area_sqft, status, property_type, project_name, developer_name, main_image_url, updated_at"
       )
-      .order("updated_at", { ascending: false });
+      .or(`title.ilike.%${searchQuery.trim()}%,location.ilike.%${searchQuery.trim()}%,micro_market.ilike.%${searchQuery.trim()}%`)
+      .limit(50);
 
     if (error) {
       toast({ title: "Error", description: "Failed to load properties.", variant: "destructive" });
@@ -86,11 +97,8 @@ export default function Properties() {
 
     setProperties((data || []) as PropertyRow[]);
     setIsLoading(false);
+    setHasSearched(true);
   };
-
-  useEffect(() => {
-    loadProperties();
-  }, []);
 
   const openForEdit = (row: PropertyRow) => {
     setEditingId(row.id);
@@ -107,11 +115,16 @@ export default function Properties() {
       project_name: row.project_name || "",
       developer_name: row.developer_name || "",
       main_image_url: row.main_image_url || "",
+      additional_json: "",
     });
     setIsDialogOpen(true);
   };
 
   const handleDelete = async (id: string) => {
+    if (!isOwner) {
+      toast({ title: "Not allowed", description: "Only owner can delete.", variant: "destructive" });
+      return;
+    }
     if (!confirm("Delete this property?")) return;
     const { error } = await supabase.from("hyderabad_properties").delete().eq("id", id);
     if (error) {
@@ -122,6 +135,15 @@ export default function Properties() {
   };
 
   const handleSave = async () => {
+    let extraFields: Record<string, any> = {};
+    if (formState.additional_json.trim()) {
+      try {
+        extraFields = JSON.parse(formState.additional_json);
+      } catch (error) {
+        toast({ title: "Error", description: "Additional JSON is invalid.", variant: "destructive" });
+        return;
+      }
+    }
     const payload = {
       title: formState.title,
       location: formState.location,
@@ -135,6 +157,7 @@ export default function Properties() {
       project_name: formState.project_name || null,
       developer_name: formState.developer_name || null,
       main_image_url: formState.main_image_url || null,
+      ...extraFields,
     };
 
     if (editingId) {
@@ -309,6 +332,13 @@ export default function Properties() {
                 <Label>Main Image URL</Label>
                 <Input value={formState.main_image_url} onChange={(e) => setFormState({ ...formState, main_image_url: e.target.value })} />
               </div>
+              <div className="space-y-2 md:col-span-2">
+                <Label>Additional Fields (JSON)</Label>
+                <Input
+                  value={formState.additional_json}
+                  onChange={(e) => setFormState({ ...formState, additional_json: e.target.value })}
+                />
+              </div>
             </div>
             <div className="flex justify-end">
               <Button onClick={handleSave}>{editingId ? "Update" : "Create"}</Button>
@@ -319,14 +349,19 @@ export default function Properties() {
 
       <Card>
         <CardContent className="pt-6 space-y-4">
-          <div className="relative max-w-md">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search properties..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
+          <div className="flex gap-2 max-w-md">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search properties..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <Button variant="outline" onClick={loadProperties}>
+              Search
+            </Button>
           </div>
 
           <BulkCsvUpload
@@ -350,7 +385,7 @@ export default function Properties() {
 
           {isLoading ? (
             <div className="text-sm text-muted-foreground">Loading properties...</div>
-          ) : (
+          ) : hasSearched ? (
             <div className="border rounded-lg">
               <Table>
                 <TableHeader>
@@ -382,9 +417,11 @@ export default function Properties() {
                           <Button size="sm" variant="ghost" onClick={() => openForEdit(item)}>
                             <Edit className="h-4 w-4" />
                           </Button>
+                        {isOwner && (
                           <Button size="sm" variant="ghost" onClick={() => handleDelete(item.id)}>
                             <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
+                        )}
                         </TableCell>
                       </TableRow>
                     ))
@@ -392,7 +429,7 @@ export default function Properties() {
                 </TableBody>
               </Table>
             </div>
-          )}
+          ) : null}
         </CardContent>
       </Card>
     </div>

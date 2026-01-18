@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -13,52 +13,98 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Plus, Search, Trash2, Edit } from "lucide-react";
 import BulkCsvUpload from "@/components/admin/BulkCsvUpload";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface ProjectRow {
   id: string;
-  name: string;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
+  project_name: string;
+  url_slug: string | null;
+  city_id: string | null;
+  micro_market_id: string | null;
+  developer_id: string | null;
+  status: string | null;
+  seo_title: string | null;
+  meta_description: string | null;
+  project_overview_seo: string | null;
 }
 
 export function ProjectsManager() {
   const supabase = createClient();
   const { toast } = useToast();
+  const { isOwner } = useAuth();
   const [projects, setProjects] = useState<ProjectRow[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editing, setEditing] = useState<ProjectRow | null>(null);
-  const [projectName, setProjectName] = useState("");
+  const [hasSearched, setHasSearched] = useState(false);
+  const [formState, setFormState] = useState({
+    project_name: "",
+    url_slug: "",
+    city_id: "",
+    micro_market_id: "",
+    developer_id: "",
+    status: "published",
+    seo_title: "",
+    meta_description: "",
+    project_overview_seo: "",
+    additional_json: "",
+  });
 
   const filtered = useMemo(() => {
     const query = searchQuery.toLowerCase();
-    return projects.filter((item) => item.name.toLowerCase().includes(query));
+    return projects.filter((item) => item.project_name.toLowerCase().includes(query));
   }, [projects, searchQuery]);
 
   const loadProjects = async () => {
+    if (!searchQuery.trim()) {
+      setProjects([]);
+      setHasSearched(true);
+      return;
+    }
+
     const { data, error } = await supabase
-      .from("hyderabad_project_names")
-      .select("*")
-      .order("name", { ascending: true });
+      .from("projects")
+      .select("id, project_name, url_slug, city_id, micro_market_id, developer_id, status, seo_title, meta_description, project_overview_seo")
+      .ilike("project_name", `%${searchQuery.trim()}%`)
+      .limit(50);
     if (error) {
       toast({ title: "Error", description: "Failed to load projects.", variant: "destructive" });
       return;
     }
     setProjects((data || []) as ProjectRow[]);
+    setHasSearched(true);
   };
 
-  useEffect(() => {
-    loadProjects();
-  }, []);
-
   const handleSave = async () => {
-    if (!projectName.trim()) return;
+    if (!formState.project_name.trim()) return;
+
+    let extraFields: Record<string, any> = {};
+    if (formState.additional_json.trim()) {
+      try {
+        extraFields = JSON.parse(formState.additional_json);
+      } catch (error) {
+        toast({ title: "Error", description: "Additional JSON is invalid.", variant: "destructive" });
+        return;
+      }
+    }
+
+    const payload = {
+      project_name: formState.project_name.trim(),
+      url_slug: formState.url_slug || null,
+      city_id: formState.city_id || null,
+      micro_market_id: formState.micro_market_id || null,
+      developer_id: formState.developer_id || null,
+      status: formState.status || null,
+      seo_title: formState.seo_title || null,
+      meta_description: formState.meta_description || null,
+      project_overview_seo: formState.project_overview_seo || null,
+      ...extraFields,
+    };
 
     if (editing) {
       const { error } = await supabase
-        .from("hyderabad_project_names")
-        .update({ name: projectName.trim(), updated_at: new Date().toISOString() })
+        .from("projects")
+        .update(payload)
         .eq("id", editing.id);
       if (error) {
         toast({ title: "Error", description: "Failed to update project.", variant: "destructive" });
@@ -66,9 +112,7 @@ export function ProjectsManager() {
       }
       toast({ title: "Updated", description: "Project updated." });
     } else {
-      const { error } = await supabase
-        .from("hyderabad_project_names")
-        .insert({ name: projectName.trim(), is_active: true });
+      const { error } = await supabase.from("projects").insert(payload);
       if (error) {
         toast({ title: "Error", description: "Failed to add project.", variant: "destructive" });
         return;
@@ -78,27 +122,42 @@ export function ProjectsManager() {
 
     setIsDialogOpen(false);
     setEditing(null);
-    setProjectName("");
+    setFormState({
+      project_name: "",
+      url_slug: "",
+      city_id: "",
+      micro_market_id: "",
+      developer_id: "",
+      status: "published",
+      seo_title: "",
+      meta_description: "",
+      project_overview_seo: "",
+      additional_json: "",
+    });
     loadProjects();
   };
 
   const handleToggle = async (row: ProjectRow, value: boolean) => {
     const { error } = await supabase
-      .from("hyderabad_project_names")
-      .update({ is_active: value, updated_at: new Date().toISOString() })
+      .from("projects")
+      .update({ status: value ? "published" : "draft" })
       .eq("id", row.id);
     if (error) {
       toast({ title: "Error", description: "Failed to update status.", variant: "destructive" });
       return;
     }
     setProjects((prev) =>
-      prev.map((item) => (item.id === row.id ? { ...item, is_active: value } : item))
+      prev.map((item) => (item.id === row.id ? { ...item, status: value ? "published" : "draft" } : item))
     );
   };
 
   const handleDelete = async (row: ProjectRow) => {
-    if (!confirm(`Delete ${row.name}?`)) return;
-    const { error } = await supabase.from("hyderabad_project_names").delete().eq("id", row.id);
+    if (!isOwner) {
+      toast({ title: "Not allowed", description: "Only owner can delete.", variant: "destructive" });
+      return;
+    }
+    if (!confirm(`Delete ${row.project_name}?`)) return;
+    const { error } = await supabase.from("projects").delete().eq("id", row.id);
     if (error) {
       toast({ title: "Error", description: "Failed to delete project.", variant: "destructive" });
       return;
@@ -108,17 +167,24 @@ export function ProjectsManager() {
 
   const handleBulkUpload = async (rows: Record<string, string>[]) => {
     const payload = rows
-      .filter((row) => row.name)
+      .filter((row) => row.project_name)
       .map((row) => ({
-        name: row.name,
-        is_active: row.is_active ? row.is_active.toLowerCase() === "true" : true,
+        project_name: row.project_name,
+        url_slug: row.url_slug || null,
+        city_id: row.city_id || null,
+        micro_market_id: row.micro_market_id || null,
+        developer_id: row.developer_id || null,
+        status: row.status || "published",
+        seo_title: row.seo_title || null,
+        meta_description: row.meta_description || null,
+        project_overview_seo: row.project_overview_seo || null,
       }));
 
     if (!payload.length) {
       return { successCount: 0, errorCount: rows.length, errorMessage: "No valid rows." };
     }
 
-    const { error } = await supabase.from("hyderabad_project_names").insert(payload);
+    const { error } = await supabase.from("projects").insert(payload);
     if (error) {
       return { successCount: 0, errorCount: payload.length, errorMessage: error.message };
     }
@@ -141,12 +207,50 @@ export function ProjectsManager() {
             <DialogHeader>
               <DialogTitle>{editing ? "Edit Project" : "Add Project"}</DialogTitle>
             </DialogHeader>
-            <div className="space-y-4">
-              <div className="space-y-2">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2 md:col-span-2">
                 <Label>Project Name</Label>
-                <Input value={projectName} onChange={(e) => setProjectName(e.target.value)} />
+                <Input value={formState.project_name} onChange={(e) => setFormState({ ...formState, project_name: e.target.value })} />
               </div>
-              <Button onClick={handleSave}>{editing ? "Update" : "Create"}</Button>
+              <div className="space-y-2">
+                <Label>Slug</Label>
+                <Input value={formState.url_slug} onChange={(e) => setFormState({ ...formState, url_slug: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <Input value={formState.status} onChange={(e) => setFormState({ ...formState, status: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label>City ID</Label>
+                <Input value={formState.city_id} onChange={(e) => setFormState({ ...formState, city_id: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label>Micro Market ID</Label>
+                <Input value={formState.micro_market_id} onChange={(e) => setFormState({ ...formState, micro_market_id: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label>Developer ID</Label>
+                <Input value={formState.developer_id} onChange={(e) => setFormState({ ...formState, developer_id: e.target.value })} />
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <Label>SEO Title</Label>
+                <Input value={formState.seo_title} onChange={(e) => setFormState({ ...formState, seo_title: e.target.value })} />
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <Label>Meta Description</Label>
+                <Input value={formState.meta_description} onChange={(e) => setFormState({ ...formState, meta_description: e.target.value })} />
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <Label>Project Overview</Label>
+                <Input value={formState.project_overview_seo} onChange={(e) => setFormState({ ...formState, project_overview_seo: e.target.value })} />
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <Label>Additional Fields (JSON)</Label>
+                <Input value={formState.additional_json} onChange={(e) => setFormState({ ...formState, additional_json: e.target.value })} />
+              </div>
+              <div className="md:col-span-2 flex justify-end">
+                <Button onClick={handleSave}>{editing ? "Update" : "Create"}</Button>
+              </div>
             </div>
           </DialogContent>
         </Dialog>
@@ -154,7 +258,8 @@ export function ProjectsManager() {
 
       <Card>
         <CardContent className="pt-6 space-y-4">
-          <div className="relative max-w-md">
+          <div className="flex gap-2 max-w-md">
+            <div className="relative flex-1">
             <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search projects..."
@@ -162,15 +267,30 @@ export function ProjectsManager() {
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10"
             />
+            </div>
+            <Button variant="outline" onClick={loadProjects}>
+              Search
+            </Button>
           </div>
 
           <BulkCsvUpload
             label="Projects Bulk Upload"
-            templateHeaders={["name", "is_active"]}
+            templateHeaders={[
+              "project_name",
+              "url_slug",
+              "city_id",
+              "micro_market_id",
+              "developer_id",
+              "status",
+              "seo_title",
+              "meta_description",
+              "project_overview_seo",
+            ]}
             onUpload={handleBulkUpload}
           />
 
-          <div className="border rounded-lg">
+          {hasSearched && (
+            <div className="border rounded-lg">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -190,12 +310,12 @@ export function ProjectsManager() {
                 ) : (
                   filtered.map((row) => (
                     <TableRow key={row.id}>
-                      <TableCell className="font-medium">{row.name}</TableCell>
+                      <TableCell className="font-medium">{row.project_name}</TableCell>
                       <TableCell>
-                        <Badge variant="outline">{row.is_active ? "active" : "inactive"}</Badge>
+                        <Badge variant="outline">{row.status || "draft"}</Badge>
                       </TableCell>
                       <TableCell>
-                        <Switch checked={row.is_active} onCheckedChange={(value) => handleToggle(row, value)} />
+                        <Switch checked={(row.status || "draft") === "published"} onCheckedChange={(value) => handleToggle(row, value)} />
                       </TableCell>
                       <TableCell className="space-x-2">
                         <Button
@@ -203,15 +323,28 @@ export function ProjectsManager() {
                           variant="ghost"
                           onClick={() => {
                             setEditing(row);
-                            setProjectName(row.name);
+                            setFormState({
+                              project_name: row.project_name,
+                              url_slug: row.url_slug || "",
+                              city_id: row.city_id || "",
+                              micro_market_id: row.micro_market_id || "",
+                              developer_id: row.developer_id || "",
+                              status: row.status || "published",
+                              seo_title: row.seo_title || "",
+                              meta_description: row.meta_description || "",
+                              project_overview_seo: row.project_overview_seo || "",
+                              additional_json: "",
+                            });
                             setIsDialogOpen(true);
                           }}
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
-                        <Button size="sm" variant="ghost" onClick={() => handleDelete(row)}>
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
+                        {isOwner && (
+                          <Button size="sm" variant="ghost" onClick={() => handleDelete(row)}>
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))
@@ -219,6 +352,7 @@ export function ProjectsManager() {
               </TableBody>
             </Table>
           </div>
+          )}
         </CardContent>
       </Card>
     </div>
