@@ -141,7 +141,7 @@ export default function BlogManagement() {
               Add Article
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-3xl">
+          <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{editingId ? "Edit Article" : "Add Article"}</DialogTitle>
             </DialogHeader>
