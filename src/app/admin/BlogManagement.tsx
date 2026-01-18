@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import RichTextEditor from "@/components/property/RichTextEditor";
 import { Plus, Search, Trash2, Edit } from "lucide-react";
 import { slugify } from "@/utils/seoUrlGenerator";
 
@@ -179,11 +180,11 @@ export default function BlogManagement() {
                 />
               </div>
               <div className="space-y-2 md:col-span-2">
-                <Label>Content</Label>
-                <Textarea
+                <RichTextEditor
+                  label="Content"
                   value={formState.content}
-                  onChange={(e) => setFormState({ ...formState, content: e.target.value })}
-                  rows={6}
+                  onChange={(value) => setFormState({ ...formState, content: value })}
+                  placeholder="Write your article..."
                 />
               </div>
               <div className="space-y-2 md:col-span-2">
