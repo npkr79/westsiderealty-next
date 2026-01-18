@@ -29,9 +29,10 @@ const resolveAdminRole = async () => {
 
 export async function PATCH(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const authCheck = await resolveAdminRole();
     if (!authCheck.authorized) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -46,7 +47,7 @@ export async function PATCH(
     const adminClient = createAdminClient(supabaseUrl, serviceRoleKey);
     const updates = await req.json();
 
-    const { error } = await adminClient.from("leads").update(updates).eq("id", params.id);
+    const { error } = await adminClient.from("leads").update(updates).eq("id", id);
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
