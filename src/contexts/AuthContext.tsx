@@ -49,10 +49,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const checkUser = async () => {
       try {
-        const { data: { session } } = await withTimeout(
+        type SessionResponse = Awaited<ReturnType<typeof supabase.auth.getSession>>;
+        const sessionResult = await withTimeout<SessionResponse>(
           supabase.auth.getSession(),
           8000
         );
+        const session = sessionResult.data.session;
         setUser(session?.user ?? null);
 
         if (session?.user) {
