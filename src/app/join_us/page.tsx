@@ -7,11 +7,14 @@ import { agentRecruitmentService } from "@/services/agentRecruitmentService";
 import { HeroSection } from "./components/HeroSection";
 import { WhyJoinUsSection } from "./components/WhyJoinUsSection";
 import { SuccessStoriesSection } from "./components/SuccessStoriesSection";
-import { WhatWeOfferSection } from "./components/WhatWeOfferSection";
-import { RequirementsSection } from "./components/RequirementsSection";
 import { ApplicationForm } from "./components/ApplicationForm";
 import { FAQSection } from "./components/FAQSection";
 import { FinalCTASection } from "./components/FinalCTASection";
+import { WhoThrivesSection } from "./components/WhoThrivesSection";
+import { SalesMindsetSection } from "./components/SalesMindsetSection";
+import { BattlegroundSection } from "./components/BattlegroundSection";
+import { RoleModelsSection } from "./components/RoleModelsSection";
+import { RecruitmentCTASection } from "./components/RecruitmentCTASection";
 
 const CANONICAL_URL = "https://www.westsiderealty.in/join_us";
 
@@ -113,19 +116,15 @@ export default async function JoinUsPage() {
           />
         )}
 
-        <WhatWeOfferSection
-          title={pageContent.what_we_offer_title}
-          subtitle={pageContent.what_we_offer_subtitle}
-          benefits={Array.isArray(pageContent.benefits) ? pageContent.benefits : []}
-        />
+        <WhoThrivesSection />
 
-        <RequirementsSection
-          title={pageContent.requirements_title}
-          subtitle={pageContent.requirements_subtitle}
-          requirementsList={Array.isArray(pageContent.requirements_list) ? pageContent.requirements_list : []}
-          whatWeLookFor={pageContent.what_we_look_for}
-          processSteps={Array.isArray(pageContent.application_process_steps) ? pageContent.application_process_steps : []}
-        />
+        <SalesMindsetSection />
+
+        <BattlegroundSection />
+
+        <RoleModelsSection />
+
+        <RecruitmentCTASection />
 
         <ApplicationForm />
 
