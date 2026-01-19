@@ -117,7 +117,7 @@ export default function AgentLayout({ children }: { children: React.ReactNode })
             variant="ghost"
             className="w-full justify-start"
           >
-            <Link href="/agent/dashboard">
+            <Link href="/agent">
               <Building2 className="mr-2 h-4 w-4" />
               Dashboard
             </Link>

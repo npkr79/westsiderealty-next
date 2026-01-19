@@ -139,7 +139,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .from("user_roles")
       .select("role")
       .eq("user_id", authUser.id)
-      .single();
+      .maybeSingle();
 
     const resolvedRole =
       roleData?.role ||
@@ -175,14 +175,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .from("user_roles")
       .select("user_id, email, role, phone")
       .eq("phone", normalizedPhone)
-      .single();
+      .maybeSingle();
 
     if (!roleMatch && last10) {
       const { data: fuzzyRoleMatch } = await supabase
         .from("user_roles")
         .select("user_id, email, role, phone")
         .ilike("phone", `%${last10}`)
-        .single();
+        .maybeSingle();
       roleMatch = fuzzyRoleMatch || null;
     }
 

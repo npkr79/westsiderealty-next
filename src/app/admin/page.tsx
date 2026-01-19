@@ -24,7 +24,6 @@ import { DevelopersManager } from "@/components/admin/DevelopersManager";
 import { MicroMarketPagesManager } from "@/components/admin/MicroMarketPagesManager";
 import BlogManagement from "./BlogManagement";
 import AddAgentModal from "@/components/admin/AddAgentModal";
-import CreateUserModal from "@/components/admin/CreateUserModal";
 import AgentProfilesManager from "@/components/admin/AgentProfilesManager";
 
 interface AdminDashboardProps {
@@ -35,7 +34,6 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
   const { isOwner, isDevAdmin, isOfficeAdmin, isAdmin, isAgent, isLoading, signOut } = useAuth();
   const [activeTab, setActiveTab] = useState("leads");
   const [showAgentModal, setShowAgentModal] = useState(false);
-  const [showUserModal, setShowUserModal] = useState(false);
 
   const tabs = useMemo(() => {
     if (isOwner) {
@@ -191,11 +189,6 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
                   Create Agent
                 </Button>
               )}
-              {isOwner && (
-                <Button onClick={() => setShowUserModal(true)}>
-                  Create User
-                </Button>
-              )}
             </div>
           </div>
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -212,10 +205,6 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
         open={showAgentModal}
         onOpenChange={setShowAgentModal}
         onClose={() => setShowAgentModal(false)}
-      />
-      <CreateUserModal
-        open={showUserModal}
-        onClose={() => setShowUserModal(false)}
       />
     </div>
   );

@@ -32,7 +32,7 @@ const LoginContent = () => {
       if (isAdmin) {
         router.replace("/admin");
       } else if (isAgent) {
-        router.replace("/agent/dashboard");
+        router.replace("/agent");
       }
     }
   }, [user, isAdmin, isAgent, isLoading, router]);

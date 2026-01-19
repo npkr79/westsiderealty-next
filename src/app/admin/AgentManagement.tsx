@@ -44,6 +44,10 @@ export default function AgentManagement() {
     setAgents((data.agents || []) as AgentRow[]);
   };
 
+  useEffect(() => {
+    loadAgents();
+  }, []);
+
   const toggleActive = async (agentId: string, nextValue: boolean) => {
     const response = await fetch(`/api/admin/agents/${agentId}`, {
       method: "PATCH",

@@ -218,8 +218,8 @@ export default function AgentProfilesManager() {
           {isLoading ? (
             <div className="text-sm text-muted-foreground">Loading profiles...</div>
           ) : (
-            <div className="border rounded-lg">
-              <Table>
+            <div className="border rounded-lg overflow-x-auto">
+              <Table className="min-w-[900px]">
                 <TableHeader>
                   <TableRow>
                     <TableHead>Name</TableHead>
@@ -265,7 +265,7 @@ export default function AgentProfilesManager() {
       </Card>
 
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <DialogContent className="max-w-xl">
+        <DialogContent className="max-w-xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Agent Profile</DialogTitle>
             <DialogDescription>Update profile details for the agent.</DialogDescription>
