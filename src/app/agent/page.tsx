@@ -7,7 +7,6 @@ import Image from "next/image";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus, ListChecks, User, LogOut, MessageSquare } from "lucide-react";
-import Layout from "@/components/layout/Layout";
 import AgentPerformanceCard from "@/components/agent/AgentPerformanceCard";
 import { useAuth } from "@/contexts/AuthContext";
 import { createClient } from "@/lib/supabase/client";
@@ -65,35 +64,30 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <Layout>
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-          <div className="text-lg">Loading...</div>
-        </div>
-      </Layout>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-lg">Loading...</div>
+      </div>
     );
   }
 
   if (!user || !agentProfile) {
     return (
-      <Layout>
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-          <Card className="shadow-md">
-            <CardContent className="p-6 text-center">
-              <h1 className="text-2xl font-semibold mb-4">Not Logged In</h1>
-              <p className="text-gray-600">Please log in to access the dashboard.</p>
-              <Link href="/login">
-                <Button className="mt-4">Go to Login</Button>
-              </Link>
-            </CardContent>
-          </Card>
-        </div>
-      </Layout>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Card className="shadow-md">
+          <CardContent className="p-6 text-center">
+            <h1 className="text-2xl font-semibold mb-4">Not Logged In</h1>
+            <p className="text-gray-600">Please log in to access the dashboard.</p>
+            <Link href="/login">
+              <Button className="mt-4">Go to Login</Button>
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
   return (
-    <Layout>
-      <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50">
         {/* Header */}
         <header className="bg-white shadow-sm border-b">
           <div className="container mx-auto px-4 py-4">
@@ -193,7 +187,6 @@ export default function Dashboard() {
             </Card>
           </div>
         </div>
-      </div>
-    </Layout>
+    </div>
   );
 }

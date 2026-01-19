@@ -166,6 +166,13 @@ export default function AgentProfile() {
     }
   };
 
+  const sanitizeFileName = (value: string) =>
+    value
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "");
+
   const handleSaveClick = async () => {
     if (!user) {
       toast({
@@ -182,8 +189,12 @@ export default function AgentProfile() {
       let uploadedImageUrl = profileImage;
 
       if (newProfileImage) {
+        const normalizedName = sanitizeFileName(name || agent?.name || "agent");
+        const fileName = `${normalizedName}_profile_photo.png`;
         const uploadResult = await supabaseImageService.uploadSingleImage(
-          newProfileImage
+          newProfileImage,
+          "agent_profile_photos",
+          fileName
         );
         if (uploadResult) {
           uploadedImageUrl = uploadResult.url;

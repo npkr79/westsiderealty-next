@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -36,7 +36,7 @@ export default function MyListings() {
   const router = useRouter();
   const { toast } = useToast();
   const { user } = useAuth();
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const [searchQuery, setSearchQuery] = useState("");
   const [properties, setProperties] = useState<PropertyData[]>([]);
   const [isLoading, setIsLoading] = useState(true);

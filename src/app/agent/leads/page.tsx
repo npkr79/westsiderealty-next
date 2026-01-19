@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
 import { Loader2, Search } from "lucide-react";
-import Layout from "@/components/layout/Layout";
 import { useAuth } from "@/contexts/AuthContext";
 import { createClient } from "@/lib/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -95,7 +94,6 @@ export default function AgentLeadsPage() {
   }, [leads, searchQuery]);
 
   return (
-    <Layout>
       <div className="min-h-screen bg-gray-50">
         <div className="container mx-auto px-4 py-8 space-y-6">
           <div>
@@ -237,6 +235,5 @@ export default function AgentLeadsPage() {
           )}
         </div>
       </div>
-    </Layout>
   );
 }

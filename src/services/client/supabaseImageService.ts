@@ -10,7 +10,11 @@ class SupabaseImageService {
     return createClient();
   }
 
-  async uploadSingleImage(file: File, bucket: string = 'blog-images'): Promise<UploadedImage> {
+  async uploadSingleImage(
+    file: File,
+    bucket: string = 'blog-images',
+    filePathOverride?: string
+  ): Promise<UploadedImage> {
     const supabase = this.getSupabase();
     
     // Validate file
@@ -26,11 +30,15 @@ class SupabaseImageService {
 
     // Generate unique filename
     const fileExt = file.name.split('.').pop();
-    const fileName = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
+    const fileName = filePathOverride
+      ? filePathOverride
+      : `${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
     const filePath = `${fileName}`;
 
     // Upload to the target bucket
-    const { data, error } = await supabase.storage.from(bucket).upload(filePath, file);
+    const { data, error } = await supabase.storage
+      .from(bucket)
+      .upload(filePath, file, { upsert: true });
     if (error) {
       throw new Error(`Upload failed: ${error.message}`);
     }
