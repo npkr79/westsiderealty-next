@@ -11,6 +11,7 @@ import {
   MapPin,
   MessageSquare,
   UserCheck,
+  User,
   Users,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -24,13 +25,14 @@ import { MicroMarketPagesManager } from "@/components/admin/MicroMarketPagesMana
 import BlogManagement from "./BlogManagement";
 import AddAgentModal from "@/components/admin/AddAgentModal";
 import CreateUserModal from "@/components/admin/CreateUserModal";
+import AgentProfilesManager from "@/components/admin/AgentProfilesManager";
 
 interface AdminDashboardProps {
   onLogout?: () => void;
 }
 
 const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
-  const { isOwner, isDevAdmin, isOfficeAdmin, isLoading, signOut } = useAuth();
+  const { isOwner, isDevAdmin, isOfficeAdmin, isAdmin, isAgent, isLoading, signOut } = useAuth();
   const [activeTab, setActiveTab] = useState("leads");
   const [showAgentModal, setShowAgentModal] = useState(false);
   const [showUserModal, setShowUserModal] = useState(false);
@@ -51,6 +53,7 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
           content: <UserRolesManager />,
         },
         { id: "agents", label: "Agents", icon: Users, content: <AgentManagement /> },
+        { id: "profiles", label: "Profiles", icon: User, content: <AgentProfilesManager /> },
         { id: "properties", label: "Properties", icon: Building2, content: <Properties /> },
         { id: "projects", label: "Projects", icon: Building2, content: <ProjectsManager /> },
         { id: "micro-markets", label: "Micro Markets", icon: MapPin, content: <MicroMarketPagesManager /> },
@@ -68,6 +71,7 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
           content: <LeadsCRM />,
         },
         { id: "agents", label: "Agents", icon: Users, content: <AgentManagement /> },
+        { id: "profiles", label: "Profiles", icon: User, content: <AgentProfilesManager /> },
         { id: "properties", label: "Properties", icon: Building2, content: <Properties /> },
         { id: "projects", label: "Projects", icon: Building2, content: <ProjectsManager /> },
         { id: "micro-markets", label: "Micro Markets", icon: MapPin, content: <MicroMarketPagesManager /> },
@@ -79,6 +83,7 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
     if (isOfficeAdmin) {
       return [
         { id: "agents", label: "Agents", icon: Users, content: <AgentManagement /> },
+        { id: "profiles", label: "Profiles", icon: User, content: <AgentProfilesManager /> },
         { id: "properties", label: "Properties", icon: Building2, content: <Properties /> },
         { id: "projects", label: "Projects", icon: Building2, content: <ProjectsManager /> },
         { id: "micro-markets", label: "Micro Markets", icon: MapPin, content: <MicroMarketPagesManager /> },
@@ -87,8 +92,23 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
       ];
     }
 
+    if (isAdmin) {
+      return [
+        { id: "leads", label: "Leads CRM", icon: MessageSquare, content: <LeadsCRM /> },
+        { id: "agents", label: "Agents", icon: Users, content: <AgentManagement /> },
+        { id: "profiles", label: "Profiles", icon: User, content: <AgentProfilesManager /> },
+        { id: "properties", label: "Properties", icon: Building2, content: <Properties /> },
+      ];
+    }
+
+    if (isAgent) {
+      return [
+        { id: "profiles", label: "Profile", icon: User, content: <AgentProfilesManager /> },
+      ];
+    }
+
     return [];
-  }, [isOwner, isDevAdmin, isOfficeAdmin]);
+  }, [isOwner, isDevAdmin, isOfficeAdmin, isAdmin, isAgent]);
 
   useEffect(() => {
     if (tabs.length && !tabs.find((tab) => tab.id === activeTab)) {
@@ -166,7 +186,7 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
           <div className="flex items-center justify-between mb-6">
             <div className="text-xl font-semibold text-gray-900">Admin Workspace</div>
             <div className="flex gap-2">
-              {(isOwner || isDevAdmin || isOfficeAdmin) && (
+              {(isOwner || isDevAdmin || isOfficeAdmin || isAdmin) && (
                 <Button variant="outline" onClick={() => setShowAgentModal(true)}>
                   Create Agent
                 </Button>

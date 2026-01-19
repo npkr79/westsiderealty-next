@@ -121,7 +121,7 @@ with check (
   exists (
     select 1 from user_roles
     where user_id = auth.uid()
-      and role in ('owner', 'dev_admin', 'office_admin', 'admin')
+      and role in ('owner', 'admin')
   )
 );
 
@@ -133,7 +133,7 @@ using (
   exists (
     select 1 from user_roles
     where user_id = auth.uid()
-      and role in ('owner', 'dev_admin', 'office_admin', 'admin')
+      and role in ('owner', 'admin')
   )
   or auth.uid() = id
 );
@@ -146,7 +146,7 @@ using (
   exists (
     select 1 from user_roles
     where user_id = auth.uid()
-      and role in ('owner', 'dev_admin', 'office_admin', 'admin')
+      and role in ('owner', 'admin')
   )
 );
 
@@ -158,7 +158,7 @@ using (
   exists (
     select 1 from user_roles
     where user_id = auth.uid()
-      and role in ('owner', 'dev_admin', 'office_admin', 'admin')
+      and role in ('owner', 'admin')
   )
 );
 

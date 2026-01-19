@@ -70,6 +70,7 @@ export default function AddAgentModal({ open, onOpenChange, onClose, onAgentAdde
       });
       setFormState({ name: "", email: "", phone: "", category: "" });
       onAgentAdded?.();
+      onOpenChange?.(false);
       onClose?.();
     } catch (error: any) {
       toast({
