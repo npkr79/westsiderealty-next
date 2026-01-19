@@ -35,11 +35,12 @@ end $$;
 do $$
 begin
   if exists (
-    select 1 from information_schema.columns
-    where table_name = 'agents_profile' and column_name = 'agent_id'
+    select 1
+    from pg_constraint
+    where conname = 'agents_pkey'
+      and conrelid = 'agents_profile'::regclass
   ) then
-    alter table agents_profile drop constraint if exists agents_pkey;
-    alter table agents_profile add primary key (agent_id);
+    alter table agents_profile rename constraint agents_pkey to agents_profile_pkey;
   end if;
 end $$;
 
