@@ -177,24 +177,24 @@ export const agentRecruitmentService = {
     try {
       const supabase = await createClient();
       
-      // Prepare data for all_leads table
+      // Prepare data for leads table
       const leadData = {
-        full_name: applicationData.full_name.trim(),
+        name: applicationData.full_name.trim(),
         email: applicationData.email.trim().toLowerCase(),
         phone: applicationData.phone.trim(),
         lead_type: 'agent_recruitment',
         source_page_url: '/join_us',
         status: 'new',
-        requirements_message: JSON.stringify({
+        details: {
           experience_years: applicationData.experience_years,
           current_location: applicationData.current_location,
           why_join: applicationData.why_join,
           resume_url: applicationData.resume_url,
-        }),
+        },
       };
 
       const { error } = await supabase
-        .from('all_leads')
+        .from('leads')
         .insert([leadData]);
 
       if (error) {

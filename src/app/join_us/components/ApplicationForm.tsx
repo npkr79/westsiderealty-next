@@ -74,7 +74,8 @@ export function ApplicationForm() {
         setIsSubmitted(true);
         toast({
           title: "Application Submitted!",
-          description: "Thank you for your interest. We'll be in touch soon.",
+          description:
+            "Thanks for applying — we’ve received your application and a team member will reach out within 24 hours.",
         });
       } else {
         throw new Error(result.error || "Failed to submit application");
@@ -102,7 +103,8 @@ export function ApplicationForm() {
                 Application Submitted Successfully!
               </h2>
               <p className="text-muted-foreground mb-6">
-                Thank you for your interest in joining RE/MAX Westside Realty. Our team will review your application and get back to you soon.
+                Thanks for applying — we’ve received your application and a team member will
+                reach out within 24 hours.
               </p>
               <Button
                 onClick={() => {
@@ -231,14 +233,14 @@ export function ApplicationForm() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="current_location">Current Location</Label>
+                <Label htmlFor="current_location">Current Micro-Market</Label>
                 <Input
                   id="current_location"
                   value={formData.current_location}
                   onChange={(e) =>
                     setFormData({ ...formData, current_location: e.target.value })
                   }
-                  placeholder="City, State"
+                  placeholder="e.g., Kokapet, Nagole, Beeramguda"
                   disabled={loading}
                   className="bg-white/70 backdrop-blur border-slate-200 focus:border-primary"
                 />
