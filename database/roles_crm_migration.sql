@@ -4,6 +4,7 @@ alter table if exists user_roles
   add column if not exists email text;
 
 create unique index if not exists user_roles_phone_key on user_roles(phone);
+create unique index if not exists user_roles_user_id_key on user_roles(user_id);
 
 -- Agents phone (if missing)
 alter table if exists agents
