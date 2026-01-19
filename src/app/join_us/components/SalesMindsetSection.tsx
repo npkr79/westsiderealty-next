@@ -36,7 +36,7 @@ export function SalesMindsetSection() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto_1fr] gap-6 items-stretch">
-          <Card className="border-muted-foreground/20">
+          <Card className="border border-white/40 bg-white/60 shadow-xl backdrop-blur-lg">
             <CardContent className="p-6">
               <h3 className="text-xl font-semibold text-foreground mb-4">Average Agent</h3>
               <ul className="space-y-3 text-muted-foreground">
@@ -56,7 +56,7 @@ export function SalesMindsetSection() {
             </div>
           </div>
 
-          <Card className="border-primary/30 shadow-md">
+          <Card className="border border-primary/30 bg-white/70 shadow-2xl backdrop-blur-lg">
             <CardContent className="p-6">
               <h3 className="text-xl font-semibold text-foreground mb-4">
                 Westside Professional

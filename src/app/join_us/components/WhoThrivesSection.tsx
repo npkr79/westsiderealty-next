@@ -33,7 +33,10 @@ export function WhoThrivesSection() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {traits.map((trait) => (
-            <Card key={trait} className="hover:shadow-lg transition-shadow">
+            <Card
+              key={trait}
+              className="border border-white/40 bg-white/60 shadow-xl backdrop-blur-lg transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 hover:scale-[1.02]"
+            >
               <CardContent className="p-6 flex items-start gap-3">
                 <CheckCircle2 className="h-5 w-5 text-primary mt-1 flex-shrink-0" />
                 <span className="text-foreground font-medium">{trait}</span>

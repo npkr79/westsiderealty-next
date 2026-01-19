@@ -5,39 +5,40 @@ import { Card, CardContent } from "@/components/ui/card";
 const battlegroundRoles = [
   {
     name: "The Commander",
-    positioning: "Where real real estate happens.",
-    environment: "On-ground neighborhoods",
-    inventory: "Independent houses, standalone apartments",
+    role: "Micro-market specialist & ground execution.",
+    focus: "Area focused, independent houses, standalone apartments, inventory hunting.",
+    positioning: "Local authority and on-ground market controller.",
   },
   {
     name: "The Strategist",
-    positioning: "Where inventory becomes opportunity.",
-    environment: "Office & structured sourcing",
-    inventory: "Landowner + investor share assets",
+    role: "Inventory and landowner/investor share.",
+    focus: "Landowner deals, investor share units, pricing strategy, structured sourcing.",
+    positioning: "Controls supply before it reaches the market.",
   },
   {
     name: "The Advisor",
-    positioning: "Where real estate meets wealth.",
-    environment: "Office-first advisory",
-    inventory: "₹5Cr+ premium & HNI homes",
+    role: "Premium & HNI role.",
+    focus: "Villas 5Cr+, premium assets, HNI end-user clients.",
+    positioning: "The trusted consultant for high-net-worth asset acquisition.",
   },
   {
     name: "The Partner",
-    positioning: "Inside the engine of new developments.",
-    environment: "Developer site offices",
-    inventory: "Primary market & launches",
+    role: "Developer inventory role.",
+    focus: "New launches, developer projects, site-office execution.",
+    positioning: "Represents developers and manages primary market sales.",
   },
   {
     name: "The Corporate Executive",
-    positioning: "Where business meets real estate.",
-    environment: "Corporate & institutional meetings",
-    inventory: "Office resales, leasing, pre-leased assets",
+    role: "Commercial real estate role.",
+    focus:
+      "Office resales, leasing, pre-leased assets, corporate clients, and HNI investors.",
+    positioning: "Handles structured, business-first real estate.",
   },
   {
     name: "The Mandate Director",
-    positioning: "Directing the most strategic assets.",
-    environment: "High-stakes negotiations",
-    inventory: "Exclusive mandates & bulk assets",
+    role: "Mandate and strategic asset role.",
+    focus: "Exclusive mandates, bulk assets, strategic land, elite partnerships.",
+    positioning: "An internal authority circle for high-trust assets.",
   },
 ];
 
@@ -56,22 +57,32 @@ export function BattlegroundSection() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {battlegroundRoles.map((role) => (
-            <Card key={role.name} className="hover:shadow-lg transition-shadow">
-              <CardContent className="p-6 space-y-3">
-                <div className="text-sm uppercase tracking-widest text-muted-foreground">
-                  {role.name}
-                </div>
-                <h3 className="text-xl font-semibold text-foreground">{role.positioning}</h3>
-                <div className="text-sm text-muted-foreground">
-                  <span className="font-semibold text-foreground">Environment:</span>{" "}
-                  {role.environment}
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  <span className="font-semibold text-foreground">Inventory:</span>{" "}
-                  {role.inventory}
-                </div>
-              </CardContent>
-            </Card>
+            <div
+              key={role.name}
+              className="group [perspective:1200px]"
+            >
+              <Card className="relative overflow-hidden border border-white/50 bg-white/60 shadow-2xl backdrop-blur-lg transition-all duration-300 group-hover:-translate-y-2 group-hover:shadow-[0_30px_80px_rgba(15,23,42,0.25)] group-hover:[transform:rotateX(3deg)_rotateY(-3deg)]">
+                <CardContent className="p-6 space-y-4">
+                  <div className="inline-flex rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-primary">
+                    {role.name}
+                  </div>
+                  <div className="space-y-2 text-sm text-muted-foreground">
+                    <p>
+                      <span className="font-semibold text-foreground">Role:</span>{" "}
+                      {role.role}
+                    </p>
+                    <p>
+                      <span className="font-semibold text-foreground">Focus:</span>{" "}
+                      {role.focus}
+                    </p>
+                    <p>
+                      <span className="font-semibold text-foreground">Positioning:</span>{" "}
+                      {role.positioning}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           ))}
         </div>
       </div>

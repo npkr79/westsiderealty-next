@@ -128,9 +128,12 @@ export function ApplicationForm() {
   }
 
   return (
-    <section id="application-form" className="container mx-auto px-4 py-16 md:py-24 bg-slate-50/50">
+    <section
+      id="application-form"
+      className="container mx-auto px-4 py-16 md:py-24 bg-slate-50/50"
+    >
       <div className="max-w-2xl mx-auto">
-        <Card>
+        <Card className="border border-white/40 bg-white/70 shadow-2xl backdrop-blur-xl">
           <CardHeader>
             <CardTitle className="text-2xl md:text-3xl text-center">
               Apply Now
@@ -150,7 +153,9 @@ export function ApplicationForm() {
                   }
                   placeholder="Enter your full name"
                   disabled={loading}
-                  className={errors.full_name ? "border-destructive" : ""}
+                  className={`bg-white/70 backdrop-blur border-slate-200 focus:border-primary ${
+                    errors.full_name ? "border-destructive" : ""
+                  }`}
                 />
                 {errors.full_name && (
                   <p className="text-sm text-destructive flex items-center gap-1">
@@ -173,7 +178,9 @@ export function ApplicationForm() {
                   }
                   placeholder="your@email.com"
                   disabled={loading}
-                  className={errors.email ? "border-destructive" : ""}
+                  className={`bg-white/70 backdrop-blur border-slate-200 focus:border-primary ${
+                    errors.email ? "border-destructive" : ""
+                  }`}
                 />
                 {errors.email && (
                   <p className="text-sm text-destructive flex items-center gap-1">
@@ -197,7 +204,9 @@ export function ApplicationForm() {
                   placeholder="10-digit mobile number"
                   disabled={loading}
                   maxLength={10}
-                  className={errors.phone ? "border-destructive" : ""}
+                  className={`bg-white/70 backdrop-blur border-slate-200 focus:border-primary ${
+                    errors.phone ? "border-destructive" : ""
+                  }`}
                 />
                 {errors.phone && (
                   <p className="text-sm text-destructive flex items-center gap-1">
@@ -217,6 +226,7 @@ export function ApplicationForm() {
                   }
                   placeholder="e.g., 2 years"
                   disabled={loading}
+                  className="bg-white/70 backdrop-blur border-slate-200 focus:border-primary"
                 />
               </div>
 
@@ -230,6 +240,7 @@ export function ApplicationForm() {
                   }
                   placeholder="City, State"
                   disabled={loading}
+                  className="bg-white/70 backdrop-blur border-slate-200 focus:border-primary"
                 />
               </div>
 
@@ -244,12 +255,13 @@ export function ApplicationForm() {
                   placeholder="Tell us about your motivation and goals..."
                   rows={4}
                   disabled={loading}
+                  className="bg-white/70 backdrop-blur border-slate-200 focus:border-primary"
                 />
               </div>
 
               <Button
                 type="submit"
-                className="w-full"
+                className="w-full shadow-2xl transition-transform hover:scale-105"
                 size="lg"
                 disabled={loading}
               >
