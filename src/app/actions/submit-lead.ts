@@ -103,7 +103,7 @@ export async function submitLead(formData: SubmitLeadData): Promise<SubmitLeadRe
 
     if (possibleAgentId) {
       const { data: agent } = await supabase
-        .from("agents")
+        .from("raw_agents")
         .select("id, name")
         .eq("id", possibleAgentId)
         .single();

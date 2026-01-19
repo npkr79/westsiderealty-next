@@ -107,19 +107,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const checkUserRoles = async (authUser: User) => {
     // Check if user is an agent
-    const { data: agent, error: agentError } = await supabase
-      .from("agents")
-      .select("id, active, profile_completed")
+    const { data: registry, error: registryError } = await supabase
+      .from("raw_agents")
+      .select("id, is_active")
       .eq("id", authUser.id)
       .maybeSingle();
 
-    if (agentError && agentError.code !== "PGRST116") {
-      console.error("Agent lookup error:", agentError);
+    if (registryError && registryError.code !== "PGRST116") {
+      console.error("Agent registry lookup error:", registryError);
     }
 
-    if (agent && agent.active) {
+    const { data: profile, error: profileError } = await supabase
+      .from("agents_profile")
+      .select("profile_completed")
+      .eq("agent_id", authUser.id)
+      .maybeSingle();
+
+    if (profileError && profileError.code !== "PGRST116") {
+      console.error("Agent profile lookup error:", profileError);
+    }
+
+    if (registry && registry.is_active) {
       setIsAgent(true);
-      setRequirePasswordChange(!agent.profile_completed);
+      setRequirePasswordChange(!profile?.profile_completed);
     } else {
       setIsAgent(false);
     }
@@ -186,21 +196,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // 2) Check agents by phone
     let { data: agentByPhone } = await supabase
-      .from("agents")
-      .select("id, email, active")
+      .from("raw_agents")
+      .select("id, email, is_active")
       .eq("phone", normalizedPhone)
       .single();
 
     if (!agentByPhone && last10) {
       const { data: fuzzyAgent } = await supabase
-        .from("agents")
-        .select("id, email, active")
+        .from("raw_agents")
+        .select("id, email, is_active")
         .ilike("phone", `%${last10}`)
         .single();
       agentByPhone = fuzzyAgent || null;
     }
 
-    if (agentByPhone?.email && agentByPhone.active) {
+    if (agentByPhone?.email && agentByPhone.is_active) {
       const { error } = await supabase.auth.signInWithPassword({
         email: agentByPhone.email,
         password,
@@ -211,17 +221,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // 3) Legacy phone_auth lookup
     const { data: phoneAuth } = await supabase
       .from("phone_auth")
-      .select("agent_id, agents(email, active)")
+      .select("agent_id")
       .eq("phone", normalizedPhone)
       .eq("active", true)
       .single();
 
-    if (!phoneAuth?.agents?.email || !phoneAuth?.agents?.active) {
+    if (!phoneAuth?.agent_id) {
+      return { error: { message: "Invalid phone number" } };
+    }
+
+    const { data: agentByAuthId } = await supabase
+      .from("raw_agents")
+      .select("email, is_active")
+      .eq("id", phoneAuth.agent_id)
+      .single();
+
+    if (!agentByAuthId?.email || !agentByAuthId?.is_active) {
       return { error: { message: "Invalid phone number" } };
     }
 
     const { error } = await supabase.auth.signInWithPassword({
-      email: phoneAuth.agents.email,
+      email: agentByAuthId.email,
       password,
     });
 

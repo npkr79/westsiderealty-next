@@ -71,16 +71,16 @@ export default function AgentProfile() {
       setIsLoading(true);
       try {
         const { data: agentData, error } = await supabase
-          .from("agents")
+          .from("agents_profile")
           .select("*")
-          .eq("id", user.id)
+          .eq("agent_id", user.id)
           .single();
 
         if (error) throw error;
 
         if (agentData) {
           const profileData: AgentProfileData = {
-            id: agentData.id,
+            id: agentData.agent_id,
             name: agentData.name,
             email: agentData.email,
             phone: agentData.phone || "",
@@ -199,7 +199,7 @@ export default function AgentProfile() {
       }
 
       const { error } = await supabase
-        .from("agents")
+        .from("agents_profile")
         .update({
           name,
           phone,
@@ -212,7 +212,7 @@ export default function AgentProfile() {
           profile_image: uploadedImageUrl,
           profile_completed: true,
         })
-        .eq("id", user.id);
+        .eq("agent_id", user.id);
 
       if (error) throw error;
 

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAdminAuth, getServiceClient } from "../utils";
+import { AGENT_CATEGORIES, isValidAgentCategory } from "@/constants/agentCategories";
 
 export async function GET(req: Request) {
   try {
@@ -13,8 +14,8 @@ export async function GET(req: Request) {
     const adminClient = getServiceClient();
 
     let request = adminClient
-      .from("agents")
-      .select("id, name, email, phone, specialization, active, profile_completed, created_at")
+      .from("raw_agents")
+      .select("id, name, email, phone, category, is_active, created_at")
       .order("created_at", { ascending: false })
       .limit(50);
 
@@ -43,13 +44,40 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { name, email, phone, specialization } = body || {};
-    if (!name || !email || !phone) {
+    const { name, email, phone, category } = body || {};
+    if (!name || !email || !phone || !category) {
       return NextResponse.json({ error: "Missing fields" }, { status: 400 });
+    }
+
+    if (!isValidAgentCategory(category)) {
+      return NextResponse.json(
+        { success: false, error: "Invalid agent category selected" },
+        { status: 400 }
+      );
     }
 
     const adminClient = getServiceClient();
     const defaultPassword = "Welcome@123";
+
+    const { data: existingAgent, error: existingError } = await adminClient
+      .from("raw_agents")
+      .select("id")
+      .or(`email.eq.${email},phone.eq.${phone}`)
+      .maybeSingle();
+
+    if (existingError) {
+      return NextResponse.json(
+        { error: existingError.message, step: "raw_agents_lookup" },
+        { status: 500 }
+      );
+    }
+
+    if (existingAgent?.id) {
+      return NextResponse.json(
+        { success: false, error: "Agent with this email or phone number already exists" },
+        { status: 409 }
+      );
+    }
 
     let userId: string | null = null;
     const { data: userData, error: createError } =
@@ -67,48 +95,30 @@ export async function POST(req: Request) {
     if (!userId) {
       const message = createError?.message || "";
       if (message.toLowerCase().includes("already")) {
-        const { data: usersData, error: listError } = await adminClient.auth.admin.listUsers({
-          page: 1,
-          perPage: 200,
-        });
-        if (listError) {
-          return NextResponse.json(
-            { error: listError.message, step: "list_users" },
-            { status: 500 }
-          );
-        }
-        const existing = usersData?.users?.find((user) => user.email === email);
-        if (!existing) {
-          return NextResponse.json(
-            { error: "User already exists but cannot be resolved", step: "find_existing_user" },
-            { status: 500 }
-          );
-        }
-        userId = existing.id;
-      } else {
         return NextResponse.json(
-          { error: createError?.message || "Failed to create user", step: "create_user" },
-          { status: 500 }
+          { success: false, error: "Agent with this email already exists" },
+          { status: 409 }
         );
       }
+      return NextResponse.json(
+        { error: createError?.message || "Failed to create user", step: "create_user" },
+        { status: 500 }
+      );
     }
 
     const { error: agentError } = await adminClient
-      .from("agents")
-      .upsert(
-        {
-          id: userId,
-          name,
-          email,
-          phone,
-          specialization: specialization || null,
-          active: true,
-          profile_completed: false,
-        },
-        { onConflict: "id" }
-      );
+      .from("raw_agents")
+      .insert({
+        id: userId,
+        name,
+        email,
+        phone,
+        category,
+        is_active: true,
+        created_by: auth.user?.id || null,
+      });
     if (agentError) {
-      return NextResponse.json({ error: agentError.message, step: "agents_upsert" }, { status: 500 });
+      return NextResponse.json({ error: agentError.message, step: "raw_agents_insert" }, { status: 500 });
     }
 
     const { error: roleError } = await adminClient
@@ -140,8 +150,9 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       success: true,
-      agent: { id: userId, name, email, phone, specialization: specialization || null },
+      agent: { id: userId, name, email, phone, category },
       tempPassword: defaultPassword,
+      categories: AGENT_CATEGORIES,
     });
   } catch (error: any) {
     return NextResponse.json({ error: error?.message || "Unknown error" }, { status: 500 });

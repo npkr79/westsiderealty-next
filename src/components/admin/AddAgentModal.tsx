@@ -5,7 +5,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { AGENT_CATEGORIES } from "@/constants/agentCategories";
 
 interface AddAgentModalProps {
   open: boolean;
@@ -20,15 +22,15 @@ export default function AddAgentModal({ open, onOpenChange, onClose, onAgentAdde
     name: "",
     email: "",
     phone: "",
-    specialization: "",
+    category: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async () => {
-    if (!formState.name || !formState.email || !formState.phone) {
+    if (!formState.name || !formState.email || !formState.phone || !formState.category) {
       toast({
         title: "Missing fields",
-        description: "Name, email, and phone are required.",
+        description: "Name, email, phone, and category are required.",
         variant: "destructive",
       });
       return;
@@ -45,13 +47,13 @@ export default function AddAgentModal({ open, onOpenChange, onClose, onAgentAdde
           name: formState.name,
           email: formState.email,
           phone: formState.phone,
-          specialization: formState.specialization || undefined,
+          category: formState.category,
         }),
         signal: controller.signal,
       });
       clearTimeout(timeout);
       const result = await response.json();
-      if (!response.ok) {
+      if (!response.ok || result?.success === false) {
         toast({
           title: "Error",
           description: result?.error
@@ -66,7 +68,7 @@ export default function AddAgentModal({ open, onOpenChange, onClose, onAgentAdde
         title: "Agent created",
         description: "Agent account created with default password Welcome@123.",
       });
-      setFormState({ name: "", email: "", phone: "", specialization: "" });
+      setFormState({ name: "", email: "", phone: "", category: "" });
       onAgentAdded?.();
       onClose?.();
     } catch (error: any) {
@@ -116,11 +118,22 @@ export default function AddAgentModal({ open, onOpenChange, onClose, onAgentAdde
             />
           </div>
           <div className="space-y-2">
-            <Label>Specialization</Label>
-            <Input
-              value={formState.specialization}
-              onChange={(e) => setFormState({ ...formState, specialization: e.target.value })}
-            />
+            <Label>Category</Label>
+            <Select
+              value={formState.category}
+              onValueChange={(value) => setFormState({ ...formState, category: value })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select Agent Category" />
+              </SelectTrigger>
+              <SelectContent>
+                {AGENT_CATEGORIES.map((category) => (
+                  <SelectItem key={category} value={category}>
+                    {category}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <Button onClick={handleSubmit} disabled={isSubmitting}>
             {isSubmitting ? "Creating..." : "Create Agent"}

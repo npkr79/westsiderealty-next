@@ -28,7 +28,7 @@ export const agentProfileService = {
 
       // Update agents table
       const { data, error } = await supabase
-        .from('agents')
+        .from('agents_profile')
         .update({
           name: profileData.name,
           phone: profileData.phone,
@@ -42,7 +42,7 @@ export const agentProfileService = {
           profile_completed: true,
           updated_at: new Date().toISOString()
         })
-        .eq('id', userId)
+        .eq('agent_id', userId)
         .select()
         .single();
 
@@ -66,7 +66,7 @@ export const agentProfileService = {
         : [];
 
       const updatedUser: User = {
-        id: String(data.id),
+        id: String(data.agent_id),
         name: String(data.name || ''),
         email: String(data.email || ''),
         phone: String(data.phone || ''),
@@ -93,9 +93,9 @@ export const agentProfileService = {
   async getAllAgents(): Promise<any[]> {
     try {
       const { data, error } = await supabase
-        .from('agents')
-        .select('*')
-        .eq('active', true)
+        .from('agents_profile')
+        .select('*, raw_agents!inner(is_active)')
+        .eq('raw_agents.is_active', true)
         .order('name');
 
       if (error) {
@@ -105,6 +105,7 @@ export const agentProfileService = {
 
       return data.map(agent => ({
         ...agent,
+        id: agent.agent_id,
         service_areas: Array.isArray(agent.service_areas) 
           ? agent.service_areas.filter((area: any): area is string => typeof area === 'string')
           : []
@@ -118,9 +119,9 @@ export const agentProfileService = {
   async getAgentById(agentId: string): Promise<any | null> {
     try {
       const { data, error } = await supabase
-        .from('agents')
+        .from('agents_profile')
         .select('*')
-        .eq('id', agentId)
+        .eq('agent_id', agentId)
         .single();
 
       if (error) {
@@ -130,6 +131,7 @@ export const agentProfileService = {
 
       return {
         ...data,
+        id: data.agent_id,
         service_areas: Array.isArray(data.service_areas) 
           ? data.service_areas.filter((area: any): area is string => typeof area === 'string')
           : []

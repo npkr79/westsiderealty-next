@@ -14,9 +14,8 @@ interface AgentRow {
   name: string | null;
   email: string | null;
   phone: string | null;
-  specialization: string | null;
-  active: boolean | null;
-  profile_completed: boolean | null;
+  category: string | null;
+  is_active: boolean | null;
 }
 
 export default function AgentManagement() {
@@ -49,7 +48,7 @@ export default function AgentManagement() {
     const response = await fetch(`/api/admin/agents/${agentId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ active: nextValue }),
+      body: JSON.stringify({ is_active: nextValue }),
     });
     const data = await response.json();
     if (!response.ok) {
@@ -61,7 +60,7 @@ export default function AgentManagement() {
       return;
     }
     setAgents((prev) =>
-      prev.map((agent) => (agent.id === agentId ? { ...agent, active: nextValue } : agent))
+      prev.map((agent) => (agent.id === agentId ? { ...agent, is_active: nextValue } : agent))
     );
   };
 
@@ -98,6 +97,7 @@ export default function AgentManagement() {
                     <TableHead>Name</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Phone</TableHead>
+                    <TableHead>Category</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Active</TableHead>
                   </TableRow>
@@ -105,7 +105,7 @@ export default function AgentManagement() {
                 <TableBody>
                   {agents.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                      <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
                         No agents found.
                       </TableCell>
                     </TableRow>
@@ -115,10 +115,11 @@ export default function AgentManagement() {
                         <TableCell className="font-medium">{agent.name || "-"}</TableCell>
                         <TableCell>{agent.email || "-"}</TableCell>
                         <TableCell>{agent.phone || "-"}</TableCell>
-                        <TableCell>{agent.active ? "active" : "inactive"}</TableCell>
+                        <TableCell>{agent.category || "-"}</TableCell>
+                        <TableCell>{agent.is_active ? "active" : "inactive"}</TableCell>
                         <TableCell>
                           <Switch
-                            checked={agent.active ?? false}
+                            checked={agent.is_active ?? false}
                             onCheckedChange={(value) => toggleActive(agent.id, value)}
                           />
                         </TableCell>

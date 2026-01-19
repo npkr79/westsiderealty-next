@@ -5,6 +5,7 @@ import type { Database } from '@/integrations/supabase/types';
 
 export interface AgentProfile {
   id: string;
+  agent_id?: string;
   name: string;
   email: string;
   phone: string | null;
@@ -15,7 +16,7 @@ export interface AgentProfile {
   whatsapp: string | null;
   linkedin: string | null;
   instagram: string | null;
-  active: boolean;
+  active?: boolean;
   profile_completed: boolean;
   license_number: string | null;
   created_at: string;
@@ -42,42 +43,18 @@ const parseJsonField = (field: any, defaultValue: any = null) => {
 export const agentProfileService = {
   // Create a new agent profile
   async createAgent(agentData: Partial<AgentProfile>): Promise<AgentProfile> {
-    const supabase = createClient();
-    const { data, error } = await supabase
-      .from('agents')
-      .insert([{
-        name: agentData.name || '',
-        email: agentData.email || '',
-        phone: agentData.phone,
-        bio: agentData.bio,
-        specialization: agentData.specialization,
-        profile_image: agentData.profile_image,
-        service_areas: JSON.stringify(agentData.service_areas || []),
-        whatsapp: agentData.whatsapp,
-        linkedin: agentData.linkedin,
-        instagram: agentData.instagram,
-        active: agentData.active ?? true,
-        profile_completed: agentData.profile_completed ?? false,
-        license_number: agentData.license_number || 'A02500003159'
-      }])
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    return {
-      ...data,
-      service_areas: parseJsonField(data.service_areas, [])
-    };
+    throw new Error(
+      "Agent creation is restricted. Use the admin API to create agents."
+    );
   },
 
   // Get agent by ID
   async getAgentById(agentId: string): Promise<AgentProfile | null> {
     const supabase = createClient();
     const { data, error } = await supabase
-      .from('agents')
+      .from('agents_profile')
       .select('*')
-      .eq('id', agentId)
+      .eq('agent_id', agentId)
       .single();
 
     if (error) {
@@ -87,6 +64,7 @@ export const agentProfileService = {
 
     return {
       ...data,
+      id: data.agent_id,
       service_areas: parseJsonField(data.service_areas, [])
     };
   },
@@ -102,9 +80,9 @@ export const agentProfileService = {
     }
 
     const { data, error } = await supabase
-      .from('agents')
+      .from('agents_profile')
       .update(updateData)
-      .eq('id', agentId)
+      .eq('agent_id', agentId)
       .select()
       .single();
 
@@ -112,6 +90,7 @@ export const agentProfileService = {
 
     return {
       ...data,
+      id: data.agent_id,
       service_areas: parseJsonField(data.service_areas, [])
     };
   },
@@ -120,14 +99,16 @@ export const agentProfileService = {
   async getAllAgents(): Promise<AgentProfile[]> {
     const supabase = createClient();
     const { data, error } = await supabase
-      .from('agents')
-      .select('*')
+      .from('agents_profile')
+      .select('*, raw_agents(is_active)')
       .order('created_at', { ascending: false });
 
     if (error) throw error;
 
     return data.map((agent: any) => ({
       ...agent,
+      id: agent.agent_id,
+      active: agent.raw_agents?.is_active ?? agent.active ?? true,
       service_areas: parseJsonField(agent.service_areas, [])
     }));
   },
@@ -136,15 +117,17 @@ export const agentProfileService = {
   async getPublicAgents(): Promise<AgentProfile[]> {
     const supabase = createClient();
     const { data, error } = await supabase
-      .from('agents')
-      .select('*')
-      .eq('active', true)
+      .from('agents_profile')
+      .select('*, raw_agents!inner(is_active)')
+      .eq('raw_agents.is_active', true)
       .order('name');
 
     if (error) throw error;
 
     return data.map((agent: any) => ({
       ...agent,
+      id: agent.agent_id,
+      active: agent.raw_agents?.is_active ?? true,
       service_areas: parseJsonField(agent.service_areas, [])
     }));
   },
@@ -153,9 +136,9 @@ export const agentProfileService = {
   async searchAgents(query: string): Promise<AgentProfile[]> {
     const supabase = createClient();
     const { data, error } = await supabase
-      .from('agents')
-      .select('*')
-      .eq('active', true)
+      .from('agents_profile')
+      .select('*, raw_agents!inner(is_active)')
+      .eq('raw_agents.is_active', true)
       .or(`name.ilike.%${query}%,specialization.ilike.%${query}%,bio.ilike.%${query}%`)
       .order('name');
 
@@ -163,6 +146,8 @@ export const agentProfileService = {
 
     return data.map((agent: any) => ({
       ...agent,
+      id: agent.agent_id,
+      active: agent.raw_agents?.is_active ?? true,
       service_areas: parseJsonField(agent.service_areas, [])
     }));
   },
@@ -171,7 +156,7 @@ export const agentProfileService = {
   async deleteAgent(agentId: string): Promise<void> {
     const supabase = createClient();
     const { error } = await supabase
-      .from('agents')
+      .from('raw_agents')
       .delete()
       .eq('id', agentId);
 
@@ -181,8 +166,8 @@ export const agentProfileService = {
   async activateAgent(agentId: string): Promise<void> {
     const supabase = createClient();
     const { error } = await supabase
-      .from('agents')
-      .update({ active: true })
+      .from('raw_agents')
+      .update({ is_active: true })
       .eq('id', agentId);
 
     if (error) throw error;
@@ -191,8 +176,8 @@ export const agentProfileService = {
   async deactivateAgent(agentId: string): Promise<void> {
     const supabase = createClient();
     const { error } = await supabase
-      .from('agents')
-      .update({ active: false })
+      .from('raw_agents')
+      .update({ is_active: false })
       .eq('id', agentId);
 
     if (error) throw error;

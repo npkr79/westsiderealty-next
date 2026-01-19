@@ -27,12 +27,12 @@ export default function AgentLayout({ children }: { children: React.ReactNode })
 
       // Check if user is agent
       const { data: agent } = await supabase
-        .from("agents")
-        .select("id, active")
+        .from("raw_agents")
+        .select("id, is_active")
         .eq("id", session.user.id)
         .single();
 
-      if (!agent || !agent.active) {
+      if (!agent || !agent.is_active) {
         router.push("/login");
         return;
       }

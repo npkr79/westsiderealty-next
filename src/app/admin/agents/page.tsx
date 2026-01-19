@@ -6,10 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Edit, Trash2, CheckCircle, XCircle } from "lucide-react";
+import { Plus, Edit, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
-import { agentProfileService } from "@/services/agent/agentProfileService";
 import AddAgentModal from "@/components/admin/AddAgentModal";
 import {
   AlertDialog,
@@ -28,18 +27,9 @@ interface AgentProfile {
   name: string;
   email: string;
   phone: string | null;
-  bio: string | null;
-  specialization: string | null;
-  profile_image: string | null;
-  service_areas: string[];
-  whatsapp: string | null;
-  linkedin: string | null;
-  instagram: string | null;
-  active: boolean;
-  profile_completed: boolean;
-  license_number: string | null;
+  category: string;
+  is_active: boolean;
   created_at: string;
-  updated_at: string;
 }
 
 const AgentManagement = () => {
@@ -51,42 +41,20 @@ const AgentManagement = () => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const { toast } = useToast();
 
-  useEffect(() => {
-    const loadAgents = async () => {
-      try {
-        setIsLoading(true);
-        const fetchedAgents = await agentProfileService.getAllAgents();
-        setAgents(fetchedAgents);
-      } catch (error) {
-        console.error("Error loading agents:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load agents.",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadAgents();
-  }, []);
-
-  const handleAgentAdded = async () => {
-    setIsAddAgentModalOpen(false);
+  const loadAgents = async () => {
     try {
       setIsLoading(true);
-      const fetchedAgents = await agentProfileService.getAllAgents();
-      setAgents(fetchedAgents);
-      toast({
-        title: "Success",
-        description: "Agent added successfully!",
-      });
+      const response = await fetch(`/api/admin/agents?q=${encodeURIComponent(searchQuery.trim())}`);
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data?.error || "Failed to load agents.");
+      }
+      setAgents((data.agents || []) as AgentProfile[]);
     } catch (error) {
-      console.error("Error reloading agents:", error);
+      console.error("Error loading agents:", error);
       toast({
         title: "Error",
-        description: "Failed to reload agents after adding.",
+        description: "Failed to load agents.",
         variant: "destructive",
       });
     } finally {
@@ -94,28 +62,13 @@ const AgentManagement = () => {
     }
   };
 
-  const handleAgentUpdated = async (agentId: string, updates: Partial<AgentProfile>) => {
-    try {
-      setIsLoading(true);
-      await agentProfileService.updateAgent(agentId, updates);
-      const updatedAgents = agents.map(agent =>
-        agent.id === agentId ? { ...agent, ...updates } : agent
-      );
-      setAgents(updatedAgents);
-      toast({
-        title: "Success",
-        description: "Agent updated successfully!",
-      });
-    } catch (error) {
-      console.error("Error updating agent:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update agent.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
+  useEffect(() => {
+    loadAgents();
+  }, []);
+
+  const handleAgentAdded = async () => {
+    setIsAddAgentModalOpen(false);
+    await loadAgents();
   };
 
   const handleDeleteAgent = async () => {
@@ -123,7 +76,11 @@ const AgentManagement = () => {
 
     try {
       setIsLoading(true);
-      await agentProfileService.deleteAgent(selectedAgentId);
+      const response = await fetch(`/api/admin/agents/${selectedAgentId}`, { method: "DELETE" });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data?.error || "Failed to delete agent.");
+      }
       setAgents(agents.filter(agent => agent.id !== selectedAgentId));
       toast({
         title: "Success",
@@ -146,9 +103,17 @@ const AgentManagement = () => {
   const handleActivateAgent = async (agentId: string) => {
     try {
       setIsLoading(true);
-      await agentProfileService.activateAgent(agentId);
+      const response = await fetch(`/api/admin/agents/${agentId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ is_active: true }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data?.error || "Failed to activate agent.");
+      }
       const updatedAgents = agents.map(agent =>
-        agent.id === agentId ? { ...agent, active: true } : agent
+        agent.id === agentId ? { ...agent, is_active: true } : agent
       );
       setAgents(updatedAgents);
       toast({
@@ -170,9 +135,17 @@ const AgentManagement = () => {
   const handleDeactivateAgent = async (agentId: string) => {
     try {
       setIsLoading(true);
-      await agentProfileService.deactivateAgent(agentId);
+      const response = await fetch(`/api/admin/agents/${agentId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ is_active: false }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data?.error || "Failed to deactivate agent.");
+      }
       const updatedAgents = agents.map(agent =>
-        agent.id === agentId ? { ...agent, active: false } : agent
+        agent.id === agentId ? { ...agent, is_active: false } : agent
       );
       setAgents(updatedAgents);
       toast({
@@ -241,7 +214,7 @@ const AgentManagement = () => {
                   <div className="flex items-center space-x-2">
                     <Switch
                       id={`active-${agent.id}`}
-                      checked={agent.active}
+                      checked={agent.is_active}
                       onCheckedChange={(checked) => {
                         if (checked) {
                           handleActivateAgent(agent.id);
@@ -251,7 +224,7 @@ const AgentManagement = () => {
                       }}
                     />
                     <Label htmlFor={`active-${agent.id}`} className="text-xs text-gray-700 font-medium">
-                      {agent.active ? "Active" : "Inactive"}
+                      {agent.is_active ? "Active" : "Inactive"}
                     </Label>
                   </div>
                 </CardHeader>
@@ -259,7 +232,7 @@ const AgentManagement = () => {
                   <div className="text-sm text-gray-600">
                     <p>Email: {agent.email}</p>
                     <p>Phone: {agent.phone || "N/A"}</p>
-                    <p>Specialization: {agent.specialization || "N/A"}</p>
+                    <p>Category: {agent.category || "N/A"}</p>
                   </div>
                   <div className="flex justify-end mt-4 space-x-2">
                     <Link href={`/agent/${agent.id}`}>

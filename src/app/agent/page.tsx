@@ -35,16 +35,16 @@ export default function Dashboard() {
   const loadAgentProfile = async (agentId: string) => {
     try {
       const { data, error } = await supabase
-        .from("agents")
-        .select("id, name, email, phone, profile_completed")
-        .eq("id", agentId)
+        .from("agents_profile")
+        .select("agent_id, name, email, phone, profile_completed")
+        .eq("agent_id", agentId)
         .single();
 
       if (error) throw error;
 
       if (data) {
         setAgentProfile({
-          id: data.id,
+          id: data.agent_id,
           name: data.name,
           email: data.email,
           phone: data.phone,

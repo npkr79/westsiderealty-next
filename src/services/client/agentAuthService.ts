@@ -12,72 +12,10 @@ export const agentAuthService = {
    * Creates a new agent account with phone authentication
    */
   async createAgentAccount(agentData: CreateAgentData) {
-    try {
-      const supabase = createClient();
-      const defaultPassword = 'Welcome@123';
-      
-      // 1. Create Supabase Auth user
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: agentData.email,
-        password: defaultPassword,
-        options: {
-          data: {
-            name: agentData.name,
-            phone: agentData.phone
-          },
-          emailRedirectTo: `${window.location.origin}/agent/dashboard`
-        }
-      });
-
-      if (authError || !authData.user) {
-        throw new Error(authError?.message || 'Failed to create auth user');
-      }
-
-      // 2. Update agent profile (created by trigger)
-      const { error: updateError } = await supabase
-        .from('agents')
-        .update({
-          phone: agentData.phone,
-          specialization: agentData.specialization || null,
-          active: true,
-          profile_completed: false
-        })
-        .eq('id', authData.user.id);
-
-      if (updateError) {
-        console.error('Failed to update agent profile:', updateError);
-      }
-
-      // 3. Create phone authentication record with default password
-      const { error: phoneAuthError } = await supabase
-        .rpc('create_hashed_phone_auth', {
-          agent_id: authData.user.id,
-          phone_number: agentData.phone,
-          plain_password: defaultPassword
-        });
-
-      if (phoneAuthError) {
-        console.error('Failed to create phone auth:', phoneAuthError);
-        // Don't rollback, agent can still login with email
-      }
-
-      // 4. Assign agent role in user_roles table
-      const { error: roleError } = await supabase
-        .from('user_roles')
-        .insert({
-          user_id: authData.user.id,
-          role: 'agent'
-        });
-
-      if (roleError) {
-        console.error('Failed to assign agent role:', roleError);
-      }
-
-      return { success: true, agent: { id: authData.user.id, ...agentData } };
-    } catch (error) {
-      console.error('Error creating agent account:', error);
-      return { success: false, error };
-    }
+    return {
+      success: false,
+      error: new Error("Agent creation is restricted to admin API."),
+    };
   },
 
   /**
@@ -107,9 +45,9 @@ export const agentAuthService = {
 
       // Mark first login as complete
       await supabase
-        .from('agents')
+        .from('agents_profile')
         .update({ profile_completed: true })
-        .eq('id', agentId);
+        .eq('agent_id', agentId);
 
       return { success: true };
     } catch (error) {
@@ -126,13 +64,23 @@ export const agentAuthService = {
       const supabase = createClient();
       const { data, error } = await supabase
         .from('phone_auth')
-        .select('agent_id, agents(*)')
+        .select('agent_id')
         .eq('phone', phone)
         .eq('active', true)
         .single();
 
       if (error) throw error;
-      return { success: true, agent: data };
+      if (!data?.agent_id) {
+        return { success: false, error: new Error('Agent not found') };
+      }
+
+      const { data: agent } = await supabase
+        .from('agents_profile')
+        .select('*')
+        .eq('agent_id', data.agent_id)
+        .single();
+
+      return { success: true, agent };
     } catch (error) {
       console.error('Error getting agent by phone:', error);
       return { success: false, error };
@@ -147,8 +95,8 @@ export const agentAuthService = {
       const supabase = createClient();
       // Deactivate in agents table
       const { error: agentError } = await supabase
-        .from('agents')
-        .update({ active: false })
+        .from('raw_agents')
+        .update({ is_active: false })
         .eq('id', agentId);
 
       if (agentError) throw agentError;
@@ -176,8 +124,8 @@ export const agentAuthService = {
       const supabase = createClient();
       // Activate in agents table
       const { error: agentError } = await supabase
-        .from('agents')
-        .update({ active: true })
+        .from('raw_agents')
+        .update({ is_active: true })
         .eq('id', agentId);
 
       if (agentError) throw agentError;

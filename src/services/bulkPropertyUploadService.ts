@@ -21,7 +21,7 @@ interface ExcelPropertyRow {
 export const bulkUploadProperties = async (properties: ExcelPropertyRow[], placeholderImageUrl: string) => {
   // Get the first agent to assign properties to
   const { data: agents } = await supabase
-    .from('agents')
+    .from('raw_agents')
     .select('id')
     .limit(1)
     .single();

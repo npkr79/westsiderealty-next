@@ -49,7 +49,10 @@ export async function GET() {
 
     const [leadsRes, agentsRes] = await Promise.all([
       adminClient.from("leads").select("*").order("created_at", { ascending: false }),
-      adminClient.from("agents").select("id, name, active").order("name", { ascending: true }),
+      adminClient
+        .from("raw_agents")
+        .select("id, name, is_active")
+        .order("name", { ascending: true }),
     ]);
 
     if (leadsRes.error) {
@@ -59,9 +62,14 @@ export async function GET() {
       return NextResponse.json({ error: agentsRes.error.message }, { status: 500 });
     }
 
+    const agents = (agentsRes.data || []).map((agent: any) => ({
+      ...agent,
+      active: agent.is_active,
+    }));
+
     return NextResponse.json({
       leads: leadsRes.data || [],
-      agents: agentsRes.data || [],
+      agents,
     });
   } catch (error: any) {
     return NextResponse.json({ error: error?.message || "Unknown error" }, { status: 500 });

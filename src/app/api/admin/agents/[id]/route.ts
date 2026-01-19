@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAdminAuth, getServiceClient } from "../../utils";
+import { isValidAgentCategory } from "@/constants/agentCategories";
 
 export async function PATCH(
   req: Request,
@@ -14,7 +15,23 @@ export async function PATCH(
 
     const updates = await req.json();
     const adminClient = getServiceClient();
-    const { error } = await adminClient.from("agents").update(updates).eq("id", id);
+    const { is_active, category, name, email, phone } = updates || {};
+    const payload: Record<string, any> = {};
+    if (typeof is_active === "boolean") payload.is_active = is_active;
+    if (typeof category === "string") {
+      if (!isValidAgentCategory(category)) {
+        return NextResponse.json(
+          { success: false, error: "Invalid agent category selected" },
+          { status: 400 }
+        );
+      }
+      payload.category = category;
+    }
+    if (typeof name === "string") payload.name = name;
+    if (typeof email === "string") payload.email = email;
+    if (typeof phone === "string") payload.phone = phone;
+
+    const { error } = await adminClient.from("raw_agents").update(payload).eq("id", id);
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
@@ -36,7 +53,8 @@ export async function DELETE(
     }
 
     const adminClient = getServiceClient();
-    await adminClient.from("agents").delete().eq("id", id);
+    await adminClient.from("raw_agents").delete().eq("id", id);
+    await adminClient.from("user_roles").delete().eq("user_id", id);
     await adminClient.auth.admin.deleteUser(id);
 
     return NextResponse.json({ success: true });
