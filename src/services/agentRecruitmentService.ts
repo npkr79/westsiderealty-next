@@ -182,9 +182,10 @@ export const agentRecruitmentService = {
         name: applicationData.full_name.trim(),
         email: applicationData.email.trim().toLowerCase(),
         phone: applicationData.phone.trim(),
-        lead_type: 'agent_recruitment',
-        source_page_url: '/join_us',
-        status: 'new',
+        type: 'agent_recruitment',
+        source_page: '/join_us',
+        lead_source: 'join_us',
+        interest_details: 'Agent recruitment application',
         details: {
           experience_years: applicationData.experience_years,
           current_location: applicationData.current_location,
