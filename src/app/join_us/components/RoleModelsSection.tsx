@@ -86,7 +86,7 @@ export function RoleModelsSection() {
             <div key={role.role} className="group [perspective:1400px]">
               <Card className="relative overflow-hidden rounded-3xl border border-blue-100 bg-gradient-to-br from-blue-50/70 via-white/80 to-slate-50 shadow-xl transition-all duration-300 group-hover:-translate-y-2 group-hover:shadow-2xl group-hover:[transform:rotateX(4deg)_rotateY(-4deg)]">
                 <div className="h-1.5 w-full bg-[#003DA5]" />
-                <CardContent className="flex h-full min-h-[500px] flex-col p-6 space-y-5">
+                <CardContent className="flex h-full min-h-[500px] flex-col p-6 pb-8 space-y-5">
                   <div className="rounded-2xl border border-blue-100 bg-white/70 px-4 py-4">
                     <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
                       {role.role}
@@ -97,13 +97,15 @@ export function RoleModelsSection() {
                     </div>
                   </div>
 
-                  <Button
-                    className="w-full rounded-full bg-[#DC1C2E] text-white shadow-lg transition-transform hover:scale-105 hover:bg-[#b91525]"
-                    size="lg"
-                    asChild
-                  >
-                    <a href="#application-form">Choose Plan</a>
-                  </Button>
+                  <div className="mt-auto">
+                    <Button
+                      className="w-full rounded-full bg-[#DC1C2E] text-white shadow-lg transition-transform hover:scale-105 hover:bg-[#b91525]"
+                      size="lg"
+                      asChild
+                    >
+                      <a href="#application-form">Choose Plan</a>
+                    </Button>
+                  </div>
 
                   <div className="h-px w-full bg-slate-200/70" />
 
@@ -115,8 +117,6 @@ export function RoleModelsSection() {
                       </li>
                     ))}
                   </ul>
-
-                  <div className="mt-auto" />
                 </CardContent>
               </Card>
             </div>

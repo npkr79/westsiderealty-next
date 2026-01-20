@@ -33,7 +33,7 @@ const testimonials = [
 export function SuccessStoriesSection() {
 
   return (
-    <section className="container mx-auto px-4 py-16 md:py-24">
+    <section className="container mx-auto px-4 py-16 md:py-24 bg-slate-50">
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-12">
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mb-4">
@@ -48,7 +48,7 @@ export function SuccessStoriesSection() {
           {testimonials.map((story) => (
             <Card
               key={story.name}
-              className="border border-white/50 bg-white/70 shadow-xl backdrop-blur-lg transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl"
+              className="border border-slate-200 bg-white shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
             >
               <CardContent className="p-6 space-y-4">
                 <div>
