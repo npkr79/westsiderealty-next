@@ -44,7 +44,7 @@ const battlegroundRoles = [
 
 export function BattlegroundSection() {
   return (
-    <section className="container mx-auto px-4 py-16 md:py-24">
+    <section className="container mx-auto px-4 py-16 md:py-24 bg-slate-50">
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-12">
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mb-4">
@@ -57,13 +57,11 @@ export function BattlegroundSection() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {battlegroundRoles.map((role) => (
-            <div
-              key={role.name}
-              className="group [perspective:1200px]"
-            >
-              <Card className="relative overflow-hidden border border-white/50 bg-white/60 shadow-2xl backdrop-blur-lg transition-all duration-300 group-hover:-translate-y-2 group-hover:shadow-[0_30px_80px_rgba(15,23,42,0.25)] group-hover:[transform:rotateX(3deg)_rotateY(-3deg)]">
+            <div key={role.name} className="group [perspective:1200px]">
+              <Card className="relative overflow-hidden rounded-2xl border border-blue-100 bg-white/70 shadow-xl backdrop-blur-lg transition-all duration-300 group-hover:-translate-y-2 group-hover:shadow-2xl group-hover:[transform:rotateX(3deg)_rotateY(-3deg)]">
+                <div className="h-1.5 w-full bg-[#003DA5]" />
                 <CardContent className="p-6 space-y-4">
-                  <div className="inline-flex rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-primary">
+                  <div className="inline-flex rounded-full border border-blue-200 bg-blue-50/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-[#003DA5]">
                     {role.name}
                   </div>
                   <div className="space-y-2 text-sm text-muted-foreground">

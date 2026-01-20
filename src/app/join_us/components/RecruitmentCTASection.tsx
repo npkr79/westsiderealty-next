@@ -13,7 +13,11 @@ export function RecruitmentCTASection() {
           Apply to Westside Realty and build your career inside a structured, system-led
           real estate organization.
         </p>
-        <Button size="lg" className="shadow-2xl transition-transform hover:scale-105" asChild>
+        <Button
+          size="lg"
+          className="rounded-full bg-[#DC1C2E] text-white shadow-2xl transition-transform hover:scale-105 hover:bg-[#b91525]"
+          asChild
+        >
           <a href="#application-form">Apply to Join Westside Realty</a>
         </Button>
       </div>

@@ -69,7 +69,7 @@ const roles = [
 
 export function RoleModelsSection() {
   return (
-    <section className="container mx-auto px-4 py-16 md:py-24 bg-slate-50/50">
+    <section className="container mx-auto px-4 py-16 md:py-24 bg-blue-50/30">
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-12">
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mb-4">
@@ -84,32 +84,39 @@ export function RoleModelsSection() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {roles.map((role) => (
             <div key={role.role} className="group [perspective:1400px]">
-              <Card className="relative overflow-hidden border border-white/50 bg-white/70 shadow-[0_24px_60px_rgba(15,23,42,0.25)] backdrop-blur-xl transition-all duration-300 group-hover:-translate-y-2 group-hover:shadow-[0_40px_90px_rgba(15,23,42,0.35)] group-hover:[transform:rotateX(4deg)_rotateY(-4deg)]">
-                <CardContent className="p-6 space-y-5">
-                  <div className="rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/5 to-white/40 px-4 py-4">
-                    <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+              <Card className="relative overflow-hidden rounded-3xl border border-blue-100 bg-gradient-to-br from-blue-50/70 via-white/80 to-slate-50 shadow-xl transition-all duration-300 group-hover:-translate-y-2 group-hover:shadow-2xl group-hover:[transform:rotateX(4deg)_rotateY(-4deg)]">
+                <div className="h-1.5 w-full bg-[#003DA5]" />
+                <CardContent className="flex h-full min-h-[500px] flex-col p-6 space-y-5">
+                  <div className="rounded-2xl border border-blue-100 bg-white/70 px-4 py-4">
+                    <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
                       {role.role}
                     </p>
-                    <div className="flex items-end gap-2 mt-2">
-                      <span className="text-4xl font-bold text-foreground">{role.price}</span>
-                      <span className="text-sm text-muted-foreground">/month</span>
+                    <div className="flex items-end gap-2 mt-3">
+                      <span className="text-4xl font-bold text-[#003DA5]">{role.price}</span>
+                      <span className="text-sm text-slate-500">/month</span>
                     </div>
                   </div>
 
-                  <Button className="w-full" size="lg" asChild>
+                  <Button
+                    className="w-full rounded-full bg-[#DC1C2E] text-white shadow-lg transition-transform hover:scale-105 hover:bg-[#b91525]"
+                    size="lg"
+                    asChild
+                  >
                     <a href="#application-form">Choose Plan</a>
                   </Button>
 
                   <div className="h-px w-full bg-slate-200/70" />
 
-                  <ul className="space-y-3 text-muted-foreground">
+                  <ul className="space-y-3 text-slate-600">
                     {role.features.map((feature) => (
                       <li key={feature} className="flex items-start gap-2">
-                        <Check className="h-4 w-4 text-primary mt-1" />
+                        <Check className="h-4 w-4 text-[#DC1C2E] mt-1" />
                         <span>{feature}</span>
                       </li>
                     ))}
                   </ul>
+
+                  <div className="mt-auto" />
                 </CardContent>
               </Card>
             </div>

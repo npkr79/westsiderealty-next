@@ -263,7 +263,7 @@ export function ApplicationForm() {
 
               <Button
                 type="submit"
-                className="w-full shadow-2xl transition-transform hover:scale-105"
+                className="w-full rounded-full bg-[#DC1C2E] text-white shadow-2xl transition-transform hover:scale-105 hover:bg-[#b91525]"
                 size="lg"
                 disabled={loading}
               >
