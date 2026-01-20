@@ -27,7 +27,8 @@ async function getProperty(citySlug: string, listingSlug: string) {
   if (!tableName) return null;
 
   // Check if it's a UUID format
-  const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(listingSlug);
+  const sanitizedSlug = listingSlug.trim();
+  const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sanitizedSlug);
 
   // Determine status filter based on city
   const statusFilter = citySlug === 'hyderabad' ? 'active' : citySlug === 'goa' ? 'Active' : 'published';
@@ -37,18 +38,18 @@ async function getProperty(citySlug: string, listingSlug: string) {
   let query = supabase.from(tableName).select('*');
 
   if (isUUID) {
-    query = query.eq('id', listingSlug);
+    query = query.eq('id', sanitizedSlug);
   } else {
     // For Goa properties, only check seo_slug (there's no 'slug' field in goa_holiday_properties table)
     if (citySlug === 'goa') {
-      query = query.eq('seo_slug', listingSlug);
+      query = query.ilike('seo_slug', sanitizedSlug);
     } else if (citySlug === 'hyderabad') {
       // For Hyderabad, check seo_slug, slug, and url column
       // url column might contain full path like /hyderabad/buy/... or just the slug
-      query = query.or(`seo_slug.eq.${listingSlug},slug.eq.${listingSlug},url.eq.${listingSlug},url.ilike.%/${listingSlug}%`);
+      query = query.or(`seo_slug.eq.${sanitizedSlug},slug.eq.${sanitizedSlug},url.eq.${sanitizedSlug},url.ilike.%/${sanitizedSlug}%`);
     } else {
       // For other cities, check both seo_slug and slug
-      query = query.or(`seo_slug.eq.${listingSlug},slug.eq.${listingSlug}`);
+      query = query.or(`seo_slug.eq.${sanitizedSlug},slug.eq.${sanitizedSlug}`);
     }
   }
 
@@ -73,7 +74,7 @@ async function getProperty(citySlug: string, listingSlug: string) {
       .from(tableName)
       .select('*')
       .eq('status', statusFilter)
-      .or(`url.eq.${listingSlug},url.ilike.%/${listingSlug},url.ilike.%/${citySlug}/buy/${listingSlug}%`)
+      .or(`url.eq.${sanitizedSlug},url.ilike.%/${sanitizedSlug},url.ilike.%/${citySlug}/buy/${sanitizedSlug}%`)
       .maybeSingle();
     
     if (!urlError && urlMatch) {
