@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -54,16 +55,13 @@ interface ProjectInfo {
 const toDisplayName = (slug: string) =>
   decodeURIComponent(slug).replace(/-/g, " ").trim();
 
-export default async function AgentProfilePage({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}) {
-  const { slug } = await params;
-  const displayName = toDisplayName(slug);
+const SITE_URL = "https://www.westsiderealty.in";
+const FALLBACK_OG_IMAGE = `${SITE_URL}/images/placeholder-agent.png`;
 
+const fetchAgentBySlug = async (slug: string) => {
+  const displayName = toDisplayName(slug);
   const adminClient = getServiceClient();
-  const { data, error } = await adminClient
+  const { data } = await adminClient
     .from("agents_profile")
     .select(
       "agent_id, name, email, phone, bio, specialization, profile_image, service_areas, whatsapp, linkedin, instagram, raw_agents(category, is_active)"
@@ -71,7 +69,68 @@ export default async function AgentProfilePage({
     .ilike("name", displayName)
     .maybeSingle();
 
-  if (error || !data) {
+  return { data, displayName };
+};
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const { data, displayName } = await fetchAgentBySlug(slug);
+
+  if (!data) {
+    return {};
+  }
+
+  const agent = data as AgentProfileRow;
+  const name = agent.name || displayName;
+  const description =
+    agent.bio ||
+    "Westside Realty professional profile, expertise highlights, and active listings.";
+  const profileImage = agent.profile_image || FALLBACK_OG_IMAGE;
+  const pageUrl = `${SITE_URL}/profiles/${slug}`;
+
+  return {
+    title: `${name} | Westside Realty`,
+    description,
+    alternates: {
+      canonical: pageUrl,
+    },
+    openGraph: {
+      title: `${name} | Westside Realty`,
+      description,
+      url: pageUrl,
+      siteName: "Westside Realty",
+      type: "profile",
+      images: [
+        {
+          url: profileImage,
+          width: 1200,
+          height: 1500,
+          alt: `${name} profile photo`,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${name} | Westside Realty`,
+      description,
+      images: [profileImage],
+    },
+  };
+}
+
+export default async function AgentProfilePage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
+  const { data, displayName } = await fetchAgentBySlug(slug);
+
+  if (!data) {
     notFound();
   }
 
@@ -80,6 +139,7 @@ export default async function AgentProfilePage({
   const badgeLabel = agent.raw_agents?.category || "Westside Realty Professional";
   const strengthLabel = agent.specialization || "Structured execution";
 
+  const adminClient = getServiceClient();
   const { data: properties } = await adminClient
     .from("hyderabad_properties")
     .select(
