@@ -112,7 +112,7 @@ export default async function AgentProfilePage({
           <div className="grid grid-cols-1 lg:grid-cols-[3fr_1fr] gap-8">
             <div className="space-y-8">
               <div className="flex flex-col md:flex-row gap-6 items-start">
-                <div className="relative h-56 w-56 rounded-3xl bg-white shadow-2xl overflow-hidden">
+                <div className="relative w-72 md:w-80 lg:w-[320px] aspect-[4/5] rounded-3xl bg-white shadow-2xl overflow-hidden">
                   <Image
                     src={agent.profile_image || "/images/placeholder-agent.png"}
                     alt={name}
@@ -127,7 +127,7 @@ export default async function AgentProfilePage({
                   <h1 className="text-3xl md:text-5xl font-bold text-slate-900">
                     {name}
                   </h1>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-slate-600">
+                  <div className="grid grid-cols-1 gap-3 text-sm text-slate-600">
                     <div>
                       <span className="font-semibold text-slate-900">Role:</span>{" "}
                       {badgeLabel}
@@ -136,7 +136,7 @@ export default async function AgentProfilePage({
                       <span className="font-semibold text-slate-900">Strength:</span>{" "}
                       {strengthLabel}
                     </div>
-                    <div className="sm:col-span-2">
+                    <div>
                       <span className="font-semibold text-slate-900">Areas:</span>{" "}
                       {Array.isArray(agent.service_areas) && agent.service_areas.length
                         ? agent.service_areas.join(", ")
@@ -162,9 +162,7 @@ export default async function AgentProfilePage({
 
               <Card className="rounded-3xl border border-slate-200 bg-white shadow-xl">
                 <CardContent className="p-6 space-y-4">
-                  <h2 className="text-2xl font-semibold text-slate-900">
-                    Professional Summary
-                  </h2>
+                  <h2 className="text-2xl font-semibold text-slate-900">About {name}</h2>
                   <p className="text-slate-600 leading-relaxed">
                     {agent.bio ||
                       "Focused on delivering structured, client-first real estate solutions with disciplined execution and market intelligence."}
