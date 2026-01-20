@@ -17,6 +17,7 @@ import { RoleModelsSection } from "./components/RoleModelsSection";
 import { RecruitmentCTASection } from "./components/RecruitmentCTASection";
 
 const CANONICAL_URL = "https://www.westsiderealty.in/join_us";
+const OG_IMAGE_URL = "https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/landing-pages/hero/Join_us_OG_Image.png";
 
 export async function generateMetadata(): Promise<Metadata> {
   const pageContent = await agentRecruitmentService.getPageContent();
@@ -39,11 +40,20 @@ export async function generateMetadata(): Promise<Metadata> {
       siteName: "RE/MAX Westside Realty",
       type: "website",
       locale: "en_IN",
+      images: [
+        {
+          url: OG_IMAGE_URL,
+          width: 1200,
+          height: 630,
+          alt: "Join RE/MAX Westside Realty",
+        },
+      ],
     },
     twitter: {
       card: "summary_large_image",
       title,
       description,
+      images: [OG_IMAGE_URL],
     },
   };
 }
