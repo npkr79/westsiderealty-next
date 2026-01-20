@@ -1,118 +1,84 @@
 "use client";
 
 import { Card, CardContent } from "@/components/ui/card";
-import { Quote, TrendingUp } from "lucide-react";
-import Image from "next/image";
+import { Quote } from "lucide-react";
 
-interface SuccessStory {
-  name: string;
-  photo_url?: string | null;
-  testimonial: string;
-  metrics?: {
-    earnings?: string;
-    deals?: string;
-    years?: string;
-  };
-}
+const testimonials = [
+  {
+    name: "Naveen",
+    role: "The Strategist",
+    headline: "From Zero Closures to Consistent Deals",
+    quote:
+      "I spent a fortune on portals individually with zero results. Joining the Westside system changed everything. With their brand authority and lead support, I moved from struggling solo to closing a deal every two months like clockwork.",
+    tags: ["System Support", "Consistent Growth"],
+  },
+  {
+    name: "Krishna",
+    role: "The Strategist",
+    headline: "Hospitality to Top Performance in 6 Months",
+    quote:
+      "Coming from hospitality, the transition was seamless. It’s a win-win: I contribute the inventory, and the brand helps me sell it. The system made me comfortable instantly, and I'm already closing 2 deals a month.",
+    tags: ["Career Switch", "Fast Track"],
+  },
+  {
+    name: "Srinivas",
+    role: "The Commander",
+    headline: "Stability in a Complex Market",
+    quote:
+      "The resale market is tough, but the guidance here is exceptional. I've been with the company for 1.5 years because the lead support and professional environment give me the comfort and confidence to operate without the usual stress.",
+    tags: ["Resale Market", "Long-term Support"],
+  },
+];
 
-interface SuccessStoriesSectionProps {
-  title: string;
-  subtitle?: string | null;
-  stories: SuccessStory[];
-}
-
-export function SuccessStoriesSection({
-  title,
-  subtitle,
-  stories,
-}: SuccessStoriesSectionProps) {
-  if (stories.length === 0) return null;
+export function SuccessStoriesSection() {
 
   return (
     <section className="container mx-auto px-4 py-16 md:py-24">
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-12">
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mb-4">
-            {title}
+            Real Agents. Real Growth.
           </h2>
-          {subtitle && (
-            <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto">
-              {subtitle}
-            </p>
-          )}
+          <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto">
+            Professionals who chose a system over solo struggle.
+          </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {stories && Array.isArray(stories) && stories.length > 0 ? (
-            stories.map((story, index) => {
-              // Validate story structure
-              if (!story || typeof story !== 'object') {
-                return null;
-              }
-              
-              const name = typeof story.name === 'string' ? story.name : 'Anonymous';
-              const testimonial = typeof story.testimonial === 'string' ? story.testimonial : '';
-              const photoUrl = typeof story.photo_url === 'string' ? story.photo_url : null;
-              const metrics = story.metrics && typeof story.metrics === 'object' ? story.metrics : {};
-              
-              return (
-            <Card key={index} className="hover:shadow-lg transition-shadow">
-              <CardContent className="p-6">
-                <div className="flex items-start gap-4 mb-4">
-                  {story.photo_url ? (
-                    <div className="relative w-16 h-16 rounded-full overflow-hidden flex-shrink-0">
-                      <Image
-                        src={story.photo_url}
-                        alt={story.name}
-                        fill
-                        className="object-cover"
-                      />
-                    </div>
-                  ) : (
-                    <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                      <span className="text-2xl font-bold text-primary">
-                        {story.name.charAt(0).toUpperCase()}
-                      </span>
-                    </div>
-                  )}
-                  <div className="flex-1">
-                    <h3 className="font-bold text-foreground">{story.name}</h3>
-                    {story.metrics && (
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        {story.metrics.earnings && (
-                          <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">
-                            {story.metrics.earnings}
-                          </span>
-                        )}
-                        {story.metrics.deals && (
-                          <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
-                            {story.metrics.deals}
-                          </span>
-                        )}
-                        {story.metrics.years && (
-                          <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded">
-                            {story.metrics.years}
-                          </span>
-                        )}
-                      </div>
-                    )}
-                  </div>
+          {testimonials.map((story) => (
+            <Card
+              key={story.name}
+              className="border border-white/50 bg-white/70 shadow-xl backdrop-blur-lg transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl"
+            >
+              <CardContent className="p-6 space-y-4">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                    {story.role}
+                  </p>
+                  <h3 className="text-xl font-semibold text-foreground">{story.headline}</h3>
                 </div>
                 <div className="relative">
                   <Quote className="absolute -top-2 -left-2 h-8 w-8 text-primary/20" />
                   <p className="text-muted-foreground leading-relaxed pl-6">
-                    {story.testimonial}
+                    {story.quote}
                   </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {story.tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="text-xs rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-primary"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+                <div className="pt-2 text-sm font-semibold text-foreground">
+                  {story.name}
                 </div>
               </CardContent>
             </Card>
-              );
-            })
-          ) : (
-            <div className="col-span-full text-center text-muted-foreground py-8">
-              No success stories available.
-            </div>
-          )}
+          ))}
         </div>
       </div>
     </section>

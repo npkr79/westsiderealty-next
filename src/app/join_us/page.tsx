@@ -108,13 +108,7 @@ export default async function JoinUsPage() {
           valuePillars={Array.isArray(pageContent.value_pillars) ? pageContent.value_pillars : []}
         />
 
-        {Array.isArray(pageContent.success_stories) && pageContent.success_stories.length > 0 && (
-          <SuccessStoriesSection
-            title={pageContent.success_stories_title}
-            subtitle={pageContent.success_stories_subtitle}
-            stories={pageContent.success_stories}
-          />
-        )}
+        <SuccessStoriesSection />
 
         <WhoThrivesSection />
 
