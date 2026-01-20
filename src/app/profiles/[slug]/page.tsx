@@ -317,21 +317,6 @@ export default async function AgentProfilePage({
                   <ShieldCheck className="h-4 w-4 text-[#003DA5]" />
                   Verified Westside Realty professional
                 </div>
-                {specializationBullets.length > 0 && (
-                  <div className="flex items-start gap-2">
-                    <MapPin className="h-4 w-4 text-[#003DA5] mt-0.5" />
-                    <div className="space-y-2">
-                      <span className="font-semibold text-slate-900">
-                        Specialization:
-                      </span>
-                      <ul className="list-disc pl-5 space-y-1">
-                        {specializationBullets.map((item, index) => (
-                          <li key={`${item.slice(0, 24)}-${index}`}>{item}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  </div>
-                )}
               </div>
             </CardContent>
           </Card>
