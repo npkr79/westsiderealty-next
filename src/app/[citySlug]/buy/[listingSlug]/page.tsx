@@ -31,6 +31,7 @@ async function getProperty(citySlug: string, listingSlug: string) {
 
   // Determine status filter based on city
   const statusFilter = citySlug === 'hyderabad' ? 'active' : citySlug === 'goa' ? 'Active' : 'published';
+  const goaStatusOptions = ['Active', 'active', 'ACTIVE'];
 
   // Select all fields including latitude and longitude for map embedding
   let query = supabase.from(tableName).select('*');
@@ -52,7 +53,11 @@ async function getProperty(citySlug: string, listingSlug: string) {
   }
 
   // Apply status filter
-  query = query.eq('status', statusFilter);
+  if (citySlug === 'goa') {
+    query = query.in('status', goaStatusOptions);
+  } else {
+    query = query.eq('status', statusFilter);
+  }
 
   let { data, error } = await query.maybeSingle();
 
@@ -100,12 +105,17 @@ async function getProperty(citySlug: string, listingSlug: string) {
     if (projectNameKeywords.length >= 3) {
       // First try with project name
       let titleMatches: any[] = [];
-      const { data: matches1, error: err1 } = await supabase
+      let query1 = supabase
         .from(tableName)
         .select('*')
-        .eq('status', statusFilter)
         .ilike('title', `%${projectNameKeywords}%`)
         .limit(20);
+      if (citySlug === 'goa') {
+        query1 = query1.in('status', goaStatusOptions);
+      } else {
+        query1 = query1.eq('status', statusFilter);
+      }
+      const { data: matches1, error: err1 } = await query1;
       
       if (!err1 && matches1) {
         titleMatches = matches1;
@@ -113,12 +123,17 @@ async function getProperty(citySlug: string, listingSlug: string) {
       
       // If no matches, try with location
       if (titleMatches.length === 0 && locationKeywords.length >= 3) {
-        const { data: matches2, error: err2 } = await supabase
+        let query2 = supabase
           .from(tableName)
           .select('*')
-          .eq('status', statusFilter)
           .ilike('title', `%${locationKeywords}%`)
           .limit(20);
+        if (citySlug === 'goa') {
+          query2 = query2.in('status', goaStatusOptions);
+        } else {
+          query2 = query2.eq('status', statusFilter);
+        }
+        const { data: matches2, error: err2 } = await query2;
         
         if (!err2 && matches2) {
           titleMatches = matches2;
@@ -166,12 +181,16 @@ async function getProperty(citySlug: string, listingSlug: string) {
       .maybeSingle();
 
     if (redirectResult.data?.new_slug) {
-      const { data: redirectedData } = await supabase
+      let redirectQuery = supabase
         .from(tableName)
         .select('*')
-        .eq('seo_slug', redirectResult.data.new_slug)
-        .eq('status', statusFilter)
-        .maybeSingle();
+        .eq('seo_slug', redirectResult.data.new_slug);
+      if (citySlug === 'goa') {
+        redirectQuery = redirectQuery.in('status', goaStatusOptions);
+      } else {
+        redirectQuery = redirectQuery.eq('status', statusFilter);
+      }
+      const { data: redirectedData } = await redirectQuery.maybeSingle();
       
       return redirectedData || null;
     }
