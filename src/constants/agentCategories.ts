@@ -1,9 +1,10 @@
 export const AGENT_CATEGORIES = [
-  "Tier 1: The Neighborhood Specialist",
-  "Tier 2: The Inventory Partner",
-  "Tier 3: The Portfolio Manager",
-  "Tier 4: The Corporate Associate",
-  "Tier 5: The Mandate Director",
+  "The Commander",
+  "The Strategist",
+  "The Advisor",
+  "The Partner",
+  "The Corporate Executive",
+  "The Mandate Director",
 ] as const;
 
 export type AgentCategory = (typeof AGENT_CATEGORIES)[number];

@@ -5,11 +5,12 @@ do $$
 begin
   if not exists (select 1 from pg_type where typname = 'agent_category') then
     create type agent_category as enum (
-      'Tier 1: The Neighborhood Specialist',
-      'Tier 2: The Inventory Partner',
-      'Tier 3: The Portfolio Manager',
-      'Tier 4: The Corporate Associate',
-      'Tier 5: The Mandate Director'
+      'The Commander',
+      'The Strategist',
+      'The Advisor',
+      'The Partner',
+      'The Corporate Executive',
+      'The Mandate Director'
     );
   end if;
 end $$;
@@ -75,7 +76,7 @@ select
   coalesce(name, ''),
   coalesce(email, ''),
   coalesce(phone, ''),
-  'Tier 1: The Neighborhood Specialist'::agent_category,
+  'The Commander'::agent_category,
   coalesce(active, true),
   coalesce(created_at, now())
 from agents_profile
