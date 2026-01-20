@@ -89,7 +89,13 @@ export async function generateMetadata({
   const description =
     agent.bio ||
     "Westside Realty professional profile, expertise highlights, and active listings.";
-  const profileImage = agent.profile_image || FALLBACK_OG_IMAGE;
+  const formattedName = slug.replace(/-/g, "_");
+  const fileName = `${formattedName}_profile_photo.png`;
+  const adminClient = getServiceClient();
+  const { data: signedData } = await adminClient.storage
+    .from("agent_profile_photos")
+    .createSignedUrl(fileName, 3600);
+  const profileImage = signedData?.signedUrl || FALLBACK_OG_IMAGE;
   const pageUrl = `${SITE_URL}/profiles/${slug}`;
 
   return {
