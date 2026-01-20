@@ -16,6 +16,7 @@ interface AgentProfileRow {
   email: string | null;
   phone: string | null;
   bio: string | null;
+  latest_transactions: string | null;
   specialization: string | null;
   profile_image: string | null;
   service_areas: string[] | null;
@@ -64,7 +65,7 @@ const fetchAgentBySlug = async (slug: string) => {
   const { data } = await adminClient
     .from("agents_profile")
     .select(
-      "agent_id, name, email, phone, bio, specialization, profile_image, service_areas, whatsapp, linkedin, instagram, raw_agents(category, is_active)"
+      "agent_id, name, email, phone, bio, latest_transactions, specialization, profile_image, service_areas, whatsapp, linkedin, instagram, raw_agents(category, is_active)"
     )
     .ilike("name", displayName)
     .maybeSingle();
@@ -128,6 +129,7 @@ export default async function AgentProfilePage({
   const name = agent.name || displayName;
   const badgeLabel = agent.raw_agents?.category || "Westside Realty Professional";
   const strengthLabel = agent.specialization || "Structured execution";
+  const latestTransactions = agent.latest_transactions || "—";
 
   const adminClient = getServiceClient();
   const { data: properties } = await adminClient
@@ -154,6 +156,49 @@ export default async function AgentProfilePage({
   const projectMap = new Map(
     (projectRows || []).map((project) => [project.project_name, project])
   );
+
+  const formatRichText = (text: string | null, fallback?: string) => {
+    if (!text) {
+      return {
+        paragraphs: fallback ? [fallback] : [],
+        bullets: [] as string[],
+      };
+    }
+
+    const lines = text
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0);
+
+    const bullets: string[] = [];
+    const paragraphLines: string[] = [];
+
+    lines.forEach((line) => {
+      if (line.startsWith("-") || line.startsWith("•")) {
+        bullets.push(line.replace(/^[-•]\s*/, ""));
+      } else {
+        paragraphLines.push(line);
+      }
+    });
+
+    const paragraphs = paragraphLines
+      .join(" ")
+      .split(/\s{2,}/)
+      .map((segment) => segment.trim())
+      .filter(Boolean);
+
+    return {
+      paragraphs: paragraphs.length ? paragraphs : [text.trim()],
+      bullets,
+    };
+  };
+
+  const { paragraphs, bullets } = formatRichText(
+    agent.bio,
+    "Focused on delivering structured, client-first real estate solutions with disciplined execution and market intelligence."
+  );
+  const specializationRich = formatRichText(agent.specialization);
+  const transactionsRich = formatRichText(agent.latest_transactions);
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -195,6 +240,25 @@ export default async function AgentProfilePage({
                     {Array.isArray(agent.service_areas) && agent.service_areas.length
                       ? agent.service_areas.join(", ")
                       : "Hyderabad"}
+                  </div>
+                  <div>
+                    <span className="font-semibold text-slate-900">
+                      Latest Transactions:
+                    </span>{" "}
+                    <div className="mt-1 space-y-2 text-slate-600">
+                      {transactionsRich.paragraphs.map((paragraph, index) => (
+                        <p key={`tx-${paragraph.slice(0, 24)}-${index}`}>{paragraph}</p>
+                      ))}
+                      {transactionsRich.bullets.length > 0 && (
+                        <ul className="list-disc pl-5 space-y-1">
+                          {transactionsRich.bullets.map((item, index) => (
+                            <li key={`tx-bullet-${item.slice(0, 24)}-${index}`}>{item}</li>
+                          ))}
+                        </ul>
+                      )}
+                      {!transactionsRich.paragraphs.length &&
+                        transactionsRich.bullets.length === 0 && <span>—</span>}
+                    </div>
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-4 text-sm text-slate-600 pt-2">
@@ -241,19 +305,42 @@ export default async function AgentProfilePage({
           <Card className="rounded-3xl border border-slate-200 bg-white shadow-xl">
             <CardContent className="p-6 space-y-4">
               <h2 className="text-2xl font-semibold text-slate-900">About {name}</h2>
-              <p className="text-slate-600 leading-relaxed">
-                {agent.bio ||
-                  "Focused on delivering structured, client-first real estate solutions with disciplined execution and market intelligence."}
-              </p>
+              <div className="space-y-4 text-slate-600 leading-relaxed">
+                {paragraphs.map((paragraph, index) => (
+                  <p key={`${paragraph.slice(0, 24)}-${index}`}>{paragraph}</p>
+                ))}
+                {bullets.length > 0 && (
+                  <ul className="list-disc pl-5 space-y-2 text-slate-600">
+                    {bullets.map((item, index) => (
+                      <li key={`${item.slice(0, 24)}-${index}`}>{item}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-slate-600">
                 <div className="flex items-center gap-2">
                   <ShieldCheck className="h-4 w-4 text-[#003DA5]" />
                   Verified Westside Realty professional
                 </div>
-                {agent.specialization && (
-                  <div className="flex items-center gap-2">
-                    <MapPin className="h-4 w-4 text-[#003DA5]" />
-                    Specialization: {agent.specialization}
+                {(specializationRich.paragraphs.length > 0 ||
+                  specializationRich.bullets.length > 0) && (
+                  <div className="flex items-start gap-2">
+                    <MapPin className="h-4 w-4 text-[#003DA5] mt-0.5" />
+                    <div className="space-y-2">
+                      <span className="font-semibold text-slate-900">
+                        Specialization:
+                      </span>
+                      {specializationRich.paragraphs.map((paragraph, index) => (
+                        <p key={`spec-${paragraph.slice(0, 24)}-${index}`}>{paragraph}</p>
+                      ))}
+                      {specializationRich.bullets.length > 0 && (
+                        <ul className="list-disc pl-5 space-y-1">
+                          {specializationRich.bullets.map((item, index) => (
+                            <li key={`spec-bullet-${item.slice(0, 24)}-${index}`}>{item}</li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
