@@ -89,13 +89,6 @@ export async function generateMetadata({
   const description =
     agent.bio ||
     "Westside Realty professional profile, expertise highlights, and active listings.";
-  const formattedName = slug.replace(/-/g, "_");
-  const fileName = `${formattedName}_profile_photo.png`;
-  const adminClient = getServiceClient();
-  const { data: signedData } = await adminClient.storage
-    .from("agent_profile_photos")
-    .createSignedUrl(fileName, 3600);
-  const profileImage = signedData?.signedUrl || FALLBACK_OG_IMAGE;
   const pageUrl = `${SITE_URL}/profiles/${slug}`;
 
   return {
@@ -110,20 +103,11 @@ export async function generateMetadata({
       url: pageUrl,
       siteName: "Westside Realty",
       type: "profile",
-      images: [
-        {
-          url: profileImage,
-          width: 1080,
-          height: 1350,
-          alt: `${name} profile photo`,
-        },
-      ],
     },
     twitter: {
       card: "summary_large_image",
       title: `${name} | Westside Realty`,
       description,
-      images: [profileImage],
     },
   };
 }

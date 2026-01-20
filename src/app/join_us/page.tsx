@@ -16,9 +16,6 @@ import { RoleModelsSection } from "./components/RoleModelsSection";
 import { RecruitmentCTASection } from "./components/RecruitmentCTASection";
 
 const CANONICAL_URL = "https://www.westsiderealty.in/join_us";
-const OG_IMAGE_URL =
-  "https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/landing-pages/hero/Join_us_OG_Image.png";
-
 export const metadata = {
   title: "Join Westside Realty - Professional Real Estate Careers",
   description:
@@ -27,14 +24,6 @@ export const metadata = {
     title: "Join Westside Realty - Professional Real Estate Careers",
     description:
       "Switch from solo struggle to a professional system. Explore our subscription models and join a winning team.",
-    images: [
-      {
-        url: OG_IMAGE_URL,
-        width: 1200,
-        height: 630,
-        alt: "Join Westside Realty",
-      },
-    ],
   },
 };
 
