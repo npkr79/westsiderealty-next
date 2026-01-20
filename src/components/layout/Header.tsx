@@ -162,15 +162,15 @@ const Header = () => {
           </NavigationMenuList>
         </NavigationMenu>
 
-        {/* Desktop Contact Button */}
-        <div className="hidden lg:flex items-center">
+        {/* Desktop Partner Button */}
+        <div className="hidden lg:flex items-center gap-2">
           <Button
-            className="bg-blue-700 hover:bg-blue-800 text-white rounded-full ml-2"
+            className="rounded-full border border-blue-700 text-blue-700 hover:bg-blue-50"
             size="lg"
-            onClick={handleContactClick}
+            variant="outline"
+            asChild
           >
-            <Phone className="h-4 w-4 mr-2" />
-            Talk to Our Team
+            <Link href="/join_us">Partner With Us</Link>
           </Button>
         </div>
 
@@ -192,17 +192,15 @@ const Header = () => {
                 onNavigate={() => setIsOpen(false)}
                 isActive={isActive}
               />
-              <div className="border-t pt-4 mt-4">
+              <div className="border-t pt-4 mt-4 space-y-2">
                 <Button
-                  className="w-full bg-blue-700 hover:bg-blue-800 text-white rounded-full"
+                  className="w-full rounded-full border border-blue-700 text-blue-700 hover:bg-blue-50"
                   size="lg"
-                  onClick={() => {
-                    setIsOpen(false);
-                    handleContactClick();
-                  }}
+                  variant="outline"
+                  asChild
+                  onClick={() => setIsOpen(false)}
                 >
-                  <Phone className="h-4 w-4 mr-2" />
-                  Talk to Our Team
+                  <Link href="/join_us">Partner With Us</Link>
                 </Button>
               </div>
             </div>
