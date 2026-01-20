@@ -72,8 +72,8 @@ export function HeroSection({
                 size="lg"
                 variant="outline"
                 onClick={() => {
-                  const whyJoin = document.getElementById("why-join-us");
-                  whyJoin?.scrollIntoView({ behavior: "smooth" });
+                  const battleground = document.getElementById("choose-your-battleground");
+                  battleground?.scrollIntoView({ behavior: "smooth" });
                 }}
                 className="text-lg px-8 py-6"
               >

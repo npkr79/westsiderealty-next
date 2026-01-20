@@ -44,7 +44,10 @@ const battlegroundRoles = [
 
 export function BattlegroundSection() {
   return (
-    <section className="container mx-auto px-4 py-16 md:py-24 bg-slate-50">
+    <section
+      id="choose-your-battleground"
+      className="container mx-auto px-4 py-16 md:py-24 bg-slate-50"
+    >
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-12">
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mb-4">

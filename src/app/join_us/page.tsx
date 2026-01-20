@@ -66,6 +66,8 @@ export default async function JoinUsPage() {
   }
 
   const pageUrl = CANONICAL_URL;
+  const primaryCtaText = "Be a Partner Today";
+  const secondaryCtaText = pageContent.hero_cta_secondary_text;
 
   // Generate unified schema
   const faqItems = Array.isArray(pageContent.faqs) && pageContent.faqs.length > 0
@@ -107,8 +109,8 @@ export default async function JoinUsPage() {
           subheadline={pageContent.hero_subheadline}
           description={pageContent.hero_description}
           imageUrl={pageContent.hero_image_url}
-          primaryCtaText={pageContent.hero_cta_primary_text}
-          secondaryCtaText={pageContent.hero_cta_secondary_text}
+          primaryCtaText={primaryCtaText}
+          secondaryCtaText={secondaryCtaText}
           trustIndicator={pageContent.hero_trust_indicator}
         />
 
