@@ -165,7 +165,7 @@ const Header = () => {
         {/* Desktop Partner Button */}
         <div className="hidden lg:flex items-center gap-2">
           <Button
-            className="rounded-full border border-blue-700 text-blue-700 hover:bg-blue-50"
+            className="rounded-full bg-[#003DA5] text-white hover:bg-[#00338a]"
             size="lg"
             variant="outline"
             asChild
@@ -194,7 +194,7 @@ const Header = () => {
               />
               <div className="border-t pt-4 mt-4 space-y-2">
                 <Button
-                  className="w-full rounded-full border border-blue-700 text-blue-700 hover:bg-blue-50"
+                  className="w-full rounded-full bg-[#003DA5] text-white hover:bg-[#00338a]"
                   size="lg"
                   variant="outline"
                   asChild
