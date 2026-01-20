@@ -8,16 +8,24 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Mail, MapPin, Phone, ShieldCheck } from "lucide-react";
+import { CheckCircle, Mail, MapPin, Phone, ShieldCheck } from "lucide-react";
 
 interface AgentProfileRow {
   agent_id: string;
   name: string | null;
   email: string | null;
   phone: string | null;
-  bio: string | null;
-  latest_transactions: string | null;
-  specialization: string | null;
+  bio: {
+    bullets?: string[];
+    paragraph?: string[];
+  } | null;
+  latest_transactions: {
+    bullets?: string[];
+    paragraph?: string[];
+  } | null;
+  specialization: {
+    bullets?: string[];
+  } | null;
   profile_image: string | null;
   service_areas: string[] | null;
   whatsapp: string | null;
@@ -88,7 +96,7 @@ export async function generateMetadata({
   const agent = data as AgentProfileRow;
   const name = agent.name || displayName;
   const description =
-    agent.bio ||
+    agent.bio?.paragraph?.[0] ||
     "Westside Realty professional profile, expertise highlights, and active listings.";
   const pageUrl = `${SITE_URL}/profiles/${slug}`;
 
@@ -128,8 +136,10 @@ export default async function AgentProfilePage({
   const agent = data as AgentProfileRow;
   const name = agent.name || displayName;
   const badgeLabel = agent.raw_agents?.category || "Westside Realty Professional";
-  const strengthLabel = agent.specialization || "Structured execution";
-  const latestTransactions = agent.latest_transactions || "—";
+  const bioParagraphs = agent.bio?.paragraph ?? [];
+  const bioBullets = agent.bio?.bullets ?? [];
+  const specializationBullets = agent.specialization?.bullets ?? [];
+  const transactionsBullets = agent.latest_transactions?.bullets ?? [];
 
   const adminClient = getServiceClient();
   const { data: properties } = await adminClient
@@ -156,49 +166,6 @@ export default async function AgentProfilePage({
   const projectMap = new Map(
     (projectRows || []).map((project) => [project.project_name, project])
   );
-
-  const formatRichText = (text: string | null, fallback?: string) => {
-    if (!text) {
-      return {
-        paragraphs: fallback ? [fallback] : [],
-        bullets: [] as string[],
-      };
-    }
-
-    const lines = text
-      .split(/\r?\n/)
-      .map((line) => line.trim())
-      .filter((line) => line.length > 0);
-
-    const bullets: string[] = [];
-    const paragraphLines: string[] = [];
-
-    lines.forEach((line) => {
-      if (line.startsWith("-") || line.startsWith("•")) {
-        bullets.push(line.replace(/^[-•]\s*/, ""));
-      } else {
-        paragraphLines.push(line);
-      }
-    });
-
-    const paragraphs = paragraphLines
-      .join(" ")
-      .split(/\s{2,}/)
-      .map((segment) => segment.trim())
-      .filter(Boolean);
-
-    return {
-      paragraphs: paragraphs.length ? paragraphs : [text.trim()],
-      bullets,
-    };
-  };
-
-  const { paragraphs, bullets } = formatRichText(
-    agent.bio,
-    "Focused on delivering structured, client-first real estate solutions with disciplined execution and market intelligence."
-  );
-  const specializationRich = formatRichText(agent.specialization);
-  const transactionsRich = formatRichText(agent.latest_transactions);
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -232,33 +199,52 @@ export default async function AgentProfilePage({
                     {badgeLabel}
                   </div>
                   <div>
-                    <span className="font-semibold text-slate-900">Strength:</span>{" "}
-                    {strengthLabel}
-                  </div>
-                  <div>
                     <span className="font-semibold text-slate-900">Areas:</span>{" "}
-                    {Array.isArray(agent.service_areas) && agent.service_areas.length
+                    {agent.service_areas?.length
                       ? agent.service_areas.join(", ")
                       : "Hyderabad"}
                   </div>
-                  <div>
-                    <span className="font-semibold text-slate-900">
-                      Latest Transactions:
-                    </span>{" "}
-                    <div className="mt-1 space-y-2 text-slate-600">
-                      {transactionsRich.paragraphs.map((paragraph, index) => (
-                        <p key={`tx-${paragraph.slice(0, 24)}-${index}`}>{paragraph}</p>
-                      ))}
-                      {transactionsRich.bullets.length > 0 && (
-                        <ul className="list-disc pl-5 space-y-1">
-                          {transactionsRich.bullets.map((item, index) => (
-                            <li key={`tx-bullet-${item.slice(0, 24)}-${index}`}>{item}</li>
-                          ))}
-                        </ul>
-                      )}
-                      {!transactionsRich.paragraphs.length &&
-                        transactionsRich.bullets.length === 0 && <span>—</span>}
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 space-y-4">
+                  <h2 className="text-lg font-semibold text-slate-900">Highlights</h2>
+                  <div className="space-y-2">
+                    <div className="text-sm font-semibold text-slate-900">
+                      Specialization
                     </div>
+                    {specializationBullets.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {specializationBullets.map((item, index) => (
+                          <span
+                            key={`${item.slice(0, 24)}-${index}`}
+                            className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm"
+                          >
+                            {item}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-slate-500">—</p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <div className="text-sm font-semibold text-slate-900">
+                      Recent Transactions
+                    </div>
+                    {transactionsBullets.length > 0 ? (
+                      <ul className="space-y-2 text-sm text-slate-600">
+                        {transactionsBullets.map((item, index) => (
+                          <li
+                            key={`${item.slice(0, 24)}-${index}`}
+                            className="flex items-start gap-2"
+                          >
+                            <CheckCircle className="h-4 w-4 text-[#DC1C2E] mt-0.5" />
+                            <span>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-sm text-slate-500">—</p>
+                    )}
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-4 text-sm text-slate-600 pt-2">
@@ -306,12 +292,21 @@ export default async function AgentProfilePage({
             <CardContent className="p-6 space-y-4">
               <h2 className="text-2xl font-semibold text-slate-900">About {name}</h2>
               <div className="space-y-4 text-slate-600 leading-relaxed">
-                {paragraphs.map((paragraph, index) => (
-                  <p key={`${paragraph.slice(0, 24)}-${index}`}>{paragraph}</p>
-                ))}
-                {bullets.length > 0 && (
+                {bioParagraphs.length > 0 ? (
+                  bioParagraphs.map((paragraph, index) => (
+                    <p key={`${paragraph.slice(0, 24)}-${index}`} className="mb-4">
+                      {paragraph}
+                    </p>
+                  ))
+                ) : (
+                  <p>
+                    Focused on delivering structured, client-first real estate solutions with
+                    disciplined execution and market intelligence.
+                  </p>
+                )}
+                {bioBullets.length > 0 && (
                   <ul className="list-disc pl-5 space-y-2 text-slate-600">
-                    {bullets.map((item, index) => (
+                    {bioBullets.map((item, index) => (
                       <li key={`${item.slice(0, 24)}-${index}`}>{item}</li>
                     ))}
                   </ul>
@@ -322,24 +317,18 @@ export default async function AgentProfilePage({
                   <ShieldCheck className="h-4 w-4 text-[#003DA5]" />
                   Verified Westside Realty professional
                 </div>
-                {(specializationRich.paragraphs.length > 0 ||
-                  specializationRich.bullets.length > 0) && (
+                {specializationBullets.length > 0 && (
                   <div className="flex items-start gap-2">
                     <MapPin className="h-4 w-4 text-[#003DA5] mt-0.5" />
                     <div className="space-y-2">
                       <span className="font-semibold text-slate-900">
                         Specialization:
                       </span>
-                      {specializationRich.paragraphs.map((paragraph, index) => (
-                        <p key={`spec-${paragraph.slice(0, 24)}-${index}`}>{paragraph}</p>
-                      ))}
-                      {specializationRich.bullets.length > 0 && (
-                        <ul className="list-disc pl-5 space-y-1">
-                          {specializationRich.bullets.map((item, index) => (
-                            <li key={`spec-bullet-${item.slice(0, 24)}-${index}`}>{item}</li>
-                          ))}
-                        </ul>
-                      )}
+                      <ul className="list-disc pl-5 space-y-1">
+                        {specializationBullets.map((item, index) => (
+                          <li key={`${item.slice(0, 24)}-${index}`}>{item}</li>
+                        ))}
+                      </ul>
                     </div>
                   </div>
                 )}
