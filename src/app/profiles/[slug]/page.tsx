@@ -50,6 +50,7 @@ interface AgentProperty {
   micro_market: string | null;
   bhk_config: string | null;
   area_sqft: number | null;
+  source?: "hyderabad" | "goa";
 }
 
 interface ProjectInfo {
@@ -151,7 +152,37 @@ export default async function AgentProfilePage({
     .order("created_at", { ascending: false })
     .limit(6);
 
-  const propertyRows = (properties || []) as AgentProperty[];
+  const { data: goaProperties } = await adminClient
+    .from("goa_holiday_properties")
+    .select(
+      "id, title, seo_slug, price_display, price, hero_image_url, images, location_area, district, bedrooms, area_sqft"
+    )
+    .eq("agent_id", agent.agent_id)
+    .order("created_at", { ascending: false })
+    .limit(6);
+
+  const hyderabadRows = (properties || []).map((property) => ({
+    ...property,
+    source: "hyderabad" as const,
+  })) as AgentProperty[];
+
+  const goaRows = (goaProperties || []).map((property) => ({
+    id: property.id,
+    title: property.title ?? null,
+    slug: property.seo_slug ?? null,
+    price_display: property.price_display ?? null,
+    price: property.price ?? null,
+    main_image_url: property.hero_image_url ?? null,
+    image_gallery: Array.isArray(property.images) ? property.images : null,
+    project_name: null,
+    location: property.district ?? null,
+    micro_market: property.location_area ?? null,
+    bhk_config: property.bedrooms ? `${property.bedrooms} BHK` : null,
+    area_sqft: property.area_sqft ?? null,
+    source: "goa" as const,
+  })) as AgentProperty[];
+
+  const propertyRows = [...hyderabadRows, ...goaRows];
   const projectNames = Array.from(
     new Set(propertyRows.map((property) => property.project_name).filter(Boolean))
   ) as string[];
@@ -370,9 +401,9 @@ export default async function AgentProfilePage({
                           <span className="text-[#003DA5] font-semibold">
                             {property.price_display || ""}
                           </span>
-                          {property.slug ? (
+                              {property.slug ? (
                             <Link
-                              href={`/hyderabad/buy/${property.slug}`}
+                                  href={`/${property.source || "hyderabad"}/buy/${property.slug}`}
                               className="text-sm font-semibold text-[#DC1C2E]"
                             >
                               View
