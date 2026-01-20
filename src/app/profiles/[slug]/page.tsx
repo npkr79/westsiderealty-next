@@ -107,8 +107,8 @@ export async function generateMetadata({
       images: [
         {
           url: profileImage,
-          width: 1200,
-          height: 1500,
+          width: 1080,
+          height: 1350,
           alt: `${name} profile photo`,
         },
       ],
@@ -167,12 +167,12 @@ export default async function AgentProfilePage({
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <section className="relative overflow-hidden bg-gradient-to-br from-blue-50 via-white to-slate-50 py-12">
-        <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 lg:grid-cols-[3fr_1fr] gap-8">
-            <div className="space-y-8">
-              <div className="flex flex-col md:flex-row gap-6 items-start">
-                <div className="relative w-72 md:w-80 lg:w-[320px] aspect-[4/5] rounded-3xl bg-white shadow-2xl overflow-hidden">
+      <section className="relative bg-gradient-to-br from-blue-50 via-white to-slate-50 py-12">
+        <div className="container mx-auto px-4 space-y-10">
+          <div className="grid grid-cols-1 lg:grid-cols-[320px_minmax(0,1fr)_320px] gap-6 items-stretch">
+            <Card className="rounded-3xl border border-slate-200 bg-white shadow-xl h-full min-h-[520px]">
+              <CardContent className="p-4 h-full">
+                <div className="relative w-full h-full min-h-[480px] aspect-[4/5] rounded-2xl overflow-hidden">
                   <Image
                     src={agent.profile_image || "/images/placeholder-agent.png"}
                     alt={name}
@@ -180,138 +180,53 @@ export default async function AgentProfilePage({
                     className="object-cover"
                   />
                 </div>
-                <div className="space-y-4 flex-1">
-                  <Badge className="bg-[#003DA5]/10 text-[#003DA5] border border-[#003DA5]/20">
+              </CardContent>
+            </Card>
+
+            <Card className="rounded-3xl border border-slate-200 bg-white shadow-xl h-full min-h-[520px]">
+              <CardContent className="p-6 space-y-5 h-full">
+                <Badge className="bg-[#003DA5]/10 text-[#003DA5] border border-[#003DA5]/20">
+                  {badgeLabel}
+                </Badge>
+                <h1 className="text-3xl md:text-5xl font-bold text-slate-900">
+                  {name}
+                </h1>
+                <div className="grid grid-cols-1 gap-3 text-sm text-slate-600">
+                  <div>
+                    <span className="font-semibold text-slate-900">Role:</span>{" "}
                     {badgeLabel}
-                  </Badge>
-                  <h1 className="text-3xl md:text-5xl font-bold text-slate-900">
-                    {name}
-                  </h1>
-                  <div className="grid grid-cols-1 gap-3 text-sm text-slate-600">
-                    <div>
-                      <span className="font-semibold text-slate-900">Role:</span>{" "}
-                      {badgeLabel}
-                    </div>
-                    <div>
-                      <span className="font-semibold text-slate-900">Strength:</span>{" "}
-                      {strengthLabel}
-                    </div>
-                    <div>
-                      <span className="font-semibold text-slate-900">Areas:</span>{" "}
-                      {Array.isArray(agent.service_areas) && agent.service_areas.length
-                        ? agent.service_areas.join(", ")
-                        : "Hyderabad"}
-                    </div>
                   </div>
-                  <div className="flex flex-wrap gap-4 text-sm text-slate-600">
-                    {agent.email && (
-                      <span className="inline-flex items-center gap-2">
-                        <Mail className="h-4 w-4 text-[#003DA5]" />
-                        {agent.email}
-                      </span>
-                    )}
-                    {agent.phone && (
-                      <span className="inline-flex items-center gap-2">
-                        <Phone className="h-4 w-4 text-[#003DA5]" />
-                        {agent.phone}
-                      </span>
-                    )}
+                  <div>
+                    <span className="font-semibold text-slate-900">Strength:</span>{" "}
+                    {strengthLabel}
+                  </div>
+                  <div>
+                    <span className="font-semibold text-slate-900">Areas:</span>{" "}
+                    {Array.isArray(agent.service_areas) && agent.service_areas.length
+                      ? agent.service_areas.join(", ")
+                      : "Hyderabad"}
                   </div>
                 </div>
-              </div>
+                <div className="flex flex-wrap gap-4 text-sm text-slate-600 pt-2">
+                  {agent.email && (
+                    <span className="inline-flex items-center gap-2">
+                      <Mail className="h-4 w-4 text-[#003DA5]" />
+                      {agent.email}
+                    </span>
+                  )}
+                  {agent.phone && (
+                    <span className="inline-flex items-center gap-2">
+                      <Phone className="h-4 w-4 text-[#003DA5]" />
+                      {agent.phone}
+                    </span>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
 
-              <Card className="rounded-3xl border border-slate-200 bg-white shadow-xl">
-                <CardContent className="p-6 space-y-4">
-                  <h2 className="text-2xl font-semibold text-slate-900">About {name}</h2>
-                  <p className="text-slate-600 leading-relaxed">
-                    {agent.bio ||
-                      "Focused on delivering structured, client-first real estate solutions with disciplined execution and market intelligence."}
-                  </p>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-slate-600">
-                    <div className="flex items-center gap-2">
-                      <ShieldCheck className="h-4 w-4 text-[#003DA5]" />
-                      Verified Westside Realty professional
-                    </div>
-                    {agent.specialization && (
-                      <div className="flex items-center gap-2">
-                        <MapPin className="h-4 w-4 text-[#003DA5]" />
-                        Specialization: {agent.specialization}
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <div className="space-y-4">
-                <h2 className="text-2xl font-semibold text-slate-900">
-                  Properties handled by {name}
-                </h2>
-                {propertyRows.length === 0 ? (
-                  <Card className="rounded-3xl border border-slate-200 bg-white shadow-xl">
-                    <CardContent className="p-6 text-slate-600">
-                      No properties are currently listed for this agent.
-                    </CardContent>
-                  </Card>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {propertyRows.map((property) => {
-                      const project = property.project_name
-                        ? projectMap.get(property.project_name)
-                        : null;
-                      const image =
-                        property.main_image_url ||
-                        property.image_gallery?.[0] ||
-                        project?.hero_image_url ||
-                        project?.main_image_url ||
-                        "/images/placeholder-property.png";
-
-                      return (
-                        <Card
-                          key={property.id}
-                          className="rounded-3xl border border-slate-200 bg-white shadow-xl overflow-hidden"
-                        >
-                          <div className="relative h-48 w-full">
-                            <Image src={image} alt={property.title || "Property"} fill className="object-cover" />
-                          </div>
-                          <CardContent className="p-5 space-y-2">
-                            <div className="text-xs uppercase tracking-[0.2em] text-slate-500">
-                              {property.project_name || "Independent Listing"}
-                            </div>
-                            <h3 className="text-lg font-semibold text-slate-900">
-                              {property.title || "Untitled property"}
-                            </h3>
-                            <div className="text-sm text-slate-600">
-                              {property.micro_market || property.location || "Hyderabad"}
-                            </div>
-                            <div className="flex items-center justify-between text-sm text-slate-600">
-                              <span>{property.bhk_config || "—"}</span>
-                              <span>{property.area_sqft ? `${property.area_sqft} sq.ft` : ""}</span>
-                            </div>
-                            <div className="flex items-center justify-between">
-                              <span className="text-[#003DA5] font-semibold">
-                                {property.price_display || ""}
-                              </span>
-                              {property.slug ? (
-                                <Link
-                                  href={`/hyderabad/buy/${property.slug}`}
-                                  className="text-sm font-semibold text-[#DC1C2E]"
-                                >
-                                  View
-                                </Link>
-                              ) : null}
-                            </div>
-                          </CardContent>
-                        </Card>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="lg:sticky lg:top-24 h-fit">
-              <Card className="rounded-3xl border border-slate-200 bg-white shadow-xl">
-                <CardContent className="p-6 space-y-4">
+            <div className="lg:sticky lg:top-24 h-fit self-start">
+              <Card className="rounded-3xl border border-slate-200 bg-white shadow-xl h-full min-h-[520px]">
+                <CardContent className="p-6 space-y-4 h-full">
                   <h2 className="text-2xl font-semibold text-slate-900">
                     Contact {name}
                   </h2>
@@ -331,6 +246,94 @@ export default async function AgentProfilePage({
                 </CardContent>
               </Card>
             </div>
+          </div>
+
+          <Card className="rounded-3xl border border-slate-200 bg-white shadow-xl">
+            <CardContent className="p-6 space-y-4">
+              <h2 className="text-2xl font-semibold text-slate-900">About {name}</h2>
+              <p className="text-slate-600 leading-relaxed">
+                {agent.bio ||
+                  "Focused on delivering structured, client-first real estate solutions with disciplined execution and market intelligence."}
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-slate-600">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="h-4 w-4 text-[#003DA5]" />
+                  Verified Westside Realty professional
+                </div>
+                {agent.specialization && (
+                  <div className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4 text-[#003DA5]" />
+                    Specialization: {agent.specialization}
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="space-y-4">
+            <h2 className="text-2xl font-semibold text-slate-900">
+              Properties handled by {name}
+            </h2>
+            {propertyRows.length === 0 ? (
+              <Card className="rounded-3xl border border-slate-200 bg-white shadow-xl">
+                <CardContent className="p-6 text-slate-600">
+                  No properties are currently listed for this agent.
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {propertyRows.map((property) => {
+                  const project = property.project_name
+                    ? projectMap.get(property.project_name)
+                    : null;
+                  const image =
+                    property.main_image_url ||
+                    property.image_gallery?.[0] ||
+                    project?.hero_image_url ||
+                    project?.main_image_url ||
+                    "/images/placeholder-property.png";
+
+                  return (
+                    <Card
+                      key={property.id}
+                      className="rounded-3xl border border-slate-200 bg-white shadow-xl overflow-hidden"
+                    >
+                      <div className="relative h-48 w-full">
+                        <Image src={image} alt={property.title || "Property"} fill className="object-cover" />
+                      </div>
+                      <CardContent className="p-5 space-y-2">
+                        <div className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                          {property.project_name || "Independent Listing"}
+                        </div>
+                        <h3 className="text-lg font-semibold text-slate-900">
+                          {property.title || "Untitled property"}
+                        </h3>
+                        <div className="text-sm text-slate-600">
+                          {property.micro_market || property.location || "Hyderabad"}
+                        </div>
+                        <div className="flex items-center justify-between text-sm text-slate-600">
+                          <span>{property.bhk_config || "—"}</span>
+                          <span>{property.area_sqft ? `${property.area_sqft} sq.ft` : ""}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-[#003DA5] font-semibold">
+                            {property.price_display || ""}
+                          </span>
+                          {property.slug ? (
+                            <Link
+                              href={`/hyderabad/buy/${property.slug}`}
+                              className="text-sm font-semibold text-[#DC1C2E]"
+                            >
+                              View
+                            </Link>
+                          ) : null}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
       </section>

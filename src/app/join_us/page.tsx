@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { JsonLd } from "@/components/common/SEO";
 import { Breadcrumbs } from "@/components/seo/Breadcrumbs";
@@ -17,46 +16,27 @@ import { RoleModelsSection } from "./components/RoleModelsSection";
 import { RecruitmentCTASection } from "./components/RecruitmentCTASection";
 
 const CANONICAL_URL = "https://www.westsiderealty.in/join_us";
-const OG_IMAGE_URL = "https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/landing-pages/hero/Join_us_OG_Image.png";
+const OG_IMAGE_URL =
+  "https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/landing-pages/hero/Join_us_OG_Image.png";
 
-export async function generateMetadata(): Promise<Metadata> {
-  const pageContent = await agentRecruitmentService.getPageContent();
-  
-  const title = pageContent?.seo_title || "Join RE/MAX Westside Realty | Real Estate Agent Careers";
-  const description = pageContent?.seo_description || "Join India's premier real estate brokerage. Build your career with RE/MAX Westside Realty - competitive commissions, training, and support.";
-  const keywords = pageContent?.seo_keywords || "real estate agent jobs, real estate careers, RE/MAX agents, property agent recruitment, real estate broker jobs";
-
-  return {
-    title,
-    description,
-    keywords,
-    alternates: {
-      canonical: CANONICAL_URL,
-    },
-    openGraph: {
-      title,
-      description,
-      url: CANONICAL_URL,
-      siteName: "RE/MAX Westside Realty",
-      type: "website",
-      locale: "en_IN",
-      images: [
-        {
-          url: OG_IMAGE_URL,
-          width: 1200,
-          height: 630,
-          alt: "Join RE/MAX Westside Realty",
-        },
-      ],
-    },
-    twitter: {
-      card: "summary_large_image",
-      title,
-      description,
-      images: [OG_IMAGE_URL],
-    },
-  };
-}
+export const metadata = {
+  title: "Join Westside Realty - Professional Real Estate Careers",
+  description:
+    "Switch from solo struggle to a professional system. Explore our subscription models and join a winning team.",
+  openGraph: {
+    title: "Join Westside Realty - Professional Real Estate Careers",
+    description:
+      "Switch from solo struggle to a professional system. Explore our subscription models and join a winning team.",
+    images: [
+      {
+        url: OG_IMAGE_URL,
+        width: 1200,
+        height: 630,
+        alt: "Join Westside Realty",
+      },
+    ],
+  },
+};
 
 export default async function JoinUsPage() {
   const pageContent = await agentRecruitmentService.getPageContent();
