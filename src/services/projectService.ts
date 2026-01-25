@@ -29,6 +29,7 @@ export interface ProjectInfo {
   total_towers?: number | null;
   total_floors?: number | null;
   total_units?: number | null;
+  enable_intelligence?: boolean | null;
 }
 
 export interface ProjectWithRelations extends Omit<ProjectInfo, 'description'> {
