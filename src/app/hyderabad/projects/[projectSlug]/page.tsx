@@ -3,6 +3,7 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { projectService, ProjectWithRelations } from "@/services/projectService";
+import { projectIntelligenceService } from "@/services/projectIntelligenceService";
 import { createClient } from "@/lib/supabase/server";
 import { buildMetadata } from "@/components/common/SEO";
 import { JsonLd } from "@/components/common/SEO";
@@ -31,6 +32,7 @@ import ProjectLeadForm from "@/components/project-details/ProjectLeadForm";
 import AboutDeveloperSection from "@/components/project-details/AboutDeveloperSection";
 import AboutMicroMarketSection from "@/components/project-details/AboutMicroMarketSection";
 import ProjectHighlights from "@/components/project-details/ProjectHighlights";
+import ProjectIntelligenceTemplate from "@/components/project-intelligence/ProjectIntelligenceTemplate";
 import SmartLinkGrid from "@/components/shared/SmartLinkGrid";
 
 interface PageProps {
@@ -112,6 +114,14 @@ export default async function ProjectDetailPage({ params }: PageProps) {
 
   // Fetch project data on the server
   const project = await projectService.getCityLevelProjectBySlug(CITY_SLUG, projectSlug);
+
+  if (project?.enable_intelligence === true) {
+    const intelligenceData =
+      await projectIntelligenceService.getProjectIntelligenceBySlug(CITY_SLUG, projectSlug);
+    return (
+      <ProjectIntelligenceTemplate project={project} intelligenceData={intelligenceData} />
+    );
+  }
   
   console.log(`[ProjectPage] citySlug=${CITY_SLUG}, projectSlug=${projectSlug}, found=${!!project}`);
   
