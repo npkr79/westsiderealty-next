@@ -23,15 +23,17 @@ export interface ProjectIntelligenceResult {
       approved_by?: string | null;
       land_area_sqm?: string | null;
       net_land_area_sqm?: string | null;
-      builtup_area_sqm?: number | null;
       builtup_area_sqft?: number | null;
+      builtup_area_sqft_formatted?: string | null;
       total_towers: number | null;
       total_units: number;
+      total_floors: number | null;
       min_floors: number | null;
       max_floors: number | null;
       has_landowner_promoter?: boolean | null;
-      developer_name?: string | null;
-      survey_numbers: string[];
+      location: {
+        survey_numbers: string[];
+      };
       proposed_completion_date?: string | null;
     };
   };
@@ -241,34 +243,16 @@ export const projectIntelligenceService = {
       return hasValue ? sum : null;
     })();
     const builtupAreaSqft =
-      builtupAreaSqm === null ? null : builtupAreaSqm * 10.7639;
+      builtupAreaSqm === null ? null : Math.round(builtupAreaSqm * 10.7639);
+    const builtupAreaSqftFormatted =
+      builtupAreaSqft === null ? null : builtupAreaSqft.toLocaleString("en-IN");
 
-    const floors = buildings
-      .map((building: any) => {
-        const raw =
-          building?.total_floors ??
-          building?.floors ??
-          building?.number_of_floors ??
-          building?.no_of_floors ??
-          null;
-        const parsed = raw === null || raw === undefined ? null : Number(raw);
-        return Number.isFinite(parsed) ? parsed : null;
-      })
-      .filter((value: number | null): value is number => value !== null);
-
-    const minFloors = floors.length > 0 ? Math.min(...floors) : null;
-    const maxFloors = floors.length > 0 ? Math.max(...floors) : null;
-    const avgFloors =
-      floors.length > 0
-        ? floors.reduce((sum, value) => sum + value, 0) / floors.length
-        : null;
-    const avgUnitsPerBuilding =
-      totalBuildings > 0 ? totalUnitsAll / totalBuildings : null;
-
+    const buildingIds = new Set<string>();
     const buildingMaxFloors = new Map<string, number>();
     filteredUnits.forEach((unit: any) => {
       const buildingId = unit?.rera_building_id;
       if (!buildingId) return;
+      buildingIds.add(String(buildingId));
       const raw = unit?.floor_id;
       const parsed = raw === null || raw === undefined ? null : Number(raw);
       if (!Number.isFinite(parsed)) return;
@@ -282,12 +266,17 @@ export const projectIntelligenceService = {
       perBuildingMaxFloors.length > 0 ? Math.min(...perBuildingMaxFloors) : null;
     const maxFloorsSnapshot =
       perBuildingMaxFloors.length > 0 ? Math.max(...perBuildingMaxFloors) : null;
+    const totalFloorsSnapshot =
+      perBuildingMaxFloors.length > 0 &&
+      minFloorsSnapshot !== null &&
+      maxFloorsSnapshot !== null &&
+      minFloorsSnapshot === maxFloorsSnapshot
+        ? minFloorsSnapshot
+        : null;
 
-    const totalTowers =
-      buildingMaxFloors.size > 0 ? buildingMaxFloors.size : null;
+    const totalTowers = buildingIds.size > 0 ? buildingIds.size : null;
     const approvedBy = reraProject?.authority_name ?? null;
     const hasLandownerPromoter = reraProject?.has_landowner_promoter ?? null;
-    const developerName = project?.developer?.developer_name ?? null;
     const surveyNumbers = Array.from(
       new Set(
         (landParcels || [])
@@ -298,6 +287,28 @@ export const projectIntelligenceService = {
           .filter((value: string) => value.length > 0)
       )
     );
+
+    const floorsFromBuildings = buildings
+      .map((building: any) => {
+        const raw =
+          building?.total_floors ??
+          building?.floors ??
+          building?.number_of_floors ??
+          building?.no_of_floors ??
+          null;
+        const parsed = raw === null || raw === undefined ? null : Number(raw);
+        return Number.isFinite(parsed) ? parsed : null;
+      })
+      .filter((value: number | null): value is number => value !== null);
+
+    const minFloors = floorsFromBuildings.length > 0 ? Math.min(...floorsFromBuildings) : null;
+    const maxFloors = floorsFromBuildings.length > 0 ? Math.max(...floorsFromBuildings) : null;
+    const avgFloors =
+      floorsFromBuildings.length > 0
+        ? floorsFromBuildings.reduce((sum, value) => sum + value, 0) / floorsFromBuildings.length
+        : null;
+    const avgUnitsPerBuilding =
+      totalBuildings > 0 ? totalUnitsAll / totalBuildings : null;
 
     const linkedResult: ProjectIntelligenceResult = {
       status: "linked",
@@ -320,15 +331,17 @@ export const projectIntelligenceService = {
           approved_by: approvedBy,
           land_area_sqm: landAreaSqm,
           net_land_area_sqm: netLandAreaSqm,
-          builtup_area_sqm: builtupAreaSqm,
           builtup_area_sqft: builtupAreaSqft,
+          builtup_area_sqft_formatted: builtupAreaSqftFormatted,
           total_towers: totalTowers,
           total_units: totalUnits,
+          total_floors: totalFloorsSnapshot,
           min_floors: minFloorsSnapshot,
           max_floors: maxFloorsSnapshot,
           has_landowner_promoter: hasLandownerPromoter,
-          developer_name: developerName,
-          survey_numbers: surveyNumbers,
+          location: {
+            survey_numbers: surveyNumbers,
+          },
           proposed_completion_date: proposedCompletionDate,
         },
       },

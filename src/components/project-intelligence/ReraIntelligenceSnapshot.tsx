@@ -48,8 +48,12 @@ export default function ReraIntelligenceSnapshot({
 
   const landArea = core?.land_area_sqm || official?.total_land_area;
   const netLandArea = core?.net_land_area_sqm;
-  const builtupAreaSqm = core?.builtup_area_sqm;
   const builtupAreaSqft = core?.builtup_area_sqft;
+  const builtupAreaSqftFormatted =
+    core?.builtup_area_sqft_formatted ||
+    (typeof builtupAreaSqft === "number"
+      ? Math.round(builtupAreaSqft).toLocaleString("en-IN")
+      : null);
   const totalTowers =
     core?.total_towers ||
     official?.total_towers ||
@@ -60,34 +64,24 @@ export default function ReraIntelligenceSnapshot({
     official?.total_units ||
     official?.approved_units ||
     official?.total_approved_units;
+  const totalFloors = core?.total_floors ?? official?.total_floors ?? null;
   const minFloors = core?.min_floors ?? official?.min_floors ?? official?.min_floor;
   const maxFloors = core?.max_floors ?? official?.max_floors ?? official?.max_floor;
   const floorsRange =
-    minFloors || maxFloors
+    minFloors !== null && maxFloors !== null && minFloors !== maxFloors
       ? `${formatValue(minFloors)}–${formatValue(maxFloors)}`
-      : formatValue(official?.total_floors);
+      : null;
+  const floorsDisplay =
+    totalFloors !== null ? formatValue(totalFloors) : floorsRange || "Not disclosed";
 
   const approvedBy = core?.approved_by || official?.authority_name;
-  const developerName = core?.developer_name;
-  const landownerRaw =
-    (core?.has_landowner_promoter ??
-      official?.has_landowner_promoter ??
-      official?.landowner_involvement ??
-      official?.land_owner_involvement ??
-      official?.is_landowner_involved) ?? null;
-  const landownerInvolvement =
-    typeof landownerRaw === "boolean"
-      ? landownerRaw
-        ? "Yes"
-        : "No"
-      : formatValue(landownerRaw);
 
   const locality = core?.locality;
   const mandal = core?.mandal;
   const district = core?.district;
   const surveyNumbers =
-    core?.survey_numbers && core.survey_numbers.length > 0
-      ? core.survey_numbers.join(", ")
+    core?.location?.survey_numbers && core.location.survey_numbers.length > 0
+      ? core.location.survey_numbers.join(", ")
       : undefined;
   const village = official?.village;
 
@@ -105,109 +99,74 @@ export default function ReraIntelligenceSnapshot({
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2">
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <h4 className="text-sm font-semibold text-slate-800">Regulatory Identity</h4>
-          <div className="mt-3 space-y-2 text-sm text-slate-700">
-            <div className="flex justify-between gap-3">
-              <span className="text-slate-500">RERA Registration</span>
-              <span className="text-right font-medium">{formatValue(registrationNumber)}</span>
-            </div>
-            <div className="flex justify-between gap-3">
-              <span className="text-slate-500">Legal Project Name</span>
-              <span className="text-right font-medium">{formatValue(legalProjectName)}</span>
-            </div>
-            <div className="flex justify-between gap-3">
-              <span className="text-slate-500">Project Type</span>
-              <span className="text-right font-medium">{formatValue(projectType)}</span>
-            </div>
-            <div className="flex justify-between gap-3">
-              <span className="text-slate-500">Registration Date</span>
-              <span className="text-right font-medium">{formatDate(registrationDate)}</span>
-            </div>
-            <div className="flex justify-between gap-3">
-              <span className="text-slate-500">Approved By</span>
-              <span className="text-right font-medium">{formatValue(approvedBy)}</span>
-            </div>
-            <div className="flex justify-between gap-3">
-              <span className="text-slate-500">Completion Date</span>
-              <span className="text-right font-medium">{formatDate(declaredCompletionDate)}</span>
-            </div>
+          <div className="mt-3 grid grid-cols-[1fr_auto] gap-x-4 gap-y-2 text-sm text-slate-700">
+            <span className="text-slate-500">RERA Registration</span>
+            <span className="text-right font-medium">{formatValue(registrationNumber)}</span>
+
+            <span className="text-slate-500">Legal Project Name</span>
+            <span className="text-right font-medium">{formatValue(legalProjectName)}</span>
+
+            <span className="text-slate-500">Project Type</span>
+            <span className="text-right font-medium">{formatValue(projectType)}</span>
+
+            <span className="text-slate-500">Registration Date</span>
+            <span className="text-right font-medium">{formatDate(registrationDate)}</span>
+
+            <span className="text-slate-500">Approved By</span>
+            <span className="text-right font-medium">{formatValue(approvedBy)}</span>
+
+            <span className="text-slate-500">Completion Date</span>
+            <span className="text-right font-medium">{formatDate(declaredCompletionDate)}</span>
           </div>
         </div>
 
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <h4 className="text-sm font-semibold text-slate-800">Land &amp; Project Scale</h4>
-          <div className="mt-3 space-y-2 text-sm text-slate-700">
-            <div className="flex justify-between gap-3">
-              <span className="text-slate-500">Land Area</span>
-              <span className="text-right font-medium">{formatValue(landArea)}</span>
-            </div>
-            <div className="flex justify-between gap-3">
-              <span className="text-slate-500">Net Land Area</span>
-              <span className="text-right font-medium">{formatValue(netLandArea)}</span>
-            </div>
-            <div className="flex justify-between gap-3">
-              <span className="text-slate-500">Built-up Area (sqm)</span>
-              <span className="text-right font-medium">{formatValue(builtupAreaSqm)}</span>
-            </div>
-            <div className="flex justify-between gap-3">
-              <span className="text-slate-500">Built-up Area (sqft)</span>
-              <span className="text-right font-medium">{formatValue(builtupAreaSqft)}</span>
-            </div>
-            <div className="flex justify-between gap-3">
-              <span className="text-slate-500">Total Towers</span>
-              <span className="text-right font-medium">{formatValue(totalTowers)}</span>
-            </div>
-            <div className="flex justify-between gap-3">
-              <span className="text-slate-500">Floors (min–max)</span>
-              <span className="text-right font-medium">{floorsRange}</span>
-            </div>
-            <div className="flex justify-between gap-3">
-              <span className="text-slate-500">Total Approved Units</span>
-              <span className="text-right font-medium">{formatValue(totalUnits)}</span>
-            </div>
+          <div className="mt-3 grid grid-cols-[1fr_auto] gap-x-4 gap-y-2 text-sm text-slate-700">
+            <span className="text-slate-500">Land Area</span>
+            <span className="text-right font-medium">{formatValue(landArea)}</span>
+
+            <span className="text-slate-500">Net Land Area</span>
+            <span className="text-right font-medium">{formatValue(netLandArea)}</span>
+
+            <span className="text-slate-500">Built-up Area</span>
+            <span className="text-right font-medium">
+              {builtupAreaSqftFormatted ? `${builtupAreaSqftFormatted} sq.ft` : "Not disclosed"}
+            </span>
+
+            <span className="text-slate-500">Total Towers</span>
+            <span className="text-right font-medium">{formatValue(totalTowers)}</span>
+
+            <span className="text-slate-500">Total Floors</span>
+            <span className="text-right font-medium">{floorsDisplay}</span>
+
+            <span className="text-slate-500">Total Approved Units</span>
+            <span className="text-right font-medium">{formatValue(totalUnits)}</span>
           </div>
         </div>
 
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <h4 className="text-sm font-semibold text-slate-800">Promoter &amp; Ownership</h4>
-          <div className="mt-3 space-y-2 text-sm text-slate-700">
-            <div className="flex justify-between gap-3">
-              <span className="text-slate-500">Developer Name</span>
-              <span className="text-right font-medium">{formatValue(developerName)}</span>
-            </div>
-            <div className="flex justify-between gap-3">
-              <span className="text-slate-500">Landowner Involvement</span>
-              <span className="text-right font-medium">{landownerInvolvement}</span>
-            </div>
-            <div className="pt-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-              View developer intelligence ↓
-            </div>
-          </div>
-        </div>
+          <h4 className="text-sm font-semibold text-slate-800">Project Location</h4>
+          <div className="mt-3 grid grid-cols-[1fr_auto] gap-x-4 gap-y-2 text-sm text-slate-700">
+            <span className="text-slate-500">Locality</span>
+            <span className="text-right font-medium">{formatValue(locality)}</span>
 
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <h4 className="text-sm font-semibold text-slate-800">Official Location</h4>
-          <div className="mt-3 space-y-2 text-sm text-slate-700">
-            <div className="flex justify-between gap-3">
-              <span className="text-slate-500">Locality</span>
-              <span className="text-right font-medium">{formatValue(locality)}</span>
-            </div>
-            <div className="flex justify-between gap-3">
-              <span className="text-slate-500">Mandal</span>
-              <span className="text-right font-medium">{formatValue(mandal)}</span>
-            </div>
-            <div className="flex justify-between gap-3">
-              <span className="text-slate-500">District</span>
-              <span className="text-right font-medium">{formatValue(district)}</span>
-            </div>
-            <div className="flex justify-between gap-3">
-              <span className="text-slate-500">Survey / Village</span>
-              <span className="text-right font-medium">
-                {formatValue(surveyNumbers || village)}
-              </span>
-            </div>
+            <span className="text-slate-500">Village</span>
+            <span className="text-right font-medium">{formatValue(village)}</span>
+
+            <span className="text-slate-500">Mandal</span>
+            <span className="text-right font-medium">{formatValue(mandal)}</span>
+
+            <span className="text-slate-500">District</span>
+            <span className="text-right font-medium">{formatValue(district)}</span>
+
+            <span className="text-slate-500">Survey Numbers</span>
+            <span className="text-right font-medium">
+              {formatValue(surveyNumbers)}
+            </span>
           </div>
         </div>
       </div>
