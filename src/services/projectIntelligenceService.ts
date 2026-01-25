@@ -157,6 +157,22 @@ export const projectIntelligenceService = {
 
     const reraProjectId = reraProject?.id ?? null;
 
+    const unitStatsResponse = await supabase
+      .from("rera_units")
+      .select(
+        "total_units:count(), total_towers:count(distinct rera_building_id), max_floor:max(floor_id), min_unit_size:min(builtup_area), max_unit_size:max(builtup_area)"
+      )
+      .eq("project_id", reraProjectId)
+      .neq("raw_apartment_type", "CLUBHOUSE")
+      .single();
+
+    const unitStats = (unitStatsResponse.data as any) ?? null;
+    const unitStatsError = unitStatsResponse.error;
+
+    if (unitStatsError) {
+      console.error("Unit aggregate query failed:", unitStatsError);
+    }
+
     const fetchByProjectId = async (table: string) => {
       if (!reraProjectId) return [];
       const { data, error } = await supabase
@@ -223,22 +239,9 @@ export const projectIntelligenceService = {
       ...(unitsByProjectId ?? []),
       ...(unitsByReraProjectId ?? []),
     ];
-
-    console.log("UNITS FETCH CHECK", {
-      by_project_id: unitsByProjectId?.length ?? 0,
-      by_rera_project_id: unitsByReraProjectId?.length ?? 0,
-      merged: units.length,
-      sample: units.slice(0, 2),
-    });
-
-    const approvedUnits = units.filter(
-      (unit: any) =>
-        unit?.raw_apartment_type?.toUpperCase() !== "CLUBHOUSE"
-    ).length;
     const filteredUnits = units.filter(
       (unit: any) => unit?.raw_apartment_type?.toUpperCase() !== "CLUBHOUSE"
     );
-    const totalUnitsAll = units.length;
     const totalBuildings = buildings.length;
     const primaryAddress = addresses[0] ?? null;
     const proposedCompletionDate = reraProject?.proposed_completion_date ?? null;
@@ -265,21 +268,6 @@ export const projectIntelligenceService = {
       builtupAreaSqm === null ? null : Math.round(builtupAreaSqm * 10.7639);
     const builtupAreaSqftFormatted =
       builtupAreaSqft === null ? null : builtupAreaSqft.toLocaleString("en-IN");
-
-    const floorValues = units
-      .map((unit: any) => Number(unit?.floor_id))
-      .filter((value: number) => Number.isFinite(value));
-    const totalFloors =
-      floorValues.length > 0 ? Math.max(...floorValues) : null;
-
-    const unitBuildingIds = new Set(
-      units.map((unit: any) => unit?.rera_building_id).filter(Boolean)
-    );
-    const validBuildings = buildings.filter((building: any) =>
-      unitBuildingIds.has(building.id)
-    );
-    const totalTowers = new Set(validBuildings.map((building: any) => building.id))
-      .size;
     const approvedBy = reraProject?.authority_name ?? null;
     const hasLandownerPromoter = reraProject?.has_landowner_promoter ?? null;
     const surveyNumbers = Array.from(
@@ -292,17 +280,9 @@ export const projectIntelligenceService = {
     );
 
     const avgUnitsPerBuilding =
-      totalBuildings > 0 ? totalUnitsAll / totalBuildings : null;
+      totalBuildings > 0 ? units.length / totalBuildings : null;
 
-    console.log("RERA INTELLIGENCE AUDIT", {
-      units_total: units.length,
-      approved_units: approvedUnits,
-      distinct_unit_buildings: unitBuildingIds.size,
-      valid_buildings_used: validBuildings.length,
-      total_towers: totalTowers,
-      max_floor: totalFloors,
-      survey_numbers: surveyNumbers,
-    });
+    console.log("RERA UNIT AGGREGATES", unitStats);
 
     const linkedResult: ProjectIntelligenceResult = {
       status: "linked",
@@ -327,9 +307,9 @@ export const projectIntelligenceService = {
           net_land_area_sqm: netLandAreaSqm,
           builtup_area_sqft: builtupAreaSqft,
           builtup_area_sqft_formatted: builtupAreaSqftFormatted,
-          total_towers: totalTowers,
-          total_units: approvedUnits,
-          total_floors: totalFloors,
+          total_towers: unitStats?.total_towers ?? null,
+          total_units: unitStats?.total_units ?? null,
+          total_floors: unitStats?.max_floor ?? null,
           min_floors: null,
           max_floors: null,
           has_landowner_promoter: hasLandownerPromoter,
@@ -354,7 +334,7 @@ export const projectIntelligenceService = {
         },
         units: {
           raw: units,
-          count: totalUnitsAll,
+          count: units.length,
           avg_units_per_building: avgUnitsPerBuilding,
         },
       },
