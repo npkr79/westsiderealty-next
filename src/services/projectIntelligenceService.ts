@@ -18,7 +18,7 @@ export interface ProjectIntelligenceResult {
     land_and_project_scale?: {
       land_area: string | null;
       net_land_area: string | null;
-      builtup_area_sqft: number | null;
+      builtup_area_sqft: string | null;
       total_towers: number | null;
       total_floors: number | null;
       total_units: number | null;
@@ -250,12 +250,12 @@ export const projectIntelligenceService = {
     const totalFloors = unitStats?.total_floors ?? null;
     const minUnitSize = unitStats?.min_unit_size ?? null;
     const maxUnitSize = unitStats?.max_unit_size ?? null;
-    const builtupSqft =
-      unitStats?.max_unit_size && unitStats?.total_units
-        ? Math.round(unitStats.max_unit_size * unitStats.total_units)
-        : null;
-    const builtupSqftFormatted =
-      builtupSqft === null ? null : builtupSqft.toLocaleString("en-IN");
+    const builtupSqm = unitStats?.total_saleable_area_sqm ?? null;
+    const builtupSqft = builtupSqm ? Math.round(builtupSqm * 10.7639) : null;
+    const formatIndianNumber = (num: number) => num.toLocaleString("en-IN");
+    const builtupSqftFormatted = builtupSqft
+      ? `${formatIndianNumber(builtupSqft)} sq.ft`
+      : null;
     const approvedBy = reraProject?.authority_name ?? null;
     const hasLandownerPromoter = reraProject?.has_landowner_promoter ?? null;
     const surveyNumbers = Array.from(
@@ -286,7 +286,7 @@ export const projectIntelligenceService = {
         land_and_project_scale: {
           land_area: landSummary?.total_land_area ?? null,
           net_land_area: landSummary?.net_land_area ?? null,
-          builtup_area_sqft: builtupSqft,
+          builtup_area_sqft: builtupSqftFormatted,
           total_towers: totalTowers,
           total_floors: totalFloors,
           total_units: totalUnits,

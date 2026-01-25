@@ -8,6 +8,7 @@ export default function ReraIntelligenceSnapshot({
   intelligenceData,
 }: ReraIntelligenceSnapshotProps) {
   const core = intelligenceData?.intelligence_snapshot?.core;
+  const scale = intelligenceData?.intelligence_snapshot?.land_and_project_scale;
   const official = intelligenceData?.official_rera?.project;
 
   const formatValue = (value: unknown): string => {
@@ -48,12 +49,7 @@ export default function ReraIntelligenceSnapshot({
 
   const landArea = core?.land_area_sqm || official?.total_land_area;
   const netLandArea = core?.net_land_area_sqm;
-  const builtupAreaSqft = core?.builtup_area_sqft;
-  const builtupAreaSqftFormatted =
-    core?.builtup_area_sqft_formatted ||
-    (typeof builtupAreaSqft === "number"
-      ? Math.round(builtupAreaSqft).toLocaleString("en-IN")
-      : null);
+  const builtupAreaSqftFormatted = scale?.builtup_area_sqft ?? null;
   const totalTowers =
     core?.total_towers ||
     official?.total_towers ||
@@ -134,7 +130,7 @@ export default function ReraIntelligenceSnapshot({
 
             <span className="text-slate-500">Built-up Area</span>
             <span className="text-right font-medium">
-              {builtupAreaSqftFormatted ? `${builtupAreaSqftFormatted} sq.ft` : "Not disclosed"}
+              {builtupAreaSqftFormatted ?? "Not disclosed"}
             </span>
 
             <span className="text-slate-500">Total Towers</span>
