@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Shield, MessageCircle, TrendingUp } from "lucide-react";
+import { Shield, TrendingUp } from "lucide-react";
 import type { LandingPage, LandingPageConfiguration } from "@/types/landingPage";
 import ImageWithFallback from "@/components/common/ImageWithFallback";
 
@@ -16,10 +16,6 @@ export default function AerocidadeHero({ landingPage, configurations }: Aerocida
   const priceDisplay = configurations.length > 0 
     ? configurations[0].price_display || `₹${(configurations[0].starting_price || 0) / 100000}L`
     : "₹55L";
-
-  const whatsappMessage = encodeURIComponent(
-    `Hi, I'm interested in ${landingPage.title} in ${landingPage.location_info}. Please share more details.`
-  );
 
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
@@ -97,17 +93,6 @@ export default function AerocidadeHero({ landingPage, configurations }: Aerocida
               }}
             >
               Get Exclusive Details
-            </Button>
-            <Button
-              size="lg"
-              variant="outline"
-              className="border-2 border-white/90 text-white hover:bg-white/20 hover:text-white backdrop-blur-sm px-10 py-6 text-lg font-semibold inline-flex items-center gap-2"
-              onClick={() => {
-                window.open(`https://wa.me/${landingPage.whatsapp_number}?text=${whatsappMessage}`, "_blank");
-              }}
-            >
-              <MessageCircle className="h-5 w-5 flex-shrink-0" />
-              <span className="whitespace-nowrap">WhatsApp Us</span>
             </Button>
           </div>
         </div>

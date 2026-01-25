@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 
 interface ProjectStickyNavProps {
   projectName: string;
-  onWhatsApp: () => void;
 }
 
 /**
@@ -12,7 +11,6 @@ interface ProjectStickyNavProps {
  */
 export default function ProjectStickyNav({
   projectName,
-  onWhatsApp,
 }: ProjectStickyNavProps) {
   return (
     <div className="sticky top-0 z-30 border-b border-border bg-background/90 backdrop-blur">
@@ -21,14 +19,6 @@ export default function ProjectStickyNav({
           {projectName}
         </p>
         <div className="flex gap-2">
-          <Button
-            size="sm"
-            variant="outline"
-            type="button"
-            onClick={onWhatsApp}
-          >
-            WhatsApp Enquiry
-          </Button>
           <Button
             size="sm"
             type="button"

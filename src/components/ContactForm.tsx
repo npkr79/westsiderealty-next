@@ -196,7 +196,7 @@ export default function ContactForm({ propertyId, agentId, projectName }: Contac
                 required
                 value={formData.phone}
                 onChange={handleInputChange}
-                placeholder="+91 XXXXX XXXXX"
+                placeholder="Phone number"
                 disabled={isSubmitting}
               />
             </div>

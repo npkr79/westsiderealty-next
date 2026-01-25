@@ -146,8 +146,6 @@ export default async function ProjectIntelligenceTemplate({
       {/* Mobile Sticky Actions */}
       <ProjectMobileActions
         projectName={project.project_name}
-        whatsappNumber="919866085831"
-        phoneNumber="919866085831"
       />
     </div>
   );

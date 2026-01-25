@@ -12,7 +12,6 @@ import {
   Shield,
   Handshake,
   Phone,
-  ArrowRight,
   Star,
   Clock,
 } from "lucide-react";
@@ -61,10 +60,6 @@ export default function AboutPage({ testimonials = [] }: AboutPageProps) {
       value: "10+",
     },
   ];
-
-  const handleWhatsAppContact = () => {
-    window.open("https://wa.me/919866085831", "_blank");
-  };
 
   const videoUrl = convertYouTubeToEmbed("https://www.youtube.com/watch?v=ZOfoEr-D04k");
 
@@ -251,15 +246,6 @@ export default function AboutPage({ testimonials = [] }: AboutPageProps) {
                 Schedule Consultation
               </Button>
             </Link>
-            <Button
-              size="lg"
-              variant="secondary"
-              className="w-full sm:w-auto text-remax-red bg-white border-white hover:bg-gray-100 hover:text-remax-red"
-              onClick={handleWhatsAppContact}
-            >
-              WhatsApp Us
-              <ArrowRight className="h-5 w-5 ml-2" />
-            </Button>
           </div>
         </div>
       </section>

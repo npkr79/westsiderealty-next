@@ -20,7 +20,7 @@ class ContactService {
     if (!contactInfo) {
       const defaultContactInfo: ContactInfo = {
         address: '415, 4th Floor, Kokapet Terminal\nKokapet, Hyderabad – 500075',
-        phone: '+91 9866085831',
+        phone: 'Not available',
         email: 'info@westsiderealty.in',
         businessHours: 'Monday - Saturday\n9:00 AM - 7:00 PM'
       };

@@ -21,9 +21,6 @@ export default function CtaSection({ onContactClick }: CtaSectionProps = {}) {
           <Button size="lg" variant="secondary" onClick={onContactClick}>
             Schedule a Call
           </Button>
-          <Button size="lg" variant="outline" className="border-primary-foreground text-primary-foreground" onClick={onContactClick}>
-            WhatsApp Our Team
-          </Button>
         </div>
       </div>
     </section>

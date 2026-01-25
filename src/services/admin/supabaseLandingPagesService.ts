@@ -199,7 +199,7 @@ class SupabaseLandingPagesService {
         subheadline: pageData.subheadline || '',
         rich_description: pageData.rich_description || '',
         location_info: pageData.location_info || '',
-        whatsapp_number: pageData.whatsapp_number || '919866085831',
+        whatsapp_number: pageData.whatsapp_number || '',
         whatsapp_message: pageData.whatsapp_message || 'Hi, I\'m interested in this property listed on your site. Please share more details.',
         show_google_map: pageData.show_google_map ?? true,
         status: pageData.status || 'draft'

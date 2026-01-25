@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Shield, MessageCircle } from "lucide-react";
+import { Shield } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { submitLead } from "@/app/actions/submit-lead";
 
@@ -78,10 +78,6 @@ export default function AerocidadeHero({ data }: AerocidadeHeroProps) {
     }
   };
 
-  const whatsappMessage = encodeURIComponent(
-    `Hi, I'm interested in ${data.projectName} Studio Apartments in Dabolim, Goa. Please share more details.`
-  );
-
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50">
       {/* Background Pattern */}
@@ -130,17 +126,6 @@ export default function AerocidadeHero({ data }: AerocidadeHeroProps) {
                 }}
               >
                 Get Exclusive Details
-              </Button>
-              <Button
-                size="lg"
-                variant="outline"
-                className="border-teal-600 text-teal-600 hover:bg-teal-50 px-8 py-6 text-lg font-semibold"
-                onClick={() => {
-                  window.open(`https://wa.me/919866085831?text=${whatsappMessage}`, "_blank");
-                }}
-              >
-                <MessageCircle className="h-5 w-5 mr-2" />
-                WhatsApp Us
               </Button>
             </div>
           </div>

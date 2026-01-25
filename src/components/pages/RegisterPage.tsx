@@ -149,7 +149,7 @@ export default function RegisterPage() {
                     id="phone"
                     name="phone"
                     type="tel"
-                    placeholder="+91 9876543210"
+                    placeholder="Phone number"
                     value={formData.phone}
                     onChange={handleInputChange}
                     required

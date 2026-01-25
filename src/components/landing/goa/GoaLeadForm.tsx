@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { MessageCircle, CheckCircle2 } from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
 import { submitLead } from "@/app/actions/submit-lead";
 import type { LandingPage } from "@/types/landingPage";
 
@@ -75,10 +75,6 @@ export default function GoaLeadForm({ landingPage }: GoaLeadFormProps) {
       setLoading(false);
     }
   };
-
-  const whatsappMessage = encodeURIComponent(
-    `Hi, I'm interested in ${landingPage.title} in ${landingPage.location_info}. Please share more details.`
-  );
 
   return (
     <section id="goa-lead-form" className="py-16 px-4 bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50">
@@ -179,31 +175,6 @@ export default function GoaLeadForm({ landingPage }: GoaLeadFormProps) {
             </CardContent>
           </Card>
 
-          {/* WhatsApp CTA */}
-          <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white shadow-xl border-0">
-            <CardContent className="p-8 flex flex-col justify-center h-full">
-              <div className="text-center">
-                <MessageCircle className="h-16 w-16 mx-auto mb-6 bg-white/20 rounded-full p-4" />
-                <h3 className="text-2xl font-bold mb-4">
-                  Chat with Us on WhatsApp
-                </h3>
-                <p className="mb-6 opacity-90">
-                  Get instant responses and quick answers to all your questions
-                </p>
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="bg-white text-green-600 hover:bg-green-50 border-0 px-8 py-6 text-lg font-semibold shadow-lg"
-                  onClick={() => {
-                    window.open(`https://wa.me/${landingPage.whatsapp_number}?text=${whatsappMessage}`, "_blank");
-                  }}
-                >
-                  <MessageCircle className="h-5 w-5 mr-2" />
-                  Start WhatsApp Chat
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
         </div>
       </div>
     </section>

@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { 
   Share2, 
-  MessageCircle,
   Linkedin,
   Twitter,
   Copy,
@@ -32,11 +31,6 @@ const SocialShareButtons: React.FC<SocialShareButtonsProps> = ({
   const encodedDescription = encodeURIComponent(description);
   const hashtagString = hashtags.map(tag => `#${tag}`).join(' ');
 
-  const handleWhatsAppShare = () => {
-    const text = `${title}\n\n${description}\n\n${url}`;
-    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
-  };
-
   const handleFacebookShare = () => {
     window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`, '_blank');
   };
@@ -65,17 +59,6 @@ const SocialShareButtons: React.FC<SocialShareButtonsProps> = ({
 
   return (
     <div className={`flex items-center gap-3 ${className}`}>
-      {/* WhatsApp */}
-      <Button
-        variant="outline"
-        size="icon"
-        className="h-11 w-11 hover:bg-[#25D366] hover:text-white hover:border-[#25D366] transition-colors"
-        onClick={handleWhatsAppShare}
-        title="Share on WhatsApp"
-      >
-        <MessageCircle className="h-5 w-5" />
-      </Button>
-
       {/* Facebook */}
       <Button
         variant="outline"

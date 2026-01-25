@@ -12,7 +12,6 @@ const ORGANIZATION_SCHEMA = {
   url: "https://www.westsiderealty.in",
   logo: "https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/brand-assets/remax-logo.jpg",
   image: "https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/brand-assets/remax-logo.jpg",
-  telephone: "+91-9866085831",
   email: "npkr79@gmail.com",
   address: {
     "@type": "PostalAddress",

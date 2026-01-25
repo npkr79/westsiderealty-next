@@ -49,13 +49,6 @@ export default function ProjectDetailClient(props: { citySlug: string; projectSl
   const [isLeadFormOpen, setIsLeadFormOpen] = useState(false);
   const [brochureUrl, setBrochureUrl] = useState<string | null>(null);
 
-  const handleWhatsApp = () => {
-    if (typeof window !== 'undefined') {
-      const message = `Hi, I'm interested in ${project?.project_name || 'this project'}. ${window.location.href}`;
-      window.open(`https://wa.me/919866085831?text=${encodeURIComponent(message)}`, '_blank');
-    }
-  };
-
   useEffect(() => {
     let isMounted = true;
     const fetchData = async () => {
@@ -188,7 +181,7 @@ export default function ProjectDetailClient(props: { citySlug: string; projectSl
         />
 
         {/* Sticky Navigation */}
-        <ProjectStickyNav projectName={project.project_name} onWhatsApp={handleWhatsApp} />
+        <ProjectStickyNav projectName={project.project_name} />
 
         {/* Main Content */}
         <div className="container mx-auto px-4 py-8">
@@ -408,8 +401,6 @@ export default function ProjectDetailClient(props: { citySlug: string; projectSl
         {/* Mobile Actions */}
         <ProjectMobileActions
           projectName={project.project_name}
-          whatsappNumber="919866085831"
-          phoneNumber="919866085831"
           onEnquire={() => setIsLeadFormOpen(true)}
         />
 

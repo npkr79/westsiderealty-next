@@ -3,7 +3,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MapPin, Clock } from "lucide-react";
 import ContactForm from "@/components/ContactForm";
 import { JsonLd, buildMetadata } from "@/components/common/SEO";
-import WhatsAppButton from "@/components/contact/WhatsAppButton";
 
 const CONTACT_SCHEMA = {
   "@context": "https://schema.org",
@@ -31,14 +30,14 @@ const CONTACT_SCHEMA = {
 export const metadata: Metadata = buildMetadata({
   title: "Contact Us | RE/MAX Westside Realty",
   description:
-    "Get in touch with RE/MAX Westside Realty for expert property advice, resale apartments, investment opportunities, and more. Contact our Hyderabad office or WhatsApp for quick assistance.",
+    "Get in touch with RE/MAX Westside Realty for expert property advice, resale apartments, investment opportunities, and more. Contact our Hyderabad office for assistance.",
   canonicalUrl: "https://www.westsiderealty.in/contact",
   imageUrl:
     "https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/brand-assets//remax-favicon.png",
   type: "website",
   siteName: "RE/MAX Westside Realty",
   keywords:
-    "contact remax, real estate agent hyderabad, call property advisor, whatsapp remax india, get real estate help",
+    "contact remax, real estate agent hyderabad, property advisor, get real estate help",
 });
 
 export default function Contact() {
@@ -99,7 +98,6 @@ export default function Contact() {
                         </div>
                       </div>
                     ))}
-                    <WhatsAppButton />
                   </div>
                 </CardContent>
               </Card>

@@ -479,8 +479,6 @@ export default async function ProjectDetailPage({ params }: PageProps) {
         {/* Mobile Sticky Actions */}
         <ProjectMobileActions
           projectName={project.project_name}
-          whatsappNumber="919866085831"
-          phoneNumber="919866085831"
         />
 
         {/* Smart Link Grid */}

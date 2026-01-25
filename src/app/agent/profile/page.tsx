@@ -477,7 +477,7 @@ export default function AgentProfile() {
                     <Input
                       id="whatsapp"
                       type="tel"
-                      placeholder="+919876543210"
+                      placeholder="Phone number"
                       value={whatsapp}
                       onChange={(e) => setWhatsapp(e.target.value)}
                       disabled={!isEditing}

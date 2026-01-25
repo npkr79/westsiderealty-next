@@ -260,8 +260,6 @@ const LandingPageComponent = ({
 
       {/* Sticky Bottom Buttons */}
       <StickyBottomButtons
-        whatsappNumber={landingPage.whatsapp_number}
-        whatsappMessage={landingPage.whatsapp_message}
         onSubmitInterest={handleScrollToForm}
         hasBrochure={!!landingPage.brochure_url}
       />
@@ -1245,17 +1243,6 @@ const LandingPageComponent = ({
               className="bg-white text-remax-red hover:bg-gray-100 px-8 py-4 text-lg font-semibold"
             >
               📋 Submit Your Interest
-            </Button>
-            <Button 
-              onClick={() => {
-                const message = encodeURIComponent(landingPage.whatsapp_message);
-                window.open(`https://wa.me/${landingPage.whatsapp_number}?text=${message}`, '_blank');
-              }}
-              size="lg"
-              variant="outline"
-              className="border-white text-white hover:bg-white hover:text-remax-red px-8 py-4 text-lg font-semibold"
-            >
-              📲 WhatsApp Now
             </Button>
           </div>
         </div>

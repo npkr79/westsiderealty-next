@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { CheckCircle, Mail, MapPin, Phone, ShieldCheck } from "lucide-react";
+import { CheckCircle, Mail, MapPin, ShieldCheck } from "lucide-react";
 
 interface AgentProfileRow {
   agent_id: string;
@@ -283,12 +283,6 @@ export default async function AgentProfilePage({
                     <span className="inline-flex items-center gap-2">
                       <Mail className="h-4 w-4 text-[#003DA5]" />
                       {agent.email}
-                    </span>
-                  )}
-                  {agent.phone && (
-                    <span className="inline-flex items-center gap-2">
-                      <Phone className="h-4 w-4 text-[#003DA5]" />
-                      {agent.phone}
                     </span>
                   )}
                 </div>

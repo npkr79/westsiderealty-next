@@ -24,17 +24,10 @@ export default function ProjectDetailClientActions({
 }: ProjectDetailClientActionsProps) {
   const [isLeadFormOpen, setIsLeadFormOpen] = useState(false);
 
-  const handleWhatsApp = () => {
-    if (typeof window !== 'undefined') {
-      const message = `Hi, I'm interested in ${projectName}. ${window.location.href}`;
-      window.open(`https://wa.me/919866085831?text=${encodeURIComponent(message)}`, '_blank');
-    }
-  };
-
   return (
     <>
       {/* Sticky Navigation */}
-      <ProjectStickyNav projectName={projectName} onWhatsApp={handleWhatsApp} />
+      <ProjectStickyNav projectName={projectName} />
 
       {/* Key Facts Strip */}
       {project && (
@@ -58,8 +51,6 @@ export default function ProjectDetailClientActions({
       {/* Mobile Actions */}
       <ProjectMobileActions
         projectName={projectName}
-        whatsappNumber="919866085831"
-        phoneNumber="919866085831"
         onEnquire={() => setIsLeadFormOpen(true)}
       />
 

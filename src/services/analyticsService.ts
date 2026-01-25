@@ -125,7 +125,7 @@ class AnalyticsService {
     const sampleLeads = [
       {
         name: "Rajesh Kumar",
-        phone: "+91 9876543210",
+        phone: "",
         email: "rajesh.kumar@email.com",
         propertyId: "1",
         propertyTitle: "3BHK Apartment in Kokapet",
@@ -134,7 +134,7 @@ class AnalyticsService {
       },
       {
         name: "Priya Sharma",
-        phone: "+91 9876543211",
+        phone: "",
         email: "priya.sharma@email.com",
         propertyId: "2",
         propertyTitle: "Villa in Gachibowli",
@@ -143,7 +143,7 @@ class AnalyticsService {
       },
       {
         name: "Anil Reddy",
-        phone: "+91 9876543212",
+        phone: "",
         email: "anil.reddy@email.com",
         propertyId: "1",
         propertyTitle: "3BHK Apartment in Kokapet",
