@@ -186,7 +186,6 @@ export const projectIntelligenceService = {
       addresses,
       landSummary,
       buildings,
-      units,
       plots,
       stakeholders,
       developmentWorks,
@@ -195,12 +194,22 @@ export const projectIntelligenceService = {
       fetchByProjectId("rera_project_addresses"),
       fetchSingleByProjectId("rera_project_land_summary"),
       fetchByProjectId("rera_buildings"),
-      fetchByProjectId("rera_units"),
       fetchByProjectId("rera_plots"),
       fetchByProjectId("rera_stakeholders"),
       fetchByProjectId("rera_project_development_works"),
       fetchByProjectId("rera_land_parcels"),
     ]);
+
+    const { data: unitsRaw, error: unitsError } = await supabase
+      .from("rera_units")
+      .select("*")
+      .eq("project_id", reraProjectId);
+
+    if (unitsError) {
+      console.error("[ProjectIntelligence] rera_units fetch error:", unitsError);
+    }
+
+    const units = unitsRaw ?? [];
 
     const normalizeUnitType = (value: unknown) =>
       typeof value === "string" ? value.trim().toUpperCase() : "";
