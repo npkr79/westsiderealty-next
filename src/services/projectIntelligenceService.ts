@@ -204,8 +204,16 @@ export const projectIntelligenceService = {
 
     const [{ data: unitsByProjectId, error: err1 }, { data: unitsByReraProjectId, error: err2 }] =
       await Promise.all([
-        supabase.from("rera_units").select("*").eq("project_id", reraProjectId),
-        supabase.from("rera_units").select("*").eq("rera_project_id", reraProjectId),
+        supabase
+          .from("rera_units")
+          .select("*")
+          .eq("project_id", reraProjectId)
+          .range(0, 10000),
+        supabase
+          .from("rera_units")
+          .select("*")
+          .eq("rera_project_id", reraProjectId)
+          .range(0, 10000),
       ]);
 
     if (err1) console.error("Units fetch (project_id) error:", err1);
