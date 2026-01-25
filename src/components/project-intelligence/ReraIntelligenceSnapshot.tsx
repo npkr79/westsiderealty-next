@@ -70,11 +70,11 @@ export default function ReraIntelligenceSnapshot({
   const approvedBy = core?.approved_by || official?.authority_name;
   const developerName = core?.developer_name;
   const landownerRaw =
-    core?.has_landowner_promoter ??
-    official?.has_landowner_promoter ??
-    official?.landowner_involvement ||
-    official?.land_owner_involvement ||
-    official?.is_landowner_involved;
+    (core?.has_landowner_promoter ??
+      official?.has_landowner_promoter ??
+      official?.landowner_involvement ??
+      official?.land_owner_involvement ??
+      official?.is_landowner_involved) ?? null;
   const landownerInvolvement =
     typeof landownerRaw === "boolean"
       ? landownerRaw
