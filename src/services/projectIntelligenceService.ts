@@ -19,11 +19,19 @@ export interface ProjectIntelligenceResult {
       locality?: string | null;
       mandal?: string | null;
       district?: string | null;
-      land_area?: string | null;
-      builtup_area?: string | null;
-      total_buildings: number;
+      registration_date?: string | null;
+      approved_by?: string | null;
+      land_area_sqm?: string | null;
+      net_land_area_sqm?: string | null;
+      builtup_area_sqm?: number | null;
+      builtup_area_sqft?: number | null;
+      total_towers: number | null;
       total_units: number;
-      promoter_count: number;
+      min_floors: number | null;
+      max_floors: number | null;
+      has_landowner_promoter?: boolean | null;
+      developer_name?: string | null;
+      survey_numbers: string[];
       proposed_completion_date?: string | null;
     };
   };
@@ -61,6 +69,7 @@ export interface ProjectIntelligenceResult {
     plots: any[];
     stakeholders: any[];
     development_works: any[];
+    land_parcels?: any[];
   };
 }
 
@@ -181,6 +190,7 @@ export const projectIntelligenceService = {
       plots,
       stakeholders,
       developmentWorks,
+      landParcels,
     ] = await Promise.all([
       fetchByProjectId("rera_project_addresses"),
       fetchSingleByProjectId("rera_project_land_summary"),
@@ -189,15 +199,40 @@ export const projectIntelligenceService = {
       fetchByProjectId("rera_plots"),
       fetchByProjectId("rera_stakeholders"),
       fetchByProjectId("rera_project_development_works"),
+      fetchByProjectId("rera_land_parcels"),
     ]);
 
-    const totalUnits = units.length;
+    const normalizeUnitType = (value: unknown) =>
+      typeof value === "string" ? value.trim().toUpperCase() : "";
+    const filteredUnits = units.filter(
+      (unit: any) => normalizeUnitType(unit?.raw_apartment_type) !== "CLUBHOUSE"
+    );
+    const totalUnits = filteredUnits.length;
+    const totalUnitsAll = units.length;
     const totalBuildings = buildings.length;
-    const promoterCount = stakeholders.length;
     const primaryAddress = addresses[0] ?? null;
-    const landArea = landSummary?.total_land_area ?? null;
-    const builtupArea = landSummary?.total_builtup_area ?? null;
     const proposedCompletionDate = reraProject?.proposed_completion_date ?? null;
+    const registrationDate =
+      reraProject?.approved_date ?? reraProject?.project_start_date ?? null;
+    const landAreaSqm = landSummary?.total_land_area ?? null;
+    const netLandAreaSqm = landSummary?.net_land_area ?? null;
+
+    const builtupAreaSqm = (() => {
+      if (!filteredUnits.length) return null;
+      let sum = 0;
+      let hasValue = false;
+      filteredUnits.forEach((unit: any) => {
+        const raw = unit?.saleable_area;
+        const parsed = raw === null || raw === undefined ? null : Number(raw);
+        if (Number.isFinite(parsed)) {
+          sum += parsed as number;
+          hasValue = true;
+        }
+      });
+      return hasValue ? sum : null;
+    })();
+    const builtupAreaSqft =
+      builtupAreaSqm === null ? null : builtupAreaSqm * 10.7639;
 
     const floors = buildings
       .map((building: any) => {
@@ -219,7 +254,41 @@ export const projectIntelligenceService = {
         ? floors.reduce((sum, value) => sum + value, 0) / floors.length
         : null;
     const avgUnitsPerBuilding =
-      totalBuildings > 0 ? totalUnits / totalBuildings : null;
+      totalBuildings > 0 ? totalUnitsAll / totalBuildings : null;
+
+    const buildingMaxFloors = new Map<string, number>();
+    filteredUnits.forEach((unit: any) => {
+      const buildingId = unit?.rera_building_id;
+      if (!buildingId) return;
+      const raw = unit?.floor_id;
+      const parsed = raw === null || raw === undefined ? null : Number(raw);
+      if (!Number.isFinite(parsed)) return;
+      const existing = buildingMaxFloors.get(String(buildingId));
+      if (existing === undefined || (parsed as number) > existing) {
+        buildingMaxFloors.set(String(buildingId), parsed as number);
+      }
+    });
+    const perBuildingMaxFloors = Array.from(buildingMaxFloors.values());
+    const minFloorsSnapshot =
+      perBuildingMaxFloors.length > 0 ? Math.min(...perBuildingMaxFloors) : null;
+    const maxFloorsSnapshot =
+      perBuildingMaxFloors.length > 0 ? Math.max(...perBuildingMaxFloors) : null;
+
+    const totalTowers =
+      buildingMaxFloors.size > 0 ? buildingMaxFloors.size : null;
+    const approvedBy = reraProject?.authority_name ?? null;
+    const hasLandownerPromoter = reraProject?.has_landowner_promoter ?? null;
+    const developerName = project?.developer?.developer_name ?? null;
+    const surveyNumbers = Array.from(
+      new Set(
+        (landParcels || [])
+          .map((parcel: any) => parcel?.survey_no ?? parcel?.survey_number)
+          .map((value: unknown) =>
+            typeof value === "string" ? value.trim() : String(value ?? "").trim()
+          )
+          .filter((value: string) => value.length > 0)
+      )
+    );
 
     const linkedResult: ProjectIntelligenceResult = {
       status: "linked",
@@ -238,11 +307,19 @@ export const projectIntelligenceService = {
           locality: primaryAddress?.locality ?? null,
           mandal: primaryAddress?.mandal ?? null,
           district: primaryAddress?.district ?? null,
-          land_area: landArea,
-          builtup_area: builtupArea,
-          total_buildings: totalBuildings,
+          registration_date: registrationDate,
+          approved_by: approvedBy,
+          land_area_sqm: landAreaSqm,
+          net_land_area_sqm: netLandAreaSqm,
+          builtup_area_sqm: builtupAreaSqm,
+          builtup_area_sqft: builtupAreaSqft,
+          total_towers: totalTowers,
           total_units: totalUnits,
-          promoter_count: promoterCount,
+          min_floors: minFloorsSnapshot,
+          max_floors: maxFloorsSnapshot,
+          has_landowner_promoter: hasLandownerPromoter,
+          developer_name: developerName,
+          survey_numbers: surveyNumbers,
           proposed_completion_date: proposedCompletionDate,
         },
       },
@@ -261,7 +338,7 @@ export const projectIntelligenceService = {
         },
         units: {
           raw: units,
-          count: totalUnits,
+          count: totalUnitsAll,
           avg_units_per_building: avgUnitsPerBuilding,
         },
       },
@@ -283,6 +360,7 @@ export const projectIntelligenceService = {
         plots,
         stakeholders,
         development_works: developmentWorks,
+        land_parcels: landParcels,
       },
     };
 
