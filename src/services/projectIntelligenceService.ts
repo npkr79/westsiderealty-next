@@ -202,16 +202,26 @@ export const projectIntelligenceService = {
       fetchByProjectId("rera_land_parcels"),
     ]);
 
-    const { data: unitsRaw, error: unitsError } = await supabase
-      .from("rera_units")
-      .select("*")
-      .or(`project_id.eq.${reraProjectId},rera_project_id.eq.${reraProjectId}`);
+    const [{ data: unitsByProjectId, error: err1 }, { data: unitsByReraProjectId, error: err2 }] =
+      await Promise.all([
+        supabase.from("rera_units").select("*").eq("project_id", reraProjectId),
+        supabase.from("rera_units").select("*").eq("rera_project_id", reraProjectId),
+      ]);
 
-    if (unitsError) {
-      console.error("[ProjectIntelligence] rera_units fetch error:", unitsError);
-    }
+    if (err1) console.error("Units fetch (project_id) error:", err1);
+    if (err2) console.error("Units fetch (rera_project_id) error:", err2);
 
-    const units = unitsRaw ?? [];
+    const units = [
+      ...(unitsByProjectId ?? []),
+      ...(unitsByReraProjectId ?? []),
+    ];
+
+    console.log("UNITS FETCH CHECK", {
+      by_project_id: unitsByProjectId?.length ?? 0,
+      by_rera_project_id: unitsByReraProjectId?.length ?? 0,
+      merged: units.length,
+      sample: units.slice(0, 2),
+    });
 
     const approvedUnits = units.filter(
       (unit: any) =>
