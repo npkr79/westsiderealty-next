@@ -213,12 +213,13 @@ export const projectIntelligenceService = {
 
     const units = unitsRaw ?? [];
 
-    const normalizeUnitType = (value: unknown) =>
-      typeof value === "string" ? value.trim().toUpperCase() : "";
+    const approvedUnits = units.filter(
+      (unit: any) =>
+        unit?.raw_apartment_type?.toUpperCase() !== "CLUBHOUSE"
+    ).length;
     const filteredUnits = units.filter(
-      (unit: any) => normalizeUnitType(unit?.raw_apartment_type) !== "CLUBHOUSE"
+      (unit: any) => unit?.raw_apartment_type?.toUpperCase() !== "CLUBHOUSE"
     );
-    const totalUnits = filteredUnits.length;
     const totalUnitsAll = units.length;
     const totalBuildings = buildings.length;
     const primaryAddress = addresses[0] ?? null;
@@ -247,34 +248,15 @@ export const projectIntelligenceService = {
     const builtupAreaSqftFormatted =
       builtupAreaSqft === null ? null : builtupAreaSqft.toLocaleString("en-IN");
 
-    const buildingIds = new Set<string>();
-    const buildingMaxFloors = new Map<string, number>();
-    filteredUnits.forEach((unit: any) => {
-      const buildingId = unit?.rera_building_id;
-      if (!buildingId) return;
-      buildingIds.add(String(buildingId));
-      const raw = unit?.floor_id;
-      const parsed = raw === null || raw === undefined ? null : Number(raw);
-      if (!Number.isFinite(parsed)) return;
-      const existing = buildingMaxFloors.get(String(buildingId));
-      if (existing === undefined || (parsed as number) > existing) {
-        buildingMaxFloors.set(String(buildingId), parsed as number);
-      }
-    });
-    const perBuildingMaxFloors = Array.from(buildingMaxFloors.values());
-    const minFloorsSnapshot =
-      perBuildingMaxFloors.length > 0 ? Math.min(...perBuildingMaxFloors) : null;
-    const maxFloorsSnapshot =
-      perBuildingMaxFloors.length > 0 ? Math.max(...perBuildingMaxFloors) : null;
-    const totalFloorsSnapshot =
-      perBuildingMaxFloors.length > 0 &&
-      minFloorsSnapshot !== null &&
-      maxFloorsSnapshot !== null &&
-      minFloorsSnapshot === maxFloorsSnapshot
-        ? minFloorsSnapshot
-        : null;
+    const floorValues = units
+      .map((unit: any) => Number(unit?.floor_id))
+      .filter((value: number) => !Number.isNaN(value));
+    const totalFloors =
+      floorValues.length > 0 ? Math.max(...floorValues) : null;
 
-    const totalTowers = buildingIds.size > 0 ? buildingIds.size : null;
+    const totalTowers = new Set(
+      units.map((unit: any) => unit?.rera_building_id).filter(Boolean)
+    ).size;
     const approvedBy = reraProject?.authority_name ?? null;
     const hasLandownerPromoter = reraProject?.has_landowner_promoter ?? null;
     const surveyNumbers = Array.from(
@@ -310,6 +292,18 @@ export const projectIntelligenceService = {
     const avgUnitsPerBuilding =
       totalBuildings > 0 ? totalUnitsAll / totalBuildings : null;
 
+    if (process.env.NODE_ENV === "development") {
+      console.log("INTELLIGENCE CHECK – APARNA ZENON", {
+        total_units_raw: units.length,
+        approved_units: approvedUnits,
+        distinct_towers: totalTowers,
+        total_floors: totalFloors,
+        distinct_building_ids_sample: [
+          ...new Set(units.map((unit: any) => unit?.rera_building_id)),
+        ].slice(0, 5),
+      });
+    }
+
     const linkedResult: ProjectIntelligenceResult = {
       status: "linked",
       commercial: project,
@@ -334,10 +328,10 @@ export const projectIntelligenceService = {
           builtup_area_sqft: builtupAreaSqft,
           builtup_area_sqft_formatted: builtupAreaSqftFormatted,
           total_towers: totalTowers,
-          total_units: totalUnits,
-          total_floors: totalFloorsSnapshot,
-          min_floors: minFloorsSnapshot,
-          max_floors: maxFloorsSnapshot,
+          total_units: approvedUnits,
+          total_floors: totalFloors,
+          min_floors: null,
+          max_floors: null,
           has_landowner_promoter: hasLandownerPromoter,
           location: {
             survey_numbers: surveyNumbers,
