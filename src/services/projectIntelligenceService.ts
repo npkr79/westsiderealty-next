@@ -205,7 +205,7 @@ export const projectIntelligenceService = {
     const { data: unitsRaw, error: unitsError } = await supabase
       .from("rera_units")
       .select("*")
-      .eq("project_id", reraProjectId);
+      .or(`project_id.eq.${reraProjectId},rera_project_id.eq.${reraProjectId}`);
 
     if (unitsError) {
       console.error("[ProjectIntelligence] rera_units fetch error:", unitsError);
@@ -250,59 +250,41 @@ export const projectIntelligenceService = {
 
     const floorValues = units
       .map((unit: any) => Number(unit?.floor_id))
-      .filter((value: number) => !Number.isNaN(value));
+      .filter((value: number) => Number.isFinite(value));
     const totalFloors =
       floorValues.length > 0 ? Math.max(...floorValues) : null;
 
-    const totalTowers = new Set(
+    const unitBuildingIds = new Set(
       units.map((unit: any) => unit?.rera_building_id).filter(Boolean)
-    ).size;
+    );
+    const validBuildings = buildings.filter((building: any) =>
+      unitBuildingIds.has(building.id)
+    );
+    const totalTowers = new Set(validBuildings.map((building: any) => building.id))
+      .size;
     const approvedBy = reraProject?.authority_name ?? null;
     const hasLandownerPromoter = reraProject?.has_landowner_promoter ?? null;
     const surveyNumbers = Array.from(
       new Set(
         (landParcels || [])
-          .map((parcel: any) => parcel?.survey_no ?? parcel?.survey_number)
-          .map((value: unknown) =>
-            typeof value === "string" ? value.trim() : String(value ?? "").trim()
-          )
-          .filter((value: string) => value.length > 0)
+          .map((parcel: any) => parcel?.survey_no)
+          .filter(Boolean)
+          .map((value: string) => value.trim())
       )
     );
 
-    const floorsFromBuildings = buildings
-      .map((building: any) => {
-        const raw =
-          building?.total_floors ??
-          building?.floors ??
-          building?.number_of_floors ??
-          building?.no_of_floors ??
-          null;
-        const parsed = raw === null || raw === undefined ? null : Number(raw);
-        return Number.isFinite(parsed) ? parsed : null;
-      })
-      .filter((value: number | null): value is number => value !== null);
-
-    const minFloors = floorsFromBuildings.length > 0 ? Math.min(...floorsFromBuildings) : null;
-    const maxFloors = floorsFromBuildings.length > 0 ? Math.max(...floorsFromBuildings) : null;
-    const avgFloors =
-      floorsFromBuildings.length > 0
-        ? floorsFromBuildings.reduce((sum, value) => sum + value, 0) / floorsFromBuildings.length
-        : null;
     const avgUnitsPerBuilding =
       totalBuildings > 0 ? totalUnitsAll / totalBuildings : null;
 
-    if (process.env.NODE_ENV === "development") {
-      console.log("INTELLIGENCE CHECK – APARNA ZENON", {
-        total_units_raw: units.length,
-        approved_units: approvedUnits,
-        distinct_towers: totalTowers,
-        total_floors: totalFloors,
-        distinct_building_ids_sample: [
-          ...new Set(units.map((unit: any) => unit?.rera_building_id)),
-        ].slice(0, 5),
-      });
-    }
+    console.log("RERA INTELLIGENCE AUDIT", {
+      units_total: units.length,
+      approved_units: approvedUnits,
+      distinct_unit_buildings: unitBuildingIds.size,
+      valid_buildings_used: validBuildings.length,
+      total_towers: totalTowers,
+      max_floor: totalFloors,
+      survey_numbers: surveyNumbers,
+    });
 
     const linkedResult: ProjectIntelligenceResult = {
       status: "linked",
@@ -348,9 +330,9 @@ export const projectIntelligenceService = {
         buildings: {
           raw: buildings,
           count: totalBuildings,
-          min_floors: minFloors,
-          max_floors: maxFloors,
-          avg_floors: avgFloors,
+          min_floors: null,
+          max_floors: null,
+          avg_floors: null,
         },
         units: {
           raw: units,
