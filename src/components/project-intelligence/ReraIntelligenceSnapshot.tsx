@@ -9,6 +9,7 @@ export default function ReraIntelligenceSnapshot({
 }: ReraIntelligenceSnapshotProps) {
   const core = intelligenceData?.intelligence_snapshot?.core;
   const scale = intelligenceData?.intelligence_snapshot?.land_and_project_scale;
+  const developer = intelligenceData?.intelligence_snapshot?.developer;
   const official = intelligenceData?.official_rera?.project;
   console.log("RERA SNAPSHOT SCALE", scale);
   console.log("RERA SNAPSHOT CORE LOCATION", core?.location);
@@ -107,6 +108,19 @@ export default function ReraIntelligenceSnapshot({
 
             <span className="text-slate-500">Completion Date</span>
             <span className="text-right font-medium">{formatDate(declaredCompletionDate)}</span>
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <h4 className="text-sm font-semibold text-slate-800">Developer Profile</h4>
+          <div className="mt-3 grid grid-cols-[1fr_auto] gap-x-4 gap-y-2 text-sm text-slate-700">
+            <span className="text-slate-500">Developer Name</span>
+            <span className="text-right font-medium">{formatValue(developer?.name)}</span>
+
+            <span className="text-slate-500">Landowner Exists</span>
+            <span className="text-right font-medium">
+              {formatValue(developer?.has_landowner_promoter ? "Yes" : "No")}
+            </span>
           </div>
         </div>
 

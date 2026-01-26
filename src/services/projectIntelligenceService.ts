@@ -15,6 +15,16 @@ export interface ProjectIntelligenceResult {
     mapping_id: string | null;
     rera_project_id: string | null;
     fetched_at: string;
+    developer?: {
+      name: string | null;
+      office_address?: string | null;
+      district?: string | null;
+      state?: string | null;
+      pincode?: string | null;
+      past_experience_flag?: boolean | null;
+      criminal_cases_flag?: boolean | null;
+      has_landowner_promoter?: boolean | null;
+    };
     land_and_project_scale?: {
       land_area: string | null;
       net_land_area: string | null;
@@ -166,6 +176,12 @@ export const projectIntelligenceService = {
 
     const reraProjectId = reraProject?.id ?? null;
 
+    const { data: promoter } = await supabase
+      .from("rera_promoters")
+      .select("*")
+      .eq("rera_project_id", reraProjectId)
+      .maybeSingle();
+
     const { data: unitStats } = await supabase
       .from("rera_project_unit_stats")
       .select("*")
@@ -287,6 +303,16 @@ export const projectIntelligenceService = {
         mapping_id: mapping.id ?? null,
         rera_project_id: reraProjectId,
         fetched_at: new Date().toISOString(),
+        developer: {
+          name: promoter?.organization_name ?? null,
+          office_address: promoter?.office_address ?? null,
+          district: promoter?.district ?? null,
+          state: promoter?.state ?? null,
+          pincode: promoter?.pincode ?? null,
+          past_experience_flag: promoter?.past_experience_flag ?? null,
+          criminal_cases_flag: promoter?.criminal_cases_flag ?? null,
+          has_landowner_promoter: reraProject?.has_landowner_promoter ?? null,
+        },
         land_and_project_scale: {
           land_area: landAreaAcres,
           net_land_area: netLandAreaAcres,
