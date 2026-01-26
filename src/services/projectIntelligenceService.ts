@@ -264,18 +264,12 @@ export const projectIntelligenceService = {
       : null;
     const approvedBy = reraProject?.authority_name ?? null;
     const hasLandownerPromoter = reraProject?.has_landowner_promoter ?? null;
-    const surveyNumbers = Array.from(
-      new Set(
-        [
-          ...(landParcels || []).map((p: any) => p?.survey_no),
-          ...(landSummary?.khata_numbers
-            ? String(landSummary.khata_numbers).split(",")
-            : []),
-        ]
-          .filter(Boolean)
+    const surveyNumbers = landSummary?.survey_numbers
+      ? String(landSummary.survey_numbers)
+          .split(",")
           .map((v: string) => v.trim())
-      )
-    );
+          .filter(Boolean)
+      : [];
 
     const avgUnitsPerBuilding =
       totalBuildings > 0 ? units.length / totalBuildings : null;
