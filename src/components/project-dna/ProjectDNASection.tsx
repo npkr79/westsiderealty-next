@@ -1,16 +1,23 @@
 import type { ProjectIntelligenceResult } from "@/services/projectIntelligenceService";
 import { computeProjectDNA } from "@/intelligence/projectDNA";
+import { computeWestsideDensityIndex } from "@/intelligence/westsideDensityIndex";
 import DensityDNACard from "./DensityDNACard";
 import VerticalDNACard from "./VerticalDNACard";
 import LandDNACard from "./LandDNACard";
 import ScaleDNACard from "./ScaleDNACard";
+import WestsideDensityIndexCard from "./WestsideDensityIndexCard";
 
 interface ProjectDNASectionProps {
-  intelligenceData: ProjectIntelligenceResult;
+  intelligenceData: ProjectIntelligenceResult | null;
 }
 
 export default function ProjectDNASection({ intelligenceData }: ProjectDNASectionProps) {
+  if (!intelligenceData) {
+    return null;
+  }
+
   const dna = computeProjectDNA(intelligenceData);
+  const densityIndex = computeWestsideDensityIndex(dna);
 
   return (
     <section className="space-y-4">
@@ -23,6 +30,7 @@ export default function ProjectDNASection({ intelligenceData }: ProjectDNASectio
           Helps evaluate crowding, asset backing, and long-term livability.
         </p>
       </div>
+      <WestsideDensityIndexCard index={densityIndex} />
       <div className="mt-4 grid gap-5 md:grid-cols-2">
         <DensityDNACard density={dna.density} />
         <VerticalDNACard vertical={dna.vertical} />
