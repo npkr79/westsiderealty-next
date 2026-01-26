@@ -27,6 +27,7 @@ export interface ProjectIntelligenceResult {
       locality?: string | null;
       mandal?: string | null;
       district?: string | null;
+      village?: string | null;
       registration_date?: string | null;
       approved_by?: string | null;
       land_area_sqm?: string | null;
@@ -244,6 +245,11 @@ export const projectIntelligenceService = {
       reraProject?.approved_date ?? reraProject?.project_start_date ?? null;
     const landAreaSqm = landSummary?.total_land_area ?? null;
     const netLandAreaSqm = landSummary?.net_land_area ?? null;
+    const sqmToAcres = (sqm: number) => sqm / 4046.8564224;
+    const landAreaAcres =
+      landAreaSqm ? `${sqmToAcres(Number(landAreaSqm)).toFixed(2)} acres` : null;
+    const netLandAreaAcres =
+      netLandAreaSqm ? `${sqmToAcres(Number(netLandAreaSqm)).toFixed(2)} acres` : null;
 
     const totalUnits = unitStats?.total_units ?? null;
     const totalTowers = unitStats?.total_towers ?? null;
@@ -260,10 +266,14 @@ export const projectIntelligenceService = {
     const hasLandownerPromoter = reraProject?.has_landowner_promoter ?? null;
     const surveyNumbers = Array.from(
       new Set(
-        (landParcels || [])
-          .map((parcel: any) => parcel?.survey_no)
+        [
+          ...(landParcels || []).map((p: any) => p?.survey_no),
+          ...(landSummary?.khata_numbers
+            ? String(landSummary.khata_numbers).split(",")
+            : []),
+        ]
           .filter(Boolean)
-          .map((value: string) => value.trim())
+          .map((v: string) => v.trim())
       )
     );
 
@@ -284,8 +294,8 @@ export const projectIntelligenceService = {
         rera_project_id: reraProjectId,
         fetched_at: new Date().toISOString(),
         land_and_project_scale: {
-          land_area: landSummary?.total_land_area ?? null,
-          net_land_area: landSummary?.net_land_area ?? null,
+          land_area: landAreaAcres,
+          net_land_area: netLandAreaAcres,
           builtup_area_sqft: builtupSqftFormatted,
           total_towers: totalTowers,
           total_floors: totalFloors,
@@ -295,6 +305,7 @@ export const projectIntelligenceService = {
           locality: primaryAddress?.locality ?? null,
           mandal: primaryAddress?.mandal ?? null,
           district: primaryAddress?.district ?? null,
+          village: primaryAddress?.village ?? null,
           registration_date: registrationDate,
           approved_by: approvedBy,
           land_area_sqm: landAreaSqm,
