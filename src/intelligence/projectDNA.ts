@@ -97,7 +97,9 @@ export function computeProjectDNA(
   const totalUnits = toNumber(scale?.total_units);
   const totalTowers = toNumber(scale?.total_towers);
   const totalFloors = toNumber(scale?.total_floors);
-  const builtupSqft = toNumber(scale?.builtup_area_sqft);
+  const builtupSqft = toNumber(
+    intelligence.intelligence_snapshot?.core?.builtup_area_sqft
+  );
   const totalLandSqm = toNumber(
     (landSummary as any)?.total_land_area ?? (landSummary as any)?.total_land_area_sqm
   );
@@ -114,12 +116,17 @@ export function computeProjectDNA(
       ? totalUnits / totalTowers
       : null;
   const avgUnitsPerFloor =
-    totalUnits !== null && totalFloors && totalFloors > 0
-      ? totalUnits / totalFloors
+    totalUnits !== null &&
+    totalFloors !== null &&
+    totalTowers !== null &&
+    totalFloors > 0 &&
+    totalTowers > 0
+      ? totalUnits / (totalFloors * totalTowers)
       : null;
-  const avgFloorsPerTower =
-    totalFloors !== null && totalTowers && totalTowers > 0
-      ? totalFloors / totalTowers
+  const avgFloorsPerTower = totalFloors;
+  const verticalIntensity =
+    totalFloors !== null && totalTowers !== null
+      ? totalFloors * totalTowers
       : null;
 
   const landPerUnitSqft =
@@ -132,6 +139,10 @@ export function computeProjectDNA(
       : null;
 
   const densityClass = unitsPerAcre !== null ? classifyDensity(unitsPerAcre) : null;
+  const densityScore =
+    unitsPerAcre !== null
+      ? Math.min(100, Math.round((unitsPerAcre / 130) * 100))
+      : null;
   const verticalClass = avgFloorsPerTower !== null ? classifyVertical(avgFloorsPerTower) : null;
   const landClass = landPerUnitSqft !== null ? classifyLand(landPerUnitSqft) : null;
   const scaleClass = totalUnits !== null ? classifyScale(totalUnits) : null;
@@ -141,20 +152,20 @@ export function computeProjectDNA(
     units_per_tower: unitsPerTower,
     avg_units_per_floor: avgUnitsPerFloor,
     density_class: densityClass?.label ?? null,
-    density_score: densityClass?.score ?? null,
+    density_score: densityScore,
     explanation:
       unitsPerAcre !== null
-        ? `Density at ${formatNumber(unitsPerAcre)} units/acre is classified as ${densityClass?.label}.`
+        ? `~${formatNumber(unitsPerAcre)} homes per acre. Indicates a ${densityClass?.label}-density gated community with balanced crowd levels.`
         : "Insufficient data to classify density.",
   };
 
   const vertical: VerticalDNA = {
     avg_floors_per_tower: avgFloorsPerTower,
-    vertical_intensity: avgFloorsPerTower,
+    vertical_intensity: verticalIntensity,
     vertical_class: verticalClass ?? null,
     explanation:
       avgFloorsPerTower !== null
-        ? `Average ${formatNumber(avgFloorsPerTower)} floors per tower indicates a ${verticalClass} profile.`
+        ? `${Math.round(avgFloorsPerTower)}-floor towers place this project in the ${verticalClass} category with strong lift dependency.`
         : "Insufficient data to classify vertical intensity.",
   };
 
@@ -164,7 +175,7 @@ export function computeProjectDNA(
     land_class: landClass ?? null,
     explanation:
       landPerUnitSqft !== null
-        ? `Land per unit at ${formatNumber(landPerUnitSqft)} sq.ft indicates a ${landClass} pattern.`
+        ? `Land backing of ~${formatNumber(landPerUnitSqft)} sq.ft per home suggests a ${landClass} land-to-construction profile.`
         : "Insufficient data to classify land efficiency.",
   };
 
@@ -175,7 +186,7 @@ export function computeProjectDNA(
     scale_class: scaleClass ?? null,
     explanation:
       totalUnits !== null
-        ? `Scale of ${Math.round(totalUnits)} units is classified as ${scaleClass}.`
+        ? `With ${Math.round(totalUnits)}+ units, this is a ${scaleClass}-scale residential ecosystem.`
         : "Insufficient data to classify project scale.",
   };
 
