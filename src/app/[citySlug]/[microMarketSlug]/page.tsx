@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
+import { Suspense } from "react";
 import { microMarketPagesService, type MicroMarketPage } from "@/services/microMarketPagesService";
 import { parseJsonb, safeLower, asArray, asObject, safeCapitalize } from "@/lib/parse-jsonb";
 import { projectService, ProjectWithRelations } from "@/services/projectService";
@@ -29,6 +30,9 @@ import { getHeroImageUrl } from "@/utils/imageOptimization";
 import { generateUnifiedSchema } from "@/lib/seo-utils";
 import { optimizeSupabaseImage } from "@/utils/imageOptimization";
 import SmartLinkGrid from "@/components/shared/SmartLinkGrid";
+import MicroMarketSnapshotSection, {
+  MicroMarketSnapshotLoading,
+} from "@/components/micro-market-intelligence/MicroMarketSnapshotSection";
 
 interface PageProps {
   params: Promise<{ citySlug: string; microMarketSlug: string }>;
@@ -848,6 +852,10 @@ export default async function MicroMarketPage({ params }: PageProps) {
               </div>
             )}
           </header>
+
+          <Suspense fallback={<MicroMarketSnapshotLoading />}>
+            <MicroMarketSnapshotSection microMarketSlug={microMarketSlug} />
+          </Suspense>
 
           {/* Market Update Banner */}
           <MarketUpdateBanner citySlug={citySlug} microMarketSlug={microMarketSlug} />
