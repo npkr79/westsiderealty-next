@@ -110,99 +110,22 @@ export async function getMicroMarketSnapshotV1(
     ? microMarket.city[0]?.city_name ?? null
     : (microMarket.city as any)?.city_name ?? null;
 
-  const { data: projects, error: projectsError } = await supabase
-    .from("projects")
-    .select("id")
-    .eq("micro_market_id", microMarket.id);
+  const { data: reraAddressRows, error: reraAddressError } = await supabase
+    .from("rera_project_addresses")
+    .select("rera_project_id")
+    .ilike("micro_market", microMarket.micro_market_name);
 
-  if (projectsError) {
-    console.error("[MicroMarketIntelligence] projects fetch error:", projectsError);
-  }
-
-  const projectIds = (projects ?? []).map((project) => project.id).filter(Boolean);
-
-  if (!projectIds.length) {
-    return {
-      micro_market_id: microMarket.id,
-      micro_market_name: microMarket.micro_market_name,
-      city: cityValue,
-      market_scale: {
-        total_projects: 0,
-        total_units: 0,
-        total_towers: 0,
-        total_land_acres: null,
-      },
-      development_structure: {
-        avg_units_per_acre: null,
-        avg_floors_per_tower: null,
-        avg_land_per_unit_sqft: null,
-        dominant_scale_class: null,
-      },
-      activity_maturity: {
-        active_projects: 0,
-        completed_projects: 0,
-        under_construction_projects: 0,
-        construction_ratio: null,
-        registration_span: {
-          start: null,
-          end: null,
-        },
-      },
-      authority: {
-        statement: `${microMarket.micro_market_name} currently comprises 0 registered residential projects representing approximately 0 approved homes across unknown acres of regulated development land.`,
-        data_source: "Telangana RERA",
-        last_updated: new Date().toISOString(),
-      },
-    };
-  }
-
-  const { data: projectLinks, error: projectLinksError } = await supabase
-    .from("project_rera_links")
-    .select("project_id, rera_project_id")
-    .in("project_id", projectIds);
-
-  if (projectLinksError) {
-    console.error("[MicroMarketIntelligence] project_rera_links fetch error:", projectLinksError);
+  if (reraAddressError) {
+    console.error(
+      "[MicroMarketIntelligence] rera_project_addresses fetch error:",
+      reraAddressError
+    );
+    return null;
   }
 
   const reraProjectIds = Array.from(
-    new Set((projectLinks ?? []).map((link) => link.rera_project_id).filter(Boolean))
+    new Set((reraAddressRows ?? []).map((row) => row.rera_project_id).filter(Boolean))
   );
-
-  if (!reraProjectIds.length) {
-    return {
-      micro_market_id: microMarket.id,
-      micro_market_name: microMarket.micro_market_name,
-      city: cityValue,
-      market_scale: {
-        total_projects: 0,
-        total_units: 0,
-        total_towers: 0,
-        total_land_acres: null,
-      },
-      development_structure: {
-        avg_units_per_acre: null,
-        avg_floors_per_tower: null,
-        avg_land_per_unit_sqft: null,
-        dominant_scale_class: null,
-      },
-      activity_maturity: {
-        active_projects: 0,
-        completed_projects: 0,
-        under_construction_projects: 0,
-        construction_ratio: null,
-        registration_span: {
-          start: null,
-          end: null,
-        },
-      },
-      authority: {
-        statement: `${microMarket.micro_market_name} currently comprises 0 registered residential projects representing approximately 0 approved homes across unknown acres of regulated development land.`,
-        data_source: "Telangana RERA",
-        last_updated: new Date().toISOString(),
-      },
-    };
-  }
 
   const [
     reraProjectsResult,

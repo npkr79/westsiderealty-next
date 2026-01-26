@@ -34,8 +34,6 @@ import MicroMarketSnapshotSection, {
   MicroMarketSnapshotLoading,
 } from "@/components/micro-market-intelligence/MicroMarketSnapshotSection";
 
-const ENABLE_MICRO_MARKET_INTELLIGENCE = false;
-
 interface PageProps {
   params: Promise<{ citySlug: string; microMarketSlug: string }>;
 }
@@ -405,6 +403,7 @@ export default async function MicroMarketPage({ params }: PageProps) {
 
   // Check if Neopolis for special handling
   const isNeopolis = safeLower(microMarketSlug) === "neopolis";
+  const isSnapshotEnabled = safeLower(microMarketSlug) === "gandipet";
   const seoTitle = isNeopolis
     ? "Neopolis Hyderabad: Kokapet Projects, Prices & Master Plan | RE/MAX"
     : pageData.seo_title;
@@ -855,15 +854,16 @@ export default async function MicroMarketPage({ params }: PageProps) {
             )}
           </header>
 
-          {/* Micro-Market Intelligence Snapshot temporarily disabled until RERA data coverage is complete */}
-          {ENABLE_MICRO_MARKET_INTELLIGENCE && (
+          {isSnapshotEnabled && (
             <Suspense fallback={<MicroMarketSnapshotLoading />}>
               <MicroMarketSnapshotSection microMarketSlug={microMarketSlug} />
             </Suspense>
           )}
 
           {/* Market Update Banner */}
-          <MarketUpdateBanner citySlug={citySlug} microMarketSlug={microMarketSlug} />
+          {isSnapshotEnabled && (
+            <MarketUpdateBanner citySlug={citySlug} microMarketSlug={microMarketSlug} />
+          )}
 
           {/* Neopolis Editorial Guide Section - Top of Page, Before Projects */}
           {isNeopolis && (
