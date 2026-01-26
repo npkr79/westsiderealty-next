@@ -58,6 +58,7 @@ const formatNumber = (value: number | null, decimals: number = 2): string => {
   return Number.isFinite(rounded) ? String(rounded) : "N/A";
 };
 
+// Westside Density Standards v1.0 (lifestyle categories, not quality scores)
 const classifyDensity = (unitsPerAcre: number): { label: string; score: number } => {
   if (unitsPerAcre < 50) return { label: "ultra-low", score: 20 };
   if (unitsPerAcre < 75) return { label: "low", score: 40 };
@@ -118,10 +119,8 @@ export function computeProjectDNA(
   const avgUnitsPerFloor =
     totalUnits !== null &&
     totalFloors !== null &&
-    totalTowers !== null &&
-    totalFloors > 0 &&
-    totalTowers > 0
-      ? totalUnits / (totalFloors * totalTowers)
+    totalFloors > 0
+      ? totalUnits / totalFloors
       : null;
   const avgFloorsPerTower = totalFloors;
   const verticalIntensity =
@@ -165,7 +164,7 @@ export function computeProjectDNA(
     vertical_class: verticalClass ?? null,
     explanation:
       avgFloorsPerTower !== null
-        ? `${Math.round(avgFloorsPerTower)}-floor towers place this project in the ${verticalClass} category with strong lift dependency.`
+        ? `${Math.round(avgFloorsPerTower)}-floor towers place this project in the ${verticalClass} category with strong lift dependency. Structural vertical mass reflects the number of stacked floors across all towers.`
         : "Insufficient data to classify vertical intensity.",
   };
 
