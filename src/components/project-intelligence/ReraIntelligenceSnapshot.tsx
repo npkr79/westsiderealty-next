@@ -10,6 +10,8 @@ export default function ReraIntelligenceSnapshot({
   const core = intelligenceData?.intelligence_snapshot?.core;
   const scale = intelligenceData?.intelligence_snapshot?.land_and_project_scale;
   const official = intelligenceData?.official_rera?.project;
+  console.log("RERA SNAPSHOT SCALE", scale);
+  console.log("RERA SNAPSHOT CORE LOCATION", core?.location);
 
   const formatValue = (value: unknown): string => {
     if (value === null || value === undefined || value === "") {
@@ -47,28 +49,14 @@ export default function ReraIntelligenceSnapshot({
   const declaredCompletionDate =
     core?.proposed_completion_date || official?.proposed_completion_date;
 
-  const landArea = core?.land_area_sqm || official?.total_land_area;
-  const netLandArea = core?.net_land_area_sqm;
+  const landArea = scale?.land_area ?? null;
+  const netLandArea = scale?.net_land_area ?? null;
   const builtupAreaSqftFormatted = scale?.builtup_area_sqft ?? null;
-  const totalTowers =
-    core?.total_towers ||
-    official?.total_towers ||
-    official?.number_of_towers ||
-    official?.no_of_towers;
-  const totalUnits =
-    core?.total_units ||
-    official?.total_units ||
-    official?.approved_units ||
-    official?.total_approved_units;
-  const totalFloors = core?.total_floors ?? official?.total_floors ?? null;
-  const minFloors = core?.min_floors ?? official?.min_floors ?? official?.min_floor;
-  const maxFloors = core?.max_floors ?? official?.max_floors ?? official?.max_floor;
-  const floorsRange =
-    minFloors !== null && maxFloors !== null && minFloors !== maxFloors
-      ? `${formatValue(minFloors)}–${formatValue(maxFloors)}`
-      : null;
+  const totalTowers = scale?.total_towers ?? null;
+  const totalUnits = scale?.total_units ?? null;
+  const totalFloors = scale?.total_floors ?? null;
   const floorsDisplay =
-    totalFloors !== null ? formatValue(totalFloors) : floorsRange || "Not disclosed";
+    totalFloors !== null ? formatValue(totalFloors) : "Not disclosed";
 
   const approvedBy = core?.approved_by || official?.authority_name;
 
@@ -78,8 +66,11 @@ export default function ReraIntelligenceSnapshot({
   const surveyNumbers =
     core?.location?.survey_numbers && core.location.survey_numbers.length > 0
       ? core.location.survey_numbers.join(", ")
-      : undefined;
-  const village = official?.village;
+      : null;
+  const village =
+    core?.village ??
+    core?.locality ??
+    null;
 
   return (
     <section className="space-y-4">
