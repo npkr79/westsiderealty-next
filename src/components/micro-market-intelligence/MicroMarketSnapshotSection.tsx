@@ -151,7 +151,7 @@ export default async function MicroMarketSnapshotSection({
             />
             <SnapshotMetricCard
               label="Residential towers"
-              value={snapshot.market_scale.total_towers.toLocaleString("en-IN")}
+              value={snapshot.market_scale.residential_towers.toLocaleString("en-IN")}
             />
             <SnapshotMetricCard
               label="Development land"
