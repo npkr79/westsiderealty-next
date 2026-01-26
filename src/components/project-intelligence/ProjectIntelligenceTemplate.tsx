@@ -11,8 +11,8 @@ import ProjectDescription from "@/components/project-details/ProjectDescription"
 import ProjectHighlights from "@/components/project-details/ProjectHighlights";
 import SimilarProjects from "@/components/project-details/SimilarProjects";
 import ProjectFAQs from "@/components/project-details/ProjectFAQs";
+import ProjectDNASection from "@/components/project-dna/ProjectDNASection";
 import ReraIntelligenceSnapshot from "./ReraIntelligenceSnapshot";
-import ProjectDNASection from "./ProjectDNASection";
 import DeveloperIntelligenceSection from "./DeveloperIntelligenceSection";
 import MicroMarketIntelligenceSection from "./MicroMarketIntelligenceSection";
 import OfficialReraSection from "./OfficialReraSection";
