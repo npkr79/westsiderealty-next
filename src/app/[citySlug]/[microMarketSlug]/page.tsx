@@ -34,6 +34,8 @@ import MicroMarketSnapshotSection, {
   MicroMarketSnapshotLoading,
 } from "@/components/micro-market-intelligence/MicroMarketSnapshotSection";
 
+const ENABLE_MICRO_MARKET_INTELLIGENCE = false;
+
 interface PageProps {
   params: Promise<{ citySlug: string; microMarketSlug: string }>;
 }
@@ -853,9 +855,12 @@ export default async function MicroMarketPage({ params }: PageProps) {
             )}
           </header>
 
-          <Suspense fallback={<MicroMarketSnapshotLoading />}>
-            <MicroMarketSnapshotSection microMarketSlug={microMarketSlug} />
-          </Suspense>
+          {/* Micro-Market Intelligence Snapshot temporarily disabled until RERA data coverage is complete */}
+          {ENABLE_MICRO_MARKET_INTELLIGENCE && (
+            <Suspense fallback={<MicroMarketSnapshotLoading />}>
+              <MicroMarketSnapshotSection microMarketSlug={microMarketSlug} />
+            </Suspense>
+          )}
 
           {/* Market Update Banner */}
           <MarketUpdateBanner citySlug={citySlug} microMarketSlug={microMarketSlug} />
