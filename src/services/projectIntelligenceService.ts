@@ -269,6 +269,8 @@ export const projectIntelligenceService = {
       return data ?? null;
     };
 
+    const shouldFetchHeavyRera = !structuralProfile;
+
     const [
       addresses,
       landSummary,
@@ -280,56 +282,68 @@ export const projectIntelligenceService = {
     ] = await Promise.all([
       fetchByProjectId("rera_project_addresses"),
       fetchSingleByProjectId("rera_project_land_summary"),
-      fetchByProjectId("rera_buildings"),
+      shouldFetchHeavyRera ? fetchByProjectId("rera_buildings") : Promise.resolve([]),
       fetchByProjectId("rera_plots"),
       fetchByProjectId("rera_stakeholders"),
-      fetchByProjectId("rera_project_development_works"),
+      shouldFetchHeavyRera ? fetchByProjectId("rera_project_development_works") : Promise.resolve([]),
       fetchByProjectId("rera_land_parcels"),
     ]);
 
-    const [{ data: unitsByProjectId, error: err1 }, { data: unitsByReraProjectId, error: err2 }] =
-      await Promise.all([
-        supabase
-          .from("rera_units")
-          .select("*")
-          .eq("project_id", reraProjectId)
-          .range(0, 10000),
-        supabase
-          .from("rera_units")
-          .select("*")
-          .eq("rera_project_id", reraProjectId)
-          .range(0, 10000),
-      ]);
+    let units: any[] = [];
+    let unitRowCount = 0;
+    let sumUnitsFromRows = 0;
 
-    if (err1) console.error("Units fetch (project_id) error:", err1);
-    if (err2) console.error("Units fetch (rera_project_id) error:", err2);
+    if (!structuralProfile) {
+      const [{ data: unitsByProjectId, error: err1 }, { data: unitsByReraProjectId, error: err2 }] =
+        await Promise.all([
+          supabase
+            .from("rera_units")
+            .select("*")
+            .eq("project_id", reraProjectId)
+            .range(0, 10000),
+          supabase
+            .from("rera_units")
+            .select("*")
+            .eq("rera_project_id", reraProjectId)
+            .range(0, 10000),
+        ]);
 
-    const units = [
-      ...(unitsByProjectId ?? []),
-      ...(unitsByReraProjectId ?? []),
-    ];
-    const unitRowCount = units.length;
-    const sumUnitsFromRows = units.reduce((sum: number, unit: any) => {
-      const rawValue = unit?.total_units;
-      const numericValue =
-        rawValue === null || rawValue === undefined || rawValue === ""
-          ? null
-          : Number(rawValue);
-      if (Number.isFinite(numericValue as number)) {
-        return sum + (numericValue as number);
+      if (err1) console.error("Units fetch (project_id) error:", err1);
+      if (err2) console.error("Units fetch (rera_project_id) error:", err2);
+
+      units = [
+        ...(unitsByProjectId ?? []),
+        ...(unitsByReraProjectId ?? []),
+      ];
+      unitRowCount = units.length;
+      sumUnitsFromRows = units.reduce((sum: number, unit: any) => {
+        const rawValue = unit?.total_units;
+        const numericValue =
+          rawValue === null || rawValue === undefined || rawValue === ""
+            ? null
+            : Number(rawValue);
+        if (Number.isFinite(numericValue as number)) {
+          return sum + (numericValue as number);
+        }
+        return sum + 1;
+      }, 0);
+
+      if (sumUnitsFromRows > unitRowCount * 1.2) {
+        console.warn("[INTEL] Non-atomic unit rows detected — using expanded total_units", {
+          project_id: project.id,
+          rera_project_id: reraProjectId,
+          unit_rows: unitRowCount,
+          summed_units: sumUnitsFromRows,
+        });
       }
-      return sum + 1;
-    }, 0);
-
-    if (sumUnitsFromRows > unitRowCount * 1.2) {
-      console.warn("[INTEL] Non-atomic unit rows detected — using expanded total_units", {
-        project_id: project.id,
-        rera_project_id: reraProjectId,
-        unit_rows: unitRowCount,
-        summed_units: sumUnitsFromRows,
-      });
     }
-    const totalBuildings = buildings.length;
+
+    const residentialStructures =
+      (structuralProfile as any)?.residential_structures ?? null;
+    const totalBuildings =
+      residentialStructures !== null && residentialStructures !== undefined
+        ? Number(residentialStructures)
+        : buildings.length;
     const primaryAddress = addresses[0] ?? null;
     const proposedCompletionDate = reraProject?.proposed_completion_date ?? null;
     const registrationDate =
@@ -343,7 +357,7 @@ export const projectIntelligenceService = {
       netLandAreaSqm ? `${sqmToAcres(Number(netLandAreaSqm)).toFixed(2)} acres` : null;
 
     const totalUnits =
-      unitRowCount > 0 ? sumUnitsFromRows : (unitStats?.total_units ?? null);
+      (structuralProfile as any)?.total_units ?? null;
     const totalTowers = structuralProfile?.apartment_tower_count ?? null;
     const totalFloors = structuralProfile?.max_floors ?? null;
     const minFloors = structuralProfile?.min_floors ?? null;

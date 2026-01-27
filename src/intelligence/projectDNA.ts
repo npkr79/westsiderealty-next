@@ -91,13 +91,10 @@ export function computeProjectDNA(
   intelligence: ProjectIntelligenceResult
 ): ProjectDNA {
   const structural = (intelligence as any)?.structural_intelligence?.profile;
+  console.log("[STRUCTURAL PROFILE]", structural);
   console.log("[DNA] Called for project:", intelligence?.intelligence_snapshot?.project?.name);
   console.log("[DNA] Structural input:", (intelligence as any)?.structural_intelligence);
   console.log("DNA STRUCTURAL INPUT \u2192", structural);
-  const scale = intelligence.intelligence_snapshot?.land_and_project_scale;
-  const projectDNA = intelligence.project_dna;
-  const landSummary =
-    intelligence.official_rera?.land_summary ?? projectDNA?.land_summary?.raw ?? null;
 
   console.log("[DNA] density_applicable:", (structural as any)?.density_applicable);
   console.log("[DNA] vertical_applicable:", (structural as any)?.vertical_applicable);
@@ -133,16 +130,21 @@ export function computeProjectDNA(
     };
   }
 
-  const totalUnits = toNumber(scale?.total_units);
+  const totalUnits = toNumber((structural as any)?.total_units);
   const totalTowers = toNumber(structural?.apartment_tower_count);
   const maxFloors = toNumber(structural?.max_floors);
   const minFloors = toNumber(structural?.min_floors);
   const avgFloors = toNumber(structural?.avg_floors);
   const builtupSqft = toNumber(
-    intelligence.intelligence_snapshot?.core?.builtup_area_sqft
+    (structural as any)?.builtup_area_sqft ??
+      (structural as any)?.total_builtup_area_sqft ??
+      (structural as any)?.builtup_area_sqft_total
   );
   const totalLandSqm = toNumber(
-    (landSummary as any)?.total_land_area ?? (landSummary as any)?.total_land_area_sqm
+    (structural as any)?.land_area_sqm ??
+      (structural as any)?.total_land_area_sqm ??
+      (structural as any)?.total_land_area ??
+      (structural as any)?.land_area
   );
 
   const landAcres = totalLandSqm !== null ? sqmToAcres(totalLandSqm) : null;
