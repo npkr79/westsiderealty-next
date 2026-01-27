@@ -52,6 +52,12 @@ const toNumber = (value: unknown): number | null => {
 const sqmToAcres = (sqm: number): number => sqm / 4046.8564224;
 const sqmToSqft = (sqm: number): number => sqm * 10.7639;
 
+const smartRound = (value: number): number => {
+  const decimal = value - Math.floor(value);
+  if (decimal >= 0.8) return Math.ceil(value);
+  return Number(value.toFixed(1));
+};
+
 const formatNumber = (value: number | null, decimals: number = 2): string => {
   if (value === null) return "N/A";
   const rounded = Number(value.toFixed(decimals));
@@ -142,28 +148,39 @@ export function computeProjectDNA(
   const builtupSqm = toNumber(
     (structural as any)?.total_builtup_area_sqm ??
       (structural as any)?.builtup_area_sqm ??
-      (structural as any)?.builtup_area
+      (structural as any)?.builtup_area ??
+      intelligence.official_rera?.land_summary?.total_built_up_area ??
+      intelligence.official_rera?.land_summary?.total_builtup_area
   );
-  const builtupSqft = builtupSqm !== null ? sqmToSqft(builtupSqm) : null;
+  const builtupSqft =
+    toNumber((intelligence.intelligence_snapshot?.core as any)?.builtup_area_sqft) ??
+    (builtupSqm !== null ? sqmToSqft(builtupSqm) : null);
   const totalLandSqm = toNumber(
     (structural as any)?.total_land_area_sqm ??
       (structural as any)?.land_area_sqm ??
       (structural as any)?.total_land_area ??
-      (structural as any)?.land_area
+      (structural as any)?.land_area ??
+      intelligence.official_rera?.land_summary?.total_land_area ??
+      (intelligence.intelligence_snapshot?.core as any)?.land_area_sqm
   );
 
   const landAcres = totalLandSqm !== null ? sqmToAcres(totalLandSqm) : null;
-  const landSqft = totalLandSqm !== null ? sqmToSqft(totalLandSqm) : null;
+  const landSqft =
+    totalLandSqm !== null
+      ? sqmToSqft(totalLandSqm)
+      : landAcres !== null
+      ? landAcres * 43560
+      : null;
 
   const unitsPerAcre =
-    totalUnits !== null && landAcres && landAcres > 0
+    totalUnits !== null && landAcres && landAcres > 0 && totalStructures && totalStructures > 0
       ? totalUnits / landAcres
       : null;
-  const unitsPerStructure =
+  const unitsPerStructureRaw =
     totalUnits !== null && totalStructures && totalStructures > 0
       ? totalUnits / totalStructures
       : null;
-  const avgUnitsPerFloor =
+  const avgUnitsPerFloorRaw =
     totalUnits !== null &&
     avgFloors !== null &&
     avgFloors > 0 &&
@@ -171,6 +188,10 @@ export function computeProjectDNA(
     totalStructures > 0
       ? totalUnits / (avgFloors * totalStructures)
       : null;
+  const unitsPerStructure =
+    unitsPerStructureRaw !== null ? smartRound(unitsPerStructureRaw) : null;
+  const avgUnitsPerFloor =
+    avgUnitsPerFloorRaw !== null ? smartRound(avgUnitsPerFloorRaw) : null;
   const avgFloorsPerStructure = avgFloors ?? maxFloors;
   const verticalIntensity =
     avgFloors !== null && totalStructures !== null

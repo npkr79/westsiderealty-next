@@ -3,10 +3,10 @@ import type { ProjectDNA } from "@/intelligence/projectDNA";
 export interface WestsideDensityIndex {
   score: number;
   grade: "Low" | "Balanced" | "Dense" | "Heavy" | "Extreme";
-  crowding_score: number;
-  vertical_score: number;
-  land_stress_score: number;
-  tower_load_score: number;
+  crowding_score: number | null;
+  vertical_score: number | null;
+  land_stress_score: number | null;
+  tower_load_score: number | null;
   explanation: string;
 }
 
@@ -75,10 +75,10 @@ export function computeWestsideDensityIndex(
   return {
     score,
     grade,
-    crowding_score: crowding ?? 0,
-    vertical_score: vertical ?? 0,
-    land_stress_score: landStress ?? 0,
-    tower_load_score: towerLoad ?? 0,
+    crowding_score: crowding !== null ? Math.round(crowding) : null,
+    vertical_score: vertical !== null ? Math.round(vertical) : null,
+    land_stress_score: landStress !== null ? Math.round(landStress) : null,
+    tower_load_score: towerLoad !== null ? Math.round(towerLoad) : null,
     explanation: explanationForGrade(grade),
   };
 }

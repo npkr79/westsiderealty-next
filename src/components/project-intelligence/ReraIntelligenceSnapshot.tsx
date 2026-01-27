@@ -11,6 +11,7 @@ export default function ReraIntelligenceSnapshot({
   const scale = intelligenceData?.intelligence_snapshot?.land_and_project_scale;
   const developer = intelligenceData?.intelligence_snapshot?.developer;
   const official = intelligenceData?.official_rera?.project;
+  const landSummary = intelligenceData?.official_rera?.land_summary;
   console.log("RERA SNAPSHOT SCALE", scale);
   console.log("RERA SNAPSHOT CORE LOCATION", core?.location);
 
@@ -52,7 +53,24 @@ export default function ReraIntelligenceSnapshot({
 
   const landArea = scale?.land_area ?? null;
   const netLandArea = scale?.net_land_area ?? null;
-  const builtupAreaSqftFormatted = scale?.builtup_area_sqft ?? null;
+  const builtupRaw =
+    (official as any)?.built_up_area ??
+    (landSummary as any)?.total_built_up_area ??
+    (landSummary as any)?.total_builtup_area ??
+    core?.builtup_area_sqft_formatted ??
+    scale?.builtup_area_sqft ??
+    core?.builtup_area_sqft ??
+    null;
+  const builtupAreaDisplay = (() => {
+    if (builtupRaw === null || builtupRaw === undefined || builtupRaw === "") {
+      return null;
+    }
+    if (typeof builtupRaw === "number") {
+      return `${builtupRaw.toLocaleString("en-IN")} sq.ft`;
+    }
+    const rawString = String(builtupRaw);
+    return /sq/i.test(rawString) ? rawString : `${rawString} sq.ft`;
+  })();
   const totalTowers = scale?.total_towers ?? null;
   const totalUnits = scale?.total_units ?? null;
   const totalFloors = scale?.total_floors ?? null;
@@ -135,7 +153,7 @@ export default function ReraIntelligenceSnapshot({
 
             <span className="text-slate-500">Built-up Area</span>
             <span className="text-right font-medium">
-              {builtupAreaSqftFormatted ?? "Not disclosed"}
+              {builtupAreaDisplay ?? "Not disclosed"}
             </span>
 
             <span className="text-slate-500">Total Towers</span>

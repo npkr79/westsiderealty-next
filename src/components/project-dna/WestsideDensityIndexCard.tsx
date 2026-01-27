@@ -4,7 +4,24 @@ interface WestsideDensityIndexCardProps {
   index: WestsideDensityIndex;
 }
 
-const formatScore = (value: number) => `${Math.round(value)} / 100`;
+const formatScore = (value: number | null) =>
+  value === null ? "Not disclosed" : `${Math.round(value)} / 100`;
+
+const MetricLabel = ({
+  label,
+  tooltip,
+}: {
+  label: string;
+  tooltip: string;
+}) => (
+  <span className="relative inline-flex items-center gap-1 text-slate-500 group">
+    <span>{label}</span>
+    <span className="text-xs text-slate-400">ⓘ</span>
+    <span className="absolute left-0 top-full z-10 mt-2 hidden w-56 rounded-lg border border-slate-200 bg-white p-2 text-[11px] text-slate-600 shadow-lg group-hover:block">
+      {tooltip}
+    </span>
+  </span>
+);
 
 export default function WestsideDensityIndexCard({
   index,
@@ -28,19 +45,31 @@ export default function WestsideDensityIndexCard({
 
       <div className="mt-5 grid gap-2 text-sm text-slate-700">
         <div className="flex justify-between gap-4">
-          <span className="text-slate-500">Crowding</span>
+          <MetricLabel
+            label="Crowding"
+            tooltip="Homes per acre pressure on shared living conditions."
+          />
           <span className="font-medium">{formatScore(index.crowding_score)}</span>
         </div>
         <div className="flex justify-between gap-4">
-          <span className="text-slate-500">Tower Load</span>
+          <MetricLabel
+            label="Tower Load"
+            tooltip="Homes per tower load on vertical infrastructure."
+          />
           <span className="font-medium">{formatScore(index.tower_load_score)}</span>
         </div>
         <div className="flex justify-between gap-4">
-          <span className="text-slate-500">Vertical Stress</span>
+          <MetricLabel
+            label="Vertical Stress"
+            tooltip="Floors per structure indicating lift dependency."
+          />
           <span className="font-medium">{formatScore(index.vertical_score)}</span>
         </div>
         <div className="flex justify-between gap-4">
-          <span className="text-slate-500">Land Stress</span>
+          <MetricLabel
+            label="Land Stress"
+            tooltip="Land per home scarcity relative to built mass."
+          />
           <span className="font-medium">{formatScore(index.land_stress_score)}</span>
         </div>
       </div>
