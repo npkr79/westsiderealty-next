@@ -287,11 +287,26 @@ export const projectIntelligenceService = {
       fetchByProjectId("rera_land_parcels"),
     ]);
 
+    const structuralProfileWithLand = structuralProfile
+      ? {
+          ...structuralProfile,
+          total_land_area_sqm:
+            (structuralProfile as any)?.total_land_area_sqm ??
+            (landSummary as any)?.total_land_area ??
+            null,
+          total_builtup_area_sqm:
+            (structuralProfile as any)?.total_builtup_area_sqm ??
+            (landSummary as any)?.total_builtup_area ??
+            (landSummary as any)?.total_builtup_area_sqm ??
+            null,
+        }
+      : structuralProfile;
+
     const units: any[] = [];
 
     const residentialStructures =
-      (structuralProfile as any)?.residential_structures ??
-      (structuralProfile as any)?.apartment_tower_count ??
+      (structuralProfileWithLand as any)?.residential_structures ??
+      (structuralProfileWithLand as any)?.apartment_tower_count ??
       null;
     const totalBuildings =
       residentialStructures !== null && residentialStructures !== undefined
@@ -309,14 +324,14 @@ export const projectIntelligenceService = {
     const netLandAreaAcres =
       netLandAreaSqm ? `${sqmToAcres(Number(netLandAreaSqm)).toFixed(2)} acres` : null;
 
-    const totalUnits = (structuralProfile as any)?.total_units ?? null;
-    const totalTowers = structuralProfile?.apartment_tower_count ?? null;
-    const totalFloors = structuralProfile?.max_floors ?? null;
-    const minFloors = structuralProfile?.min_floors ?? null;
-    const avgFloors = structuralProfile?.avg_floors ?? null;
-    const physicalTypology = structuralProfile?.physical_typology ?? null;
-    const verticalApplicable = structuralProfile?.vertical_applicable ?? false;
-    const densityApplicable = structuralProfile?.density_applicable ?? false;
+    const totalUnits = (structuralProfileWithLand as any)?.total_units ?? null;
+    const totalTowers = structuralProfileWithLand?.apartment_tower_count ?? null;
+    const totalFloors = structuralProfileWithLand?.max_floors ?? null;
+    const minFloors = structuralProfileWithLand?.min_floors ?? null;
+    const avgFloors = structuralProfileWithLand?.avg_floors ?? null;
+    const physicalTypology = structuralProfileWithLand?.physical_typology ?? null;
+    const verticalApplicable = structuralProfileWithLand?.vertical_applicable ?? false;
+    const densityApplicable = structuralProfileWithLand?.density_applicable ?? false;
     const builtupSqm =
       (landSummary as any)?.total_builtup_area ??
       (landSummary as any)?.total_builtup_area_sqm ??
@@ -424,7 +439,7 @@ export const projectIntelligenceService = {
         addresses: { raw: addresses, count: addresses.length },
       },
       structural_intelligence: {
-        profile: structuralProfile ?? null,
+        profile: structuralProfileWithLand ?? null,
       },
       official_rera: {
         project: reraProject,

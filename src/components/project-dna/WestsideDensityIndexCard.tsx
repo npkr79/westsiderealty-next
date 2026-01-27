@@ -7,6 +7,21 @@ interface WestsideDensityIndexCardProps {
 const formatScore = (value: number | null) =>
   value === null ? "Not disclosed" : `${Math.round(value)} / 100`;
 
+const getDensityVerdict = (grade: WestsideDensityIndex["grade"]): string => {
+  switch (grade) {
+    case "Low":
+      return "Healthy density.";
+    case "Balanced":
+      return "Manageable density.";
+    case "Heavy":
+      return "High density pressure.";
+    case "Extreme":
+      return "Very high density stress.";
+    default:
+      return "Dense urban intensity.";
+  }
+};
+
 const MetricLabel = ({
   label,
   tooltip,
@@ -73,6 +88,10 @@ export default function WestsideDensityIndexCard({
           <span className="font-medium">{formatScore(index.land_stress_score)}</span>
         </div>
       </div>
+
+      <p className="mt-4 text-sm font-medium text-slate-700">
+        {getDensityVerdict(index.grade)}
+      </p>
     </div>
   );
 }
