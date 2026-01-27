@@ -17,7 +17,9 @@ export default function ProjectDNASection({ intelligenceData }: ProjectDNASectio
   }
 
   const dna = computeProjectDNA(intelligenceData);
+  console.log("[UI] DNA received:", dna);
   const densityIndex = computeWestsideDensityIndex(dna);
+  console.log("[UI] Density index received:", densityIndex);
 
   return (
     <section className="space-y-4">

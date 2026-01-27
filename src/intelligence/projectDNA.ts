@@ -91,12 +91,16 @@ export function computeProjectDNA(
   intelligence: ProjectIntelligenceResult
 ): ProjectDNA {
   const structural = (intelligence as any)?.structural_intelligence?.profile;
+  console.log("[DNA] Called for project:", intelligence?.intelligence_snapshot?.project?.name);
+  console.log("[DNA] Structural input:", (intelligence as any)?.structural_intelligence);
   console.log("DNA STRUCTURAL INPUT \u2192", structural);
   const scale = intelligence.intelligence_snapshot?.land_and_project_scale;
   const projectDNA = intelligence.project_dna;
   const landSummary =
     intelligence.official_rera?.land_summary ?? projectDNA?.land_summary?.raw ?? null;
 
+  console.log("[DNA] density_applicable:", (structural as any)?.density_applicable);
+  console.log("[DNA] vertical_applicable:", (structural as any)?.vertical_applicable);
   if (!structural || structural.density_applicable === false) {
     return {
       density: {
@@ -233,6 +237,7 @@ export function computeProjectDNA(
         : "Insufficient data to classify project scale.",
   };
 
+  console.log("[DNA] Final DNA output:", { density, vertical, land, scale: scaleResult });
   return {
     density,
     vertical,

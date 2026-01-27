@@ -105,6 +105,7 @@ export const projectIntelligenceService = {
     citySlug: string,
     projectSlug: string
   ): Promise<ProjectIntelligenceResult | null> {
+    console.log("[INTEL] Requested:", { citySlug, projectSlug });
     const supabase = await createClient();
 
     const { data: project, error: projectError } = await supabase
@@ -199,6 +200,7 @@ export const projectIntelligenceService = {
       .select("*")
       .eq("rera_project_id", reraProjectId)
       .maybeSingle();
+    console.log("[INTEL] Structural profile:", structuralProfile);
 
     const fetchByProjectId = async (table: string) => {
       if (!reraProjectId) return [];
@@ -408,6 +410,8 @@ export const projectIntelligenceService = {
       },
     };
 
+    console.log("[INTEL] Final intelligence keys:", Object.keys(linkedResult));
+    console.log("[INTEL] Final structural block:", (linkedResult as any).structural_intelligence);
     console.log("STRUCTURAL PROFILE \u2192", structuralProfile);
     if (process.env.NODE_ENV === "development" && project.enable_intelligence) {
       console.log("[ProjectIntelligence] Result:", linkedResult);
