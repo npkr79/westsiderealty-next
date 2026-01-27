@@ -308,6 +308,27 @@ export const projectIntelligenceService = {
       ...(unitsByProjectId ?? []),
       ...(unitsByReraProjectId ?? []),
     ];
+    const unitRowCount = units.length;
+    const sumUnitsFromRows = units.reduce((sum: number, unit: any) => {
+      const rawValue = unit?.total_units;
+      const numericValue =
+        rawValue === null || rawValue === undefined || rawValue === ""
+          ? null
+          : Number(rawValue);
+      if (Number.isFinite(numericValue as number)) {
+        return sum + (numericValue as number);
+      }
+      return sum + 1;
+    }, 0);
+
+    if (sumUnitsFromRows > unitRowCount * 1.2) {
+      console.warn("[INTEL] Non-atomic unit rows detected — using expanded total_units", {
+        project_id: project.id,
+        rera_project_id: reraProjectId,
+        unit_rows: unitRowCount,
+        summed_units: sumUnitsFromRows,
+      });
+    }
     const totalBuildings = buildings.length;
     const primaryAddress = addresses[0] ?? null;
     const proposedCompletionDate = reraProject?.proposed_completion_date ?? null;
@@ -321,7 +342,8 @@ export const projectIntelligenceService = {
     const netLandAreaAcres =
       netLandAreaSqm ? `${sqmToAcres(Number(netLandAreaSqm)).toFixed(2)} acres` : null;
 
-    const totalUnits = unitStats?.total_units ?? null;
+    const totalUnits =
+      unitRowCount > 0 ? sumUnitsFromRows : (unitStats?.total_units ?? null);
     const totalTowers = structuralProfile?.apartment_tower_count ?? null;
     const totalFloors = structuralProfile?.max_floors ?? null;
     const minFloors = structuralProfile?.min_floors ?? null;
@@ -347,7 +369,7 @@ export const projectIntelligenceService = {
       : [];
 
     const avgUnitsPerBuilding =
-      totalBuildings > 0 ? units.length / totalBuildings : null;
+      totalBuildings > 0 && totalUnits !== null ? totalUnits / totalBuildings : null;
 
     const linkedResult: ProjectIntelligenceResult = {
       status: "linked",
@@ -421,7 +443,7 @@ export const projectIntelligenceService = {
         },
         units: {
           raw: units,
-          count: units.length,
+          count: totalUnits ?? 0,
           avg_units_per_building: avgUnitsPerBuilding,
         },
       },
