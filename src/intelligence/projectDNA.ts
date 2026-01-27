@@ -92,6 +92,7 @@ export function computeProjectDNA(
 ): ProjectDNA {
   const structural = (intelligence as any)?.structural_intelligence?.profile;
   console.log("[STRUCTURAL PROFILE]", structural);
+  console.log("[DNA STRUCTURAL SOURCE]", structural);
   console.log("[DNA] Called for project:", intelligence?.intelligence_snapshot?.project?.name);
   console.log("[DNA] Structural input:", (intelligence as any)?.structural_intelligence);
   console.log("DNA STRUCTURAL INPUT \u2192", structural);
@@ -131,18 +132,22 @@ export function computeProjectDNA(
   }
 
   const totalUnits = toNumber((structural as any)?.total_units);
-  const totalTowers = toNumber(structural?.apartment_tower_count);
-  const maxFloors = toNumber(structural?.max_floors);
-  const minFloors = toNumber(structural?.min_floors);
-  const avgFloors = toNumber(structural?.avg_floors);
-  const builtupSqft = toNumber(
-    (structural as any)?.builtup_area_sqft ??
-      (structural as any)?.total_builtup_area_sqft ??
-      (structural as any)?.builtup_area_sqft_total
+  const totalStructures = toNumber(
+    (structural as any)?.residential_structures ??
+      (structural as any)?.apartment_tower_count
   );
+  const maxFloors = toNumber((structural as any)?.max_floors);
+  const minFloors = toNumber((structural as any)?.min_floors);
+  const avgFloors = toNumber((structural as any)?.avg_floors);
+  const builtupSqm = toNumber(
+    (structural as any)?.total_builtup_area_sqm ??
+      (structural as any)?.builtup_area_sqm ??
+      (structural as any)?.builtup_area
+  );
+  const builtupSqft = builtupSqm !== null ? sqmToSqft(builtupSqm) : null;
   const totalLandSqm = toNumber(
-    (structural as any)?.land_area_sqm ??
-      (structural as any)?.total_land_area_sqm ??
+    (structural as any)?.total_land_area_sqm ??
+      (structural as any)?.land_area_sqm ??
       (structural as any)?.total_land_area ??
       (structural as any)?.land_area
   );
@@ -154,20 +159,22 @@ export function computeProjectDNA(
     totalUnits !== null && landAcres && landAcres > 0
       ? totalUnits / landAcres
       : null;
-  const unitsPerTower =
-    totalUnits !== null && totalTowers && totalTowers > 0
-      ? totalUnits / totalTowers
+  const unitsPerStructure =
+    totalUnits !== null && totalStructures && totalStructures > 0
+      ? totalUnits / totalStructures
       : null;
   const avgUnitsPerFloor =
     totalUnits !== null &&
-    maxFloors !== null &&
-    maxFloors > 0
-      ? totalUnits / maxFloors
+    avgFloors !== null &&
+    avgFloors > 0 &&
+    totalStructures !== null &&
+    totalStructures > 0
+      ? totalUnits / (avgFloors * totalStructures)
       : null;
-  const avgFloorsPerTower = avgFloors ?? maxFloors;
+  const avgFloorsPerStructure = avgFloors ?? maxFloors;
   const verticalIntensity =
-    avgFloors !== null && totalTowers !== null
-      ? avgFloors * totalTowers
+    avgFloors !== null && totalStructures !== null
+      ? avgFloors * totalStructures
       : null;
 
   const landPerUnitSqft =
@@ -184,13 +191,14 @@ export function computeProjectDNA(
     unitsPerAcre !== null
       ? Math.min(100, Math.round((unitsPerAcre / 130) * 100))
       : null;
-  const verticalClass = avgFloorsPerTower !== null ? classifyVertical(avgFloorsPerTower) : null;
+  const verticalClass =
+    avgFloorsPerStructure !== null ? classifyVertical(avgFloorsPerStructure) : null;
   const landClass = landPerUnitSqft !== null ? classifyLand(landPerUnitSqft) : null;
   const scaleClass = totalUnits !== null ? classifyScale(totalUnits) : null;
 
   const density: DensityDNA = {
     units_per_acre: unitsPerAcre,
-    units_per_tower: unitsPerTower,
+    units_per_tower: unitsPerStructure,
     avg_units_per_floor: avgUnitsPerFloor,
     density_class: densityClass?.label ?? null,
     density_score: densityScore,
@@ -209,12 +217,12 @@ export function computeProjectDNA(
         explanation: "Vertical intelligence not applicable for this project type.",
       }
     : {
-        avg_floors_per_tower: avgFloorsPerTower,
+        avg_floors_per_tower: avgFloorsPerStructure,
         vertical_intensity: verticalIntensity,
         vertical_class: verticalClass ?? null,
         explanation:
-          avgFloorsPerTower !== null
-            ? `${Math.round(avgFloorsPerTower)}-floor towers place this project in the ${verticalClass} category with strong lift dependency. Structural vertical mass reflects the number of stacked floors across all towers.`
+          avgFloorsPerStructure !== null
+            ? `${Math.round(avgFloorsPerStructure)}-floor towers place this project in the ${verticalClass} category with strong lift dependency. Structural vertical mass reflects the number of stacked floors across all towers.`
             : "Insufficient data to classify vertical intensity.",
       };
 
@@ -230,7 +238,7 @@ export function computeProjectDNA(
 
   const scaleResult: ScaleDNA = {
     total_units: totalUnits,
-    total_towers: totalTowers,
+    total_towers: totalStructures,
     total_floors: maxFloors ?? minFloors ?? null,
     scale_class: scaleClass ?? null,
     explanation:
@@ -239,7 +247,7 @@ export function computeProjectDNA(
         : "Insufficient data to classify project scale.",
   };
 
-  console.log("[DNA] Final DNA output:", { density, vertical, land, scale: scaleResult });
+  console.log("[DNA OUTPUT]", { density, vertical, land, scale: scaleResult });
   return {
     density,
     vertical,
