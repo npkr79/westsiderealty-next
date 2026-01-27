@@ -91,14 +91,13 @@ export function computeProjectDNA(
   intelligence: ProjectIntelligenceResult
 ): ProjectDNA {
   const structural = (intelligence as any)?.structural_intelligence?.profile;
+  console.log("DNA STRUCTURAL INPUT \u2192", structural);
   const scale = intelligence.intelligence_snapshot?.land_and_project_scale;
   const projectDNA = intelligence.project_dna;
   const landSummary =
     intelligence.official_rera?.land_summary ?? projectDNA?.land_summary?.raw ?? null;
 
-  const densityApplicable = structural?.density_applicable ?? true;
-  if (densityApplicable === false) {
-    const notApplicable = "Not applicable for this project type.";
+  if (!structural || structural.density_applicable === false) {
     return {
       density: {
         units_per_acre: null,
@@ -106,26 +105,26 @@ export function computeProjectDNA(
         avg_units_per_floor: null,
         density_class: null,
         density_score: null,
-        explanation: notApplicable,
+        explanation: "Residential density intelligence not applicable for this project type.",
       },
       vertical: {
         avg_floors_per_tower: null,
         vertical_intensity: null,
         vertical_class: null,
-        explanation: notApplicable,
+        explanation: "Vertical intelligence not applicable for this project type.",
       },
       land: {
         land_per_unit_sqft: null,
         builtup_to_land_ratio: null,
         land_class: null,
-        explanation: notApplicable,
+        explanation: "Land intelligence not applicable for this project type.",
       },
       scale: {
         total_units: null,
         total_towers: null,
         total_floors: null,
         scale_class: null,
-        explanation: notApplicable,
+        explanation: "Scale intelligence not applicable for this project type.",
       },
     };
   }
@@ -195,15 +194,23 @@ export function computeProjectDNA(
         : "Insufficient data to classify density.",
   };
 
-  const vertical: VerticalDNA = {
-    avg_floors_per_tower: avgFloorsPerTower,
-    vertical_intensity: verticalIntensity,
-    vertical_class: verticalClass ?? null,
-    explanation:
-      avgFloorsPerTower !== null
-        ? `${Math.round(avgFloorsPerTower)}-floor towers place this project in the ${verticalClass} category with strong lift dependency. Structural vertical mass reflects the number of stacked floors across all towers.`
-        : "Insufficient data to classify vertical intensity.",
-  };
+  const verticalNotApplicable = structural?.vertical_applicable === false;
+  const vertical: VerticalDNA = verticalNotApplicable
+    ? {
+        avg_floors_per_tower: null,
+        vertical_intensity: null,
+        vertical_class: null,
+        explanation: "Vertical intelligence not applicable for this project type.",
+      }
+    : {
+        avg_floors_per_tower: avgFloorsPerTower,
+        vertical_intensity: verticalIntensity,
+        vertical_class: verticalClass ?? null,
+        explanation:
+          avgFloorsPerTower !== null
+            ? `${Math.round(avgFloorsPerTower)}-floor towers place this project in the ${verticalClass} category with strong lift dependency. Structural vertical mass reflects the number of stacked floors across all towers.`
+            : "Insufficient data to classify vertical intensity.",
+      };
 
   const land: LandDNA = {
     land_per_unit_sqft: landPerUnitSqft,

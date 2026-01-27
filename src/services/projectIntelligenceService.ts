@@ -408,6 +408,7 @@ export const projectIntelligenceService = {
       },
     };
 
+    console.log("STRUCTURAL PROFILE \u2192", structuralProfile);
     if (process.env.NODE_ENV === "development" && project.enable_intelligence) {
       console.log("[ProjectIntelligence] Result:", linkedResult);
     }
