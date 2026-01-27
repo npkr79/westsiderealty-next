@@ -52,7 +52,7 @@ export function computeWestsideDensityIndex(
 ): WestsideDensityIndex {
   const crowding = normalize(dna.density.units_per_acre, 130);
   const towerLoad = normalize(dna.density.units_per_tower, 300);
-  const vertical = normalize(dna.scale.total_floors, 40);
+  const vertical = normalize(dna.vertical.avg_floors_per_tower, 40);
   const landStress = landStressScore(dna.land.land_per_unit_sqft);
 
   const weightedScores: Array<{ score: number; weight: number }> = [];

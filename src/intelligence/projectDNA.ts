@@ -90,14 +90,51 @@ const classifyScale = (totalUnits: number): string => {
 export function computeProjectDNA(
   intelligence: ProjectIntelligenceResult
 ): ProjectDNA {
+  const structural = (intelligence as any)?.structural_intelligence?.profile;
   const scale = intelligence.intelligence_snapshot?.land_and_project_scale;
   const projectDNA = intelligence.project_dna;
   const landSummary =
     intelligence.official_rera?.land_summary ?? projectDNA?.land_summary?.raw ?? null;
 
+  const densityApplicable = structural?.density_applicable ?? true;
+  if (densityApplicable === false) {
+    const notApplicable = "Not applicable for this project type.";
+    return {
+      density: {
+        units_per_acre: null,
+        units_per_tower: null,
+        avg_units_per_floor: null,
+        density_class: null,
+        density_score: null,
+        explanation: notApplicable,
+      },
+      vertical: {
+        avg_floors_per_tower: null,
+        vertical_intensity: null,
+        vertical_class: null,
+        explanation: notApplicable,
+      },
+      land: {
+        land_per_unit_sqft: null,
+        builtup_to_land_ratio: null,
+        land_class: null,
+        explanation: notApplicable,
+      },
+      scale: {
+        total_units: null,
+        total_towers: null,
+        total_floors: null,
+        scale_class: null,
+        explanation: notApplicable,
+      },
+    };
+  }
+
   const totalUnits = toNumber(scale?.total_units);
-  const totalTowers = toNumber(scale?.total_towers);
-  const totalFloors = toNumber(scale?.total_floors);
+  const totalTowers = toNumber(structural?.apartment_tower_count);
+  const maxFloors = toNumber(structural?.max_floors);
+  const minFloors = toNumber(structural?.min_floors);
+  const avgFloors = toNumber(structural?.avg_floors);
   const builtupSqft = toNumber(
     intelligence.intelligence_snapshot?.core?.builtup_area_sqft
   );
@@ -118,14 +155,14 @@ export function computeProjectDNA(
       : null;
   const avgUnitsPerFloor =
     totalUnits !== null &&
-    totalFloors !== null &&
-    totalFloors > 0
-      ? totalUnits / totalFloors
+    maxFloors !== null &&
+    maxFloors > 0
+      ? totalUnits / maxFloors
       : null;
-  const avgFloorsPerTower = totalFloors;
+  const avgFloorsPerTower = avgFloors ?? maxFloors;
   const verticalIntensity =
-    totalFloors !== null && totalTowers !== null
-      ? totalFloors * totalTowers
+    avgFloors !== null && totalTowers !== null
+      ? avgFloors * totalTowers
       : null;
 
   const landPerUnitSqft =
@@ -181,7 +218,7 @@ export function computeProjectDNA(
   const scaleResult: ScaleDNA = {
     total_units: totalUnits,
     total_towers: totalTowers,
-    total_floors: totalFloors,
+    total_floors: maxFloors ?? minFloors ?? null,
     scale_class: scaleClass ?? null,
     explanation:
       totalUnits !== null

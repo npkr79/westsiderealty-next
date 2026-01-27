@@ -49,6 +49,9 @@ export interface ProjectIntelligenceResult {
       total_floors: number | null;
       min_floors: number | null;
       max_floors: number | null;
+      physical_typology?: string | null;
+      vertical_applicable?: boolean | null;
+      density_applicable?: boolean | null;
       has_landowner_promoter?: boolean | null;
       location: {
         survey_numbers: string[];
@@ -80,6 +83,9 @@ export interface ProjectIntelligenceResult {
   };
   micro_market_intelligence?: {
     addresses: { raw: any[]; count: number };
+  };
+  structural_intelligence?: {
+    profile: any | null;
   };
   official_rera?: {
     project: any | null;
@@ -188,6 +194,12 @@ export const projectIntelligenceService = {
       .eq("project_id", reraProjectId)
       .maybeSingle();
 
+    const { data: structuralProfile } = await supabase
+      .from("project_structural_profile")
+      .select("*")
+      .eq("rera_project_id", reraProjectId)
+      .maybeSingle();
+
     const fetchByProjectId = async (table: string) => {
       if (!reraProjectId) return [];
       const { data, error } = await supabase
@@ -268,8 +280,13 @@ export const projectIntelligenceService = {
       netLandAreaSqm ? `${sqmToAcres(Number(netLandAreaSqm)).toFixed(2)} acres` : null;
 
     const totalUnits = unitStats?.total_units ?? null;
-    const totalTowers = unitStats?.total_towers ?? null;
-    const totalFloors = unitStats?.total_floors ?? null;
+    const totalTowers = structuralProfile?.apartment_tower_count ?? null;
+    const totalFloors = structuralProfile?.max_floors ?? null;
+    const minFloors = structuralProfile?.min_floors ?? null;
+    const avgFloors = structuralProfile?.avg_floors ?? null;
+    const physicalTypology = structuralProfile?.physical_typology ?? null;
+    const verticalApplicable = structuralProfile?.vertical_applicable ?? false;
+    const densityApplicable = structuralProfile?.density_applicable ?? false;
     const minUnitSize = unitStats?.min_unit_size ?? null;
     const maxUnitSize = unitStats?.max_unit_size ?? null;
     const builtupSqm = unitStats?.total_saleable_area_sqm ?? null;
@@ -335,8 +352,11 @@ export const projectIntelligenceService = {
           total_towers: totalTowers,
           total_units: totalUnits ?? null,
           total_floors: totalFloors,
-          min_floors: null,
-          max_floors: null,
+          min_floors: minFloors,
+          max_floors: totalFloors,
+          physical_typology: physicalTypology,
+          vertical_applicable: verticalApplicable,
+          density_applicable: densityApplicable,
           has_landowner_promoter: hasLandownerPromoter,
           location: {
             survey_numbers: surveyNumbers,
@@ -371,6 +391,9 @@ export const projectIntelligenceService = {
       },
       micro_market_intelligence: {
         addresses: { raw: addresses, count: addresses.length },
+      },
+      structural_intelligence: {
+        profile: structuralProfile ?? null,
       },
       official_rera: {
         project: reraProject,
