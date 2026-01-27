@@ -294,10 +294,26 @@ export const projectIntelligenceService = {
             (structuralProfile as any)?.total_land_area_sqm ??
             (landSummary as any)?.total_land_area ??
             null,
+          total_land_area_sqft:
+            (structuralProfile as any)?.total_land_area_sqft ??
+            ((landSummary as any)?.total_land_area
+              ? Number((landSummary as any).total_land_area) * 10.7639
+              : null) ??
+            null,
           total_builtup_area_sqm:
             (structuralProfile as any)?.total_builtup_area_sqm ??
             (landSummary as any)?.total_builtup_area ??
             (landSummary as any)?.total_builtup_area_sqm ??
+            null,
+          total_built_up_area_sqft:
+            (structuralProfile as any)?.total_built_up_area_sqft ??
+            (structuralProfile as any)?.total_builtup_area_sqft ??
+            ((landSummary as any)?.total_builtup_area
+              ? Number((landSummary as any).total_builtup_area) * 10.7639
+              : null) ??
+            ((landSummary as any)?.total_builtup_area_sqm
+              ? Number((landSummary as any).total_builtup_area_sqm) * 10.7639
+              : null) ??
             null,
         }
       : structuralProfile;

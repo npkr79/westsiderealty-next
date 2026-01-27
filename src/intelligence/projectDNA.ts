@@ -105,7 +105,7 @@ export function computeProjectDNA(
 
   console.log("[DNA] density_applicable:", (structural as any)?.density_applicable);
   console.log("[DNA] vertical_applicable:", (structural as any)?.vertical_applicable);
-  if (!structural || structural.density_applicable === false) {
+  if (!structural) {
     return {
       density: {
         units_per_acre: null,
@@ -137,6 +137,7 @@ export function computeProjectDNA(
     };
   }
 
+  const densityNotApplicable = structural.density_applicable === false;
   const totalUnits = toNumber((structural as any)?.total_units);
   const totalStructures = toNumber(
     (structural as any)?.residential_structures ??
@@ -145,28 +146,39 @@ export function computeProjectDNA(
   const maxFloors = toNumber((structural as any)?.max_floors);
   const minFloors = toNumber((structural as any)?.min_floors);
   const avgFloors = toNumber((structural as any)?.avg_floors);
+  const builtupSqft = toNumber(
+    (structural as any)?.total_built_up_area_sqft ??
+      (structural as any)?.total_builtup_area_sqft ??
+      (structural as any)?.builtup_area_sqft
+  );
   const builtupSqm = toNumber(
     (structural as any)?.total_builtup_area_sqm ??
       (structural as any)?.builtup_area_sqm ??
-      (structural as any)?.builtup_area ??
-      intelligence.official_rera?.land_summary?.total_built_up_area ??
-      intelligence.official_rera?.land_summary?.total_builtup_area
+      (structural as any)?.builtup_area
   );
-  const builtupSqft =
-    toNumber((intelligence.intelligence_snapshot?.core as any)?.builtup_area_sqft) ??
-    (builtupSqm !== null ? sqmToSqft(builtupSqm) : null);
+  const builtupSqftFinal =
+    builtupSqft !== null ? builtupSqft : builtupSqm !== null ? sqmToSqft(builtupSqm) : null;
   const totalLandSqm = toNumber(
     (structural as any)?.total_land_area_sqm ??
       (structural as any)?.land_area_sqm ??
       (structural as any)?.total_land_area ??
-      (structural as any)?.land_area ??
-      intelligence.official_rera?.land_summary?.total_land_area ??
-      (intelligence.intelligence_snapshot?.core as any)?.land_area_sqm
+      (structural as any)?.land_area
+  );
+  const totalLandSqft = toNumber(
+    (structural as any)?.total_land_area_sqft ??
+      (structural as any)?.land_area_sqft
   );
 
-  const landAcres = totalLandSqm !== null ? sqmToAcres(totalLandSqm) : null;
-  const landSqft =
+  const landAcres =
     totalLandSqm !== null
+      ? sqmToAcres(totalLandSqm)
+      : totalLandSqft !== null
+      ? totalLandSqft / 43560
+      : null;
+  const landSqft =
+    totalLandSqft !== null
+      ? totalLandSqft
+      : totalLandSqm !== null
       ? sqmToSqft(totalLandSqm)
       : landAcres !== null
       ? landAcres * 43560
@@ -203,8 +215,8 @@ export function computeProjectDNA(
       ? landSqft / totalUnits
       : null;
   const builtupToLandRatio =
-    builtupSqft !== null && landSqft !== null && landSqft > 0
-      ? builtupSqft / landSqft
+    builtupSqftFinal !== null && landSqft !== null && landSqft > 0
+      ? builtupSqftFinal / landSqft
       : null;
 
   const densityClass = unitsPerAcre !== null ? classifyDensity(unitsPerAcre) : null;
@@ -217,17 +229,26 @@ export function computeProjectDNA(
   const landClass = landPerUnitSqft !== null ? classifyLand(landPerUnitSqft) : null;
   const scaleClass = totalUnits !== null ? classifyScale(totalUnits) : null;
 
-  const density: DensityDNA = {
-    units_per_acre: unitsPerAcre,
-    units_per_tower: unitsPerStructure,
-    avg_units_per_floor: avgUnitsPerFloor,
-    density_class: densityClass?.label ?? null,
-    density_score: densityScore,
-    explanation:
-      unitsPerAcre !== null
-        ? `~${formatNumber(unitsPerAcre)} homes per acre. Indicates a ${densityClass?.label}-density gated community with balanced crowd levels.`
-        : "Insufficient data to classify density.",
-  };
+  const density: DensityDNA = densityNotApplicable
+    ? {
+        units_per_acre: null,
+        units_per_tower: null,
+        avg_units_per_floor: null,
+        density_class: null,
+        density_score: null,
+        explanation: "Residential density intelligence not applicable for this project type.",
+      }
+    : {
+        units_per_acre: unitsPerAcre,
+        units_per_tower: unitsPerStructure,
+        avg_units_per_floor: avgUnitsPerFloor,
+        density_class: densityClass?.label ?? null,
+        density_score: densityScore,
+        explanation:
+          unitsPerAcre !== null
+            ? `~${formatNumber(unitsPerAcre)} homes per acre. Indicates a ${densityClass?.label}-density gated community with balanced crowd levels.`
+            : "Insufficient data to classify density.",
+      };
 
   const verticalNotApplicable = structural?.vertical_applicable === false;
   const vertical: VerticalDNA = verticalNotApplicable
@@ -268,6 +289,11 @@ export function computeProjectDNA(
         : "Insufficient data to classify project scale.",
   };
 
+  console.log("[LAND DNA INPUT]", {
+    land_area: landSqft,
+    built_up_area: builtupSqftFinal,
+    built_up_to_land_ratio: builtupToLandRatio,
+  });
   console.log("[DNA OUTPUT]", { density, vertical, land, scale: scaleResult });
   return {
     density,

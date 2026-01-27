@@ -7,21 +7,6 @@ interface WestsideDensityIndexCardProps {
 const formatScore = (value: number | null) =>
   value === null ? "Not disclosed" : `${Math.round(value)} / 100`;
 
-const getDensityVerdict = (grade: WestsideDensityIndex["grade"]): string => {
-  switch (grade) {
-    case "Low":
-      return "Healthy density.";
-    case "Balanced":
-      return "Manageable density.";
-    case "Heavy":
-      return "High density pressure.";
-    case "Extreme":
-      return "Very high density stress.";
-    default:
-      return "Dense urban intensity.";
-  }
-};
-
 const MetricLabel = ({
   label,
   tooltip,
@@ -89,9 +74,28 @@ export default function WestsideDensityIndexCard({
         </div>
       </div>
 
-      <p className="mt-4 text-sm font-medium text-slate-700">
-        {getDensityVerdict(index.grade)}
-      </p>
+      <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] text-slate-600">
+        <div className="flex justify-between">
+          <span>0–20</span>
+          <span>Excellent (very low density stress)</span>
+        </div>
+        <div className="flex justify-between">
+          <span>20–40</span>
+          <span>Good (healthy density)</span>
+        </div>
+        <div className="flex justify-between">
+          <span>40–60</span>
+          <span>Moderate (balanced density)</span>
+        </div>
+        <div className="flex justify-between">
+          <span>60–80</span>
+          <span>High (heavy density)</span>
+        </div>
+        <div className="flex justify-between">
+          <span>80–100</span>
+          <span>Extreme (very high density stress)</span>
+        </div>
+      </div>
     </div>
   );
 }
