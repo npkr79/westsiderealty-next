@@ -141,6 +141,41 @@ export const projectIntelligenceService = {
       return null;
     }
 
+    /*
+      SQL helper: find projects with RERA IDs but missing links
+      --------------------------------------------------------
+      SELECT
+        p.id AS project_id,
+        p.project_name,
+        p.rera_id,
+        rp.id AS rera_project_id,
+        rp.registration_number
+      FROM projects p
+      LEFT JOIN project_rera_links prl
+        ON prl.project_id = p.id
+       AND prl.is_primary = true
+      LEFT JOIN rera_projects rp
+        ON rp.registration_number = p.rera_id
+      WHERE p.enable_intelligence = true
+        AND p.rera_id IS NOT NULL
+        AND prl.project_id IS NULL;
+
+      SQL template: create a primary link
+      -----------------------------------
+      INSERT INTO project_rera_links (
+        project_id,
+        rera_project_id,
+        is_primary,
+        created_at
+      )
+      VALUES (
+        '<PROJECT_UUID>',
+        '<RERA_PROJECT_UUID>',
+        true,
+        NOW()
+      );
+    */
+
     const { data: mapping, error: mappingError } = await supabase
       .from("project_rera_links")
       .select("*")
@@ -156,6 +191,11 @@ export const projectIntelligenceService = {
     }
 
     if (!mapping) {
+      console.warn("[INTEL] Project is UNLINKED to RERA:", {
+        project_id: project.id,
+        slug: project.url_slug,
+        rera_id: (project as any).rera_id,
+      });
       const unlinkedResult: ProjectIntelligenceResult = {
         status: "unlinked",
         commercial: project,
