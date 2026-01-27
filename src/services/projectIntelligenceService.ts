@@ -229,18 +229,18 @@ export const projectIntelligenceService = {
       .eq("rera_project_id", reraProjectId)
       .maybeSingle();
 
-    const { data: unitStats } = await supabase
-      .from("rera_project_unit_stats")
-      .select("*")
-      .eq("project_id", reraProjectId)
-      .maybeSingle();
-
     const { data: structuralProfile } = await supabase
       .from("project_structural_profile")
       .select("*")
       .eq("rera_project_id", reraProjectId)
       .maybeSingle();
     console.log("[INTEL] Structural profile:", structuralProfile);
+    console.log("[INTEL] Structural totals:", {
+      project_id: project.id,
+      rera_project_id: reraProjectId,
+      total_units: (structuralProfile as any)?.total_units ?? null,
+      apartment_tower_count: (structuralProfile as any)?.apartment_tower_count ?? null,
+    });
 
     const fetchByProjectId = async (table: string) => {
       if (!reraProjectId) return [];
@@ -269,8 +269,6 @@ export const projectIntelligenceService = {
       return data ?? null;
     };
 
-    const shouldFetchHeavyRera = !structuralProfile;
-
     const [
       addresses,
       landSummary,
@@ -282,68 +280,23 @@ export const projectIntelligenceService = {
     ] = await Promise.all([
       fetchByProjectId("rera_project_addresses"),
       fetchSingleByProjectId("rera_project_land_summary"),
-      shouldFetchHeavyRera ? fetchByProjectId("rera_buildings") : Promise.resolve([]),
+      Promise.resolve([]),
       fetchByProjectId("rera_plots"),
       fetchByProjectId("rera_stakeholders"),
-      shouldFetchHeavyRera ? fetchByProjectId("rera_project_development_works") : Promise.resolve([]),
+      Promise.resolve([]),
       fetchByProjectId("rera_land_parcels"),
     ]);
 
-    let units: any[] = [];
-    let unitRowCount = 0;
-    let sumUnitsFromRows = 0;
-
-    if (!structuralProfile) {
-      const [{ data: unitsByProjectId, error: err1 }, { data: unitsByReraProjectId, error: err2 }] =
-        await Promise.all([
-          supabase
-            .from("rera_units")
-            .select("*")
-            .eq("project_id", reraProjectId)
-            .range(0, 10000),
-          supabase
-            .from("rera_units")
-            .select("*")
-            .eq("rera_project_id", reraProjectId)
-            .range(0, 10000),
-        ]);
-
-      if (err1) console.error("Units fetch (project_id) error:", err1);
-      if (err2) console.error("Units fetch (rera_project_id) error:", err2);
-
-      units = [
-        ...(unitsByProjectId ?? []),
-        ...(unitsByReraProjectId ?? []),
-      ];
-      unitRowCount = units.length;
-      sumUnitsFromRows = units.reduce((sum: number, unit: any) => {
-        const rawValue = unit?.total_units;
-        const numericValue =
-          rawValue === null || rawValue === undefined || rawValue === ""
-            ? null
-            : Number(rawValue);
-        if (Number.isFinite(numericValue as number)) {
-          return sum + (numericValue as number);
-        }
-        return sum + 1;
-      }, 0);
-
-      if (sumUnitsFromRows > unitRowCount * 1.2) {
-        console.warn("[INTEL] Non-atomic unit rows detected — using expanded total_units", {
-          project_id: project.id,
-          rera_project_id: reraProjectId,
-          unit_rows: unitRowCount,
-          summed_units: sumUnitsFromRows,
-        });
-      }
-    }
+    const units: any[] = [];
 
     const residentialStructures =
-      (structuralProfile as any)?.residential_structures ?? null;
+      (structuralProfile as any)?.residential_structures ??
+      (structuralProfile as any)?.apartment_tower_count ??
+      null;
     const totalBuildings =
       residentialStructures !== null && residentialStructures !== undefined
         ? Number(residentialStructures)
-        : buildings.length;
+        : 0;
     const primaryAddress = addresses[0] ?? null;
     const proposedCompletionDate = reraProject?.proposed_completion_date ?? null;
     const registrationDate =
@@ -356,8 +309,7 @@ export const projectIntelligenceService = {
     const netLandAreaAcres =
       netLandAreaSqm ? `${sqmToAcres(Number(netLandAreaSqm)).toFixed(2)} acres` : null;
 
-    const totalUnits =
-      (structuralProfile as any)?.total_units ?? null;
+    const totalUnits = (structuralProfile as any)?.total_units ?? null;
     const totalTowers = structuralProfile?.apartment_tower_count ?? null;
     const totalFloors = structuralProfile?.max_floors ?? null;
     const minFloors = structuralProfile?.min_floors ?? null;
@@ -365,9 +317,10 @@ export const projectIntelligenceService = {
     const physicalTypology = structuralProfile?.physical_typology ?? null;
     const verticalApplicable = structuralProfile?.vertical_applicable ?? false;
     const densityApplicable = structuralProfile?.density_applicable ?? false;
-    const minUnitSize = unitStats?.min_unit_size ?? null;
-    const maxUnitSize = unitStats?.max_unit_size ?? null;
-    const builtupSqm = unitStats?.total_saleable_area_sqm ?? null;
+    const builtupSqm =
+      (landSummary as any)?.total_builtup_area ??
+      (landSummary as any)?.total_builtup_area_sqm ??
+      null;
     const builtupSqft = builtupSqm ? Math.round(builtupSqm * 10.7639) : null;
     const formatIndianNumber = (num: number) => num.toLocaleString("en-IN");
     const builtupSqftFormatted = builtupSqft
