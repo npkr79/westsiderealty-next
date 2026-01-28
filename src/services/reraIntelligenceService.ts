@@ -14,15 +14,6 @@ export const reraIntelligenceService = {
   ): Promise<ResidentialIntelligenceResult | null> {
     const supabase = await createClient();
 
-    console.log("[INTEL-DEBUG] input", { city, slug });
-
-    const sample = await supabase
-      .from("rera_projects")
-      .select("id, city_slug, url_slug")
-      .limit(5);
-
-    console.log("[INTEL-DEBUG] sample projects", sample.data);
-
     let reraProject: Record<string, unknown> | null = null;
 
     const normalizedCity = city?.trim().toLowerCase();
@@ -34,8 +25,6 @@ export const reraIntelligenceService = {
       .eq("city_slug", normalizedCity)
       .eq("url_slug", normalizedSlug)
       .maybeSingle();
-
-    console.log("[INTEL-DEBUG] filtered project", project);
 
     if (project.error) {
       console.error("[INTEL-ROUTE] RERA project fetch error:", project.error);
@@ -51,8 +40,6 @@ export const reraIntelligenceService = {
         .ilike("city_slug", normalizedCity)
         .ilike("url_slug", normalizedSlug)
         .maybeSingle();
-
-      console.log("[INTEL-DEBUG] fallback project", fallback);
 
       if (fallback.error) {
         console.error(
@@ -92,10 +79,6 @@ export const reraIntelligenceService = {
         .eq("rera_project_id", reraProjectId)
         .maybeSingle(),
     ]);
-
-    console.log("[INTEL-DEBUG] structural profile", structuralProfile);
-    console.log("[INTEL-DEBUG] land summary", landSummary);
-    console.log("[INTEL-DEBUG] address", address);
 
     console.log("[INTEL-ROUTE]", {
       city,
