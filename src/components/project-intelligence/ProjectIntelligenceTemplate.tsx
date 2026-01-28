@@ -88,9 +88,6 @@ export default async function ProjectIntelligenceTemplate({
               <div className="mt-6 space-y-6">
                 <ReraIntelligenceSnapshot intelligenceData={intelligenceData} />
                 <ProjectDNASection intelligenceData={intelligenceData} />
-                <DeveloperIntelligenceSection intelligenceData={intelligenceData} />
-                <MicroMarketIntelligenceSection intelligenceData={intelligenceData} />
-                <OfficialReraSection intelligenceData={intelligenceData} />
               </div>
             </section>
 
