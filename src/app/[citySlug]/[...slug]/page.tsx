@@ -6,16 +6,6 @@ type PageProps = {
   params: Promise<{ citySlug: string; slug: string[] }>;
 };
 
-const GLOBAL_ROUTES = new Set([
-  'residential-intelligence',
-  'commercial-intelligence',
-  'projects',
-  'builders',
-  'api',
-  'admin',
-  'auth',
-]);
-
 /**
  * Catch-all route for old Google-indexed property URLs
  * Handles URLs like: /hyderabad/4bhk-apartment-dsr-the-classe-kokapet
@@ -33,11 +23,6 @@ export default async function OldPropertyRedirectPage({ params }: PageProps) {
   const slug = slugArray.join('/');
 
   if (!citySlug || !slug) {
-    notFound();
-  }
-
-  // Prevent global routes from being interpreted as city slugs
-  if (GLOBAL_ROUTES.has(citySlug.toLowerCase())) {
     notFound();
   }
 
