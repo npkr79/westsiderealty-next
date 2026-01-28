@@ -8,7 +8,9 @@ interface ResidentialIntelligenceSnapshotProps {
 }
 
 const formatNumber = (value: number | null, decimals = 0): string =>
-  value === null ? "Data processing in progress" : value.toFixed(decimals).toLocaleString("en-IN");
+  value === null
+    ? "Data processing in progress"
+    : Number(value.toFixed(decimals)).toLocaleString("en-IN");
 
 const titleCase = (value: string | null): string =>
   value
