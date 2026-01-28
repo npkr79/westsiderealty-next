@@ -14,16 +14,35 @@ export const reraIntelligenceService = {
   ): Promise<ResidentialIntelligenceResult | null> {
     const supabase = await createClient();
 
-    const { data: reraProject, error: projectError } = await supabase
+    let reraProject: Record<string, unknown> | null = null;
+
+    const { data: projectByCity, error: projectError } = await supabase
       .from("rera_projects")
       .select("*")
-      .eq("city_slug", city)
+      .ilike("city_slug", city)
       .eq("url_slug", slug)
       .maybeSingle();
 
     if (projectError) {
       console.error("[INTEL-ROUTE] RERA project fetch error:", projectError);
       return null;
+    }
+
+    reraProject = projectByCity as Record<string, unknown> | null;
+
+    if (!reraProject) {
+      const { data: projectBySlug, error: projectSlugError } = await supabase
+        .from("rera_projects")
+        .select("*")
+        .eq("url_slug", slug)
+        .maybeSingle();
+
+      if (projectSlugError) {
+        console.error("[INTEL-ROUTE] RERA project slug fallback error:", projectSlugError);
+        return null;
+      }
+
+      reraProject = projectBySlug as Record<string, unknown> | null;
     }
 
     if (!reraProject) {
