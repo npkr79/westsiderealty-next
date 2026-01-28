@@ -33,19 +33,27 @@ export default async function ResidentialIntelligencePage({ params }: PageProps)
           <div className="mt-4 space-y-2 text-sm text-slate-700">
             <div>
               <span className="text-slate-500">Project Name:</span>{" "}
-              <span className="font-medium">{data.project.project_name ?? "—"}</span>
+              <span className="font-medium">
+                {(data.rera_project as any)?.project_name ?? "—"}
+              </span>
             </div>
             <div>
               <span className="text-slate-500">RERA ID:</span>{" "}
-              <span className="font-medium">{data.project.rera_id ?? "—"}</span>
+              <span className="font-medium">
+                {(data.rera_project as any)?.registration_number ?? "—"}
+              </span>
             </div>
             <div>
               <span className="text-slate-500">City Slug:</span>{" "}
-              <span className="font-medium">{data.project.city_slug ?? "—"}</span>
+              <span className="font-medium">
+                {(data.rera_project as any)?.city_slug ?? "—"}
+              </span>
             </div>
             <div>
               <span className="text-slate-500">URL Slug:</span>{" "}
-              <span className="font-medium">{data.project.url_slug ?? "—"}</span>
+              <span className="font-medium">
+                {(data.rera_project as any)?.url_slug ?? "—"}
+              </span>
             </div>
           </div>
         </section>
