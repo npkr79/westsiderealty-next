@@ -12,13 +12,14 @@ const GLOBAL_ROUTES = [
 
 interface CityLayoutProps {
   children: React.ReactNode;
-  params: { citySlug: string };
+  params: Promise<{ citySlug: string }>;
 }
 
-export default function CityLayout({ children, params }: CityLayoutProps) {
-  const citySlug = params?.citySlug?.toLowerCase();
+export default async function CityLayout({ children, params }: CityLayoutProps) {
+  const { citySlug } = await params;
+  const normalizedCitySlug = citySlug?.toLowerCase();
 
-  if (!citySlug || GLOBAL_ROUTES.includes(citySlug)) {
+  if (!normalizedCitySlug || GLOBAL_ROUTES.includes(normalizedCitySlug)) {
     notFound();
   }
 
