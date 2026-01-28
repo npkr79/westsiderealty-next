@@ -38,18 +38,28 @@ export default function ScaleDNACard({ scale }: ScaleDNACardProps) {
       }
       insight={scale.explanation}
       accent="blue"
+      tone="blue"
     >
       <div className="grid gap-2 text-sm text-slate-700">
         <div className="flex justify-between gap-4">
-          <span className="text-slate-500">Total units</span>
+          <div>
+            <span className="text-slate-500">Total units</span>
+            <p className="text-[11px] text-slate-500">Residential population</p>
+          </div>
           <span className="font-medium">{formatNumber(scale.total_units, 0, scale.status)}</span>
         </div>
         <div className="flex justify-between gap-4">
-          <span className="text-slate-500">Total towers</span>
+          <div>
+            <span className="text-slate-500">Total towers</span>
+            <p className="text-[11px] text-slate-500">Residential structures</p>
+          </div>
           <span className="font-medium">{formatNumber(scale.total_towers, 0, scale.status)}</span>
         </div>
         <div className="flex justify-between gap-4">
-          <span className="text-slate-500">Total floors</span>
+          <div>
+            <span className="text-slate-500">Total floors</span>
+            <p className="text-[11px] text-slate-500">Vertical magnitude</p>
+          </div>
           <span className="font-medium">{formatNumber(scale.total_floors, 0, scale.status)}</span>
         </div>
       </div>

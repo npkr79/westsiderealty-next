@@ -38,19 +38,29 @@ export default function DensityDNACard({ density }: DensityDNACardProps) {
       }
       insight={density.explanation}
       accent="amber"
+      tone="amber"
     >
       <div className="grid gap-2 text-sm text-slate-700">
         <div className="flex justify-between gap-4">
-          <span className="text-slate-500">Units per acre</span>
-          <span className="font-medium">{formatNumber(density.units_per_acre, 2, density.status)}</span>
+          <div>
+            <span className="text-slate-500">Units per acre</span>
+            <p className="text-[11px] text-slate-500">Land-level crowding</p>
+          </div>
+          <span className="font-medium text-slate-900">{formatNumber(density.units_per_acre, 2, density.status)}</span>
         </div>
         <div className="flex justify-between gap-4">
-          <span className="text-slate-500">Units per tower</span>
-          <span className="font-medium">{formatNumber(density.units_per_tower, 2, density.status)}</span>
+          <div>
+            <span className="text-slate-500">Units per tower</span>
+            <p className="text-[11px] text-slate-500">Shared tower load</p>
+          </div>
+          <span className="font-medium text-slate-900">{formatNumber(density.units_per_tower, 2, density.status)}</span>
         </div>
         <div className="flex justify-between gap-4">
-          <span className="text-slate-500">Avg units per floor</span>
-          <span className="font-medium">{formatNumber(density.avg_units_per_floor, 2, density.status)}</span>
+          <div>
+            <span className="text-slate-500">Avg units per floor</span>
+            <p className="text-[11px] text-slate-500">Daily floor density</p>
+          </div>
+          <span className="font-medium text-slate-900">{formatNumber(density.avg_units_per_floor, 2, density.status)}</span>
         </div>
       </div>
     </DNACard>

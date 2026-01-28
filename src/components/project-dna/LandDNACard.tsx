@@ -38,14 +38,21 @@ export default function LandDNACard({ land }: LandDNACardProps) {
       }
       insight={land.explanation}
       accent="green"
+      tone="green"
     >
       <div className="grid gap-2 text-sm text-slate-700">
         <div className="flex justify-between gap-4">
-          <span className="text-slate-500">Land per unit</span>
+          <div>
+            <span className="text-slate-500">Land per unit</span>
+            <p className="text-[11px] text-slate-500">Open space per home</p>
+          </div>
           <span className="font-medium">{formatNumber(land.land_per_unit_sqft, 0, land.status)}</span>
         </div>
         <div className="flex justify-between gap-4">
-          <span className="text-slate-500">Built-up to land ratio</span>
+          <div>
+            <span className="text-slate-500">Built-up to land ratio</span>
+            <p className="text-[11px] text-slate-500">Construction pressure</p>
+          </div>
           <span className="font-medium">{formatNumber(land.builtup_to_land_ratio, 2, land.status)}</span>
         </div>
       </div>

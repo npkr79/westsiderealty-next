@@ -38,16 +38,23 @@ export default function VerticalDNACard({ vertical }: VerticalDNACardProps) {
       }
       insight={vertical.explanation}
       accent="violet"
+      tone="violet"
     >
       <div className="grid gap-2 text-sm text-slate-700">
         <div className="flex justify-between gap-4">
-          <span className="text-slate-500">Floors per tower</span>
+          <div>
+            <span className="text-slate-500">Floors per tower</span>
+            <p className="text-[11px] text-slate-500">Height per structure</p>
+          </div>
           <span className="font-medium">
             {formatNumber(vertical.avg_floors_per_tower, 1, vertical.status)}
           </span>
         </div>
         <div className="flex justify-between gap-4">
-          <span className="text-slate-500">Vertical intensity</span>
+          <div>
+            <span className="text-slate-500">Vertical intensity</span>
+            <p className="text-[11px] text-slate-500">Total stacked mass</p>
+          </div>
           <span className="font-medium">
             {formatNumber(vertical.vertical_intensity, 1, vertical.status)}
           </span>
