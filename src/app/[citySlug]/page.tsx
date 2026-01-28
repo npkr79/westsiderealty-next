@@ -31,6 +31,16 @@ import { generateUnifiedSchema } from "@/lib/seo-utils";
 import { optimizeSupabaseImage } from "@/utils/imageOptimization";
 import SmartLinkGrid from "@/components/shared/SmartLinkGrid";
 
+const GLOBAL_ROUTES = [
+  "residential-intelligence",
+  "commercial-intelligence",
+  "projects",
+  "builders",
+  "api",
+  "admin",
+  "auth",
+];
+
 interface PageProps {
   params: Promise<{ citySlug: string }>;
 }
@@ -38,6 +48,13 @@ interface PageProps {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { citySlug: citySlugParam } = await params;
   const citySlug = Array.isArray(citySlugParam) ? citySlugParam[0] : citySlugParam;
+  const normalizedCitySlug = citySlug?.toLowerCase() ?? "";
+
+  if (GLOBAL_ROUTES.includes(normalizedCitySlug)) {
+    return {
+      title: "Not Found",
+    };
+  }
   const city = await cityService.getCityBySlug(citySlug);
 
   if (!city) {
@@ -107,6 +124,10 @@ export default async function CityPage({ params }: PageProps) {
   const { citySlug: citySlugParam } = await params;
   const citySlug = Array.isArray(citySlugParam) ? citySlugParam[0] : citySlugParam;
   const slug = citySlug || "hyderabad";
+
+  if (GLOBAL_ROUTES.includes(slug.toLowerCase())) {
+    notFound();
+  }
 
   // First, check if this is a landing page
   const { createClient } = await import("@/lib/supabase/server");

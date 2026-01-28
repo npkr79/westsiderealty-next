@@ -1,9 +1,13 @@
 import { headers } from "next/headers";
+import { notFound } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export default async function DebugPage(props: any) {
+  if (!props?.params?.city || !props?.params?.projectSlug) {
+    notFound();
+  }
   const h = await headers();
 
   return (

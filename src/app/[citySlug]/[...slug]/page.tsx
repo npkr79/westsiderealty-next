@@ -6,11 +6,14 @@ type PageProps = {
   params: Promise<{ citySlug: string; slug: string[] }>;
 };
 
-const RESERVED_CITY_SLUGS = new Set([
+const GLOBAL_ROUTES = new Set([
   'residential-intelligence',
   'commercial-intelligence',
+  'projects',
+  'builders',
   'api',
   'admin',
+  'auth',
 ]);
 
 /**
@@ -34,7 +37,7 @@ export default async function OldPropertyRedirectPage({ params }: PageProps) {
   }
 
   // Prevent global routes from being interpreted as city slugs
-  if (RESERVED_CITY_SLUGS.has(citySlug)) {
+  if (GLOBAL_ROUTES.has(citySlug.toLowerCase())) {
     notFound();
   }
 
