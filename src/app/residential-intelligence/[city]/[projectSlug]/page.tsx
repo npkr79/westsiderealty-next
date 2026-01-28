@@ -5,7 +5,12 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export default async function DebugPage(props: any) {
-  if (!props?.params?.city || !props?.params?.projectSlug) {
+  console.log("PARAMS", props?.params);
+
+  const city = props?.params?.city;
+  const projectSlug = props?.params?.projectSlug;
+
+  if (typeof city !== "string" || typeof projectSlug !== "string") {
     notFound();
   }
   const h = await headers();
