@@ -1,3 +1,13 @@
+import type { ProjectIntelligenceResult } from "@/services/projectIntelligenceService";
+import ProjectDNASection from "@/components/project-dna/ProjectDNASection";
+
+interface ResidentialDNASectionProps {
+  intelligence: ProjectIntelligenceResult | null;
+}
+
+export default function ResidentialDNASection({ intelligence }: ResidentialDNASectionProps) {
+  return <ProjectDNASection intelligenceData={intelligence} />;
+}
 import type { ProjectDNA } from "@/intelligence/projectDNA";
 import type { WestsideDensityIndex } from "@/intelligence/westsideDensityIndex";
 import DensityDNACard from "@/components/project-dna/DensityDNACard";
