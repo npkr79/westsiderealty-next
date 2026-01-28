@@ -5,7 +5,7 @@ interface WestsideDensityIndexCardProps {
 }
 
 const formatScore = (value: number | null) =>
-  value === null ? "Not disclosed" : `${Math.round(value)} / 100`;
+  value === null ? "Data processing in progress" : `${Math.round(value)} / 100`;
 
 const MetricLabel = ({
   label,
@@ -37,10 +37,17 @@ export default function WestsideDensityIndexCard({
             {formatScore(index.score)}
           </span>
           <span className="rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white">
-            {index.grade} Density
+            {index.grade}
           </span>
         </div>
         <p className="text-sm text-slate-700 leading-relaxed">{index.explanation}</p>
+        <p className="text-xs text-slate-500">{index.meaning}</p>
+        <p className="text-xs text-slate-500">
+          0–20 Light · 20–40 Balanced · 40–60 Moderate · 60–80 High · 80–100 Extreme
+        </p>
+        <p className="text-xs text-slate-500">
+          Lower is structurally lighter. Higher is structurally heavier.
+        </p>
       </div>
 
       <div className="mt-5 grid gap-2 text-sm text-slate-700">
@@ -71,29 +78,6 @@ export default function WestsideDensityIndexCard({
             tooltip="Land per home scarcity relative to built mass."
           />
           <span className="font-medium">{formatScore(index.land_stress_score)}</span>
-        </div>
-      </div>
-
-      <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] text-slate-600">
-        <div className="flex justify-between">
-          <span>0–20</span>
-          <span>Excellent (very low density stress)</span>
-        </div>
-        <div className="flex justify-between">
-          <span>20–40</span>
-          <span>Good (healthy density)</span>
-        </div>
-        <div className="flex justify-between">
-          <span>40–60</span>
-          <span>Moderate (balanced density)</span>
-        </div>
-        <div className="flex justify-between">
-          <span>60–80</span>
-          <span>High (heavy density)</span>
-        </div>
-        <div className="flex justify-between">
-          <span>80–100</span>
-          <span>Extreme (very high density stress)</span>
         </div>
       </div>
     </div>

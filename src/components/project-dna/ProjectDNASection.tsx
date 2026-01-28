@@ -20,6 +20,13 @@ export default function ProjectDNASection({ intelligenceData }: ProjectDNASectio
   console.log("[UI] DNA received:", dna);
   const densityIndex = computeWestsideDensityIndex(dna);
   console.log("[UI] Density index received:", densityIndex);
+  console.log("[UI] Validation snapshot:", {
+    project: intelligenceData?.intelligence_snapshot?.project?.name,
+    typology: intelligenceData?.intelligence_snapshot?.core?.physical_typology ?? null,
+    total_units: dna.scale.total_units,
+    towers: dna.scale.total_towers,
+    wdi_score: densityIndex.score,
+  });
 
   return (
     <section className="space-y-4">

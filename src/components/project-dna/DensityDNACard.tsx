@@ -5,10 +5,17 @@ interface DensityDNACardProps {
   density: DensityDNA;
 }
 
-const formatNumber = (value: number | null, decimals: number = 0): string => {
-  if (value === null) return "Not disclosed";
+const resolvePlaceholder = (status?: DensityDNA["status"]): string =>
+  status === "processing" ? "Data processing in progress" : "Not disclosed";
+
+const formatNumber = (
+  value: number | null,
+  decimals: number = 0,
+  status?: DensityDNA["status"]
+): string => {
+  if (value === null) return resolvePlaceholder(status);
   const rounded = Number(value.toFixed(decimals));
-  return Number.isFinite(rounded) ? rounded.toLocaleString("en-IN") : "Not disclosed";
+  return Number.isFinite(rounded) ? rounded.toLocaleString("en-IN") : resolvePlaceholder(status);
 };
 
 const prettyLabel = (value: string | null): string =>
@@ -20,14 +27,14 @@ const prettyLabel = (value: string | null): string =>
     : "Not disclosed";
 
 export default function DensityDNACard({ density }: DensityDNACardProps) {
+  const statusPlaceholder = resolvePlaceholder(density.status);
+
   return (
     <DNACard
-      title="Density DNA"
-      headline={prettyLabel(density.density_class)}
+      title="Crowding & Load"
+      headline={prettyLabel(density.density_class) === "Not disclosed" ? statusPlaceholder : prettyLabel(density.density_class)}
       subline={
-        density.units_per_acre !== null
-          ? `~${formatNumber(density.units_per_acre)} homes per acre`
-          : "Not disclosed"
+        "How densely homes are packed into land, towers and floors."
       }
       insight={density.explanation}
       accent="amber"
@@ -35,15 +42,15 @@ export default function DensityDNACard({ density }: DensityDNACardProps) {
       <div className="grid gap-2 text-sm text-slate-700">
         <div className="flex justify-between gap-4">
           <span className="text-slate-500">Units per acre</span>
-          <span className="font-medium">{formatNumber(density.units_per_acre, 2)}</span>
+          <span className="font-medium">{formatNumber(density.units_per_acre, 2, density.status)}</span>
         </div>
         <div className="flex justify-between gap-4">
           <span className="text-slate-500">Units per tower</span>
-          <span className="font-medium">{formatNumber(density.units_per_tower, 2)}</span>
+          <span className="font-medium">{formatNumber(density.units_per_tower, 2, density.status)}</span>
         </div>
         <div className="flex justify-between gap-4">
           <span className="text-slate-500">Avg units per floor</span>
-          <span className="font-medium">{formatNumber(density.avg_units_per_floor, 2)}</span>
+          <span className="font-medium">{formatNumber(density.avg_units_per_floor, 2, density.status)}</span>
         </div>
       </div>
     </DNACard>

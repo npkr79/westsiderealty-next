@@ -7,6 +7,7 @@ export interface DensityDNA {
   density_class: string | null;
   density_score: number | null;
   explanation: string;
+  status?: "ok" | "processing" | "not_applicable";
 }
 
 export interface VerticalDNA {
@@ -14,6 +15,7 @@ export interface VerticalDNA {
   vertical_intensity: number | null;
   vertical_class: string | null;
   explanation: string;
+  status?: "ok" | "processing" | "not_applicable";
 }
 
 export interface LandDNA {
@@ -21,6 +23,7 @@ export interface LandDNA {
   builtup_to_land_ratio: number | null;
   land_class: string | null;
   explanation: string;
+  status?: "ok" | "processing" | "not_applicable";
 }
 
 export interface ScaleDNA {
@@ -29,6 +32,7 @@ export interface ScaleDNA {
   total_floors: number | null;
   scale_class: string | null;
   explanation: string;
+  status?: "ok" | "processing" | "not_applicable";
 }
 
 export interface ProjectDNA {
@@ -106,6 +110,7 @@ export function computeProjectDNA(
   console.log("[DNA] density_applicable:", (structural as any)?.density_applicable);
   console.log("[DNA] vertical_applicable:", (structural as any)?.vertical_applicable);
   if (!structural) {
+    const processing = "Data processing in progress.";
     return {
       density: {
         units_per_acre: null,
@@ -113,26 +118,30 @@ export function computeProjectDNA(
         avg_units_per_floor: null,
         density_class: null,
         density_score: null,
-        explanation: "Residential density intelligence not applicable for this project type.",
+        explanation: processing,
+        status: "processing",
       },
       vertical: {
         avg_floors_per_tower: null,
         vertical_intensity: null,
         vertical_class: null,
-        explanation: "Vertical intelligence not applicable for this project type.",
+        explanation: processing,
+        status: "processing",
       },
       land: {
         land_per_unit_sqft: null,
         builtup_to_land_ratio: null,
         land_class: null,
-        explanation: "Land intelligence not applicable for this project type.",
+        explanation: processing,
+        status: "processing",
       },
       scale: {
         total_units: null,
         total_towers: null,
         total_floors: null,
         scale_class: null,
-        explanation: "Scale intelligence not applicable for this project type.",
+        explanation: processing,
+        status: "processing",
       },
     };
   }
@@ -229,6 +238,11 @@ export function computeProjectDNA(
   const landClass = landPerUnitSqft !== null ? classifyLand(landPerUnitSqft) : null;
   const scaleClass = totalUnits !== null ? classifyScale(totalUnits) : null;
 
+  const densityStatus: DensityDNA["status"] = densityNotApplicable
+    ? "not_applicable"
+    : unitsPerAcre !== null && unitsPerStructure !== null && avgUnitsPerFloor !== null
+    ? "ok"
+    : "processing";
   const density: DensityDNA = densityNotApplicable
     ? {
         units_per_acre: null,
@@ -236,7 +250,8 @@ export function computeProjectDNA(
         avg_units_per_floor: null,
         density_class: null,
         density_score: null,
-        explanation: "Residential density intelligence not applicable for this project type.",
+        explanation: "Density not applicable for this project type.",
+        status: "not_applicable",
       }
     : {
         units_per_acre: unitsPerAcre,
@@ -246,17 +261,24 @@ export function computeProjectDNA(
         density_score: densityScore,
         explanation:
           unitsPerAcre !== null
-            ? `~${formatNumber(unitsPerAcre)} homes per acre. Indicates a ${densityClass?.label}-density gated community with balanced crowd levels.`
-            : "Insufficient data to classify density.",
+            ? `Structural crowding is ${densityClass?.label} with ${formatNumber(unitsPerAcre)} homes per acre. Daily life will feel ${densityClass?.label} and system-driven.`
+            : "Data processing in progress.",
+        status: densityStatus,
       };
 
   const verticalNotApplicable = structural?.vertical_applicable === false;
+  const verticalStatus: VerticalDNA["status"] = verticalNotApplicable
+    ? "not_applicable"
+    : avgFloorsPerStructure !== null && verticalIntensity !== null
+    ? "ok"
+    : "processing";
   const vertical: VerticalDNA = verticalNotApplicable
     ? {
         avg_floors_per_tower: null,
         vertical_intensity: null,
         vertical_class: null,
-        explanation: "Vertical intelligence not applicable for this project type.",
+        explanation: "Vertical intensity not applicable for this project type.",
+        status: "not_applicable",
       }
     : {
         avg_floors_per_tower: avgFloorsPerStructure,
@@ -264,20 +286,26 @@ export function computeProjectDNA(
         vertical_class: verticalClass ?? null,
         explanation:
           avgFloorsPerStructure !== null
-            ? `${Math.round(avgFloorsPerStructure)}-floor towers place this project in the ${verticalClass} category with strong lift dependency. Structural vertical mass reflects the number of stacked floors across all towers.`
-            : "Insufficient data to classify vertical intensity.",
+            ? `${Math.round(avgFloorsPerStructure)} floors per structure implies ${verticalClass} intensity. Daily movement will be vertical and lift-dependent.`
+            : "Data processing in progress.",
+        status: verticalStatus,
       };
 
+  const landStatus: LandDNA["status"] =
+    landPerUnitSqft !== null && builtupToLandRatio !== null ? "ok" : "processing";
   const land: LandDNA = {
     land_per_unit_sqft: landPerUnitSqft,
     builtup_to_land_ratio: builtupToLandRatio,
     land_class: landClass ?? null,
     explanation:
       landPerUnitSqft !== null
-        ? `Land backing of ~${formatNumber(landPerUnitSqft)} sq.ft per home suggests a ${landClass} land-to-construction profile.`
-        : "Insufficient data to classify land efficiency.",
+        ? `Land support is ${landClass}. Each home is backed by about ${formatNumber(landPerUnitSqft)} sq.ft of land, shaping daily openness.`
+        : "Data processing in progress.",
+    status: landStatus,
   };
 
+  const scaleStatus: ScaleDNA["status"] =
+    totalUnits !== null && totalStructures !== null ? "ok" : "processing";
   const scaleResult: ScaleDNA = {
     total_units: totalUnits,
     total_towers: totalStructures,
@@ -285,8 +313,9 @@ export function computeProjectDNA(
     scale_class: scaleClass ?? null,
     explanation:
       totalUnits !== null
-        ? `With ${Math.round(totalUnits)}+ units, this is a ${scaleClass}-scale residential ecosystem.`
-        : "Insufficient data to classify project scale.",
+        ? `Residential scale is ${scaleClass} with ${Math.round(totalUnits)} homes. Community systems will operate at that scale.`
+        : "Data processing in progress.",
+    status: scaleStatus,
   };
 
   console.log("[LAND DNA INPUT]", {

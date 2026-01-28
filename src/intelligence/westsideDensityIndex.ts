@@ -2,12 +2,13 @@ import type { ProjectDNA } from "@/intelligence/projectDNA";
 
 export interface WestsideDensityIndex {
   score: number;
-  grade: "Low" | "Balanced" | "Dense" | "Heavy" | "Extreme";
+  grade: "Light" | "Balanced" | "Moderately Stressed" | "High Stress" | "Extreme Stress";
   crowding_score: number | null;
   vertical_score: number | null;
   land_stress_score: number | null;
   tower_load_score: number | null;
   explanation: string;
+  meaning: string;
 }
 
 const clamp = (value: number, min: number, max: number) =>
@@ -25,25 +26,25 @@ const landStressScore = (landPerUnitSqft: number | null): number | null => {
 };
 
 const gradeForScore = (score: number): WestsideDensityIndex["grade"] => {
-  if (score <= 25) return "Low";
-  if (score <= 45) return "Balanced";
-  if (score <= 65) return "Dense";
-  if (score <= 80) return "Heavy";
-  return "Extreme";
+  if (score <= 20) return "Light";
+  if (score <= 40) return "Balanced";
+  if (score <= 60) return "Moderately Stressed";
+  if (score <= 80) return "High Stress";
+  return "Extreme Stress";
 };
 
 const explanationForGrade = (grade: WestsideDensityIndex["grade"]): string => {
   switch (grade) {
-    case "Low":
-      return "Low-density residential environment with ample open space and lighter infrastructure load.";
+    case "Light":
+      return "Light, underutilized residential load with open system capacity.";
     case "Balanced":
-      return "Balanced-density ecosystem with healthy spacing and manageable shared infrastructure demand.";
-    case "Dense":
-      return "Dense urban community with higher shared amenity usage and active vertical circulation.";
-    case "Heavy":
-      return "High-density high-rise ecosystem. Designed for large populations with strong vertical dependency and shared-infrastructure load.";
+      return "Balanced density with steady shared-system demand.";
+    case "Moderately Stressed":
+      return "Moderately stressed density with noticeable shared infrastructure load.";
+    case "High Stress":
+      return "High stress density with strong vertical and shared-system dependence.";
     default:
-      return "Extreme-density vertical community with intense shared amenity demand and high crowding pressure.";
+      return "Extreme stress density with heavy, system-driven daily life.";
   }
 };
 
@@ -80,5 +81,6 @@ export function computeWestsideDensityIndex(
     land_stress_score: landStress !== null ? Math.round(landStress) : null,
     tower_load_score: towerLoad !== null ? Math.round(towerLoad) : null,
     explanation: explanationForGrade(grade),
+    meaning: "Higher scores indicate heavier, denser residential systems.",
   };
 }
