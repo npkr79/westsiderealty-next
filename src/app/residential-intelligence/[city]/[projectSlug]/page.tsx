@@ -1,3 +1,4 @@
+import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
 interface PageProps {
@@ -5,40 +6,33 @@ interface PageProps {
 }
 
 export default async function Page({ params }: PageProps) {
-  const { city, projectSlug } = params;
+  const city = decodeURIComponent(params.city).toLowerCase();
+  const projectSlug = decodeURIComponent(params.projectSlug).toLowerCase();
   const supabase = await createClient();
-  const { data: allRows, error: allError } = await supabase
-    .from("rera_projects")
-    .select("id, project_name, url_slug, city_slug")
-    .limit(20);
 
-  const { data: slugOnly, error: slugError } = await supabase
-    .from("rera_projects")
-    .select("id, project_name, url_slug, city_slug")
-    .ilike("url_slug", "%aparna%");
+  console.log("[INTEL] resolving:", { city, projectSlug });
 
-  const { data: cityOnly, error: cityError } = await supabase
+  const { data, error } = await supabase
     .from("rera_projects")
-    .select("id, project_name, url_slug, city_slug")
-    .ilike("city_slug", "%hyd%");
+    .select("*")
+    .eq("url_slug", projectSlug)
+    .eq("city_slug", city)
+    .maybeSingle();
+
+  console.log("[INTEL] resolved:", { data, error });
+
+  if (error) {
+    throw new Error("Supabase error: " + error.message);
+  }
+
+  if (!data) {
+    notFound();
+  }
 
   return (
-    <pre className="p-10 text-sm">
-      ALL ROWS:
-      {"\n"}
-      {JSON.stringify(allRows, null, 2)}
-      {"\n\n"}
-      SLUG SEARCH:
-      {"\n"}
-      {JSON.stringify(slugOnly, null, 2)}
-      {"\n\n"}
-      CITY SEARCH:
-      {"\n"}
-      {JSON.stringify(cityOnly, null, 2)}
-      {"\n\n"}
-      ERRORS:
-      {"\n"}
-      {JSON.stringify({ allError, slugError, cityError }, null, 2)}
-    </pre>
+    <div style={{ padding: 50 }}>
+      <h1>Residential Intelligence Route Active</h1>
+      <pre>{JSON.stringify({ city, projectSlug, data }, null, 2)}</pre>
+    </div>
   );
 }
