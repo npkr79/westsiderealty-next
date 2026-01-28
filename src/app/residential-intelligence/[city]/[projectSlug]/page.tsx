@@ -1,5 +1,5 @@
-import { notFound } from "next/navigation";
 import { reraIntelligenceService } from "@/services/reraIntelligenceService";
+import { createClient } from "@/lib/supabase/server";
 
 type PageProps = {
   params: {
@@ -16,41 +16,38 @@ export default async function ResidentialIntelligencePage({ params }: PageProps)
     projectSlug
   );
 
+  let sampleProjects:
+    | { id: string | null; city_slug: string | null; url_slug: string | null }[]
+    | null = null;
+
   if (!intelligence) {
-    notFound();
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from("rera_projects")
+      .select("id, city_slug, url_slug")
+      .limit(5);
+    sampleProjects = data ?? null;
   }
 
   return (
     <div style={{ padding: 40 }}>
       <h1 style={{ fontSize: 32, fontWeight: "bold" }}>
-        Residential Intelligence Route Active
+        Residential Intelligence Debug
       </h1>
-      <div style={{ marginTop: 20 }}>
-        <div>
-          <strong>Project Name:</strong>{" "}
-          {(intelligence.rera_project as any)?.project_name ?? "Not disclosed"}
-        </div>
-        <div>
-          <strong>RERA ID:</strong>{" "}
-          {(intelligence.rera_project as any)?.id ?? "Not disclosed"}
-        </div>
-        <div>
-          <strong>city_slug:</strong>{" "}
-          {(intelligence.rera_project as any)?.city_slug ?? "Not disclosed"}
-        </div>
-        <div>
-          <strong>url_slug:</strong>{" "}
-          {(intelligence.rera_project as any)?.url_slug ?? "Not disclosed"}
-        </div>
-      </div>
-      <h2 style={{ marginTop: 20 }}>Structural Profile</h2>
-      <pre style={{ background: "#000", color: "#0f0", padding: 20 }}>
-        {JSON.stringify(intelligence.structural_profile, null, 2)}
+      <pre style={{ background: "#000", color: "#0f0", padding: 20, marginTop: 20 }}>
+        {JSON.stringify({ city, projectSlug }, null, 2)}
       </pre>
-      <h2 style={{ marginTop: 20 }}>Land Summary</h2>
-      <pre style={{ background: "#000", color: "#0f0", padding: 20 }}>
-        {JSON.stringify(intelligence.land_summary, null, 2)}
+      <pre style={{ background: "#000", color: "#0f0", padding: 20, marginTop: 20 }}>
+        {JSON.stringify({ resultType: typeof intelligence }, null, 2)}
       </pre>
+      <pre style={{ background: "#000", color: "#0f0", padding: 20, marginTop: 20 }}>
+        {JSON.stringify(intelligence, null, 2)}
+      </pre>
+      {intelligence === null && (
+        <pre style={{ background: "#000", color: "#0f0", padding: 20, marginTop: 20 }}>
+          {JSON.stringify({ sampleProjects }, null, 2)}
+        </pre>
+      )}
     </div>
   );
 }
