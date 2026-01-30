@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { VillaIntelligenceProject } from "@/services/intelligenceDashboardService";
+import { normalizeDensityClass, normalizeLandStrength } from "@/constants/intelligenceLanguage";
 
 interface Group {
   title: string;
@@ -74,10 +75,10 @@ export default function IntelligenceIndex({ groups }: IntelligenceIndexProps) {
                         Scale class: {project.scaleClass}
                       </div>
                       <div className="rounded-[14px] border border-slate-200 bg-white px-3 py-2">
-                        Land strength: {project.landStrength}
+                        Land strength: {normalizeLandStrength(project.landStrengthClass) ?? "Not disclosed"}
                       </div>
                       <div className="rounded-[14px] border border-slate-200 bg-white px-3 py-2">
-                        Density: {project.densityClass}
+                        Density: {normalizeDensityClass(project.densityClass) ?? "Not disclosed"}
                       </div>
                     </div>
                   </Link>
