@@ -12,9 +12,35 @@ import { siteImagesService } from "@/services/admin/siteImagesService";
 const navLinks = [
   { label: "About Us", href: "/about" },
   { label: "What We Do", href: "/services" },
-  { label: "Buy", href: "/hyderabad/properties" },
-  { label: "New Projects", href: "/projects" },
-  { label: "Explore", href: "/hyderabad" },
+  {
+    label: "Buy",
+    href: "/hyderabad/properties",
+    children: [
+      { label: "Hyderabad Resale Properties", href: "/hyderabad/properties" },
+      { label: "Landowner/Investor Share", href: "/hyderabad/landowner-investor-share-flats" },
+    ],
+  },
+  {
+    label: "New Projects",
+    href: "/projects",
+    children: [
+      { label: "View All Projects", href: "/projects" },
+      { label: "Hyderabad Projects", href: "/projects?city=hyderabad" },
+      { label: "Goa Projects", href: "/projects?city=goa" },
+      { label: "Dubai Projects", href: "/projects?city=dubai" },
+    ],
+  },
+  {
+    label: "Explore",
+    href: "/hyderabad",
+    children: [
+      { label: "Hyderabad", href: "/hyderabad" },
+      { label: "Goa", href: "/goa" },
+      { label: "Dubai", href: "/dubai" },
+      { label: "Hyderabad Areas", href: "/hyderabad/areas" },
+      { label: "All Developers", href: "/developers" },
+    ],
+  },
   { label: "Insights", href: "/blog" },
   { label: "Contact", href: "/contact" },
 ];
@@ -53,8 +79,9 @@ const Header = () => {
   };
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-white shadow-sm">
-      <div className="container relative flex h-16 items-center justify-center lg:justify-between">
+    <>
+      <header className="sticky top-0 z-50 w-full border-b bg-white shadow-sm">
+        <div className="container relative flex h-16 items-center justify-center lg:justify-between">
         <Link
           href="/"
           className={cn(
@@ -89,18 +116,43 @@ const Header = () => {
           <nav className="hidden lg:flex">
             <ul className="flex items-center space-x-1">
               {navLinks.map((link) => (
-                <li key={link.href}>
-                  <Link
-                    href={link.href}
-                    className={cn(
-                      "text-base font-semibold px-3 py-2 rounded-md transition-colors",
-                      isActive(link.href)
-                        ? "text-remax-red"
-                        : "text-gray-700 hover:text-remax-red hover:bg-gray-50"
-                    )}
-                  >
-                    {link.label}
-                  </Link>
+                <li
+                  key={link.href}
+                  className={cn(link.children?.length ? "has-dropdown nav-item" : "nav-item")}
+                >
+                  {link.children?.length ? (
+                    <>
+                      <span
+                        className={cn(
+                          "nav-link text-base font-semibold px-3 py-2 rounded-md transition-colors",
+                          isActive(link.href)
+                            ? "text-remax-red"
+                            : "text-gray-700 hover:text-remax-red hover:bg-gray-50"
+                        )}
+                      >
+                        {link.label}
+                      </span>
+                      <ul className="dropdown">
+                        {link.children.map((child) => (
+                          <li key={child.href}>
+                            <Link href={child.href}>{child.label}</Link>
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  ) : (
+                    <Link
+                      href={link.href}
+                      className={cn(
+                        "nav-link text-base font-semibold px-3 py-2 rounded-md transition-colors",
+                        isActive(link.href)
+                          ? "text-remax-red"
+                          : "text-gray-700 hover:text-remax-red hover:bg-gray-50"
+                      )}
+                    >
+                      {link.label}
+                    </Link>
+                  )}
                 </li>
               ))}
             </ul>
@@ -132,17 +184,32 @@ const Header = () => {
           <SheetContent side="right" className="w-80 overflow-y-auto">
             <div className="flex flex-col mt-8 space-y-2">
               {navLinks.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className={cn(
-                    "text-lg font-medium transition-colors hover:text-remax-red py-2",
-                    isActive(link.href) ? "text-remax-red" : "text-muted-foreground"
-                  )}
-                  onClick={() => setIsOpen(false)}
-                >
-                  {link.label}
-                </Link>
+                <div key={link.href} className="space-y-2">
+                  <Link
+                    href={link.href}
+                    className={cn(
+                      "text-lg font-medium transition-colors hover:text-remax-red py-2",
+                      isActive(link.href) ? "text-remax-red" : "text-muted-foreground"
+                    )}
+                    onClick={() => setIsOpen(false)}
+                  >
+                    {link.label}
+                  </Link>
+                  {link.children?.length ? (
+                    <div className="flex flex-col space-y-1 pl-4">
+                      {link.children.map((child) => (
+                        <Link
+                          key={child.href}
+                          href={child.href}
+                          className="text-sm text-muted-foreground hover:text-remax-red"
+                          onClick={() => setIsOpen(false)}
+                        >
+                          {child.label}
+                        </Link>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
               ))}
               <div className="border-t pt-4 mt-4 space-y-2">
                 <Button
@@ -158,8 +225,42 @@ const Header = () => {
             </div>
           </SheetContent>
         </Sheet>
-      </div>
-    </header>
+        </div>
+      </header>
+      <style jsx global>{`
+        .has-dropdown {
+          position: relative;
+        }
+        .dropdown {
+          display: none;
+          position: absolute;
+          top: 100%;
+          left: 0;
+          background: #0b1220;
+          min-width: 220px;
+          border-radius: 8px;
+          padding: 8px 0;
+          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+          z-index: 1000;
+        }
+        .dropdown li {
+          padding: 0;
+        }
+        .dropdown a {
+          display: block;
+          padding: 10px 16px;
+          color: #ffffff;
+          text-decoration: none;
+          font-size: 14px;
+        }
+        .dropdown a:hover {
+          background: rgba(255, 255, 255, 0.08);
+        }
+        .has-dropdown:hover .dropdown {
+          display: block;
+        }
+      `}</style>
+    </>
   );
 };
 
