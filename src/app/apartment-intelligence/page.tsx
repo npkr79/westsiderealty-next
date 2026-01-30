@@ -158,6 +158,7 @@ export default async function ApartmentIntelligencePage() {
       apartmentProjects
         .filter((project) => project.floors !== null && project.floors >= 30)
         .map((project) => project.microMarket)
+        .filter((value): value is string => Boolean(value))
     )
   );
   const hyperDensePockets = Array.from(
@@ -165,6 +166,7 @@ export default async function ApartmentIntelligencePage() {
       apartmentProjects
         .filter((project) => project.unitsPerAcre !== null && project.unitsPerAcre >= 115)
         .map((project) => project.microMarket)
+        .filter((value): value is string => Boolean(value))
     )
   );
 
