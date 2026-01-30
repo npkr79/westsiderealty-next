@@ -9,10 +9,15 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { siteImagesService } from "@/services/admin/siteImagesService";
-import BuyDropdown from "./BuyDropdown";
-import NewProjectsDropdown from "./NewProjectsDropdown";
-import ExploreDropdown from "./ExploreDropdown";
-import MobileNavigationMenu from "./MobileNavigationMenu";
+const navLinks = [
+  { label: "About Us", href: "/about" },
+  { label: "What We Do", href: "/services" },
+  { label: "Buy", href: "/hyderabad/properties" },
+  { label: "New Projects", href: "/projects" },
+  { label: "Explore", href: "/hyderabad" },
+  { label: "Insights", href: "/blog" },
+  { label: "Contact", href: "/contact" },
+];
 
 const Header = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -83,61 +88,21 @@ const Header = () => {
         {isMounted ? (
           <nav className="hidden lg:flex">
             <ul className="flex items-center space-x-1">
-              <li>
-                <Link
-                  href="/about"
-                  className={cn(
-                    "text-base font-semibold px-3 py-2 rounded-md transition-colors",
-                    isActive("/about")
-                      ? "text-remax-red"
-                      : "text-gray-700 hover:text-remax-red hover:bg-gray-50"
-                  )}
-                >
-                  About Us
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/services"
-                  className={cn(
-                    "text-base font-semibold px-3 py-2 rounded-md transition-colors",
-                    isActive("/services") || isActive("/what-we-do")
-                      ? "text-remax-red"
-                      : "text-gray-700 hover:text-remax-red hover:bg-gray-50"
-                  )}
-                >
-                  What We Do
-                </Link>
-              </li>
-              <BuyDropdown />
-              <NewProjectsDropdown />
-              <ExploreDropdown />
-              <li>
-                <Link
-                  href="/blog"
-                  className={cn(
-                    "text-base font-semibold px-3 py-2 rounded-md transition-colors",
-                    isActive("/blog") || isActive("/insights")
-                      ? "text-remax-red"
-                      : "text-gray-700 hover:text-remax-red hover:bg-gray-50"
-                  )}
-                >
-                  Insights
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/contact"
-                  className={cn(
-                    "text-base font-semibold px-3 py-2 rounded-md transition-colors",
-                    isActive("/contact")
-                      ? "text-remax-red"
-                      : "text-gray-700 hover:text-remax-red hover:bg-gray-50"
-                  )}
-                >
-                  Contact
-                </Link>
-              </li>
+              {navLinks.map((link) => (
+                <li key={link.href}>
+                  <Link
+                    href={link.href}
+                    className={cn(
+                      "text-base font-semibold px-3 py-2 rounded-md transition-colors",
+                      isActive(link.href)
+                        ? "text-remax-red"
+                        : "text-gray-700 hover:text-remax-red hover:bg-gray-50"
+                    )}
+                  >
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </nav>
         ) : null}
@@ -165,8 +130,20 @@ const Header = () => {
             </Button>
           </SheetTrigger>
           <SheetContent side="right" className="w-80 overflow-y-auto">
-            <div className="flex flex-col mt-8">
-              <MobileNavigationMenu onNavigate={() => setIsOpen(false)} isActive={isActive} />
+            <div className="flex flex-col mt-8 space-y-2">
+              {navLinks.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={cn(
+                    "text-lg font-medium transition-colors hover:text-remax-red py-2",
+                    isActive(link.href) ? "text-remax-red" : "text-muted-foreground"
+                  )}
+                  onClick={() => setIsOpen(false)}
+                >
+                  {link.label}
+                </Link>
+              ))}
               <div className="border-t pt-4 mt-4 space-y-2">
                 <Button
                   className="w-full rounded-full bg-[#003DA5] text-white hover:bg-[#00338a]"
