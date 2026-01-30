@@ -17,6 +17,13 @@ WITH residential_agg AS (
         ELSE 0
       END
     ) AS total_units,
+    SUM(
+      CASE
+        WHEN COALESCE(rbn.villa_unit_count, 0) > 0
+        THEN rbn.villa_unit_count
+        ELSE 0
+      END
+    ) AS villa_unit_count,
     MIN(
       CASE
         WHEN rbn.derived_building_type = 'apartment_tower'
@@ -35,6 +42,26 @@ WITH residential_agg AS (
         THEN rbn.derived_total_floors
       END
     ) AS avg_floors,
+    SUM(
+      CASE
+        WHEN rbn.derived_building_type = 'apartment_tower'
+        THEN COALESCE(rbn.total_residential_built_up_area, 0)
+        ELSE 0
+      END
+    ) AS total_residential_built_up_area,
+    SUM(
+      CASE
+        WHEN COALESCE(rbn.villa_unit_count, 0) > 0
+        THEN COALESCE(rbn.villa_residential_built_up_area, 0)
+        ELSE 0
+      END
+    ) AS villa_residential_built_up_area,
+    COUNT(
+      DISTINCT CASE
+        WHEN COALESCE(rbn.villa_unit_count, 0) > 0
+        THEN rbn.physical_building_id
+      END
+    ) AS villa_block_count,
     COUNT(
       DISTINCT CASE
         WHEN rbn.derived_building_type = 'commercial_block'
@@ -64,6 +91,16 @@ SET
   min_floors = ra.min_floors,
   max_floors = ra.max_floors,
   avg_floors = ra.avg_floors,
+  total_residential_built_up_area = ra.total_residential_built_up_area,
+  villa_unit_count = ra.villa_unit_count,
+  villa_block_count = ra.villa_block_count,
+  villa_residential_built_up_area = ra.villa_residential_built_up_area,
+  physical_typology = CASE
+    WHEN ra.villa_unit_count > 0 AND ra.apartment_tower_count = 0 THEN 'villa_project'
+    WHEN ra.apartment_tower_count > 0 AND ra.villa_unit_count = 0 THEN 'apartment_project'
+    WHEN ra.apartment_tower_count > 0 AND ra.villa_unit_count > 0 THEN 'mixed_residential'
+    ELSE 'plotted_development'
+  END,
   commercial_block_count = ra.commercial_block_count,
   unknown_block_count = ra.unknown_block_count,
   updated_at = NOW()

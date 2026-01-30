@@ -1,97 +1,109 @@
+import { INTELLIGENCE_LABELS } from "@/constants/intelligenceLanguage";
+
 interface StructuralProfileSectionProps {
-  structuralProfile: any;
-  buildings: any[];
+  structuralProfile: Record<string, unknown> | null;
+  landSummary: Record<string, unknown> | null;
 }
 
-const formatNumber = (value: number | null, decimals: number = 0) => {
-  if (value === null || Number.isNaN(value)) return "Not disclosed";
-  return Number(value.toFixed(decimals)).toLocaleString("en-IN");
+const sqmToAcres = (sqm: number) => sqm / 4046.85642;
+
+const toNumber = (value: unknown): number | null => {
+  if (value === null || value === undefined || value === "") return null;
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const cleaned = value.replace(/[^0-9.-]+/g, "");
+    const parsed = Number(cleaned);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
 };
 
-const getBuildingTypeCounts = (buildings: any[]) => {
-  return buildings.reduce<Record<string, number>>((acc, building) => {
-    const key = building?.derived_building_type ?? "unknown";
-    acc[key] = (acc[key] ?? 0) + 1;
-    return acc;
-  }, {});
+const formatValue = (value: number | string | null | undefined) => {
+  if (value === null || value === undefined || value === "")
+    return INTELLIGENCE_LABELS.disclosureMissing;
+  if (typeof value === "number") return value.toLocaleString("en-IN");
+  return value;
 };
+
+const formatAcres = (value: number | null) =>
+  value === null || Number.isNaN(value)
+    ? INTELLIGENCE_LABELS.disclosureMissing
+    : value.toLocaleString("en-IN");
 
 export default function StructuralProfileSection({
   structuralProfile,
-  buildings,
+  landSummary,
 }: StructuralProfileSectionProps) {
-  const minFloors = structuralProfile?.min_floors ?? null;
-  const maxFloors = structuralProfile?.max_floors ?? null;
+  const towers = (structuralProfile as any)?.apartment_tower_count ?? null;
+  const minFloors = (structuralProfile as any)?.min_floors ?? null;
+  const maxFloors = (structuralProfile as any)?.max_floors ?? null;
+  const totalUnits = (structuralProfile as any)?.total_units ?? null;
+  const landAreaSqm = toNumber(
+    (landSummary as any)?.total_land_area ?? (landSummary as any)?.land_area ?? null
+  );
+  const netLandSqm = toNumber(
+    (landSummary as any)?.net_land_area ?? (landSummary as any)?.net_land_area_sqm ?? null
+  );
+
+  const landAreaAcres =
+    landAreaSqm !== null ? Number(sqmToAcres(landAreaSqm).toFixed(2)) : null;
+  const netLandAcres =
+    netLandSqm !== null ? Number(sqmToAcres(netLandSqm).toFixed(2)) : null;
+
   const floorRange =
     minFloors !== null && maxFloors !== null
       ? minFloors === maxFloors
-        ? `${formatNumber(maxFloors)} floors`
-        : `${formatNumber(minFloors)}-${formatNumber(maxFloors)} floors`
+        ? `${formatValue(maxFloors)} floors`
+        : `${formatValue(minFloors)}-${formatValue(maxFloors)} floors`
       : "Not disclosed";
 
-  const totalTowers =
-    structuralProfile?.apartment_tower_count ??
-    structuralProfile?.residential_structures ??
-    null;
-
-  const typeCounts = getBuildingTypeCounts(buildings ?? []);
-  const residentialCount =
-    typeCounts.apartment_tower ?? structuralProfile?.apartment_tower_count ?? null;
-  const commercialCount =
-    typeCounts.commercial_block ?? structuralProfile?.commercial_block_count ?? null;
-  const unknownCount = typeCounts.unknown ?? structuralProfile?.unknown_block_count ?? null;
-
-  const splitLabel = [
-    residentialCount !== null ? `${formatNumber(residentialCount)} residential` : null,
-    commercialCount !== null ? `${formatNumber(commercialCount)} commercial` : null,
-    unknownCount !== null ? `${formatNumber(unknownCount)} other` : null,
-  ]
-    .filter(Boolean)
-    .join(" / ") || "Not disclosed";
-
-  const builtupSqft =
-    structuralProfile?.total_built_up_area_sqft ??
-    structuralProfile?.total_builtup_area_sqft ??
-    structuralProfile?.builtup_area_sqft ??
-    structuralProfile?.builtup_area ??
-    null;
-  const landSqft =
-    structuralProfile?.total_land_area_sqft ??
-    structuralProfile?.land_area_sqft ??
-    null;
-  const builtupToLandRatio =
-    builtupSqft !== null && landSqft && landSqft > 0 ? builtupSqft / landSqft : null;
-
   return (
-    <section className="space-y-4">
+    <section className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold text-slate-900">Structural Profile</h2>
-        <p className="text-sm text-slate-500">
-          Tower configuration and structural distribution across the project.
+        <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">
+          Structural Profile
+        </p>
+        <h2 className="mt-2 text-3xl font-semibold text-slate-900">
+          Structural footprint
+        </h2>
+        <p className="mt-1 text-sm text-slate-500">
+          Derived from Telangana RERA structural disclosures.
         </p>
       </div>
-      <div className="grid gap-4 rounded-xl border border-slate-100 bg-white p-5 text-sm sm:grid-cols-2 lg:grid-cols-4">
-        <div>
-          <p className="text-xs text-slate-500">Tower Count</p>
-          <p className="text-lg font-semibold text-slate-900">
-            {totalTowers !== null ? formatNumber(totalTowers) : "Not disclosed"}
-          </p>
-        </div>
-        <div>
-          <p className="text-xs text-slate-500">Floor Range</p>
-          <p className="text-lg font-semibold text-slate-900">{floorRange}</p>
-        </div>
-        <div>
-          <p className="text-xs text-slate-500">Residential vs Commercial</p>
-          <p className="text-lg font-semibold text-slate-900">{splitLabel}</p>
-        </div>
-        <div>
-          <p className="text-xs text-slate-500">Built-up to Land Ratio</p>
-          <p className="text-lg font-semibold text-slate-900">
-            {builtupToLandRatio !== null
-              ? `${formatNumber(builtupToLandRatio, 2)}x`
-              : "Not disclosed"}
-          </p>
+      <div className="rounded-[28px] border border-white/60 bg-gradient-to-br from-white via-slate-50 to-slate-100 p-7 shadow-[0_20px_48px_rgba(15,23,42,0.08)]">
+        <div className="grid gap-5 text-sm sm:grid-cols-2 lg:grid-cols-3">
+          <div>
+            <p className="text-xs text-slate-500">Towers</p>
+            <p className="mt-2 text-3xl font-semibold text-slate-900">
+              {towers === null ? "Not disclosed" : `${formatValue(towers)} towers`}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs text-slate-500">Floor range</p>
+            <p className="mt-2 text-3xl font-semibold text-slate-900">{floorRange}</p>
+          </div>
+          <div>
+            <p className="text-xs text-slate-500">Total units</p>
+            <p className="mt-2 text-3xl font-semibold text-slate-900">
+              {formatValue(totalUnits)}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs text-slate-500">Total land</p>
+            <p className="mt-2 text-3xl font-semibold text-slate-900">
+              {landAreaAcres === null
+                ? "Not disclosed"
+                : `${formatAcres(landAreaAcres)} acres`}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs text-slate-500">Net land</p>
+            <p className="mt-2 text-3xl font-semibold text-slate-900">
+              {netLandAcres === null
+                ? "Not disclosed"
+                : `${formatAcres(netLandAcres)} acres`}
+            </p>
+          </div>
         </div>
       </div>
     </section>

@@ -36,21 +36,27 @@ const gradeForScore = (score: number): WestsideDensityIndex["grade"] => {
 const explanationForGrade = (grade: WestsideDensityIndex["grade"]): string => {
   switch (grade) {
     case "Light":
-      return "Light, underutilized residential load with open system capacity.";
+      return "Derived from Telangana RERA structural disclosures. Indicates low structural load with open system capacity.";
     case "Balanced":
-      return "Balanced density with steady shared-system demand.";
+      return "Derived from Telangana RERA structural disclosures. Indicates balanced structural load.";
     case "Moderately Stressed":
-      return "Moderately stressed density with noticeable shared infrastructure load.";
+      return "Derived from Telangana RERA structural disclosures. Indicates moderate shared-system load.";
     case "High Stress":
-      return "High stress density with strong vertical and shared-system dependence.";
+      return "Derived from Telangana RERA structural disclosures. Indicates high shared-system dependence.";
     default:
-      return "Extreme stress density with heavy, system-driven daily life.";
+      return "Derived from Telangana RERA structural disclosures. Indicates extreme shared-system dependence.";
   }
 };
 
 export function computeWestsideDensityIndex(
   dna: ProjectDNA
 ): WestsideDensityIndex {
+  console.log("[WDI] inputs:", {
+    unitsPerAcre: dna.density.units_per_acre,
+    landPerUnit: dna.land.land_per_unit_sqft,
+    floorsPerTower: dna.vertical.avg_floors_per_tower,
+    unitsPerTower: dna.density.units_per_tower,
+  });
   const crowding = normalize(dna.density.units_per_acre, 130);
   const towerLoad = normalize(dna.density.units_per_tower, 300);
   const vertical = normalize(dna.vertical.avg_floors_per_tower, 40);
@@ -73,6 +79,22 @@ export function computeWestsideDensityIndex(
 
   const grade = gradeForScore(score);
 
+  console.log("[WDI DEBUG]", {
+    dna_inputs: {
+      units_per_acre: dna.density.units_per_acre,
+      units_per_tower: dna.density.units_per_tower,
+      avg_floors_per_tower: dna.vertical.avg_floors_per_tower,
+      land_per_unit_sqft: dna.land.land_per_unit_sqft,
+    },
+    computed_contributors: {
+      crowding_score: crowding,
+      tower_load_score: towerLoad,
+      vertical_score: vertical,
+      land_stress_score: landStress,
+    },
+    final_index: score,
+  });
+
   return {
     score,
     grade,
@@ -81,6 +103,6 @@ export function computeWestsideDensityIndex(
     land_stress_score: landStress !== null ? Math.round(landStress) : null,
     tower_load_score: towerLoad !== null ? Math.round(towerLoad) : null,
     explanation: explanationForGrade(grade),
-    meaning: "Higher scores indicate heavier, denser residential systems.",
+    meaning: "Higher scores indicate heavier shared-system load.",
   };
 }

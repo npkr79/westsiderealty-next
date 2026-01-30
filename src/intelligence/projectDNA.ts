@@ -1,4 +1,10 @@
 import type { ProjectIntelligenceResult } from "@/services/projectIntelligenceService";
+import {
+  INTELLIGENCE_LABELS,
+  normalizeDensityClass,
+  normalizeLandStrength,
+  normalizeScaleClass,
+} from "@/constants/intelligenceLanguage";
 
 export interface DensityDNA {
   units_per_acre: number | null;
@@ -69,32 +75,35 @@ const formatNumber = (value: number | null, decimals: number = 2): string => {
 };
 
 // Westside Density Standards v1.0 (lifestyle categories, not quality scores)
-const classifyDensity = (unitsPerAcre: number): { label: string; score: number } => {
-  if (unitsPerAcre < 50) return { label: "ultra-low", score: 20 };
-  if (unitsPerAcre < 75) return { label: "low", score: 40 };
-  if (unitsPerAcre < 100) return { label: "medium", score: 60 };
-  if (unitsPerAcre <= 130) return { label: "high", score: 80 };
-  return { label: "extreme", score: 100 };
+export const classifyDensity = (
+  unitsPerAcre: number
+): { label: string; score: number } => {
+  if (unitsPerAcre < 50) return { label: "light", score: 20 };
+  if (unitsPerAcre < 75) return { label: "balanced", score: 40 };
+  if (unitsPerAcre < 100) return { label: "dense", score: 60 };
+  if (unitsPerAcre <= 130) return { label: "high-density", score: 80 };
+  return { label: "extreme density", score: 100 };
 };
 
-const classifyVertical = (avgFloorsPerTower: number): string => {
+export const classifyVertical = (avgFloorsPerTower: number): string => {
   if (avgFloorsPerTower <= 5) return "low-rise";
   if (avgFloorsPerTower <= 12) return "mid-rise";
   if (avgFloorsPerTower <= 25) return "high-rise";
-  return "super high-rise";
+  return "super-high-rise";
 };
 
-const classifyLand = (landPerUnitSqft: number): string => {
+export const classifyLand = (landPerUnitSqft: number): string => {
   if (landPerUnitSqft > 1200) return "land-rich";
-  if (landPerUnitSqft >= 700) return "balanced";
-  return "asset-heavy";
+  if (landPerUnitSqft >= 700) return "balanced land";
+  if (landPerUnitSqft >= 500) return "land-tight";
+  return "land-stressed";
 };
 
-const classifyScale = (totalUnits: number): string => {
+export const classifyScale = (totalUnits: number): string => {
   if (totalUnits < 150) return "boutique";
-  if (totalUnits < 600) return "mid-scale";
-  if (totalUnits <= 1500) return "large";
-  return "mega";
+  if (totalUnits < 600) return "community";
+  if (totalUnits <= 1500) return "township";
+  return "mega ecosystem";
 };
 
 export function computeProjectDNA(
@@ -146,11 +155,14 @@ export function computeProjectDNA(
     };
   }
 
-  const densityNotApplicable = structural.density_applicable === false;
+  const typology = (structural as any)?.physical_typology ?? null;
+  const isApartmentProject = typology === "apartment_project";
+  const densityNotApplicable =
+    !isApartmentProject && structural.density_applicable === false;
   const totalUnits = toNumber((structural as any)?.total_units);
   const totalStructures = toNumber(
-    (structural as any)?.residential_structures ??
-      (structural as any)?.apartment_tower_count
+    (structural as any)?.apartment_tower_count ??
+      (structural as any)?.residential_structures
   );
   const maxFloors = toNumber((structural as any)?.max_floors);
   const minFloors = toNumber((structural as any)?.min_floors);
@@ -162,6 +174,7 @@ export function computeProjectDNA(
   );
   const builtupSqm = toNumber(
     (structural as any)?.total_builtup_area_sqm ??
+      (structural as any)?.total_residential_built_up_area ??
       (structural as any)?.builtup_area_sqm ??
       (structural as any)?.builtup_area
   );
@@ -238,6 +251,10 @@ export function computeProjectDNA(
   const landClass = landPerUnitSqft !== null ? classifyLand(landPerUnitSqft) : null;
   const scaleClass = totalUnits !== null ? classifyScale(totalUnits) : null;
 
+  const normalizedDensity = normalizeDensityClass(densityClass?.label ?? null);
+  const normalizedLand = normalizeLandStrength(landClass ?? null);
+  const normalizedScale = normalizeScaleClass(scaleClass ?? null);
+
   const densityStatus: DensityDNA["status"] = densityNotApplicable
     ? "not_applicable"
     : unitsPerAcre !== null && unitsPerStructure !== null && avgUnitsPerFloor !== null
@@ -257,16 +274,17 @@ export function computeProjectDNA(
         units_per_acre: unitsPerAcre,
         units_per_tower: unitsPerStructure,
         avg_units_per_floor: avgUnitsPerFloor,
-        density_class: densityClass?.label ?? null,
+        density_class: normalizedDensity,
         density_score: densityScore,
         explanation:
           unitsPerAcre !== null
-            ? `Structural crowding is ${densityClass?.label} with ${formatNumber(unitsPerAcre)} homes per acre. Daily life will feel ${densityClass?.label} and system-driven.`
+            ? `${INTELLIGENCE_LABELS.disclosure} Represents a ${normalizedDensity ?? "Medium"}-density vertical system at ${formatNumber(unitsPerAcre)} units per acre.`
             : "Data processing in progress.",
         status: densityStatus,
       };
 
-  const verticalNotApplicable = structural?.vertical_applicable === false;
+  const verticalNotApplicable =
+    !isApartmentProject && structural?.vertical_applicable === false;
   const verticalStatus: VerticalDNA["status"] = verticalNotApplicable
     ? "not_applicable"
     : avgFloorsPerStructure !== null && verticalIntensity !== null
@@ -286,7 +304,7 @@ export function computeProjectDNA(
         vertical_class: verticalClass ?? null,
         explanation:
           avgFloorsPerStructure !== null
-            ? `${Math.round(avgFloorsPerStructure)} floors per structure implies ${verticalClass} intensity. Daily movement will be vertical and lift-dependent.`
+            ? `${INTELLIGENCE_LABELS.disclosure} Represents a ${verticalClass} vertical system at ${Math.round(avgFloorsPerStructure)} floors per tower.`
             : "Data processing in progress.",
         status: verticalStatus,
       };
@@ -296,10 +314,10 @@ export function computeProjectDNA(
   const land: LandDNA = {
     land_per_unit_sqft: landPerUnitSqft,
     builtup_to_land_ratio: builtupToLandRatio,
-    land_class: landClass ?? null,
+    land_class: normalizedLand,
     explanation:
       landPerUnitSqft !== null
-        ? `Land support is ${landClass}. Each home is backed by about ${formatNumber(landPerUnitSqft)} sq.ft of land, shaping daily openness.`
+        ? `${INTELLIGENCE_LABELS.disclosure} Indicates ${normalizedLand ?? "Balanced"} land strength at ${formatNumber(landPerUnitSqft)} sq.ft per unit.`
         : "Data processing in progress.",
     status: landStatus,
   };
@@ -310,14 +328,21 @@ export function computeProjectDNA(
     total_units: totalUnits,
     total_towers: totalStructures,
     total_floors: maxFloors ?? minFloors ?? null,
-    scale_class: scaleClass ?? null,
+    scale_class: normalizedScale,
     explanation:
       totalUnits !== null
-        ? `Residential scale is ${scaleClass} with ${Math.round(totalUnits)} homes. Community systems will operate at that scale.`
+        ? `${INTELLIGENCE_LABELS.disclosure} Reflects ${normalizedScale ?? "Gated community"} scale class at ${Math.round(totalUnits)} total units.`
         : "Data processing in progress.",
     status: scaleStatus,
   };
 
+  console.log("[LAND-DNA]", {
+    total_land_area: landSqft,
+    total_built_up_area: builtupSqftFinal,
+    land_per_unit: landPerUnitSqft,
+    builtup_to_land_ratio: builtupToLandRatio,
+    land_stress_score: landClass ?? null,
+  });
   console.log("[LAND DNA INPUT]", {
     land_area: landSqft,
     built_up_area: builtupSqftFinal,
