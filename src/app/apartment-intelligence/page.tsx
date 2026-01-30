@@ -193,6 +193,7 @@ export default async function ApartmentIntelligencePage() {
             project.floors >= 30
         )
         .map((project) => project.microMarket)
+        .filter((value): value is string => Boolean(value))
     )
   );
 
