@@ -35,6 +35,8 @@ import ProjectHighlights from "@/components/project-details/ProjectHighlights";
 import ProjectIntelligenceTemplate from "@/components/project-intelligence/ProjectIntelligenceTemplate";
 import SmartLinkGrid from "@/components/shared/SmartLinkGrid";
 
+export const dynamic = "force-dynamic";
+
 interface PageProps {
   params: Promise<{ projectSlug: string | string[] }>;
 }

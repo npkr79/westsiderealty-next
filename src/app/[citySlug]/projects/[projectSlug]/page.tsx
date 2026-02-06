@@ -35,6 +35,8 @@ import ProjectIntelligenceTemplate from "@/components/project-intelligence/Proje
 import SmartLinkGrid from "@/components/shared/SmartLinkGrid";
 import DebugClient from "./DebugClient";
 
+export const dynamic = "force-dynamic";
+
 interface PageProps {
   params: Promise<{ citySlug: string | string[]; projectSlug: string | string[] }>;
 }
