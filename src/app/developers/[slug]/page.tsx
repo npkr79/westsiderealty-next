@@ -16,6 +16,9 @@ import DeveloperProjectCard from "@/components/developer/DeveloperProjectCard";
 import DeveloperContactForm from "@/components/developer/DeveloperContactForm";
 import ImageWithFallback from "@/components/common/ImageWithFallback";
 import SmartLinkGrid from "@/components/shared/SmartLinkGrid";
+import { createServiceClient } from "@/lib/supabase/serviceClient";
+
+export const dynamic = "force-dynamic";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -43,7 +46,28 @@ async function getDeveloper(slug: string) {
 
   if (error) {
     console.error(`[getDeveloper] Error fetching developer with slug "${slug}":`, error);
-    return null;
+    try {
+      const serviceClient = createServiceClient();
+      const { data: fallbackDeveloper, error: fallbackError } = await serviceClient
+        .from('developers')
+        .select('*')
+        .eq('url_slug', slug)
+        .maybeSingle();
+      if (fallbackError) {
+        console.error(
+          `[getDeveloper] Service fallback error for slug "${slug}":`,
+          fallbackError
+        );
+        return null;
+      }
+      return fallbackDeveloper ?? null;
+    } catch (fallbackError) {
+      console.error(
+        `[getDeveloper] Service client failure for slug "${slug}":`,
+        fallbackError
+      );
+      return null;
+    }
   }
 
   if (!developer) {
@@ -79,7 +103,34 @@ async function getDeveloperProjects(developerId: string) {
 
     if (error) {
       console.error('[getDeveloperProjects] Error fetching developer projects:', error);
-      return [];
+      try {
+        const serviceClient = createServiceClient();
+        const { data: fallbackProjects, error: fallbackError } = await serviceClient
+          .from('projects')
+          .select(`
+            id,
+            project_name,
+            url_slug,
+            hero_image_url,
+            meta_description,
+            price_range_text,
+            city:cities(url_slug, city_name),
+            micro_market:micro_markets(url_slug, micro_market_name)
+          `)
+          .eq('developer_id', developerId)
+          .or('status.ilike.published,status.ilike.%under construction%')
+          .order('display_order', { ascending: true, nullsFirst: false })
+          .order('project_name', { ascending: true })
+          .limit(20);
+        if (fallbackError) {
+          console.error('[getDeveloperProjects] Service fallback error:', fallbackError);
+          return [];
+        }
+        return fallbackProjects || [];
+      } catch (fallbackError) {
+        console.error('[getDeveloperProjects] Service client failure:', fallbackError);
+        return [];
+      }
     }
 
     if (!data || !Array.isArray(data)) {
