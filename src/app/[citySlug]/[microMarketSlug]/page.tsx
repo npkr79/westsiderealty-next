@@ -34,6 +34,8 @@ import MicroMarketSnapshotSection, {
   MicroMarketSnapshotLoading,
 } from "@/components/micro-market-intelligence/MicroMarketSnapshotSection";
 
+export const dynamic = "force-dynamic";
+
 interface PageProps {
   params: Promise<{ citySlug: string; microMarketSlug: string }>;
 }
