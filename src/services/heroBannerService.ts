@@ -91,7 +91,8 @@ export async function getHeroBannerOffersServer(): Promise<HeroBannerOffer[]> {
   }
 
   if (error) {
-    if (error.code === "42501" || error.status === 403) {
+    const errorStatus = (error as { status?: number }).status;
+    if (error.code === "42501" || errorStatus === 403) {
       try {
         const serviceClient = createServiceClient();
         let serviceQuery = serviceClient
