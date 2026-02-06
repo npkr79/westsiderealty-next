@@ -80,6 +80,7 @@ class BlogService {
         .maybeSingle()
     );
     if (error) throw error;
+    if (!data) throw new Error("Failed to insert blog article.");
     return data;
   }
 
@@ -94,6 +95,7 @@ class BlogService {
         .maybeSingle()
     );
     if (error) throw error;
+    if (!data) throw new Error("Failed to update blog article.");
     return data;
   }
 
