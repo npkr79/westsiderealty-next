@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/client";
+import { createServiceClient } from "@/lib/supabase/serviceClient";
 
 // Flexible interface that works with whatever columns exist in homepage_banners table
 export interface HeroBannerOffer {
@@ -90,6 +91,41 @@ export async function getHeroBannerOffersServer(): Promise<HeroBannerOffer[]> {
   }
 
   if (error) {
+    if (error.code === "42501" || error.status === 403) {
+      try {
+        const serviceClient = createServiceClient();
+        let serviceQuery = serviceClient
+          .from("homepage_banners")
+          .select("*")
+          .eq("is_active", true)
+          .order("display_order", { ascending: true });
+        let { data: serviceData, error: serviceError } = await serviceQuery;
+
+        if (serviceError && (serviceError.code === "42703" || serviceError.message?.includes("does not exist"))) {
+          console.log(
+            "[getHeroBannerOffersServer] Service column error, retrying without is_active/display_order filters..."
+          );
+          const retryQuery = serviceClient.from("homepage_banners").select("*");
+          const retryResult = await retryQuery;
+          if (retryResult.error) {
+            console.error("[getHeroBannerOffersServer] Service retry error:", retryResult.error);
+            return [];
+          }
+          serviceData = retryResult.data;
+          serviceError = null;
+        }
+
+        if (serviceError) {
+          console.error("[getHeroBannerOffersServer] Service error:", serviceError);
+          return [];
+        }
+
+        return (serviceData || []) as HeroBannerOffer[];
+      } catch (serviceError) {
+        console.error("[getHeroBannerOffersServer] Service client failure:", serviceError);
+        return [];
+      }
+    }
     console.error("[getHeroBannerOffersServer] Error fetching hero banner offers:", error);
     return [];
   }
