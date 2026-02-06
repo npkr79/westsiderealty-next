@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { createServiceClient } from '@/lib/supabase/serviceClient';
 
 export interface CityInfo {
   id: string;
@@ -49,7 +50,24 @@ export const cityService = {
         return null;
       }
       console.error('❌ [CityService] Error:', error);
-      return null;
+      try {
+        const serviceClient = createServiceClient();
+        const { data: fallbackData, error: fallbackError } = await serviceClient
+          .from('cities')
+          .select('*')
+          .eq('url_slug', slug)
+          .eq('page_status', 'published')
+          .limit(1)
+          .maybeSingle();
+        if (fallbackError) {
+          console.error('❌ [CityService] Service fallback error:', fallbackError);
+          return null;
+        }
+        return (fallbackData as CityInfo) ?? null;
+      } catch (fallbackError) {
+        console.error('❌ [CityService] Service client failure:', fallbackError);
+        return null;
+      }
     }
 
     if (!data) {
@@ -75,7 +93,21 @@ export const cityService = {
     
     if (error) {
       console.error('❌ [CityService] Error fetching property count:', error);
-      return 0;
+      try {
+        const serviceClient = createServiceClient();
+        const { count: fallbackCount, error: fallbackError } = await serviceClient
+          .from('hyderabad_properties')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'active');
+        if (fallbackError) {
+          console.error('❌ [CityService] Service fallback error:', fallbackError);
+          return 0;
+        }
+        return fallbackCount || 0;
+      } catch (fallbackError) {
+        console.error('❌ [CityService] Service client failure:', fallbackError);
+        return 0;
+      }
     }
     
     console.log('✅ [CityService] Property count:', count);

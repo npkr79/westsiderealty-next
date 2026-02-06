@@ -30,6 +30,7 @@ import { JsonLd } from "@/components/common/SEO";
 import { generateUnifiedSchema } from "@/lib/seo-utils";
 import { optimizeSupabaseImage } from "@/utils/imageOptimization";
 import SmartLinkGrid from "@/components/shared/SmartLinkGrid";
+import { createServiceClient } from "@/lib/supabase/serviceClient";
 
 interface PageProps {
   params: Promise<{ citySlug: string }>;
@@ -103,6 +104,8 @@ export async function generateStaticParams() {
   return cities?.map((city) => ({ citySlug: city.url_slug })) || [];
 }
 
+export const dynamic = "force-dynamic";
+
 export default async function CityPage({ params }: PageProps) {
   const { citySlug: citySlugParam } = await params;
   const citySlug = Array.isArray(citySlugParam) ? citySlugParam[0] : citySlugParam;
@@ -120,6 +123,23 @@ export default async function CityPage({ params }: PageProps) {
 
   if (landingPageError) {
     console.error("[CityPage] Error checking for landing page:", landingPageError);
+    try {
+      const serviceClient = createServiceClient();
+      const { data: fallbackLandingPage, error: fallbackError } = await serviceClient
+        .from("landing_pages")
+        .select("uri, status")
+        .eq("uri", slug)
+        .eq("status", "published")
+        .maybeSingle();
+      if (fallbackError) {
+        console.error("[CityPage] Service fallback error for landing page:", fallbackError);
+      } else if (fallbackLandingPage) {
+        const { redirect } = await import("next/navigation");
+        redirect(`/landing/${slug}`);
+      }
+    } catch (fallbackError) {
+      console.error("[CityPage] Service client failure for landing page:", fallbackError);
+    }
   }
 
   if (landingPage) {
