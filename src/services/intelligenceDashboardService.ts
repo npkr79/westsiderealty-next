@@ -1,7 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/serviceClient";
 import type { ProjectIntelligenceResult } from "@/services/projectIntelligenceService";
 import { computeProjectDNA } from "@/intelligence/projectDNA";
 import { computeWestsideDensityIndex } from "@/intelligence/westsideDensityIndex";
+import { computeWVIE } from "@/intelligence/wvieEngine";
 
 const SQM_PER_ACRE = 4046.8564224;
 const SQFT_PER_ACRE = 43560;
@@ -42,6 +44,123 @@ const fetchByIds = async <T,>(
     results.push(...((data ?? []) as T[]));
   }
   return results;
+};
+
+const formatSupabaseError = (error: unknown) => {
+  const maybe = error as { message?: string; details?: string; hint?: string; code?: string };
+  return (
+    maybe?.message ||
+    maybe?.details ||
+    maybe?.hint ||
+    (maybe?.code ? `Supabase error code: ${maybe.code}` : null) ||
+    JSON.stringify(error)
+  );
+};
+
+const fetchVillaProjectsFromBase = async (
+  supabase: Awaited<ReturnType<typeof createServiceClient>>,
+  citySlug: string
+): Promise<VillaIntelligenceProject[]> => {
+  const { data: profiles, error: profilesError } = await supabase
+    .from("project_structural_profile")
+    .select("rera_project_id, total_units, physical_typology")
+    .eq("physical_typology", "villa_project");
+
+  if (profilesError) {
+    console.error(
+      "[IntelligenceDashboard] project_structural_profile fetch error (villa fallback):",
+      formatSupabaseError(profilesError)
+    );
+    return [];
+  }
+
+  const profileRows = (profiles ?? []) as Array<{
+    rera_project_id: string | null;
+    total_units: number | null;
+  }>;
+  const villaIds = profileRows
+    .map((row) => row.rera_project_id)
+    .filter((value): value is string => Boolean(value));
+
+  if (!villaIds.length) {
+    return [];
+  }
+
+  const [projects, landSummaries, addresses] = await Promise.all([
+    fetchByIds<{ id: string; project_name: string | null; url_slug: string | null; city_slug: string | null }>(
+      supabase as unknown as Awaited<ReturnType<typeof createClient>>,
+      "rera_projects",
+      "id, project_name, url_slug, city_slug",
+      "id",
+      villaIds
+    ),
+    fetchByIds<{ rera_project_id: string; total_land_area: number | null }>(
+      supabase as unknown as Awaited<ReturnType<typeof createClient>>,
+      "rera_project_land_summary",
+      "rera_project_id, total_land_area",
+      "rera_project_id",
+      villaIds
+    ),
+    fetchByIds<{ rera_project_id: string; micro_market: string | null; locality: string | null; mandal: string | null }>(
+      supabase as unknown as Awaited<ReturnType<typeof createClient>>,
+      "rera_project_addresses",
+      "rera_project_id, micro_market, locality, mandal",
+      "rera_project_id",
+      villaIds
+    ),
+  ]);
+
+  const landById = new Map(landSummaries.map((row) => [row.rera_project_id, row]));
+  const addressById = new Map(addresses.map((row) => [row.rera_project_id, row]));
+  const profileById = new Map(profileRows.map((row) => [row.rera_project_id!, row]));
+
+  return projects
+    .filter((project) => project.city_slug?.toLowerCase() === citySlug.toLowerCase())
+    .map((project) => {
+      const profile = profileById.get(project.id);
+      const land = landById.get(project.id);
+      const address = addressById.get(project.id);
+      const totalVillas = toNumber(profile?.total_units);
+      const totalLandSqm = toNumber(land?.total_land_area);
+      const totalLandAcres =
+        totalLandSqm !== null ? Number((totalLandSqm / SQM_PER_ACRE).toFixed(3)) : null;
+
+      const wvie =
+        totalVillas !== null && totalVillas > 0
+          ? computeWVIE({
+              reraProjectId: project.id,
+              totalVillas,
+              totalLandAcres,
+              totalLandSqm,
+              mandal: address?.mandal ?? null,
+            })
+          : null;
+
+      const villasPerAcre =
+        wvie?.metrics.villas_per_acre ??
+        (totalLandAcres !== null && totalVillas !== null && totalLandAcres > 0
+          ? Number((totalVillas / totalLandAcres).toFixed(2))
+          : null);
+      const grossLandPerVillaSqyd = wvie?.metrics.gross_land_per_villa_sqyd ?? null;
+      const landPerVillaSqft =
+        grossLandPerVillaSqyd !== null ? Number(grossLandPerVillaSqyd * 9) : null;
+
+      return {
+        id: project.id,
+        name: project.project_name ?? "Villa ecosystem",
+        slug: project.url_slug ?? "",
+        microMarket: address?.micro_market ?? address?.locality ?? address?.mandal ?? null,
+        totalVillas: totalVillas ?? null,
+        totalLandAcres,
+        villasPerAcre,
+        landPerVillaSqft,
+        densityClass: wvie?.classes.density_class ?? null,
+        landStrengthClass: wvie?.classes.land_strength_class ?? null,
+        scaleClass: wvie?.classes.scale_class ?? null,
+        compactnessBand: wvie?.classes.compactness_band ?? null,
+      };
+    })
+    .filter((project) => project.slug);
 };
 
 export interface ApartmentIntelligenceProject {
@@ -231,33 +350,68 @@ export const intelligenceDashboardService = {
     const { data, error } = await supabase
       .from("villa_intelligence_profiles")
       .select(
-        `rera_project_id, project_name, url_slug, city_slug, mandal, micro_market,
+        `rera_project_id, project_name, url_slug, city_slug,
          total_villas, total_land_acres, villas_per_acre, gross_land_per_villa_sqyd,
-         land_per_villa_sqft, density_class, land_strength_class, scale_class, compactness_band`
+         density_class, land_strength_class, scale_class, compactness_band`
       )
       .eq("city_slug", citySlug.toLowerCase());
 
+    let resolvedData = data ?? [];
     if (error) {
-      console.error("[IntelligenceDashboard] villa_intelligence_profiles fetch error:", error);
-      return [];
+      console.error(
+        "[IntelligenceDashboard] villa_intelligence_profiles fetch error:",
+        formatSupabaseError(error)
+      );
+      try {
+        const serviceClient = createServiceClient();
+        const { data: adminData, error: adminError } = await serviceClient
+          .from("villa_intelligence_profiles")
+          .select(
+            `rera_project_id, project_name, url_slug, city_slug,
+             total_villas, total_land_acres, villas_per_acre, gross_land_per_villa_sqyd,
+             density_class, land_strength_class, scale_class, compactness_band`
+          )
+          .eq("city_slug", citySlug.toLowerCase());
+        if (adminError) {
+          console.error(
+            "[IntelligenceDashboard] villa_intelligence_profiles fetch error (service):",
+            formatSupabaseError(adminError)
+          );
+          return await fetchVillaProjectsFromBase(serviceClient, citySlug);
+        }
+        resolvedData = adminData ?? [];
+      } catch (serviceError) {
+        console.error(
+          "[IntelligenceDashboard] villa_intelligence_profiles service client error:",
+          formatSupabaseError(serviceError)
+        );
+        try {
+          const serviceClient = createServiceClient();
+          return await fetchVillaProjectsFromBase(serviceClient, citySlug);
+        } catch (fallbackError) {
+          console.error(
+            "[IntelligenceDashboard] villa fallback error:",
+            formatSupabaseError(fallbackError)
+          );
+          return [];
+        }
+      }
     }
 
-    return (data ?? [])
+    return resolvedData
       .map((row: any) => {
         const totalVillas = toNumber(row.total_villas);
         const totalLandAcres = toNumber(row.total_land_acres);
         const villasPerAcre = toNumber(row.villas_per_acre);
+        const grossLandSqyd = toNumber(row.gross_land_per_villa_sqyd);
         const landPerVillaSqft =
-          toNumber(row.land_per_villa_sqft) ??
-          (toNumber(row.gross_land_per_villa_sqyd) !== null
-            ? Number(toNumber(row.gross_land_per_villa_sqyd)! * 9)
-            : null);
+          grossLandSqyd !== null ? Number(grossLandSqyd * 9) : null;
 
         return {
           id: row.rera_project_id,
           name: row.project_name ?? "Villa ecosystem",
           slug: row.url_slug ?? "",
-          microMarket: row.micro_market ?? row.mandal ?? null,
+          microMarket: null,
           totalVillas: totalVillas ?? null,
           totalLandAcres: totalLandAcres ?? null,
           villasPerAcre: villasPerAcre ?? null,

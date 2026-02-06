@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { createServiceClient } from '@/lib/supabase/serviceClient';
 
 export interface FAQ {
   question: string;
@@ -153,76 +154,94 @@ export interface PropertyListing {
 }
 
 class MicroMarketPagesService {
-  // Public methods
-  async getMicroMarketPageBySlug(slug: string, citySlug?: string): Promise<MicroMarketPage | null> {
-    const supabase = await createClient();
-    
-    // First, try to get the city if citySlug is provided
-    let cityId: string | null = null;
-    if (citySlug) {
-      const { data: cityData } = await supabase
-        .from("cities")
-        .select("id")
-        .eq("url_slug", citySlug)
-        .maybeSingle();
-      cityId = cityData?.id || null;
+  private async resolveCityId(
+    supabase: any,
+    citySlug?: string
+  ): Promise<string | null> {
+    if (!citySlug) return null;
+    const { data: cityData, error } = await supabase
+      .from("cities")
+      .select("id")
+      .eq("url_slug", citySlug)
+      .maybeSingle();
+    if (error) {
+      throw error;
     }
-    
-    // Build query
+    return cityData?.id || null;
+  }
+
+  private async fetchMicroMarket(
+    supabase: any,
+    slug: string,
+    cityId?: string | null
+  ): Promise<MicroMarketPage | null> {
     let query = supabase
       .from("micro_markets")
       .select("*")
       .eq("url_slug", slug);
-    
-    // If citySlug is provided and we found the city, filter by city_id to avoid conflicts
+
     if (cityId) {
       query = query.eq("city_id", cityId);
     }
-    
-    // Don't filter by status - let's see what we get and log it
+
     const { data, error } = await query.limit(1).maybeSingle();
 
     if (error) {
-      // Handle PGRST116 (0 rows) gracefully - this is expected if micro market doesn't exist
-      if (error.code === 'PGRST116' && error.details?.includes('0 rows')) {
-        console.warn(`[MicroMarketPagesService] No micro-market found with url_slug: "${slug}"${citySlug ? ` for city: ${citySlug}` : ''}`);
+      throw error;
+    }
+    return (data ?? null) as unknown as MicroMarketPage | null;
+  }
+
+  // Public methods
+  async getMicroMarketPageBySlug(slug: string, citySlug?: string): Promise<MicroMarketPage | null> {
+    const supabase = await createClient();
+
+    try {
+      const cityId = await this.resolveCityId(supabase, citySlug);
+      const data = await this.fetchMicroMarket(supabase, slug, cityId);
+      if (!data) {
+        console.warn(
+          `[MicroMarketPagesService] No micro-market found with url_slug: "${slug}"${citySlug ? ` for city: ${citySlug}` : ''}`
+        );
         return null;
       }
-      // Handle duplicate rows (shouldn't happen with limit(1), but be safe)
-      if (error.code === 'PGRST116' && !error.details?.includes('0 rows')) {
-        console.warn(`[MicroMarketPagesService] Multiple rows found for slug "${slug}" - using first match`);
-        // Retry with explicit limit to get first row
-        const retryResult = await query.limit(1).maybeSingle();
-        if (retryResult.error && retryResult.error.code === 'PGRST116') {
-          console.warn(`[MicroMarketPagesService] Still error after retry for "${slug}"`);
+      const status = (data as any).status;
+      if (status !== "published") {
+        console.warn(
+          `[MicroMarketPagesService] Micro-market "${slug}" found but status is "${status}" (expected "published"). Still returning data.`
+        );
+      }
+      return data;
+    } catch (error: any) {
+      // Handle PGRST116 (0 rows) gracefully - this is expected if micro market doesn't exist
+      if (error?.code === "PGRST116" && error?.details?.includes("0 rows")) {
+        console.warn(
+          `[MicroMarketPagesService] No micro-market found with url_slug: "${slug}"${citySlug ? ` for city: ${citySlug}` : ''}`
+        );
+        return null;
+      }
+      console.error(
+        `[MicroMarketPagesService] Error fetching micro-market page for slug "${slug}":`,
+        error
+      );
+
+      // Fallback to service role (handles RLS in production)
+      try {
+        const serviceClient = createServiceClient();
+        const cityId = await this.resolveCityId(serviceClient, citySlug);
+        const data = await this.fetchMicroMarket(serviceClient, slug, cityId);
+        if (!data) {
           return null;
         }
-        if (retryResult.data) {
-          const retryData = retryResult.data;
-          const retryStatus = (retryData as any).status;
-          if (retryStatus !== "published") {
-            console.warn(`[MicroMarketPagesService] Micro-market "${slug}" found but status is "${retryStatus}" (expected "published"). Still returning data.`);
-          }
-          return retryData as unknown as MicroMarketPage;
-        }
+        return data;
+      } catch (serviceError) {
+        console.error(
+          `[MicroMarketPagesService] Service-role fallback failed for slug "${slug}":`,
+          serviceError
+        );
         return null;
       }
-      console.error(`[MicroMarketPagesService] Error fetching micro-market page for slug "${slug}":`, error);
-      return null;
     }
-    
-    if (!data) {
-      console.warn(`[MicroMarketPagesService] No micro-market found with url_slug: "${slug}"${citySlug ? ` for city: ${citySlug}` : ''}`);
-      return null;
-    }
-    
-    // Check if status is published, but don't block if it's not (for debugging)
-    const status = (data as any).status;
-    if (status !== "published") {
-      console.warn(`[MicroMarketPagesService] Micro-market "${slug}" found but status is "${status}" (expected "published"). Still returning data.`);
-    }
-
-    return data as unknown as MicroMarketPage;
   }
 
   async getFeaturedProjectsForPage(pageId: string): Promise<FeaturedProject[]> {
