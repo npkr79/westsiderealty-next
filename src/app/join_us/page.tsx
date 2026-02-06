@@ -16,6 +16,7 @@ import { RoleModelsSection } from "./components/RoleModelsSection";
 import { RecruitmentCTASection } from "./components/RecruitmentCTASection";
 
 const CANONICAL_URL = "https://www.westsiderealty.in/join_us";
+export const dynamic = "force-dynamic";
 export const metadata = {
   title: "Join Westside Realty - Professional Real Estate Careers",
   description:

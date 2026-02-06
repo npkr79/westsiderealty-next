@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { createServiceClient } from '@/lib/supabase/serviceClient';
 
 export interface AgentRecruitmentPage {
   id: string;
@@ -99,12 +100,170 @@ export const agentRecruitmentService = {
 
       if (error) {
         console.error('[AgentRecruitmentService] Error fetching page content:', error);
-        return null;
+        try {
+          const serviceClient = createServiceClient();
+          const { data: fallbackData, error: fallbackError } = await serviceClient
+            .from('agent_recruitment_landing_pages')
+            .select('*')
+            .eq('status', 'published')
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          if (fallbackError) {
+            console.error('[AgentRecruitmentService] Service fallback error:', fallbackError);
+            return null;
+          }
+          if (!fallbackData) {
+            console.warn('[AgentRecruitmentService] No published page content found (service)');
+            return null;
+          }
+          const data = fallbackData as any;
+          // Helper function to safely parse JSON fields
+          const parseJsonField = (field: any, defaultValue: any = []): any => {
+            if (field === null || field === undefined) {
+              return defaultValue;
+            }
+            
+            if (typeof field === 'string') {
+              try {
+                return JSON.parse(field);
+              } catch {
+                return defaultValue;
+              }
+            }
+            
+            // If it's already an object/array, return it
+            if (typeof field === 'object') {
+              return field;
+            }
+            
+            return defaultValue;
+          };
+
+          // Helper to normalize requirements list - handle both string arrays and object arrays
+          const normalizeRequirementsList = (field: any): string[] => {
+            const parsed = parseJsonField(field, []);
+            if (!Array.isArray(parsed)) {
+              return [];
+            }
+            return parsed.map((item: any) => {
+              if (typeof item === 'string') {
+                return item;
+              }
+              if (item && typeof item === 'object') {
+                // Try common property names
+                return item.text || item.requirement || item.item || item.content || item.description || JSON.stringify(item);
+              }
+              return String(item || '');
+            }).filter((text: string) => text && text.trim() !== '');
+          };
+
+          // Parse JSONB fields
+          return {
+            ...data,
+            value_pillars: Array.isArray(parseJsonField(data.value_pillars)) 
+              ? parseJsonField(data.value_pillars) 
+              : [],
+            success_stories: Array.isArray(parseJsonField(data.success_stories)) 
+              ? parseJsonField(data.success_stories) 
+              : [],
+            benefits: Array.isArray(parseJsonField(data.benefits)) 
+              ? parseJsonField(data.benefits) 
+              : [],
+            requirements_list: normalizeRequirementsList(data.requirements_list),
+            application_process_steps: Array.isArray(parseJsonField(data.application_process_steps)) 
+              ? parseJsonField(data.application_process_steps) 
+              : [],
+            faqs: Array.isArray(parseJsonField(data.faqs)) ? parseJsonField(data.faqs) : [],
+          } as AgentRecruitmentPage;
+        } catch (fallbackError) {
+          console.error('[AgentRecruitmentService] Service client failure:', fallbackError);
+          return null;
+        }
       }
 
       if (!data) {
         console.warn('[AgentRecruitmentService] No published page content found');
-        return null;
+        try {
+          const serviceClient = createServiceClient();
+          const { data: fallbackData, error: fallbackError } = await serviceClient
+            .from('agent_recruitment_landing_pages')
+            .select('*')
+            .eq('status', 'published')
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          if (fallbackError) {
+            console.error('[AgentRecruitmentService] Service fallback error:', fallbackError);
+            return null;
+          }
+          if (!fallbackData) {
+            console.warn('[AgentRecruitmentService] No published page content found (service)');
+            return null;
+          }
+          const data = fallbackData as any;
+          // Helper function to safely parse JSON fields
+          const parseJsonField = (field: any, defaultValue: any = []): any => {
+            if (field === null || field === undefined) {
+              return defaultValue;
+            }
+            
+            if (typeof field === 'string') {
+              try {
+                return JSON.parse(field);
+              } catch {
+                return defaultValue;
+              }
+            }
+            
+            // If it's already an object/array, return it
+            if (typeof field === 'object') {
+              return field;
+            }
+            
+            return defaultValue;
+          };
+
+          // Helper to normalize requirements list - handle both string arrays and object arrays
+          const normalizeRequirementsList = (field: any): string[] => {
+            const parsed = parseJsonField(field, []);
+            if (!Array.isArray(parsed)) {
+              return [];
+            }
+            return parsed.map((item: any) => {
+              if (typeof item === 'string') {
+                return item;
+              }
+              if (item && typeof item === 'object') {
+                // Try common property names
+                return item.text || item.requirement || item.item || item.content || item.description || JSON.stringify(item);
+              }
+              return String(item || '');
+            }).filter((text: string) => text && text.trim() !== '');
+          };
+
+          // Parse JSONB fields
+          return {
+            ...data,
+            value_pillars: Array.isArray(parseJsonField(data.value_pillars)) 
+              ? parseJsonField(data.value_pillars) 
+              : [],
+            success_stories: Array.isArray(parseJsonField(data.success_stories)) 
+              ? parseJsonField(data.success_stories) 
+              : [],
+            benefits: Array.isArray(parseJsonField(data.benefits)) 
+              ? parseJsonField(data.benefits) 
+              : [],
+            requirements_list: normalizeRequirementsList(data.requirements_list),
+            application_process_steps: Array.isArray(parseJsonField(data.application_process_steps)) 
+              ? parseJsonField(data.application_process_steps) 
+              : [],
+            faqs: Array.isArray(parseJsonField(data.faqs)) ? parseJsonField(data.faqs) : [],
+          } as AgentRecruitmentPage;
+        } catch (fallbackError) {
+          console.error('[AgentRecruitmentService] Service client failure:', fallbackError);
+          return null;
+        }
       }
 
       // Helper function to safely parse JSON fields
