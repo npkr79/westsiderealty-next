@@ -93,24 +93,30 @@ const getFaqSchemaJsonString = (pageData: MicroMarketPage | null, normalizedFaqs
 };
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const { citySlug: citySlugParam, microMarketSlug: microMarketSlugParam } = await params;
-  const citySlug = Array.isArray(citySlugParam) ? citySlugParam[0] : citySlugParam || "";
-  const microMarketSlug = Array.isArray(microMarketSlugParam) ? microMarketSlugParam[0] : microMarketSlugParam || "";
-  
-  // Early return if slugs are invalid
-  if (!citySlug || !microMarketSlug || typeof citySlug !== "string" || typeof microMarketSlug !== "string") {
-    return {
-      title: "Micro Market Not Found",
-    };
-  }
-  
-  const pageData = await microMarketPagesService.getMicroMarketPageBySlug(microMarketSlug, citySlug);
+  try {
+    const { citySlug: citySlugParam, microMarketSlug: microMarketSlugParam } = await params;
+    const citySlug = Array.isArray(citySlugParam) ? citySlugParam[0] : citySlugParam || "";
+    const microMarketSlug = Array.isArray(microMarketSlugParam)
+      ? microMarketSlugParam[0]
+      : microMarketSlugParam || "";
+    
+    // Early return if slugs are invalid
+    if (!citySlug || !microMarketSlug || typeof citySlug !== "string" || typeof microMarketSlug !== "string") {
+      return {
+        title: "Micro Market Not Found",
+      };
+    }
+    
+    const pageData = await microMarketPagesService.getMicroMarketPageBySlug(
+      microMarketSlug,
+      citySlug
+    );
 
-  if (!pageData) {
-    return {
-      title: "Micro Market Not Found",
-    };
-  }
+    if (!pageData) {
+      return {
+        title: "Micro Market Not Found",
+      };
+    }
 
   // Neopolis-specific metadata overrides
   const isNeopolis = safeLower(microMarketSlug) === "neopolis";
@@ -162,36 +168,42 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     ? pageData.seo_keywords
     : undefined;
 
-  return {
-    title: seoTitle,
-    description: seoDescription,
-    keywords: keywordsString,
-    alternates: {
-      canonical: canonicalUrl,
-    },
-    openGraph: {
+    return {
       title: seoTitle,
       description: seoDescription,
-      url: canonicalUrl,
-      siteName: "RE/MAX Westside Realty",
-      type: "website",
-      locale: "en_IN",
-      images: [
-        {
-          url: optimizedOgImage,
-          width: 1200,
-          height: 630,
-          alt: `${pageData.micro_market_name} ${cityName}`,
-        },
-      ],
-    },
-    twitter: {
-      card: "summary_large_image",
-      title: seoTitle,
-      description: seoDescription,
-      images: [optimizedOgImage],
-    },
-  };
+      keywords: keywordsString,
+      alternates: {
+        canonical: canonicalUrl,
+      },
+      openGraph: {
+        title: seoTitle,
+        description: seoDescription,
+        url: canonicalUrl,
+        siteName: "RE/MAX Westside Realty",
+        type: "website",
+        locale: "en_IN",
+        images: [
+          {
+            url: optimizedOgImage,
+            width: 1200,
+            height: 630,
+            alt: `${pageData.micro_market_name} ${cityName}`,
+          },
+        ],
+      },
+      twitter: {
+        card: "summary_large_image",
+        title: seoTitle,
+        description: seoDescription,
+        images: [optimizedOgImage],
+      },
+    };
+  } catch (error) {
+    console.error("[generateMetadata] Micro-market metadata error:", error);
+    return {
+      title: "Micro Market Not Found",
+    };
+  }
 }
 
 export async function generateStaticParams() {
@@ -262,23 +274,34 @@ export async function generateStaticParams() {
 }
 
 export default async function MicroMarketPage({ params }: PageProps) {
-  const { citySlug: citySlugParam, microMarketSlug: microMarketSlugParam } = await params;
-  const citySlug = Array.isArray(citySlugParam) ? citySlugParam[0] : citySlugParam || "";
-  const microMarketSlug = Array.isArray(microMarketSlugParam) ? microMarketSlugParam[0] : microMarketSlugParam || "";
-  
-  // Early return if slugs are missing
-  if (!citySlug || !microMarketSlug) {
-    notFound();
-  }
+  try {
+    const { citySlug: citySlugParam, microMarketSlug: microMarketSlugParam } = await params;
+    const citySlug = Array.isArray(citySlugParam) ? citySlugParam[0] : citySlugParam || "";
+    const microMarketSlug = Array.isArray(microMarketSlugParam)
+      ? microMarketSlugParam[0]
+      : microMarketSlugParam || "";
+    
+    // Early return if slugs are missing
+    if (!citySlug || !microMarketSlug) {
+      notFound();
+    }
 
-  // Try to resolve as a micro-market first (pass citySlug to ensure correct city match)
-  const pageData = await microMarketPagesService.getMicroMarketPageBySlug(microMarketSlug, citySlug);
+    // Try to resolve as a micro-market first (pass citySlug to ensure correct city match)
+    const pageData = await microMarketPagesService.getMicroMarketPageBySlug(
+      microMarketSlug,
+      citySlug
+    );
 
-  // Debug logging to identify crash point
-  console.log("[MicroMarketPage] Rendering with pageData:", pageData ? "exists" : "null", "slug:", microMarketSlug);
+    // Debug logging to identify crash point
+    console.log(
+      "[MicroMarketPage] Rendering with pageData:",
+      pageData ? "exists" : "null",
+      "slug:",
+      microMarketSlug
+    );
 
-  // Early return if pageData is null - BEFORE any string operations
-  if (!pageData) {
+    // Early return if pageData is null - BEFORE any string operations
+    if (!pageData) {
     // If no micro-market page found, this might be an old or direct property URL like:
     // /hyderabad/3bhk-apartment-for-sale-in-hallmark-treasor-kokapet
     // Try to find a matching property slug and redirect to /[citySlug]/buy/[listingSlug]
@@ -326,8 +349,8 @@ export default async function MicroMarketPage({ params }: PageProps) {
     }
 
     // If still unresolved, return a 404
-    notFound();
-  }
+      notFound();
+    }
 
   // Normalize all JSONB fields to handle both proper JSONB and stringified JSON formats
   // This makes the page resilient to data stored in either format (e.g., Kadthal vs Kompally)
@@ -386,11 +409,16 @@ export default async function MicroMarketPage({ params }: PageProps) {
     }
   }
 
-  // Validate slugs
-  if (!citySlug || !microMarketSlug || typeof citySlug !== "string" || typeof microMarketSlug !== "string") {
-    console.error("[MicroMarketPage] Invalid slugs:", { citySlug, microMarketSlug });
-    notFound();
-  }
+    // Validate slugs
+    if (
+      !citySlug ||
+      !microMarketSlug ||
+      typeof citySlug !== "string" ||
+      typeof microMarketSlug !== "string"
+    ) {
+      console.error("[MicroMarketPage] Invalid slugs:", { citySlug, microMarketSlug });
+      notFound();
+    }
 
   // Fetch city data for SmartLinkGrid (reuse existing cityName declaration later)
   const { createClient: createSupabaseClient } = await import("@/lib/supabase/server");
@@ -648,7 +676,7 @@ export default async function MicroMarketPage({ params }: PageProps) {
     ? (Array.isArray(faqItems) ? faqItems : [])
     : faqs;
 
-  return (
+    return (
     <>
       <JsonLd jsonLd={unifiedSchema} />
 
@@ -1240,7 +1268,11 @@ export default async function MicroMarketPage({ params }: PageProps) {
 
       <CityHubBacklink citySlug={citySlug} cityName={safeCapitalize(citySlug) || "City"} />
     </>
-  );
+    );
+  } catch (error) {
+    console.error("[MicroMarketPage] Fatal error:", error);
+    notFound();
+  }
 }
 
 // Revalidate every 24 hours (ISR)
