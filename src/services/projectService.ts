@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { createServiceClient } from '@/lib/supabase/serviceClient';
 
 export interface ProjectInfo {
   id: string;
@@ -91,6 +92,27 @@ const truncateWords = (text: string, maxWords: number): string => {
   if (!text) return '';
   const words = text.split(/\s+/).filter(w => w.length > 0);
   return words.slice(0, maxWords).join(' ') + (words.length > maxWords ? '...' : '');
+};
+
+const isPermissionError = (error: any) => {
+  if (!error) return false;
+  return (
+    error.code === '42501' ||
+    error.status === 403 ||
+    String(error.message || '').toLowerCase().includes('permission denied')
+  );
+};
+
+const runWithServiceFallback = async <T>(
+  queryFn: (client: any) => Promise<{ data: T | null; error: any }>
+) => {
+  const supabase = await createClient();
+  let result = await queryFn(supabase);
+  if (result.error && isPermissionError(result.error)) {
+    const serviceClient = createServiceClient();
+    result = await queryFn(serviceClient);
+  }
+  return result;
 };
 
 export const projectService = {
@@ -195,21 +217,22 @@ export const projectService = {
     microMarketSlug: string,
     projectSlug: string
   ): Promise<ProjectWithRelations | null> {
-    const supabase = await createClient();
-    const { data, error } = await supabase
-      .from('projects')
-      .select(`
-        *,
-        floor_plan_images,
-        city:cities!inner(*),
-        micro_market:micro_markets!projects_micromarket_id_fkey(*),
-        developer:developers(*)
-      `)
-      .eq('url_slug', projectSlug)
-      .eq('city.url_slug', citySlug)
-      .eq('micro_market.url_slug', microMarketSlug)
-      .or('status.ilike.published,status.ilike.%under construction%')
-      .maybeSingle();
+    const { data, error } = await runWithServiceFallback<ProjectWithRelations>((client) =>
+      client
+        .from('projects')
+        .select(`
+          *,
+          floor_plan_images,
+          city:cities!inner(*),
+          micro_market:micro_markets!projects_micromarket_id_fkey(*),
+          developer:developers(*)
+        `)
+        .eq('url_slug', projectSlug)
+        .eq('city.url_slug', citySlug)
+        .eq('micro_market.url_slug', microMarketSlug)
+        .or('status.ilike.published,status.ilike.%under construction%')
+        .maybeSingle()
+    );
 
     if (error) {
       console.error('Error fetching project:', error);
@@ -229,23 +252,23 @@ export const projectService = {
     citySlug: string,
     projectSlug: string
   ): Promise<ProjectWithRelations | null> {
-    const supabase = await createClient();
-    
     console.log(`[getCityLevelProjectBySlug] Fetching project: citySlug=${citySlug}, projectSlug=${projectSlug}`);
     
     // Query project by url_slug only (no city filter in query)
     // Use auto-detected relationship syntax (matches pattern used in sitemap.ts, search/page.tsx, etc.)
-    const { data, error } = await supabase
-      .from('projects')
-      .select(`
-        *,
-        floor_plan_images,
-        city:cities(*),
-        developer:developers(*),
-        micro_market:micro_markets!projects_micromarket_id_fkey(*)
-      `)
-      .eq('url_slug', projectSlug)
-      .maybeSingle();
+    const { data, error } = await runWithServiceFallback<ProjectWithRelations>((client) =>
+      client
+        .from('projects')
+        .select(`
+          *,
+          floor_plan_images,
+          city:cities(*),
+          developer:developers(*),
+          micro_market:micro_markets!projects_micromarket_id_fkey(*)
+        `)
+        .eq('url_slug', projectSlug)
+        .maybeSingle()
+    );
 
     if (error) {
       // Only log actual errors (not 404s)
@@ -284,24 +307,25 @@ export const projectService = {
    * Get all projects for a city
    */
   async getProjectsByCity(cityId: string, featuredOnly: boolean = false): Promise<ProjectWithRelations[]> {
-    const supabase = await createClient();
-    let query = supabase
-      .from('projects')
-      .select(`
-        *,
-        micro_market:micro_markets!projects_micromarket_id_fkey(micro_market_name, url_slug),
-        developer:developers(developer_name, url_slug)
-      `)
-      .eq('city_id', cityId)
-      .or('status.ilike.published,status.ilike.%under construction%');
-    
-    if (featuredOnly) {
-      query = query.eq('show_on_city_page', true);
-    }
-    
-    const { data, error } = await query
-      .order('display_order', { ascending: true })
-      .order('project_name', { ascending: true });
+    const { data, error } = await runWithServiceFallback<ProjectWithRelations[]>((client) => {
+      let query = client
+        .from('projects')
+        .select(`
+          *,
+          micro_market:micro_markets!projects_micromarket_id_fkey(micro_market_name, url_slug),
+          developer:developers(developer_name, url_slug)
+        `)
+        .eq('city_id', cityId)
+        .or('status.ilike.published,status.ilike.%under construction%');
+      
+      if (featuredOnly) {
+        query = query.eq('show_on_city_page', true);
+      }
+      
+      return query
+        .order('display_order', { ascending: true })
+        .order('project_name', { ascending: true });
+    });
 
     if (error) {
       console.error('❌ [ProjectService] Error fetching projects by city:', error);
