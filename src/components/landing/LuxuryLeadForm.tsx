@@ -121,7 +121,7 @@ export default function LuxuryLeadForm({ sourceLabel }: LuxuryLeadFormProps) {
         <button
           type="submit"
           disabled={isSubmitting}
-          className="luxury-cta w-full px-8 py-3 text-sm font-semibold uppercase tracking-[0.24em] text-[#0B0F1A] disabled:opacity-70"
+          className="w-full rounded-full bg-[#C9A646] px-8 py-3 text-sm font-semibold uppercase tracking-[0.24em] text-[#0B0F1A] transition hover:brightness-105 disabled:opacity-70"
         >
           {isSubmitting ? "Submitting..." : "Request Confidential Access"}
         </button>

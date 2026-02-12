@@ -65,7 +65,7 @@ export default function KokapetGandipetVillasMarketIntelligenceBrief() {
               <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
                 <a
                   href="#private-access"
-                  className="luxury-cta px-8 py-3 text-sm font-semibold uppercase tracking-[0.24em] text-[#0B0F1A]"
+                  className="rounded-full bg-[#C9A646] px-8 py-3 text-sm font-semibold uppercase tracking-[0.24em] text-[#0B0F1A] transition hover:brightness-105"
                 >
                   Request Private Access
                 </a>
