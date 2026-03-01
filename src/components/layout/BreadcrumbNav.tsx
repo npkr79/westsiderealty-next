@@ -9,7 +9,6 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { useBreadcrumbs } from "@/hooks/useBreadcrumbs";
 
 interface BreadcrumbItemType {
   label: string;
@@ -18,18 +17,10 @@ interface BreadcrumbItemType {
 
 interface BreadcrumbNavProps {
   items?: BreadcrumbItemType[];
-  useAutoBreadcrumbs?: boolean;
 }
 
-const BreadcrumbNav = ({ items, useAutoBreadcrumbs = false }: BreadcrumbNavProps) => {
-  const { breadcrumbs: autoBreadcrumbs, isLoading } = useBreadcrumbs();
-  
-  // Use auto-generated breadcrumbs if enabled and no manual items provided
-  const displayItems = useAutoBreadcrumbs && !items ? autoBreadcrumbs : items || [];
-
-  if (isLoading && useAutoBreadcrumbs && !items) {
-    return null; // Or a skeleton loader
-  }
+const BreadcrumbNav = ({ items }: BreadcrumbNavProps) => {
+  const displayItems = items || [];
 
   if (displayItems.length === 0) {
     return null;
