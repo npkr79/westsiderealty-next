@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { MapPin, Building2, Maximize, IndianRupee, ArrowRight } from "lucide-react";
 import type { LandownerProject } from "@/lib/supabase/landowner-projects";
 import ImageWithFallback from "@/components/common/ImageWithFallback";
+import { buildProjectUrl } from "@/lib/routes";
 
 interface Props {
   project: LandownerProject;
@@ -19,7 +20,7 @@ export function LandownerProjectCard({ project }: Props) {
   const citySlug = project.city?.url_slug || "hyderabad";
   
   // Construct project URL - use standard project route
-  const projectUrl = `/${citySlug}/projects/${project.url_slug}`;
+  const projectUrl = buildProjectUrl(citySlug, project.url_slug);
 
   return (
     <Card className="group overflow-hidden hover:shadow-xl transition-all duration-300">

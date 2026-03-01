@@ -1,6 +1,10 @@
 {
   "crons": [
     {
+      "path": "/api/cron/journey-worker",
+      "schedule": "*/2 * * * *"
+    },
+    {
       "path": "/api/sitemap/regenerate",
       "schedule": "0 2 * * *"
     },

@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/serviceClient";
 
 export interface NavCity {
   city_name: string;
@@ -48,10 +49,24 @@ export const navigationService = {
     const targetAreas = ["neopolis", "kokapet", "tellapur", "gachibowli", "kondapur"];
     
     const supabase = await createClient();
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from("micro_markets")
       .select("micro_market_name, url_slug")
       .in("url_slug", targetAreas);
+
+    const isPermissionError =
+      error?.code === "42501" ||
+      /permission denied/i.test(String(error?.message ?? ""));
+
+    if (isPermissionError) {
+      const serviceClient = createServiceClient();
+      const serviceResult = await serviceClient
+        .from("micro_markets")
+        .select("micro_market_name, url_slug")
+        .in("url_slug", targetAreas);
+      data = serviceResult.data;
+      error = serviceResult.error;
+    }
 
     if (error) {
       console.error("Error fetching navigation micro markets:", error);

@@ -63,12 +63,12 @@ export default async function MicroMarketPage({ params }: PageProps) {
   const cityName = city?.city_name || citySlug;
 
   // Run all independent fetches in parallel
-  const [viewModel, mapCenter, mmData, nearbyMarketsData] = await Promise.all([
+  const [viewModel, mapCenter, mmData, nearbyMarketsData, metricsData, aiEnrichmentRaw] = await Promise.all([
     Promise.resolve(buildMicroMarketViewModel(cache)),
     getMicroMarketMapCenter(cache.id),
     supabase
       .from("micro_markets")
-      .select("faqs, faq_schema_json")
+      .select("faqs, faq_schema_json, commute_matrix, connectivity_details, nearest_mmts_status, top_schools, top_hospitals")
       .eq("micro_market_name", cache.micro_market_name ?? "")
       .maybeSingle()
       .then(({ data }) => data),
@@ -80,24 +80,125 @@ export default async function MicroMarketPage({ params }: PageProps) {
       .order("capital_momentum_score", { ascending: false, nullsFirst: false })
       .limit(6)
       .then(({ data }) => data ?? []),
+    supabase
+      .from("micro_market_metrics" as never)
+      .select("growth_stage, price_cycle_stage, institutional_confidence, overall_score")
+      .eq("micro_market", cache.micro_market_name ?? "")
+      .maybeSingle()
+      .then(({ data }: { data: Record<string, unknown> | null }) => data),
+    supabase
+      .from("micro_market_ai_enrichment" as never)
+      .select("market_maturity, builder_activity, buyer_profile, rental_yield_min, rental_yield_max, price_per_sqft_current, market_summary, top_developers, confidence, fetched_at")
+      .eq("micro_market_id", cache.id)
+      .maybeSingle()
+      .then(({ data }: { data: Record<string, unknown> | null }) => data),
   ]);
 
-  // Process FAQs from micro_markets table
-  // faqs column may be stored as a JSON string rather than native jsonb
-  const faqs: Array<{ question: string; answer: string }> = (() => {
-    try {
-      const raw = mmData?.faqs;
-      if (!raw) return [];
-      if (Array.isArray(raw)) return raw as Array<{ question: string; answer: string }>;
-      if (typeof raw === "string") return JSON.parse(raw) as Array<{ question: string; answer: string }>;
-      return [];
-    } catch {
-      return [];
+  // Process FAQs from micro_markets table.
+  // Stored as either a JSON string or native array.
+  // Field names vary by market: {question, answer} or {q, a}.
+  const parseFaqs = (raw: unknown): Array<{ question: string; answer: string }> => {
+    const normalize = (items: unknown[]): Array<{ question: string; answer: string }> =>
+      items
+        .map((f) => {
+          const item = f as Record<string, unknown>;
+          return {
+            question: String(item.question ?? item.q ?? "").trim(),
+            answer: String(item.answer ?? item.a ?? "").trim(),
+          };
+        })
+        .filter((f) => f.question);
+
+    if (!raw) return [];
+    if (Array.isArray(raw)) return normalize(raw);
+    if (typeof raw === "string") {
+      try {
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? normalize(parsed) : [];
+      } catch {
+        return [];
+      }
     }
-  })();
+    return [];
+  };
+  const faqs = parseFaqs(mmData?.faqs);
   const rawFaqSchema = mmData?.faq_schema_json;
   const faqSchemaJson: string | null =
     typeof rawFaqSchema === "string" ? rawFaqSchema : null;
+
+  // Parse commute matrix — format: [{destination, distance, time}, ...]
+  const parseCommuteMatrix = (raw: unknown): Array<{ destination: string; distance: string; time: string }> => {
+    if (!raw) return [];
+    const items: unknown[] = Array.isArray(raw) ? raw : (() => {
+      try { return JSON.parse(String(raw)); } catch { return []; }
+    })();
+    return (items as Record<string, unknown>[])
+      .map((item) => ({
+        destination: String(item.destination ?? "").trim(),
+        distance: String(item.distance ?? "").trim(),
+        time: String(item.time ?? "").trim(),
+      }))
+      .filter((entry) => entry.destination);
+  };
+
+  // Parse school/hospital name arrays — handles clean strings and double-escaped JSON
+  const parseNames = (raw: unknown): string[] => {
+    if (!raw) return [];
+    const items: unknown[] = Array.isArray(raw) ? raw : (() => {
+      try { return JSON.parse(String(raw)); } catch { return []; }
+    })();
+    const result: string[] = [];
+    for (const item of items) {
+      if (typeof item === "string") {
+        const trimmed = item.trim();
+        if (trimmed.startsWith("[") || (trimmed.startsWith('"') && trimmed.endsWith('"'))) {
+          try {
+            const inner = JSON.parse(trimmed);
+            if (Array.isArray(inner)) {
+              inner.forEach((i: unknown) => { if (typeof i === "string" && i.trim()) result.push(i.trim()); });
+            } else if (typeof inner === "string" && inner.trim()) {
+              result.push(inner.trim());
+            }
+          } catch {
+            const clean = trimmed.replace(/^["\\]+|["\\]+$/g, "").trim();
+            if (clean) result.push(clean);
+          }
+        } else if (trimmed) {
+          result.push(trimmed);
+        }
+      }
+    }
+    return result;
+  };
+
+  const mmRaw = mmData as Record<string, unknown> | null;
+  const locationData = {
+    commuteMatrix: parseCommuteMatrix(mmRaw?.commute_matrix),
+    topSchools: parseNames(mmRaw?.top_schools).slice(0, 5),
+    topHospitals: parseNames(mmRaw?.top_hospitals).slice(0, 5),
+    nearestMmtsStatus: typeof mmRaw?.nearest_mmts_status === "string" ? mmRaw.nearest_mmts_status : null,
+    connectivityDetails: typeof mmRaw?.connectivity_details === "string" ? mmRaw.connectivity_details : null,
+  };
+
+  const marketMetrics = metricsData
+    ? {
+        growthStage: typeof metricsData.growth_stage === "string" ? metricsData.growth_stage : null,
+        priceCycleStage: typeof metricsData.price_cycle_stage === "string" ? metricsData.price_cycle_stage : null,
+      }
+    : null;
+
+  const aiEnrichment = aiEnrichmentRaw as {
+    market_maturity: string | null;
+    builder_activity: string | null;
+    buyer_profile: string | null;
+    rental_yield_min: number | null;
+    rental_yield_max: number | null;
+    price_per_sqft_current: number | null;
+    market_summary: string | null;
+    top_developers: string[] | null;
+    confidence: string | null;
+    fetched_at: string | null;
+  } | null;
 
   // Process nearby markets for cross-linking
   const nearbyMarkets: NearbyMarket[] = (
@@ -190,6 +291,9 @@ export default async function MicroMarketPage({ params }: PageProps) {
       availableBhkTypes={availableBhkTypes}
       nearbyMarkets={nearbyMarkets}
       amenities={marketAmenities}
+      locationData={locationData}
+      marketMetrics={marketMetrics}
+      aiEnrichment={aiEnrichment}
     />
   );
 }

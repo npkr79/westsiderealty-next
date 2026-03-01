@@ -15,7 +15,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { MessageCircle, Phone, School, Hospital, ShoppingBag, Pill, Shield, Database } from "lucide-react";
+import { MessageCircle, Phone, School, Hospital, ShoppingBag, Pill, Shield, Database, Train } from "lucide-react";
 
 function buildMapEmbedUrl(lat: number, lng: number): string {
   return `https://maps.google.com/maps?q=${lat},${lng}&z=14&output=embed`;
@@ -41,7 +41,15 @@ function formatPriceShort(min: number | null, max: number | null): string {
     return `₹${min.toLocaleString("en-IN")} – ₹${max.toLocaleString("en-IN")}`;
   if (min != null) return `₹${min.toLocaleString("en-IN")}+`;
   if (max != null) return `Up to ₹${max.toLocaleString("en-IN")}`;
-  return "Price on request";
+  return "—";
+}
+
+function truncateHeroText(html: string): string {
+  const plain = html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+  if (plain.length <= 200) return plain;
+  const truncated = plain.substring(0, 200);
+  const lastPeriod = truncated.lastIndexOf(".");
+  return lastPeriod > 100 ? truncated.substring(0, lastPeriod + 1) : truncated + "...";
 }
 
 function formatPctShort(min: number | null, max: number | null): string {
@@ -67,6 +75,38 @@ interface SnapshotMetric {
   subtitle: string;
 }
 
+interface CommuteEntry {
+  destination: string;
+  distance: string;
+  time: string;
+}
+
+interface LocationData {
+  commuteMatrix: CommuteEntry[];
+  topSchools: string[];
+  topHospitals: string[];
+  nearestMmtsStatus: string | null;
+  connectivityDetails: string | null;
+}
+
+interface MarketMetrics {
+  growthStage: string | null;
+  priceCycleStage: string | null;
+}
+
+interface AiEnrichment {
+  market_maturity: string | null;
+  builder_activity: string | null;
+  buyer_profile: string | null;
+  rental_yield_min: number | null;
+  rental_yield_max: number | null;
+  price_per_sqft_current: number | null;
+  market_summary: string | null;
+  top_developers: string[] | null;
+  confidence: string | null;
+  fetched_at: string | null;
+}
+
 interface MarketAmenities {
   schools: boolean;
   hospitals: boolean;
@@ -86,6 +126,9 @@ interface MicroMarketPageContentProps {
   availableBhkTypes?: string[];
   nearbyMarkets?: Array<{ micro_market_name: string; url_slug: string }>;
   amenities?: MarketAmenities | null;
+  locationData?: LocationData | null;
+  marketMetrics?: MarketMetrics | null;
+  aiEnrichment?: AiEnrichment | null;
 }
 
 export default function MicroMarketPageContent({
@@ -98,6 +141,9 @@ export default function MicroMarketPageContent({
   availableBhkTypes,
   nearbyMarkets,
   amenities,
+  locationData,
+  marketMetrics,
+  aiEnrichment,
 }: MicroMarketPageContentProps) {
   const mapEmbedUrl = mapCenter ? buildMapEmbedUrl(mapCenter.lat, mapCenter.lng) : null;
   const {
@@ -118,9 +164,18 @@ export default function MicroMarketPageContent({
   ];
 
   const marketHealthSignals: Array<{ label: string; value: string | null }> = [
-    { label: "Market Phase", value: hero.keySignals.cycleStage },
-    { label: "Entry Timing", value: hero.keySignals.entryPhase },
-    { label: "Builder Activity", value: hero.keySignals.institutionalConfidence },
+    {
+      label: "Market Phase",
+      value: aiEnrichment?.market_maturity ?? marketMetrics?.priceCycleStage ?? hero.keySignals.cycleStage,
+    },
+    {
+      label: "Builder Activity",
+      value: aiEnrichment?.builder_activity ?? hero.keySignals.institutionalConfidence,
+    },
+    {
+      label: "Buyer Profile",
+      value: aiEnrichment?.buyer_profile ?? null,
+    },
     { label: "Growth Momentum", value: hero.keySignals.capitalMomentum },
   ];
 
@@ -167,6 +222,9 @@ export default function MicroMarketPageContent({
       subtitle: "% projects by established builders",
     },
   ];
+
+  const hasAnyStatData = snapshotMetrics.some((m) => m.value !== "—");
+  const hasAnySignal = marketHealthSignals.some((sig) => sig.value);
 
   // Accordion summaries
   const whyInvestSummary =
@@ -225,8 +283,10 @@ export default function MicroMarketPageContent({
               <p className="mt-1 text-sm font-medium text-gray-500 uppercase tracking-wide">
                 {cityName} · Residential Corridor
               </p>
-              {hero.hook && (
-                <p className="mt-4 text-gray-600 leading-relaxed max-w-xl">{hero.hook}</p>
+              {(aiEnrichment?.market_summary || hero.hook) && (
+                <p className="mt-4 text-gray-600 leading-relaxed max-w-xl">
+                  {aiEnrichment?.market_summary || truncateHeroText(hero.hook!)}
+                </p>
               )}
               {/* RERA trust badges */}
               <div className="flex flex-wrap items-center gap-3 mt-4">
@@ -247,19 +307,28 @@ export default function MicroMarketPageContent({
                 <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">
                   Market Health
                 </h2>
-                <div className="space-y-3">
-                  {marketHealthSignals.map((sig) => (
-                    <div key={sig.label} className="flex items-center gap-3">
-                      <span
-                        className={`h-2.5 w-2.5 rounded-full shrink-0 ${signalDotColor(sig.value)}`}
-                      />
-                      <span className="text-xs text-gray-500 flex-1">{sig.label}</span>
-                      <span className="text-sm font-semibold text-slate-800">
-                        {sig.value ?? "—"}
-                      </span>
-                    </div>
-                  ))}
-                </div>
+                {hasAnySignal ? (
+                  <div className="space-y-3">
+                    {marketHealthSignals.map((sig) => (
+                      <div key={sig.label} className="flex items-center gap-3">
+                        <span
+                          className={`h-2.5 w-2.5 rounded-full shrink-0 ${signalDotColor(sig.value)}`}
+                        />
+                        <span className="text-xs text-gray-500 flex-1">{sig.label}</span>
+                        <span className={`text-sm font-semibold ${sig.value ? "text-slate-800" : "text-slate-400"}`}>
+                          {sig.value ?? "—"}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-slate-400 italic">Market data coming soon</p>
+                )}
+                {aiEnrichment?.fetched_at && (
+                  <p className="text-xs text-slate-400 mt-3 text-right">
+                    🤖 AI Analysis · {new Date(aiEnrichment.fetched_at).toLocaleDateString("en-IN", { month: "short", year: "numeric" })}
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -273,6 +342,11 @@ export default function MicroMarketPageContent({
                   {formatPriceShort(hero.priceRange.min, hero.priceRange.max)}
                 </p>
                 <p className="text-slate-400 text-xs mt-1">per square foot</p>
+                {aiEnrichment?.price_per_sqft_current && (
+                  <p className="text-slate-300 text-xs mt-1">
+                    ₹{aiEnrichment.price_per_sqft_current.toLocaleString("en-IN")} current market rate
+                  </p>
+                )}
               </div>
               <div className="px-6">
                 <p className="text-slate-400 text-xs uppercase tracking-wide">Annual Growth</p>
@@ -295,23 +369,25 @@ export default function MicroMarketPageContent({
 
       {/* Main content */}
       <div className="container mx-auto max-w-6xl px-4">
-        {/* 3. MARKET SNAPSHOT — CHANGE 6: buyer-friendly cards, no icons */}
-        <section className="py-10">
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-            {snapshotMetrics.map((m) => (
-              <div
-                key={m.label}
-                className="bg-white border border-slate-200 rounded-xl p-5"
-              >
-                <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">
-                  {m.label}
-                </p>
-                <p className="text-3xl font-bold text-slate-900">{m.value}</p>
-                <p className="text-xs text-slate-400 mt-1">{m.subtitle}</p>
-              </div>
-            ))}
-          </div>
-        </section>
+        {/* 3. MARKET SNAPSHOT — only rendered when at least one metric has data */}
+        {hasAnyStatData && (
+          <section className="py-10">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+              {snapshotMetrics.map((m) => (
+                <div
+                  key={m.label}
+                  className="bg-white border border-slate-200 rounded-xl p-5"
+                >
+                  <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">
+                    {m.label}
+                  </p>
+                  <p className={`text-3xl font-bold mt-0.5 ${m.value === "—" ? "text-slate-300" : "text-slate-900"}`}>{m.value}</p>
+                  {m.value !== "—" && <p className="text-xs text-slate-400 mt-1">{m.subtitle}</p>}
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* 4. LOCATION & CONNECTIVITY — CHANGE 3+4: map moved here, new design */}
         <section className="mt-10 border-t border-gray-100 pt-10">
@@ -493,6 +569,15 @@ export default function MicroMarketPageContent({
               ))}
             </Accordion>
           </section>
+        )}
+
+        {/* Data sources badge */}
+        {aiEnrichment?.fetched_at && (
+          <div className="mt-4 p-3 bg-slate-50 rounded-lg border border-slate-200 text-xs text-slate-500">
+            <span className="font-medium">Data Sources:</span>{" "}
+            RERA Telangana (project counts, registrations) · AI Market Research (prices, signals, summary) · Updated{" "}
+            {new Date(aiEnrichment.fetched_at).toLocaleDateString("en-IN")}
+          </div>
         )}
 
         {/* Smart internal links — after FAQ, before CTA */}

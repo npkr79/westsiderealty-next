@@ -12,8 +12,7 @@ interface ProjectStickySidebarProps {
   bhkConfig?: string | null;
   carpetArea?: string | number | null;
   possessionDate?: string | null;
-  propertyType?: string | null;
-  propertyTypes?: string[] | any;
+  configurationDisplay?: string | null;
   priceMin?: number | null;
   priceMax?: number | null;
   priceRangeText?: string | null;
@@ -21,6 +20,10 @@ interface ProjectStickySidebarProps {
   developerName?: string | null;
   developerLogo?: string | null;
   brochureUrl?: string;
+  microMarketName?: string | null;
+  demandContext?: string;
+  advisoryYears?: number | null;
+  buyersHelped?: number | null;
 }
 
 export default function ProjectStickySidebar({
@@ -30,8 +33,7 @@ export default function ProjectStickySidebar({
   bhkConfig,
   carpetArea,
   possessionDate,
-  propertyType,
-  propertyTypes,
+  configurationDisplay,
   priceMin,
   priceMax,
   priceRangeText,
@@ -39,6 +41,10 @@ export default function ProjectStickySidebar({
   developerName,
   developerLogo,
   brochureUrl,
+  microMarketName,
+  demandContext,
+  advisoryYears,
+  buyersHelped,
 }: ProjectStickySidebarProps) {
   const [isLeadFormOpen, setIsLeadFormOpen] = useState(false);
   const [leadFormMode, setLeadFormMode] = useState<'brochure' | 'callback'>('brochure');
@@ -55,32 +61,26 @@ export default function ProjectStickySidebar({
 
   return (
     <>
-      <div className="lg:sticky lg:top-24 lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto space-y-4">
-        <ProjectStickyCard
-          projectName={projectName}
-          address={address}
-          bhkConfig={bhkConfig}
-          carpetArea={carpetArea}
-          possessionDate={possessionDate}
-          propertyType={propertyType}
-          propertyTypes={propertyTypes}
-          priceMin={priceMin}
-          priceMax={priceMax}
-          priceRangeText={priceRangeText}
-          reraNumber={reraNumber}
-          developerName={developerName}
-          onBrochure={handleBrochure}
-          onCallBack={handleCallback}
-        />
-
-        {/* Inline Lead Form - Compact for desktop */}
-        <div className="lg:scale-95 lg:origin-top">
-          <ProjectLeadForm
+      <div className="lg:sticky lg:top-20">
+        <div className="space-y-4">
+          <ProjectStickyCard
             projectName={projectName}
-            projectId={projectId}
-            developerName={developerName ?? undefined}
-            developerLogo={developerLogo}
-            brochureUrl={brochureUrl}
+            address={address}
+            bhkConfig={bhkConfig}
+            carpetArea={carpetArea}
+            possessionDate={possessionDate}
+            configurationDisplay={configurationDisplay}
+            priceMin={priceMin}
+            priceMax={priceMax}
+            priceRangeText={priceRangeText}
+            reraNumber={reraNumber}
+            developerName={developerName}
+            microMarketName={microMarketName}
+            demandContext={demandContext}
+            advisoryYears={advisoryYears}
+            buyersHelped={buyersHelped}
+            onBrochure={handleBrochure}
+            onCallBack={handleCallback}
           />
         </div>
       </div>
@@ -90,10 +90,12 @@ export default function ProjectStickySidebar({
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {leadFormMode === 'brochure' ? 'Get Brochure' : 'Request Call Back'}
+              {leadFormMode === "brochure" ? "Get Brochure and Floor Plans" : "Request a Quick Advisor Callback"}
             </DialogTitle>
             <DialogDescription>
-              Fill out the form below {leadFormMode === 'brochure' ? 'to receive the brochure' : 'and we will call you back'} for {projectName}.
+              {leadFormMode === "brochure"
+                ? `Share your details for instant brochure access and guided next steps for ${projectName}.`
+                : `Share your intent and our local advisory team will call you shortly for ${projectName}.`}
             </DialogDescription>
           </DialogHeader>
           <ProjectLeadForm
@@ -103,6 +105,8 @@ export default function ProjectStickySidebar({
             developerLogo={developerLogo}
             brochureUrl={leadFormMode === 'brochure' ? brochureUrl : undefined}
             inModal={true}
+            leadPersona="auto"
+            triggerContext="modal"
           />
         </DialogContent>
       </Dialog>

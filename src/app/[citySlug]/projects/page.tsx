@@ -114,6 +114,19 @@ export default async function CityProjectsPage({ params, searchParams }: PagePro
     query = query.ilike("project_name", `%${resolvedSearchParams.search}%`);
   }
 
+  // Apply micro-market filter
+  if (resolvedSearchParams.microMarket) {
+    const { data: mm } = await supabase
+      .from("micro_markets")
+      .select("id")
+      .eq("url_slug", resolvedSearchParams.microMarket)
+      .eq("city_id", city.id)
+      .maybeSingle();
+    if (mm?.id) {
+      query = query.eq("micro_market_id", mm.id);
+    }
+  }
+
   const { data: projects, error } = await query;
 
   if (error) {

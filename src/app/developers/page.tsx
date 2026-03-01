@@ -1,365 +1,251 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import Image from "next/image";
 import { createClient } from "@/lib/supabase/server";
-import { buildMetadata } from "@/components/common/SEO";
-import { JsonLd } from "@/components/common/SEO";
-import { Breadcrumbs } from "@/components/seo/Breadcrumbs";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Input } from "@/components/ui/input";
-import { Building2, Search, CheckCircle2, Award, TrendingUp, ArrowRight } from "lucide-react";
-import { DevelopersHubClient } from "@/components/developers/DevelopersHubClient";
+import DevelopersSearchPlaceholder from "@/components/developers/DevelopersSearchPlaceholder";
 
-export async function generateMetadata(): Promise<Metadata> {
-  const supabase = await createClient();
-  
-  // Fetch published developers to get accurate count
-  const { data: allDevelopers } = await supabase
-    .from("developers")
-    .select("id, developer_name, is_published")
-    .limit(100);
-  
-  // Filter for published developers (same logic as main component)
-  const publishedDevelopers = allDevelopers?.filter((dev: any) => {
-    return dev.is_published === true || dev.is_published === undefined || dev.is_published === null;
-  }) || [];
-  
-  const developerCount = publishedDevelopers.length;
-  const topDeveloperNames = publishedDevelopers
-    .slice(0, 3)
-    .map((d: any) => d.developer_name)
-    .join(", ") || "My Home, Rajapushpa, Prestige";
-  
-  return buildMetadata({
-    title: `Top ${developerCount} Real Estate Developers in Hyderabad | Westside Realty`,
-    description: `Browse our curated list of ${developerCount} trusted builders like ${topDeveloperNames}. Verified track records and active projects.`,
-    canonicalUrl: "https://www.westsiderealty.in/developers",
-  });
+export const metadata: Metadata = {
+  title: "Developer Intelligence Index - Telangana",
+  description:
+    "Structured ranking of RERA registered developers by asset class and project lifecycle.",
+};
+
+interface RankedDeveloper {
+  developer_slug?: string | null;
+  developer_name?: string | null;
+  developer_type?: "brand" | "independent" | string | null;
+  total_projects?: number | null;
+  active_projects?: number | null;
+  completed_projects?: number | null;
+  residential_projects?: number | null;
+  plotted_projects?: number | null;
+  commercial_projects?: number | null;
+  score?: number | string | null;
 }
 
-interface DeveloperWithProjects {
-  id: string;
-  developer_name: string;
-  url_slug: string;
-  logo_url: string | null;
-  banner_image_url?: string | null;
-  tagline: string | null;
-  specialization: string | null;
-  years_in_business: number | null;
-  total_projects: number | null;
-  total_sft_delivered: string | null;
-  primary_city_focus: string | null;
-  founding_date?: string | null;
-  notable_projects: Array<{
-    project_name: string;
-    url_slug: string;
-    city_slug: string;
-    hero_image_url?: string | null;
-  }>;
+interface RankingsRpcData {
+  residential?: RankedDeveloper[] | null;
+  residential_top?: RankedDeveloper[] | null;
+  plotted_top?: RankedDeveloper[] | null;
+  commercial_top?: RankedDeveloper[] | null;
+  meta?: Record<string, unknown> | null;
 }
 
-export default async function DevelopersHubPage() {
+const asDevelopers = (value: unknown): RankedDeveloper[] =>
+  Array.isArray(value) ? (value as RankedDeveloper[]) : [];
+
+const RPC_TIMEOUT_MS = 7000;
+
+async function fetchDeveloperRankings() {
   const supabase = await createClient();
 
-  // Step 1: Fetch ALL developers without filters to rule out data mismatches
-  console.log("[DevelopersHub] Starting data fetch...");
-  
-  const { data: allDevelopersData, error: allDevError } = await supabase
-    .from("developers")
-    .select("*")
-    .order("display_order", { ascending: true })
-    .limit(100);
-
-  console.log(`[DevelopersHub] Server fetched developers (no filters): ${allDevelopersData?.length || 0}`);
-  
-  if (allDevError) {
-    console.error("[DevelopersHub] Error fetching all developers:", allDevError);
-  }
-
-  // Step 2: Filter for published developers (if we have data)
-  let developers: Array<Omit<DeveloperWithProjects, "notable_projects"> & { banner_image_url?: string | null }>;
-  
-  if (!allDevelopersData || allDevelopersData.length === 0) {
-    console.error("[DevelopersHub] CRITICAL: No developers found in database. Check RLS policies and data.");
-    developers = [];
-  } else {
-    // Filter for published developers if is_published field exists
-    const publishedDevelopers = allDevelopersData.filter((dev: any) => {
-      // If is_published field exists, use it; otherwise include all
-      return dev.is_published === true || dev.is_published === undefined || dev.is_published === null;
+  try {
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => {
+        reject(new Error(`RPC timeout after ${RPC_TIMEOUT_MS}ms`));
+      }, RPC_TIMEOUT_MS);
     });
-    
-    console.log(`[DevelopersHub] Filtered to ${publishedDevelopers.length} published developers`);
-    
-    developers = publishedDevelopers.map((dev: any) => ({
-      id: dev.id,
-      developer_name: dev.developer_name,
-      url_slug: dev.url_slug,
-      logo_url: dev.logo_url,
-      banner_image_url: dev.banner_image_url,
-      tagline: dev.tagline,
-      specialization: dev.specialization,
-      years_in_business: dev.years_in_business,
-      total_projects: dev.total_projects,
-      total_sft_delivered: dev.total_sft_delivered,
-      primary_city_focus: dev.primary_city_focus,
-      founding_date: dev.founding_date,
-    })) as Array<Omit<DeveloperWithProjects, "notable_projects"> & { banner_image_url?: string | null }>;
+
+    const rpcPromise = supabase.rpc("get_developer_rankings");
+    const result = await Promise.race([rpcPromise, timeoutPromise]);
+    return result as Awaited<typeof rpcPromise>;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown RPC error";
+    return {
+      data: null,
+      error: {
+        code: "FETCH_FAILED",
+        message,
+      },
+    };
   }
+}
 
-  // Fetch top 2-3 projects for each developer
-  const developersWithProjects: DeveloperWithProjects[] = await Promise.all(
-    developers.map(async (developer) => {
-      try {
-        const { data: projectsData, error: projectsError } = await supabase
-          .from("projects")
-          .select(`
-            project_name,
-            url_slug,
-            hero_image_url,
-            city:cities!projects_city_id_fkey(url_slug)
-          `)
-          .eq("developer_id", developer.id)
-          .eq("status", "published")
-          .order("display_order", { ascending: true })
-          .limit(3);
-
-        if (projectsError) {
-          console.warn(`[DevelopersHub] Error fetching projects for ${developer.developer_name}:`, projectsError);
-        }
-
-        const notableProjects = (projectsData || []).map((p) => ({
-          project_name: p.project_name,
-          url_slug: p.url_slug,
-          city_slug: (p.city as any)?.url_slug || "hyderabad",
-          hero_image_url: p.hero_image_url || null,
-        }));
-
-        return {
-          ...developer,
-          notable_projects: notableProjects,
-        };
-      } catch (error) {
-        console.error(`[DevelopersHub] Error processing developer ${developer.developer_name}:`, error);
-        return {
-          ...developer,
-          notable_projects: [],
-        };
-      }
-    })
-  );
-
-  console.log(`[DevelopersHub] Processed ${developersWithProjects.length} developers with projects`);
-  
-  // Final debug log before returning JSX
-  console.log(`[DevelopersHub] Server fetched developers: ${developersWithProjects.length}`);
-
-  // Calculate market stats from developersWithProjects
-  const totalProjects = developersWithProjects.reduce((sum, dev) => {
-    const projects = dev.total_projects;
-    // Handle number format (most common)
-    if (typeof projects === 'number' && !isNaN(projects)) {
-      return sum + projects;
-    }
-    // Handle string format if present
-    if (projects != null) {
-      const projectsStr = String(projects);
-      const num = parseInt(projectsStr.replace(/,/g, ''), 10);
-      if (!isNaN(num)) {
-        return sum + num;
-      }
-    }
-    return sum;
-  }, 0);
-
-  const totalSftDelivered = developersWithProjects.reduce((sum, dev) => {
-    if (!dev.total_sft_delivered) return sum;
-    const sftStr = dev.total_sft_delivered.toString();
-    
-    // Handle various formats: "37 Million SFT", "1,234.56", "1234.56", "1.23M", "10 million sq. ft.", etc.
-    // Extract numbers and multipliers
-    const lowerStr = sftStr.toLowerCase();
-    let multiplier = 1;
-    
-    if (lowerStr.includes('billion') || lowerStr.includes('b')) {
-      multiplier = 1000000000;
-    } else if (lowerStr.includes('million') || lowerStr.includes('m')) {
-      multiplier = 1000000;
-    } else if (lowerStr.includes('lakh') || lowerStr.includes('lac')) {
-      multiplier = 100000;
-    } else if (lowerStr.includes('thousand') || lowerStr.includes('k')) {
-      multiplier = 1000;
-    }
-    
-    // Extract numeric value
-    const cleaned = sftStr.replace(/,/g, '').replace(/[^\d.]/g, '');
-    const num = parseFloat(cleaned) || 0;
-    
-    return sum + (num * multiplier);
-  }, 0);
-  
-  console.log(`[DevelopersHub] Stats: ${totalProjects} projects, ${totalSftDelivered} sqft`);
-  
-  const totalSftFormatted = totalSftDelivered >= 1000000000
-    ? `${(totalSftDelivered / 1000000000).toFixed(1)}B`
-    : totalSftDelivered >= 1000000
-    ? `${(totalSftDelivered / 1000000).toFixed(1)}M`
-    : totalSftDelivered >= 1000
-    ? `${(totalSftDelivered / 1000).toFixed(1)}K`
-    : totalSftDelivered > 0
-    ? totalSftDelivered.toLocaleString()
-    : "0";
-
-  // Get unique specializations
-  const specializations = [
-    ...new Set(
-      developers
-        .map((d) => d.specialization)
-        .filter((s): s is string => s !== null && s !== "")
-    ),
-  ].sort();
-
-  // ItemList Schema for SEO - simplified format to avoid validation errors
-  const itemListSchema = developersWithProjects.length > 0 ? {
-    "@context": "https://schema.org",
-    "@type": "ItemList",
-    name: `Top ${developersWithProjects.length} Real Estate Developers in Hyderabad 2026`,
-    description: `Browse our curated directory of ${developersWithProjects.length} trusted real estate builders in Hyderabad. Compare track records, RERA status, and active projects.`,
-    url: "https://www.westsiderealty.in/developers",
-    numberOfItems: developersWithProjects.length,
-    itemListElement: developersWithProjects.map((developer, index) => ({
-      "@type": "ListItem",
-      position: index + 1,
-      url: `https://www.westsiderealty.in/developers/${developer.url_slug}`,
-      name: developer.developer_name,
-    })),
-  } : null;
-
-  const breadcrumbItems = [
-    { name: "Home", href: "/" },
-    { name: "Developers", href: "/developers" },
-  ];
+function DeveloperCard({ developer, index }: { developer: RankedDeveloper; index: number }) {
+  const slug = String(developer.developer_slug ?? "").trim();
+  const name = String(developer.developer_name ?? "Unknown Developer");
+  const type = String(developer.developer_type ?? "independent").toLowerCase();
+  const total = Number(developer.total_projects ?? 0);
+  const active = Number(developer.active_projects ?? 0);
+  const completed = Number(developer.completed_projects ?? 0);
+  const score = developer.score ?? "—";
+  const isBrand = type === "brand";
+  const href = slug ? `/developers/${slug}` : "/developers";
 
   return (
-    <>
-      {itemListSchema && <JsonLd jsonLd={itemListSchema} />}
+    <article
+      key={`${slug || name}-${index}`}
+      className="rounded-xl border border-white/5 bg-[#111827] p-4 transition hover:-translate-y-0.5 hover:border-blue-300/20 hover:shadow-[0_0_24px_rgba(59,130,246,0.10)]"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <h3 className="text-lg font-semibold text-white leading-tight">{name}</h3>
+        <span
+          className={`rounded-md px-2 py-1 text-xs ${
+            isBrand ? "bg-blue-500/15 text-blue-200" : "bg-slate-500/20 text-slate-200"
+          }`}
+        >
+          {isBrand ? "Brand" : "Independent"}
+        </span>
+      </div>
 
-      <div className="min-h-screen bg-background">
-        {/* Breadcrumbs */}
-        <div className="container mx-auto px-4 py-4">
-          <Breadcrumbs items={breadcrumbItems} />
-        </div>
+      <p className="mt-2 text-xs text-white/55">Score: {score}</p>
 
-        {/* Hero Section */}
-        <section className="relative py-20 px-4 bg-gradient-to-b from-slate-50 to-background border-b">
-          <div className="container mx-auto max-w-6xl">
-            <div className="text-center space-y-6 mb-12">
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-foreground">
-                Hyderabad's Most Trusted Real Estate Developers
+      <div className="mt-5">
+        <div className="text-3xl font-bold text-white">{total}</div>
+        <div className="text-xs uppercase tracking-wide text-white/50">Total Projects</div>
+      </div>
+
+      <div className="mt-3 flex items-center gap-3 text-xs">
+        <span className="text-emerald-300">Active {active}</span>
+        <span className="text-white/45">|</span>
+        <span className="text-white/60">Completed {completed}</span>
+      </div>
+
+      <div className="mt-5">
+        <Link href={href} className="text-sm text-white/85 transition hover:text-white">
+          View Intelligence →
+        </Link>
+      </div>
+    </article>
+  );
+}
+
+export default async function DevelopersDirectoryPage() {
+  const { data, error } = await fetchDeveloperRankings();
+
+  console.log("=== DEVELOPERS PAGE RPC NAME ===");
+  console.log("RPC FUNCTION:", "get_developer_rankings");
+  console.log("=== DEVELOPERS PAGE RAW DATA ===");
+  console.log(JSON.stringify(data, null, 2));
+  console.log("Residential:", (data as RankingsRpcData | null)?.residential);
+  console.log("Residential Top:", (data as RankingsRpcData | null)?.residential_top);
+  console.log("Full Response Keys:", Object.keys((data as Record<string, unknown>) || {}));
+
+  if (error) {
+    console.warn(
+      `[DevelopersDirectory] get_developer_rankings failed (code: ${error.code ?? "unknown"}): ${
+        error.message ?? "Unknown error"
+      }`
+    );
+  }
+
+  const rankings = (data ?? {}) as RankingsRpcData;
+  const residentialTop = asDevelopers(rankings.residential_top);
+  const plottedTop = asDevelopers(rankings.plotted_top);
+  const commercialTop = asDevelopers(rankings.commercial_top);
+
+  const hasAnyData =
+    residentialTop.length > 0 || plottedTop.length > 0 || commercialTop.length > 0;
+
+  return (
+    <div className="min-h-screen bg-[#0B1220] text-[#F9FAFB]">
+      <main className="mx-auto max-w-7xl px-6 py-10">
+        <section className="rounded-2xl border border-white/10 bg-gradient-to-r from-slate-900 via-[#0f1c35] to-slate-900 p-8">
+          <div className="grid gap-8 lg:grid-cols-[1.3fr_1fr]">
+            <div>
+              <h1 className="text-3xl md:text-4xl font-semibold">
+                Developer Intelligence Index - Telangana
               </h1>
-              <p className="text-xl md:text-2xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-                Explore profiles of the city's top builders, from ultra-luxury high-rises in Kokapet to expansive villa townships in Mokila.
+              <p className="mt-3 max-w-3xl text-sm text-white/70">
+                Structured ranking of RERA registered developers by asset class and project lifecycle.
               </p>
             </div>
 
-            {/* Market Stats Row */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto">
-              <Card className="text-center">
-                <CardContent className="p-6">
-                  <div className="text-3xl md:text-4xl font-bold text-primary mb-2">
-                    {totalProjects}+
-                  </div>
-                  <div className="text-sm text-muted-foreground">Total Projects Tracked</div>
-                </CardContent>
-              </Card>
-              <Card className="text-center">
-                <CardContent className="p-6">
-                  <div className="text-3xl md:text-4xl font-bold text-primary mb-2">
-                    {totalSftFormatted}
-                  </div>
-                  <div className="text-sm text-muted-foreground">Total Sq.Ft Delivered</div>
-                </CardContent>
-              </Card>
+            <div className="grid gap-3 rounded-xl border border-white/10 bg-[#111827]/80 p-4">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-white/65">Total Residential Leaders</span>
+                <span className="font-semibold text-white">{residentialTop.length}</span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-white/65">Total Plotted Leaders</span>
+                <span className="font-semibold text-white">{plottedTop.length}</span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-white/65">Total Commercial Leaders</span>
+                <span className="font-semibold text-white">{commercialTop.length}</span>
+              </div>
             </div>
           </div>
         </section>
 
-        {/* Developers Grid with Filters */}
-        {developersWithProjects.length === 0 ? (
-          <section className="container mx-auto px-4 py-12">
-            <Card>
-              <CardContent className="p-12 text-center">
-                <Building2 className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                <h2 className="text-2xl font-bold text-foreground mb-2">No developers found</h2>
-                <p className="text-muted-foreground mb-4">
-                  Please check Database RLS Policies and ensure developers are published.
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Server logs show: {developers.length === 0 ? "No developers in database" : `${developers.length} developers found, but none are published`}
-                </p>
-              </CardContent>
-            </Card>
-          </section>
-        ) : (
-          <DevelopersHubClient
-            initialDevelopers={developersWithProjects}
-            specializations={specializations}
-          />
-        )}
+        <section className="mt-20">
+          <h2 className="text-2xl font-semibold">Market Leaders by Asset Class</h2>
 
-        {/* How to Choose a Builder Section */}
-        <section className="container mx-auto px-4 py-16 bg-slate-50/50">
-          <div className="max-w-4xl mx-auto">
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-8 text-center">
-              How to Choose a Builder in Hyderabad
-            </h2>
-            <Card>
-              <CardContent className="p-8 space-y-6">
-                <div>
-                  <h3 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2">
-                    <Award className="h-6 w-6 text-primary" />
-                    Grade A Developers
+          {!hasAnyData ? (
+            <div className="mt-8 rounded-xl border border-white/10 bg-[#111827] p-8 text-white/70">
+              No ranking data available.
+            </div>
+          ) : (
+            <div className="mt-8 space-y-10">
+              <div className="rounded-2xl border border-white/10 bg-[#0F172A] p-8">
+                <div className="border-b border-white/10 pb-5">
+                  <h3 className="text-2xl font-semibold tracking-tight">
+                    Residential Market Leaders
                   </h3>
-                  <p className="text-muted-foreground leading-relaxed">
-                    Grade A developers in Hyderabad are established builders with a proven track record of delivering
-                    high-quality projects on time. These developers typically have 15+ years of experience, RERA
-                    compliance, and a portfolio of successful residential and commercial projects. Examples include My
-                    Home Group, Rajapushpa Properties, Prestige Group, and Aparna Constructions. They focus on premium
-                    locations like Kokapet, Financial District, and Gachibowli, offering luxury apartments, villas, and
-                    integrated townships with world-class amenities.
+                  <p className="mt-2 max-w-2xl text-sm text-white/60">
+                    Developers with sustained delivery across key residential micro-markets.
                   </p>
                 </div>
+                <div className="mt-7 grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
+                  {residentialTop.map((developer, index) => (
+                    <DeveloperCard
+                      key={`${developer.developer_slug ?? developer.developer_name ?? "residential"}-${index}`}
+                      developer={developer}
+                      index={index}
+                    />
+                  ))}
+                </div>
+              </div>
 
-                <div>
-                  <h3 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2">
-                    <TrendingUp className="h-6 w-6 text-primary" />
-                    Emerging Builders
+              <div className="rounded-2xl border border-white/10 bg-[#0F172A] p-8">
+                <div className="border-b border-white/10 pb-5">
+                  <h3 className="text-2xl font-semibold tracking-tight">
+                    Plotted Development Specialists
                   </h3>
-                  <p className="text-muted-foreground leading-relaxed">
-                    Emerging builders are newer players in the market (5-10 years) who offer competitive pricing and
-                    innovative designs. While they may have fewer completed projects, they often provide better value
-                    for money and focus on emerging micro-markets like Tellapur, Kollur, and Mokila. These builders are
-                    ideal for budget-conscious buyers seeking modern amenities at affordable prices. However, it's
-                    crucial to verify their RERA registration, financial stability, and past project delivery timelines
-                    before investing.
+                  <p className="mt-2 max-w-2xl text-sm text-white/60">
+                    Specialists in land-led communities and plotted development ecosystems.
                   </p>
                 </div>
+                <div className="mt-7 grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
+                  {plottedTop.map((developer, index) => (
+                    <DeveloperCard
+                      key={`${developer.developer_slug ?? developer.developer_name ?? "plotted"}-${index}`}
+                      developer={developer}
+                      index={index}
+                    />
+                  ))}
+                </div>
+              </div>
 
-                <div className="pt-4 border-t">
-                  <p className="text-sm text-muted-foreground italic">
-                    <strong>Pro Tip:</strong> Always verify RERA registration, check past project reviews, visit
-                    completed projects, and consult with a trusted real estate advisor before making your investment
-                    decision.
+              <div className="rounded-2xl border border-white/10 bg-[#0F172A] p-8">
+                <div className="border-b border-white/10 pb-5">
+                  <h3 className="text-2xl font-semibold tracking-tight">
+                    Commercial Market Leaders
+                  </h3>
+                  <p className="mt-2 max-w-2xl text-sm text-white/60">
+                    Institutional-grade developers shaping Hyderabad&apos;s commercial corridors.
                   </p>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
+                <div className="mt-7 grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+                  {commercialTop.map((developer, index) => (
+                    <DeveloperCard
+                      key={`${developer.developer_slug ?? developer.developer_name ?? "commercial"}-${index}`}
+                      developer={developer}
+                      index={index}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </section>
-      </div>
-    </>
+
+        <section className="mt-20 rounded-2xl border border-white/10 bg-[#0F172A] p-8">
+          <h2 className="text-2xl font-semibold">Explore All Developers</h2>
+          <DevelopersSearchPlaceholder
+            allDevelopers={[...residentialTop, ...plottedTop, ...commercialTop]}
+          />
+        </section>
+      </main>
+    </div>
   );
 }

@@ -10,6 +10,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import CityHubBacklink from "@/components/seo/CityHubBacklink";
 import { buildMetadata } from "@/components/common/SEO";
 import type { ProjectWithRelations } from "@/services/projectService";
+import { buildProjectUrl } from "@/lib/routes";
+import { getProjectsFromViewForCategory } from "@/services/microMarketProjectsService";
 
 // --- CONFIGURATION ---
 const CATEGORY_FILTERS: Record<string, {
@@ -121,40 +123,29 @@ export default async function CategoryComparisonPage({ params }: PageProps) {
   // Type assertion since we know city exists due to !inner join
   const cityData = Array.isArray(microMarket.city) ? microMarket.city[0] : microMarket.city;
 
-  // --- OPTIMIZED QUERY 2: Fetch Projects ---
-  let query = supabase
-    .from("projects")
-    .select(`
-      *,
-      city:cities!inner(city_name, url_slug),
-      micro_market:micro_markets!inner(micro_market_name, url_slug),
-      developer:developers(developer_name, url_slug)
-    `)
-    .eq("micro_market_id", microMarket.id) // More efficient than filtering by city AND market
-    .or("status.ilike.published,status.ilike.%under construction%");
+  // --- Fetch Projects from v_micro_market_projects (RERA-driven, ranked) ---
+  const viewRows = await getProjectsFromViewForCategory(citySlug, slug);
 
-  // Apply DB-level Status filter if applicable
+  // Apply status filter at query level if we had it - for now filter in memory
+  let projects = viewRows;
   if (categoryConfig.status) {
-    query = query.or(`completion_status.ilike.%${categoryConfig.status}%,status.ilike.%${categoryConfig.status}%`);
-  }
-
-  const { data: projects, error: projError } = await query
-    .order("display_order", { ascending: true });
-
-  if (projError) {
-    // Log error but continue (might have some projects)
+    projects = viewRows.filter(
+      (p) =>
+        (p.completion_status && p.completion_status.toLowerCase().includes(categoryConfig.status!.toLowerCase())) ||
+        (p.status && p.status.toLowerCase().includes(categoryConfig.status!.toLowerCase()))
+    );
   }
 
   // --- IN-MEMORY FILTERING ---
-  const filteredProjects: ProjectWithRelations[] = (projects || [])
-    .filter((p: any) => {
+  const filteredProjects: ProjectWithRelations[] = projects
+    .filter((p) => {
       // 1. Property Type Filter
       if (categoryConfig.type) {
         const pTypes = parseJsonb(p.property_types, []);
         // Check JSON array OR string match
-        const typeMatch = Array.isArray(pTypes) 
+        const typeMatch = Array.isArray(pTypes)
           ? pTypes.some((t: string) => t?.toLowerCase().includes(categoryConfig.type!.toLowerCase()))
-          : (typeof p.property_types === 'string' && p.property_types.toLowerCase().includes(categoryConfig.type!.toLowerCase()));
+          : (typeof p.property_types === "string" && p.property_types.toLowerCase().includes(categoryConfig.type!.toLowerCase()));
         
         if (!typeMatch) return false;
       }
@@ -162,33 +153,39 @@ export default async function CategoryComparisonPage({ params }: PageProps) {
       // 2. Configuration Filter
       if (categoryConfig.config) {
         const configs = parseJsonb(p.configurations, []);
-        const configMatch = Array.isArray(configs) && configs.length > 0
-          ? configs.some((c: string) => c?.toUpperCase().includes(categoryConfig.config!.toUpperCase()))
-          : p.unit_size_range?.toUpperCase().includes(categoryConfig.config!.toUpperCase());
+        const configMatch =
+          Array.isArray(configs) && configs.length > 0
+            ? configs.some((c: string) => c?.toUpperCase().includes(categoryConfig.config!.toUpperCase()))
+            : p.unit_size_range?.toUpperCase().includes(categoryConfig.config!.toUpperCase());
           
         if (!configMatch) return false;
       }
       
       // 3. Price Filter (Uses numeric columns)
       if (categoryConfig.minPrice) {
-        // Prefer the numeric column, fallback to parsing text
         if (p.min_price && p.min_price >= categoryConfig.minPrice) return true;
         if (!p.min_price && p.price_range_text) {
-           // Basic fallback parsing if column is empty
-           const match = p.price_range_text.match(/(\d+\.?\d*)\s*Cr/i);
-           if (match && (parseFloat(match[1]) * 10000000) >= categoryConfig.minPrice) return true;
+          const match = String(p.price_range_text).match(/(\d+\.?\d*)\s*Cr/i);
+          if (match && parseFloat(match[1]) * 10000000 >= categoryConfig.minPrice) return true;
         }
         if (p.min_price && p.min_price < categoryConfig.minPrice) return false;
       }
 
       if (categoryConfig.maxPrice) {
         if (p.max_price && p.max_price <= categoryConfig.maxPrice) return true;
-        // Logic: if max_price exists and is too high, exclude.
         if (p.max_price && p.max_price > categoryConfig.maxPrice) return false;
       }
       
       return true;
-    }) as ProjectWithRelations[];
+    })
+    .map((p) => ({
+      ...p,
+      city: cityData,
+      micro_market: { micro_market_name: p.micro_market_name || microMarket.micro_market_name, url_slug: p.micro_market },
+      developer: p.developer_name
+        ? { developer_name: p.developer_name, url_slug: p.developer_url_slug || "" }
+        : null,
+    })) as ProjectWithRelations[];
 
   // --- RENDER HELPERS ---
   const pageTitle = `${categoryConfig.title} ${microMarket.micro_market_name}`;
@@ -255,9 +252,13 @@ export default async function CategoryComparisonPage({ params }: PageProps) {
                           {filteredProjects.map((project) => (
                             <TableRow key={project.id}>
                               <TableCell className="font-medium text-primary">
-                                <Link href={`/${cityData.url_slug}/projects/${project.url_slug}`}>
-                                  {project.project_name}
-                                </Link>
+                                {project.url_slug ? (
+                                  <Link href={buildProjectUrl(cityData.url_slug, project.url_slug)}>
+                                    {project.project_name}
+                                  </Link>
+                                ) : (
+                                  <span>{project.project_name}</span>
+                                )}
                               </TableCell>
                               <TableCell className="font-semibold">{project.price_range_text || "Enquire"}</TableCell>
                               <TableCell className="text-muted-foreground">{formatConfigs(project)}</TableCell>

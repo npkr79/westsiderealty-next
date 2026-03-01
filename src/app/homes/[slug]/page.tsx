@@ -11,6 +11,7 @@ import SmartLinkGrid from "@/components/shared/SmartLinkGrid";
 import type { ProjectWithRelations } from "@/services/projectService";
 import { optimizeSupabaseImage } from "@/utils/imageOptimization";
 import { JsonLd } from "@/components/common/SEO";
+import { buildProjectAbsoluteUrl } from "@/lib/routes";
 import {
   Pagination,
   PaginationContent,
@@ -502,7 +503,9 @@ export default async function HomesFilterPage({ params, searchParams }: PageProp
     itemListElement: paginatedProjects.map((project, index) => {
       const projectCity = (project as any).city;
       const citySlug = projectCity?.url_slug || city.url_slug;
-      const projectUrl = `https://www.westsiderealty.in/${citySlug}/projects/${project.url_slug}`;
+      const projectUrl = project.url_slug
+        ? buildProjectAbsoluteUrl(citySlug, project.url_slug)
+        : canonicalUrl;
       
       return {
         "@type": "ListItem",

@@ -6,6 +6,7 @@ import { Building2, MapPin } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { projectService, type ProjectWithRelations } from "@/services/projectService";
 import ImageWithFallback from "@/components/common/ImageWithFallback";
+import { buildProjectUrl } from "@/lib/routes";
 
 interface RelatedProjectsSectionProps {
   currentProjectId: string;
@@ -81,7 +82,7 @@ export default function RelatedProjectsSection({
           if (!projectCitySlug) {
             return null;
           }
-          const href = `/${projectCitySlug}/projects/${project.url_slug}`;
+          const href = buildProjectUrl(projectCitySlug, project.url_slug);
 
           return (
             <Link key={project.id} href={href} className="block">

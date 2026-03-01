@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/client";
 import { getProjectPrimaryImage } from "@/lib/project-images";
 import { resolveLandingPageHeroImage } from "@/lib/landing-page-images";
 import ImageWithFallback from "@/components/common/ImageWithFallback";
+import { buildProjectUrl } from "@/lib/routes";
 
 interface TrendingProject {
   id: string;
@@ -66,51 +67,71 @@ export default function TrendingProjectsSlider() {
     const fetchTrendingProjects = async () => {
       try {
         const supabase = createClient();
+        const projectSelect =
+          "id, project_name, price_range_text, hero_image_url, url_slug, micro_market_id, city_id, micro_market:micro_markets!projects_micromarket_id_fkey(micro_market_name), status, created_at";
+        const landingSelect =
+          "id, title, hero_image_url, hero_image_supabase_path, uri, location_info, status, created_at";
 
-        console.log("[TrendingProjectsSlider] Starting to fetch trending projects...");
-
-        // Query projects WHERE is_trending = true
-        // Include micro_market relation to get micro_market_name
-        const { data: projectsData, error: projectsError } = await supabase
+        // Primary source: explicitly marked trending
+        let projectsData: any[] = [];
+        const trendingProjects = await supabase
           .from("projects")
-          .select("id, project_name, price_range_text, hero_image_url, url_slug, micro_market_id, city_id, micro_market:micro_markets!projects_micromarket_id_fkey(micro_market_name)")
+          .select(projectSelect)
           .eq("is_trending", true)
           .order("created_at", { ascending: false })
           .limit(10);
-
-        console.log("[TrendingProjectsSlider] Projects query result:", {
-          data: projectsData,
-          error: projectsError,
-          count: projectsData?.length || 0
-        });
-
-        if (projectsError) {
-          console.error("[TrendingProjectsSlider] Error fetching projects:", projectsError);
+        if (!trendingProjects.error && Array.isArray(trendingProjects.data)) {
+          projectsData = trendingProjects.data;
         }
 
-        // Query landing_pages WHERE is_trending = true
-        // Only select columns that actually exist in the landing_pages table
-        // Based on LandingPage interface: uri (not url_slug), location_info (not micro_market)
-        const { data: landingData, error: landingError } = await supabase
+        // Fallback source 1: featured/city-visible projects
+        if (projectsData.length === 0) {
+          const featuredProjects = await supabase
+            .from("projects")
+            .select(projectSelect)
+            .or("show_on_city_page.eq.true,is_featured.eq.true")
+            .or("status.ilike.published,status.ilike.%under construction%")
+            .order("created_at", { ascending: false })
+            .limit(10);
+          if (!featuredProjects.error && Array.isArray(featuredProjects.data)) {
+            projectsData = featuredProjects.data;
+          }
+        }
+
+        // Fallback source 2: latest published/active projects
+        if (projectsData.length === 0) {
+          const latestProjects = await supabase
+            .from("projects")
+            .select(projectSelect)
+            .or("status.ilike.published,status.ilike.%under construction%")
+            .order("created_at", { ascending: false })
+            .limit(10);
+          if (!latestProjects.error && Array.isArray(latestProjects.data)) {
+            projectsData = latestProjects.data;
+          }
+        }
+
+        let landingData: any[] = [];
+        const trendingLanding = await supabase
           .from("landing_pages")
-          .select("id, title, hero_image_url, hero_image_supabase_path, uri, location_info")
+          .select(landingSelect)
           .eq("is_trending", true)
           .order("created_at", { ascending: false })
           .limit(10);
+        if (!trendingLanding.error && Array.isArray(trendingLanding.data)) {
+          landingData = trendingLanding.data;
+        }
 
-        console.log("[TrendingProjectsSlider] Landing pages query result:", {
-          data: landingData,
-          error: landingError,
-          count: landingData?.length || 0
-        });
-
-        if (landingError) {
-          console.error("[TrendingProjectsSlider] landing_pages error:", {
-            message: landingError.message,
-            details: landingError.details,
-            hint: landingError.hint,
-            code: landingError.code,
-          });
+        if (landingData.length === 0) {
+          const publishedLanding = await supabase
+            .from("landing_pages")
+            .select(landingSelect)
+            .eq("status", "published")
+            .order("created_at", { ascending: false })
+            .limit(10);
+          if (!publishedLanding.error && Array.isArray(publishedLanding.data)) {
+            landingData = publishedLanding.data;
+          }
         }
 
         // Transform projects data
@@ -161,15 +182,6 @@ export default function TrendingProjectsSlider() {
             hero_image_supabase_path: l.hero_image_supabase_path,
           });
           
-          // Debug logging for landing pages image resolution
-          console.log(`[TrendingProjectsSlider] Landing page "${l.title}":`, {
-            source: "landing_pages",
-            title: l.title,
-            hero_image_url: l.hero_image_url,
-            hero_image_supabase_path: l.hero_image_supabase_path,
-            resolvedImageUrl: resolvedImageUrl,
-          });
-          
           return {
             id: String(l.id),
             name: l.title || "Untitled Project",
@@ -181,28 +193,13 @@ export default function TrendingProjectsSlider() {
           };
         });
 
-        // Combine and sort by created_at descending (already sorted in query)
+        // Merge and cap count for the carousel.
         const combined = [...transformedProjects, ...transformedLanding].slice(0, 10);
-
-        console.log("[TrendingProjectsSlider] Final combined result:", {
-          projectsCount: transformedProjects.length,
-          landingCount: transformedLanding.length,
-          totalCount: combined.length,
-          combined: combined.map(p => ({ id: p.id, name: p.name, slug: p.slug }))
-        });
-
-        if (combined.length > 0) {
-          setProjects(combined);
-          console.log("[TrendingProjectsSlider] ✅ Projects set successfully:", combined.length);
-        } else {
-          console.warn("[TrendingProjectsSlider] ⚠️ No projects to display!");
-        }
+        setProjects(combined);
       } catch (error: any) {
-        console.error("[TrendingProjectsSlider] CRITICAL ERROR fetching trending projects:", error);
-        console.error("[TrendingProjectsSlider] Error stack:", error?.stack);
+        console.error("[TrendingProjectsSlider] Failed to fetch projects:", error);
       } finally {
         setLoading(false);
-        console.log("[TrendingProjectsSlider] Loading complete");
       }
     };
 
@@ -222,26 +219,9 @@ export default function TrendingProjectsSlider() {
     );
   }
 
-  // Always show section, even if empty (for debugging)
+  // Do not render empty-debug UI on production homepage.
   if (projects.length === 0) {
-    return (
-      <section className="py-12 px-4 bg-white">
-        <div className="max-w-7xl mx-auto">
-          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-8">
-            🔥 Trending Projects
-          </h2>
-          <div className="text-center py-12">
-            <p className="text-gray-500 text-lg mb-2">No trending projects found.</p>
-            <p className="text-gray-400 text-sm">
-              Please mark projects with <code className="bg-gray-100 px-2 py-1 rounded">is_trending = true</code> in the database.
-            </p>
-            <p className="text-gray-400 text-xs mt-4">
-              Check browser console for detailed query results.
-            </p>
-          </div>
-        </div>
-      </section>
-    );
+    return null;
   }
 
   return (
@@ -278,7 +258,7 @@ export default function TrendingProjectsSlider() {
                   if (!slug) {
                     projectUrl = `/landing/${project.slug}`;
                   } else {
-                    projectUrl = `/${citySlug}/projects/${slug}`;
+                    projectUrl = buildProjectUrl(citySlug, slug);
                   }
                 } else {
                   projectUrl = `/landing/${project.slug}`;
@@ -323,14 +303,6 @@ export default function TrendingProjectsSlider() {
 
 function TrendingCard({ project, url }: { project: TrendingProject; url: string }) {
   const imageSrc = project?.image_url || null;
-
-  // Log the resolved image src for debugging
-  console.log("[TrendingProjectsCard] image src resolved:", {
-    title: project.name,
-    source: project.source,
-    image_url: project.image_url,
-    resolvedSrc: imageSrc,
-  });
 
   return (
     <Link href={url} className="block group h-full">

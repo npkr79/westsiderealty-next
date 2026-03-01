@@ -486,6 +486,25 @@
   }
 }
 
+/* ==========================================
+   PROJECT HERO + LEAD FORM LAYOUT
+   ========================================== */
+
+.project-details-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px;
+  overflow: visible;
+}
+
+@media (max-width: 1024px) {
+  .lead-form-wrapper {
+    position: static;
+    top: auto;
+  }
+}
+
+
 /* Scrollbar hide utility */
 .scrollbar-hide {
   -ms-overflow-style: none;
@@ -494,6 +513,61 @@
 
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
+}
+
+/* Luxury landing page utilities */
+.luxury-fade {
+  animation: luxuryFade 1.8s ease forwards;
+}
+
+@keyframes luxuryFade {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.luxury-cta {
+  background: #c9a646;
+  transition: transform 0.6s ease, box-shadow 0.6s ease;
+}
+
+.luxury-cta:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 24px rgba(201, 166, 70, 0.35);
+}
+
+.luxury-arrow {
+  width: 18px;
+  height: 18px;
+  border-right: 1px solid rgba(255, 255, 255, 0.6);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.6);
+  transform: rotate(45deg);
+  animation: arrowPulse 2s ease-in-out infinite;
+}
+
+@keyframes arrowPulse {
+  0%,
+  100% {
+    opacity: 0.4;
+    transform: translateY(0) rotate(45deg);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(6px) rotate(45deg);
+  }
+}
+
+.luxury-zoom {
+  transition: transform 1.6s ease;
+}
+
+.luxury-zoom:hover {
+  transform: scale(1.04);
 }
 
 /* Fade in animation */
@@ -508,4 +582,20 @@
 
 .animate-fade-in {
   animation: fade-in 0.3s ease-out;
+}
+
+/* ==========================================
+   AUDIT MODE OVERRIDES
+   ========================================== */
+body[data-audit-mode="true"] .audit-hide-in-audit-mode {
+  display: none !important;
+}
+
+body[data-audit-mode="true"] .sticky {
+  position: static !important;
+  top: auto !important;
+}
+
+body[data-audit-mode="true"] [class*="fixed"] {
+  display: none !important;
 }

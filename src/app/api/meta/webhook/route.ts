@@ -1,0 +1,101 @@
+import { NextResponse } from "next/server";
+import { processMetaLead } from "@/services/metaLeadService";
+
+const META_VERIFY_TOKEN = "westsiderealty_meta_secret";
+
+interface MetaWebhookChange {
+  field?: string;
+  value?: {
+    leadgen_id?: string;
+    page_id?: string;
+    form_id?: string;
+    ad_id?: string;
+    adgroup_id?: string;
+    created_time?: number;
+  };
+}
+
+interface MetaWebhookEntry {
+  id?: string;
+  time?: number;
+  changes?: MetaWebhookChange[];
+}
+
+interface MetaWebhookPayload {
+  object?: string;
+  entry?: MetaWebhookEntry[];
+}
+
+function extractLeadgenValues(payload: MetaWebhookPayload): Array<{ value: MetaWebhookChange["value"]; fullPayload: MetaWebhookPayload }> {
+  const result: Array<{ value: MetaWebhookChange["value"]; fullPayload: MetaWebhookPayload }> = [];
+  const entries = Array.isArray(payload?.entry) ? payload.entry : [];
+  for (const entry of entries) {
+    const changes = Array.isArray(entry?.changes) ? entry.changes : [];
+    for (const change of changes) {
+      if (change?.field === "leadgen" && change?.value?.leadgen_id) {
+        result.push({ value: change.value, fullPayload: payload });
+      }
+    }
+  }
+  return result;
+}
+
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const mode = searchParams.get("hub.mode");
+  const token = searchParams.get("hub.verify_token");
+  const challenge = searchParams.get("hub.challenge");
+
+  if (mode === "subscribe" && token === META_VERIFY_TOKEN) {
+    return new Response(challenge ?? "", {
+      status: 200,
+      headers: { "Content-Type": "text/plain" },
+    });
+  }
+
+  return NextResponse.json({ error: "Webhook verification failed." }, { status: 403 });
+}
+
+export async function POST(request: Request) {
+  try {
+    const payload = (await request.json()) as MetaWebhookPayload;
+    console.log("[Meta Webhook] Lead event received:", JSON.stringify(payload, null, 2));
+
+    const leadgenItems = extractLeadgenValues(payload);
+    const results: Array<{ leadgen_id: string; rawLeadId: string | null; crmLeadId: string | null; error?: string }> = [];
+
+    for (const { value, fullPayload } of leadgenItems) {
+      if (!value) continue;
+      const result = await processMetaLead(fullPayload as unknown as Record<string, unknown>, value);
+      results.push({
+        leadgen_id: value.leadgen_id ?? "",
+        rawLeadId: result.rawLeadId,
+        crmLeadId: result.crmLeadId,
+        error: result.error,
+      });
+    }
+
+    if (leadgenItems.length === 0) {
+      return new Response("EVENT_RECEIVED", {
+        status: 200,
+        headers: { "Content-Type": "text/plain" },
+      });
+    }
+
+    const hasErrors = results.some((r) => r.error);
+    if (hasErrors) {
+      console.warn("[Meta Webhook] Some leads failed:", results.filter((r) => r.error));
+    }
+
+    return new Response("EVENT_RECEIVED", {
+      status: 200,
+      headers: { "Content-Type": "text/plain" },
+    });
+  } catch (error) {
+    console.error("[Meta Webhook] Failed to process payload:", error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Invalid payload" },
+      { status: 400 }
+    );
+  }
+}

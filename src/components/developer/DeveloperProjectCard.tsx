@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import type { ProjectWithRelations } from "@/services/projectService";
+import { buildProjectUrl } from "@/lib/routes";
 
 interface DeveloperProjectCardProps {
   project: ProjectWithRelations | any;
@@ -25,7 +26,7 @@ export default function DeveloperProjectCard({
   }
   
   // Use canonical project URL: /citySlug/projects/projectSlug
-  const projectHref = `/${defaultCitySlug}/projects/${project.url_slug}`;
+  const projectHref = buildProjectUrl(defaultCitySlug, project.url_slug);
   
   return (
     <Card className="hover:shadow-md transition-shadow">
