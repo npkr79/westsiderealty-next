@@ -131,6 +131,16 @@ function StageChips() {
   );
 }
 
+function cleanDeveloperName(name: string): string {
+  return name
+    .replace(/\b(PRIVATE LIMITED|PVT\.? LTD\.?|LIMITED|LLP|INC\.?|LLC|CONSTRUCTIONS?|BUILDERS?|DEVELOPERS?|INFRA|INFRASTRUCTURE|ESTATES?|PROPERTIES|REALTY|PROJECTS?)\b/gi, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .split(" ")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(" ");
+}
+
 const STAGE_LABELS: Record<string, string> = {
   early: "Early",
   under_construction: "Under construction",
@@ -165,7 +175,7 @@ function InstitutionalCard({
           </div>
           {project.developer_name && (
             <div className="text-sm text-muted-foreground">
-              {project.developer_name}
+              {cleanDeveloperName(project.developer_name)}
             </div>
           )}
           <div className="flex items-center gap-1 text-xs text-muted-foreground">

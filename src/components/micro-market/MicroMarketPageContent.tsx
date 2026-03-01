@@ -15,7 +15,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { MessageCircle, Phone, School, Hospital, ShoppingBag, Pill } from "lucide-react";
+import { MessageCircle, Phone, School, Hospital, ShoppingBag, Pill, Shield, Database } from "lucide-react";
 
 function buildMapEmbedUrl(lat: number, lng: number): string {
   return `https://maps.google.com/maps?q=${lat},${lng}&z=14&output=embed`;
@@ -33,6 +33,21 @@ function formatPct(min: number | null, max: number | null, suffix = ""): string 
   if (min != null && max != null) return `${min}%–${max}%${suffix}`;
   if (min != null) return `${min}%+${suffix}`;
   if (max != null) return `Up to ${max}%${suffix}`;
+  return "—";
+}
+
+function formatPriceShort(min: number | null, max: number | null): string {
+  if (min != null && max != null)
+    return `₹${min.toLocaleString("en-IN")} – ₹${max.toLocaleString("en-IN")}`;
+  if (min != null) return `₹${min.toLocaleString("en-IN")}+`;
+  if (max != null) return `Up to ₹${max.toLocaleString("en-IN")}`;
+  return "Price on request";
+}
+
+function formatPctShort(min: number | null, max: number | null): string {
+  if (min != null && max != null) return `${min}% – ${max}%`;
+  if (min != null) return `${min}%+`;
+  if (max != null) return `Up to ${max}%`;
   return "—";
 }
 
@@ -101,10 +116,6 @@ export default function MicroMarketPageContent({
     { name: "Investment Areas", href: `/${citySlug}/micro-markets` },
     { name: hero.name, href: undefined },
   ];
-
-  const priceStr = formatPrice(hero.priceRange.min, hero.priceRange.max);
-  const growthStr = formatPct(hero.growth.min, hero.growth.max, " YoY");
-  const rentalStr = formatPct(hero.rental.min, hero.rental.max, " yield");
 
   const marketHealthSignals: Array<{ label: string; value: string | null }> = [
     { label: "Market Phase", value: hero.keySignals.cycleStage },
@@ -217,23 +228,16 @@ export default function MicroMarketPageContent({
               {hero.hook && (
                 <p className="mt-4 text-gray-600 leading-relaxed max-w-xl">{hero.hook}</p>
               )}
-              {/* Stat pills */}
-              <div className="mt-6 flex flex-wrap gap-3">
-                {[
-                  { label: "Price Range", value: priceStr },
-                  { label: "YoY Growth", value: growthStr },
-                  { label: "Rental Yield", value: rentalStr },
-                ].map((pill) => (
-                  <div
-                    key={pill.label}
-                    className="rounded-lg border border-gray-200 bg-white px-4 py-2.5 shadow-sm"
-                  >
-                    <p className="text-xs uppercase tracking-wider text-gray-400 font-medium">
-                      {pill.label}
-                    </p>
-                    <p className="mt-0.5 text-xl font-bold text-slate-900">{pill.value}</p>
-                  </div>
-                ))}
+              {/* RERA trust badges */}
+              <div className="flex flex-wrap items-center gap-3 mt-4">
+                <span className="inline-flex items-center gap-1.5 text-xs text-slate-600 bg-green-50 border border-green-200 px-3 py-1.5 rounded-full font-medium">
+                  <Shield className="h-3 w-3 text-green-600" />
+                  All projects RERA verified
+                </span>
+                <span className="inline-flex items-center gap-1.5 text-xs text-slate-600 bg-blue-50 border border-blue-200 px-3 py-1.5 rounded-full font-medium">
+                  <Database className="h-3 w-3 text-blue-600" />
+                  Source: Telangana RERA
+                </span>
               </div>
             </div>
 
@@ -256,6 +260,33 @@ export default function MicroMarketPageContent({
                     </div>
                   ))}
                 </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Dark stat band */}
+          <div className="bg-slate-900 text-white w-full rounded-xl p-6 mt-6">
+            <div className="grid grid-cols-3 divide-x divide-slate-700">
+              <div className="pr-6">
+                <p className="text-slate-400 text-xs uppercase tracking-wide">Price per sqft</p>
+                <p className="text-white text-2xl font-bold mt-1">
+                  {formatPriceShort(hero.priceRange.min, hero.priceRange.max)}
+                </p>
+                <p className="text-slate-400 text-xs mt-1">per square foot</p>
+              </div>
+              <div className="px-6">
+                <p className="text-slate-400 text-xs uppercase tracking-wide">Annual Growth</p>
+                <p className="text-white text-2xl font-bold mt-1">
+                  {formatPctShort(hero.growth.min, hero.growth.max)}
+                </p>
+                <p className="text-slate-400 text-xs mt-1">year on year</p>
+              </div>
+              <div className="pl-6">
+                <p className="text-slate-400 text-xs uppercase tracking-wide">Rental Yield</p>
+                <p className="text-white text-2xl font-bold mt-1">
+                  {formatPctShort(hero.rental.min, hero.rental.max)}
+                </p>
+                <p className="text-slate-400 text-xs mt-1">gross yield</p>
               </div>
             </div>
           </div>
@@ -464,23 +495,23 @@ export default function MicroMarketPageContent({
           </section>
         )}
 
-        {/* CHANGE 2: Smart internal links — after FAQ, before CTA */}
+        {/* Smart internal links — after FAQ, before CTA */}
         {((availableBhkTypes && availableBhkTypes.length > 0) ||
           (nearbyMarkets && nearbyMarkets.length > 0)) && (
-          <section className="mt-12 border-t border-gray-100 pt-10">
+          <section className="mt-12 pt-8 border-t border-slate-100">
             {availableBhkTypes && availableBhkTypes.length > 0 && (
               <>
-                <h2 className="text-lg font-semibold text-slate-800 mb-4">
-                  Explore Properties in {viewModel.hero.name}
+                <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-3">
+                  Search by type in {viewModel.hero.name}
                 </h2>
-                <div className="flex flex-wrap gap-2 mb-6">
+                <div className="flex flex-wrap gap-2 mb-8">
                   {availableBhkTypes.map((bhk) => (
                     <a
                       key={bhk}
                       href={`/${citySlug}/${viewModel.urlSlug}?bhk=${bhk}`}
-                      className="inline-flex items-center px-4 py-2 rounded-full border border-slate-200 bg-white text-sm font-medium text-slate-700 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                      className="inline-flex items-center px-4 py-2 rounded-full border border-slate-200 bg-white text-sm text-slate-600 hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50 transition-all"
                     >
-                      {bhk} Apartments in {viewModel.hero.name}
+                      {bhk} in {viewModel.hero.name}
                     </a>
                   ))}
                 </div>
@@ -489,15 +520,15 @@ export default function MicroMarketPageContent({
 
             {nearbyMarkets && nearbyMarkets.length > 0 && (
               <>
-                <h2 className="text-lg font-semibold text-slate-800 mb-4">
-                  Explore Nearby Markets
+                <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-3">
+                  Explore nearby markets
                 </h2>
                 <div className="flex flex-wrap gap-2">
                   {nearbyMarkets.map((market) => (
                     <a
                       key={market.url_slug}
                       href={`/${citySlug}/${market.url_slug}`}
-                      className="inline-flex items-center px-4 py-2 rounded-full border border-slate-200 bg-white text-sm font-medium text-slate-700 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                      className="inline-flex items-center px-4 py-2 rounded-full border border-slate-200 bg-white text-sm text-slate-600 hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50 transition-all"
                     >
                       {market.micro_market_name}
                     </a>

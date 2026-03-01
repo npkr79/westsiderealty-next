@@ -303,14 +303,15 @@ export async function getTopPicks(
 
   for (const slug of slugs) {
     const { data, error } = await supabase
-      .from("v_micro_market_top_picks_v3")
-      .select(TOP_PICKS_SELECT)
+      .from("v_micro_market_projects_v3")
+      .select(SELECT_V2_FIELDS)
       .eq("city_slug", citySlug)
       .eq("micro_market", slug)
-      .neq("stage", "delayed")
+      .neq("status", "cancelled")
       .order("strong_developer", { ascending: false, nullsFirst: false })
       .order("near_completion", { ascending: false, nullsFirst: false })
       .order("completion_proximity", { ascending: false, nullsFirst: false })
+      .order("developer_project_count", { ascending: false, nullsFirst: false })
       .limit(limit);
 
     if (error) {
