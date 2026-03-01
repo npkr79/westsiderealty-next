@@ -83,10 +83,18 @@ export default async function MicroMarketPage({ params }: PageProps) {
   ]);
 
   // Process FAQs from micro_markets table
-  const rawFaqs = mmData?.faqs;
-  const faqs: Array<{ question: string; answer: string }> = Array.isArray(rawFaqs)
-    ? (rawFaqs as Array<{ question: string; answer: string }>)
-    : [];
+  // faqs column may be stored as a JSON string rather than native jsonb
+  const faqs: Array<{ question: string; answer: string }> = (() => {
+    try {
+      const raw = mmData?.faqs;
+      if (!raw) return [];
+      if (Array.isArray(raw)) return raw as Array<{ question: string; answer: string }>;
+      if (typeof raw === "string") return JSON.parse(raw) as Array<{ question: string; answer: string }>;
+      return [];
+    } catch {
+      return [];
+    }
+  })();
   const rawFaqSchema = mmData?.faq_schema_json;
   const faqSchemaJson: string | null =
     typeof rawFaqSchema === "string" ? rawFaqSchema : null;
