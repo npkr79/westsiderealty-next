@@ -15,7 +15,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { MessageCircle, Phone } from "lucide-react";
+import { MessageCircle, Phone, School, Hospital, ShoppingBag, Pill } from "lucide-react";
 
 function buildMapEmbedUrl(lat: number, lng: number): string {
   return `https://maps.google.com/maps?q=${lat},${lng}&z=14&output=embed`;
@@ -52,6 +52,13 @@ interface SnapshotMetric {
   subtitle: string;
 }
 
+interface MarketAmenities {
+  schools: boolean;
+  hospitals: boolean;
+  dailyConveniences: boolean;
+  pharmacy: boolean;
+}
+
 interface MicroMarketPageContentProps {
   viewModel: MicroMarketViewModel;
   citySlug: string;
@@ -63,6 +70,7 @@ interface MicroMarketPageContentProps {
   // CHANGE 2
   availableBhkTypes?: string[];
   nearbyMarkets?: Array<{ micro_market_name: string; url_slug: string }>;
+  amenities?: MarketAmenities | null;
 }
 
 export default function MicroMarketPageContent({
@@ -74,6 +82,7 @@ export default function MicroMarketPageContent({
   faqSchemaJson,
   availableBhkTypes,
   nearbyMarkets,
+  amenities,
 }: MicroMarketPageContentProps) {
   const mapEmbedUrl = mapCenter ? buildMapEmbedUrl(mapCenter.lat, mapCenter.lng) : null;
   const {
@@ -293,6 +302,36 @@ export default function MicroMarketPageContent({
                 </div>
               ))}
             </div>
+
+            {/* Amenity chips */}
+            {amenities && (amenities.schools || amenities.hospitals || amenities.dailyConveniences || amenities.pharmacy) && (
+              <div className="flex flex-wrap gap-2 mb-4">
+                {amenities.schools && (
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-green-50 border border-green-200 px-3 py-1 text-xs font-medium text-green-700">
+                    <School className="h-3.5 w-3.5" />
+                    Schools Nearby
+                  </span>
+                )}
+                {amenities.hospitals && (
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-green-50 border border-green-200 px-3 py-1 text-xs font-medium text-green-700">
+                    <Hospital className="h-3.5 w-3.5" />
+                    Healthcare Access
+                  </span>
+                )}
+                {amenities.dailyConveniences && (
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-green-50 border border-green-200 px-3 py-1 text-xs font-medium text-green-700">
+                    <ShoppingBag className="h-3.5 w-3.5" />
+                    Daily Conveniences
+                  </span>
+                )}
+                {amenities.pharmacy && (
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-green-50 border border-green-200 px-3 py-1 text-xs font-medium text-green-700">
+                    <Pill className="h-3.5 w-3.5" />
+                    Pharmacy Access
+                  </span>
+                )}
+              </div>
+            )}
 
             {/* Map — CHANGE 3: moved here from hero */}
             {mapEmbedUrl && (

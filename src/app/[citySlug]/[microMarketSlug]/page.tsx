@@ -69,7 +69,7 @@ export default async function MicroMarketPage({ params }: PageProps) {
     supabase
       .from("micro_markets")
       .select("faqs, faq_schema_json")
-      .eq("id", cache.id)
+      .eq("micro_market_name", cache.micro_market_name ?? "")
       .maybeSingle()
       .then(({ data }) => data),
     supabase
@@ -104,8 +104,10 @@ export default async function MicroMarketPage({ params }: PageProps) {
       url_slug: m.url_slug!,
     }));
 
-  // Fetch available BHK types (two-step: project IDs → unit configs)
+  // Fetch available BHK types + amenities (two-step: project IDs → unit configs + location access)
+  type MarketAmenities = { schools: boolean; hospitals: boolean; dailyConveniences: boolean; pharmacy: boolean };
   let availableBhkTypes: string[] = [];
+  let marketAmenities: MarketAmenities | null = null;
   if (cache.micro_market_name) {
     const { data: classRows } = await supabase
       .from("project_micro_market_classification")
@@ -119,18 +121,25 @@ export default async function MicroMarketPage({ params }: PageProps) {
       .filter((id): id is string => id != null);
 
     if (projectIds.length > 0) {
-      const { data: unitRows } = await supabase
-        .from("v_project_unit_enriched")
-        .select("normalized_unit_config")
-        .eq("is_residential_signal", true)
-        .eq("is_noise", false)
-        .in("project_id", projectIds)
-        .not("normalized_unit_config", "is", null);
+      const [unitResult, amenityResult] = await Promise.all([
+        supabase
+          .from("v_project_unit_enriched")
+          .select("normalized_unit_config")
+          .eq("is_residential_signal", true)
+          .eq("is_noise", false)
+          .in("project_id", projectIds)
+          .not("normalized_unit_config", "is", null),
+        supabase
+          .from("project_location_access")
+          .select("schools_nearby,international_schools_nearby,emergency_hospital_nearby,clinics_nearby,grocery_access,pharmacy_access")
+          .in("project_id", projectIds)
+          .limit(50),
+      ]);
 
       const bhkCounts: Record<string, number> = {};
       const validBhk = new Set(["1BHK", "2BHK", "2.5BHK", "3BHK", "4BHK", "5BHK"]);
       (
-        (unitRows ?? []) as Array<{ normalized_unit_config: string | null }>
+        (unitResult.data ?? []) as Array<{ normalized_unit_config: string | null }>
       ).forEach((u) => {
         if (u.normalized_unit_config && validBhk.has(u.normalized_unit_config)) {
           bhkCounts[u.normalized_unit_config] =
@@ -141,6 +150,24 @@ export default async function MicroMarketPage({ params }: PageProps) {
         .sort((a, b) => b[1] - a[1])
         .map(([config]) => config)
         .slice(0, 4);
+
+      const amenityRows = amenityResult.data;
+      if (amenityRows && amenityRows.length > 0) {
+        const threshold = amenityRows.length * 0.3;
+        const counts = { schools: 0, hospitals: 0, dailyConveniences: 0, pharmacy: 0 };
+        (amenityRows as Array<Record<string, unknown>>).forEach((r) => {
+          if (r.schools_nearby || r.international_schools_nearby) counts.schools++;
+          if (r.emergency_hospital_nearby || r.clinics_nearby) counts.hospitals++;
+          if (r.grocery_access) counts.dailyConveniences++;
+          if (r.pharmacy_access) counts.pharmacy++;
+        });
+        marketAmenities = {
+          schools: counts.schools > threshold,
+          hospitals: counts.hospitals > threshold,
+          dailyConveniences: counts.dailyConveniences > threshold,
+          pharmacy: counts.pharmacy > threshold,
+        };
+      }
     }
   }
 
@@ -154,6 +181,7 @@ export default async function MicroMarketPage({ params }: PageProps) {
       faqSchemaJson={faqSchemaJson}
       availableBhkTypes={availableBhkTypes}
       nearbyMarkets={nearbyMarkets}
+      amenities={marketAmenities}
     />
   );
 }
