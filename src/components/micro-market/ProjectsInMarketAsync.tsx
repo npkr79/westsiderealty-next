@@ -4,9 +4,8 @@ import {
   getProjectSummaryV2,
   getProjectSummary,
   getTopPicks,
-  getExplorerProjectsV3,
 } from "@/services/microMarketProjectsService";
-import type { MicroMarketProjectSummaryV2, MicroMarketProjectRowV2 } from "@/services/microMarketProjectsService";
+import type { MicroMarketProjectSummaryV2 } from "@/services/microMarketProjectsService";
 import ProjectsInMarket, { ProjectsInMarketSkeleton } from "./ProjectsInMarket";
 
 interface ProjectsInMarketAsyncProps {
@@ -33,13 +32,12 @@ export default async function ProjectsInMarketAsync({
   microMarketSlug,
   marketName,
 }: ProjectsInMarketAsyncProps) {
-  const [summaryV3, summaryV2, summaryV1, topProjects, explorerProjects] =
+  const [summaryV3, summaryV2, summaryV1, topProjects] =
     await Promise.all([
       getProjectSummaryV3(citySlug, microMarketSlug),
       getProjectSummaryV2(citySlug, microMarketSlug),
       getProjectSummary(citySlug, microMarketSlug),
       getTopPicks(citySlug, microMarketSlug, 8, marketName),
-      getExplorerProjectsV3(citySlug, microMarketSlug, 6, 8, marketName),
     ]);
 
   const summary = summaryV3 ?? summaryV2 ?? toSummaryV2(summaryV1);
@@ -51,7 +49,6 @@ export default async function ProjectsInMarketAsync({
       marketName={marketName}
       summaryV2={summary}
       topProjects={topProjects}
-      explorerProjects={explorerProjects}
     />
   );
 }
