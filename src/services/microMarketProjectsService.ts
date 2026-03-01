@@ -289,7 +289,8 @@ const TOP_PICKS_SELECT =
 export async function getTopPicks(
   citySlug: string,
   microMarketSlug: string,
-  limit = TOP_PICKS_LIMIT
+  limit = TOP_PICKS_LIMIT,
+  marketName?: string
 ): Promise<MicroMarketProjectRowV2[]> {
   const supabase = createServiceClient();
   const decodedSlug = (() => {
@@ -314,15 +315,28 @@ export async function getTopPicks(
       .order("developer_project_count", { ascending: false, nullsFirst: false })
       .limit(limit);
 
-    if (error) {
-      console.log("[getTopPicks] SSR query error:", { citySlug, microMarketSlug: slug, error: error.message });
-      continue;
-    }
-
-    if (data && data.length > 0) {
-      return data as MicroMarketProjectRowV2[];
-    }
+    if (error) continue;
+    if (data && data.length > 0) return data as MicroMarketProjectRowV2[];
   }
+
+  // Fallback: micro_market_page_cache_v2.url_slug may differ from micro_markets.url_slug in the view.
+  // Use micro_market_name (stable human-readable name) to locate projects in that case.
+  if (marketName) {
+    const { data, error } = await supabase
+      .from("v_micro_market_projects_v3")
+      .select(SELECT_V2_FIELDS)
+      .eq("city_slug", citySlug)
+      .ilike("micro_market_name", marketName)
+      .neq("status", "cancelled")
+      .order("strong_developer", { ascending: false, nullsFirst: false })
+      .order("near_completion", { ascending: false, nullsFirst: false })
+      .order("completion_proximity", { ascending: false, nullsFirst: false })
+      .order("developer_project_count", { ascending: false, nullsFirst: false })
+      .limit(limit);
+
+    if (!error && data && data.length > 0) return data as MicroMarketProjectRowV2[];
+  }
+
   return [];
 }
 
@@ -461,14 +475,16 @@ export async function getExplorerProjectsV3(
   citySlug: string,
   microMarketSlug: string,
   limit = EXPLORER_DEFAULT_LIMIT,
-  offset = 0
+  offset = 0,
+  marketName?: string
 ): Promise<MicroMarketProjectRowV2[]> {
   return getExplorerProjectsFromView(
     citySlug,
     microMarketSlug,
     "v_micro_market_projects_v3",
     limit,
-    offset
+    offset,
+    marketName
   );
 }
 
@@ -477,7 +493,8 @@ async function getExplorerProjectsFromView(
   microMarketSlug: string,
   viewName: "v_micro_market_projects_v2" | "v_micro_market_projects_v3",
   limit: number,
-  offset: number
+  offset: number,
+  marketName?: string
 ): Promise<MicroMarketProjectRowV2[]> {
   const supabase = createServiceClient();
   const decodedSlug = (() => {
@@ -500,14 +517,26 @@ async function getExplorerProjectsFromView(
       .order("developer_project_count", { ascending: false, nullsFirst: false })
       .range(offset, offset + limit - 1);
 
-    if (error) {
-      console.log("[getExplorerProjectsFromView] SSR query error:", { citySlug, microMarketSlug: slug, viewName, offset, limit, error: error.message });
-      continue;
-    }
+    if (error) continue;
 
     const result = (rows ?? []) as MicroMarketProjectRowV2[];
-    console.log("[getExplorerProjectsFromView] SSR query response:", { citySlug, microMarketSlug: slug, viewName, offset, limit, rowCount: result.length });
-    return result;
+    if (result.length > 0) return result;
   }
+
+  // Fallback: use micro_market_name when cache url_slug differs from micro_markets.url_slug in the view.
+  if (marketName) {
+    const { data: rows, error } = await supabase
+      .from(viewName)
+      .select(SELECT_V2_FIELDS)
+      .eq("city_slug", citySlug)
+      .ilike("micro_market_name", marketName)
+      .order("completion_proximity", { ascending: false, nullsFirst: false })
+      .order("status", { ascending: true, nullsFirst: false })
+      .order("developer_project_count", { ascending: false, nullsFirst: false })
+      .range(offset, offset + limit - 1);
+
+    if (!error && rows) return rows as MicroMarketProjectRowV2[];
+  }
+
   return [];
 }
