@@ -69,7 +69,7 @@ export default async function MicroMarketPage({ params }: PageProps) {
     supabase
       .from("micro_markets")
       .select("faqs, faq_schema_json")
-      .eq("micro_market_name", cache.micro_market_name ?? "")
+      .eq("id", cache.id)
       .maybeSingle()
       .then(({ data }) => data),
     supabase

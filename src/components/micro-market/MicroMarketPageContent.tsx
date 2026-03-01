@@ -277,39 +277,22 @@ export default function MicroMarketPageContent({
         <section className="mt-10 border-t border-gray-100 pt-10">
           <h2 className="text-xl font-bold text-slate-900 mb-4">Location &amp; Connectivity</h2>
           <div className="bg-white border border-slate-200 rounded-xl p-6">
-            {/* Infrastructure catalyst chips */}
-            {infrastructureFuture.majorCorridorCatalysts.length > 0 && (
-              <div className="flex flex-wrap gap-2 mb-4">
-                {infrastructureFuture.majorCorridorCatalysts.map((c, i) => (
-                  <span
-                    key={i}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-full text-sm font-medium"
-                  >
-                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-                    {c}
-                  </span>
-                ))}
-              </div>
-            )}
-
-            {/* Fallback distance grid when no catalyst data */}
-            {infrastructureFuture.majorCorridorCatalysts.length === 0 && (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-                {[
-                  { label: "ORR Access", value: "Direct access" },
-                  { label: "IT Corridor", value: "~13 km" },
-                  { label: "Financial District", value: "~16 km" },
-                  { label: "Airport", value: "~30 km" },
-                ].map((item) => (
-                  <div key={item.label} className="bg-slate-50 rounded-lg p-3">
-                    <p className="text-xs text-slate-500 uppercase tracking-wide">
-                      {item.label}
-                    </p>
-                    <p className="text-sm font-semibold text-slate-800 mt-1">{item.value}</p>
-                  </div>
-                ))}
-              </div>
-            )}
+            {/* Connectivity distance grid */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+              {[
+                { label: "ORR", value: "Direct Access" },
+                { label: "HITEC City", value: "~18 km" },
+                { label: "Financial District", value: "~16 km" },
+                { label: "Airport", value: "~30 km" },
+              ].map((item) => (
+                <div key={item.label} className="bg-slate-50 rounded-lg p-3">
+                  <p className="text-xs text-slate-500 uppercase tracking-wide">
+                    {item.label}
+                  </p>
+                  <p className="text-sm font-semibold text-slate-800 mt-1">{item.value}</p>
+                </div>
+              ))}
+            </div>
 
             {/* Map — CHANGE 3: moved here from hero */}
             {mapEmbedUrl && (
@@ -330,11 +313,8 @@ export default function MicroMarketPageContent({
           </div>
         </section>
 
-        {/* 5. PROJECTS — CHANGE 5: TopPicksAsync removed, single list only */}
+        {/* 5. PROJECTS — heading rendered inside ProjectsInMarket */}
         <section className="py-8 mt-6 border-t border-gray-100">
-          <h2 className="text-2xl font-bold text-slate-900 mb-6">
-            Projects in {viewModel.hero.name}
-          </h2>
           <ProjectsInMarketWithSkeleton
             citySlug={citySlug}
             microMarketSlug={viewModel.urlSlug}
