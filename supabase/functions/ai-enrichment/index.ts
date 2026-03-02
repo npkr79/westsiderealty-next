@@ -45,7 +45,7 @@ function getSupabase() {
 // Claude API helper
 // ---------------------------------------------------------------------------
 
-async function callClaude(prompt: string): Promise<string> {
+async function callClaude(prompt: string, maxTokens = 2048): Promise<string> {
   const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
   if (!apiKey) throw new Error("Missing ANTHROPIC_API_KEY");
 
@@ -58,7 +58,7 @@ async function callClaude(prompt: string): Promise<string> {
     },
     body: JSON.stringify({
       model: "claude-sonnet-4-6",
-      max_tokens: 1024,
+      max_tokens: maxTokens,
       messages: [{ role: "user", content: prompt }],
     }),
   });
@@ -103,7 +103,7 @@ async function logJob(
 }
 
 // ---------------------------------------------------------------------------
-// MICRO MARKET enrichment
+// MICRO MARKET enrichment (comprehensive v2 prompt)
 // ---------------------------------------------------------------------------
 
 async function enrichMicroMarket(
@@ -150,37 +150,69 @@ async function enrichMicroMarket(
   // Fetch RERA stats from cache
   const { data: cache } = await supabase
     .from("micro_market_page_cache_v2")
-    .select("recent_launches, completion_ratio, velocity_score, developer_strength, new_developer_entries")
+    .select("recent_launches, completion_ratio, velocity_score, developer_strength, new_developer_entries, delay_ratio")
     .eq("id", microMarketId)
     .maybeSingle();
+
+  // Fetch developer names from projects table (joined with developers relation)
+  const { data: projectRows } = await supabase
+    .from("projects")
+    .select("developers!developer_id(developer_name)")
+    .eq("micro_market_id", microMarketId)
+    .neq("status", "cancelled")
+    .limit(30);
+
+  const developerNames = [
+    ...new Set(
+      ((projectRows ?? []) as Array<Record<string, unknown>>)
+        .map((p) => {
+          const dev = p.developers as Record<string, unknown> | null;
+          return dev?.developer_name ? String(dev.developer_name) : null;
+        })
+        .filter((n): n is string => n != null && n.trim().length > 0)
+    ),
+  ].slice(0, 12);
 
   const recentLaunches = cache?.recent_launches ?? "unknown";
   const completionRatio = cache?.completion_ratio != null ? `${Math.round(cache.completion_ratio * 100)}%` : "unknown";
   const velocityScore = cache?.velocity_score ?? "unknown";
   const developerStrength = cache?.developer_strength ?? "unknown";
   const newDeveloperEntries = cache?.new_developer_entries ?? "unknown";
+  const delayRatio = cache?.delay_ratio != null ? `${Math.round(cache.delay_ratio * 100)}%` : "unknown";
   const priceMin = mm.price_per_sqft_min ?? "unknown";
   const priceMax = mm.price_per_sqft_max ?? "unknown";
+  const developerList = developerNames.length > 0 ? developerNames.join(", ") : "not available from database";
 
-  console.log("Calling Claude for:", mm.micro_market_name);
+  console.log("Calling Claude for:", mm.micro_market_name, "with", developerNames.length, "developers");
 
-  const prompt = `You are a Hyderabad real estate analyst with deep knowledge of the market in 2026.
+  const prompt = `You are a senior Hyderabad real estate analyst writing for first-time buyers and investors in 2026.
 
-Analyze this micro-market based on RERA data and your knowledge:
+Analyze ${mm.micro_market_name} in Hyderabad.
 
-MICRO-MARKET: ${mm.micro_market_name}
-CITY: Hyderabad, India
-RERA STATS:
-- Recent project launches: ${recentLaunches}
-- Completion ratio: ${completionRatio}
+CONTEXT FROM OUR DATABASE:
+- Active RERA projects: ${recentLaunches} recent launches
+- Known developers present: ${developerList}
+- Price range on record: ₹${priceMin}–${priceMax}/sqft
+- Completion ratio (RERA): ${completionRatio} (NOTE: unreliable for established markets — RERA only captures post-2017)
 - Market velocity score: ${velocityScore}/100
 - Developer strength: ${developerStrength}%
 - New developer entries: ${newDeveloperEntries}
-- Price range from records: ₹${priceMin}-${priceMax}/sqft
+- Delay ratio: ${delayRatio}
 
-Based on your knowledge of ${mm.micro_market_name} in Hyderabad:
+Using your knowledge of this market, provide a complete buyer and investor intelligence report.
 
-Return ONLY valid JSON, no other text:
+Focus on what matters to someone deciding whether to buy:
+- Is this market worth entering in 2026?
+- What price should they expect to pay?
+- What return can they realistically expect?
+- What are the genuine risks?
+- Who is this market best suited for?
+
+Do NOT base your analysis on RERA completion ratios — these are unreliable for established markets where most inventory predates RERA.
+
+For mixed-use markets, provide both residential rental yields AND commercial rental yields separately. Commercial yield = office/retail/co-working space rentals in ₹ per sqft per month.
+
+Return ONLY valid JSON matching this structure exactly:
 {
   "market_maturity": "Emerging|Growing|Established|Peak",
   "builder_activity": "Low|Moderate|High|Saturated",
@@ -190,14 +222,36 @@ Return ONLY valid JSON, no other text:
   "price_per_sqft_current": number or null,
   "market_summary": "2-3 sentences plain English for buyers",
   "top_developers": ["developer1", "developer2"],
-  "key_infrastructure_updates": "text or null",
-  "market_risks": "text or null",
-  "confidence": "high|medium|low"
+  "market_risks": "brief text or null",
+  "confidence": "high|medium|low",
+  "zone_type": "Residential|Commercial|Mixed-Use|Township",
+  "market_character": "2 sentences describing the character and feel of this market",
+  "price_band_current": "₹X–Y/sqft (2026)",
+  "buyer_profile_detail": "detailed text on who buys here and why",
+  "lifestyle_score": "Low|Medium|High|Premium",
+  "possession_wait": "typical wait time for new projects e.g. 2-3 years",
+  "best_for": "one line: who should buy here",
+  "appreciation_5yr": "realistic 5-year appreciation estimate with reasoning",
+  "rental_yield_detail": "detailed rental yield commentary",
+  "entry_timing": "Good|Wait|Optimal|Late",
+  "entry_reasoning": "one sentence explaining entry timing verdict",
+  "employment_drivers": ["employer1", "employer2", "employer3"],
+  "infrastructure_pipeline": ["infra project 1", "infra project 2"],
+  "social_infrastructure": "schools, hospitals, malls, restaurants — what exists",
+  "risk_level": "Low|Medium|High",
+  "primary_risk": "the single biggest risk for a buyer",
+  "secondary_risks": ["risk1", "risk2"],
+  "bull_case": "best case scenario in one sentence",
+  "bear_case": "worst case scenario in one sentence",
+  "analyst_recommendation": "2-3 sentence plain English recommendation for a buyer reading this",
+  "commercial_rental_yield_min": number or null,
+  "commercial_rental_yield_max": number or null,
+  "commercial_rental_yield_detail": "text describing commercial rental market - office, retail, co-working rates per sqft per month. null if purely residential market"
 }`;
 
   let parsed: Record<string, unknown>;
   try {
-    const raw = await callClaude(prompt);
+    const raw = await callClaude(prompt, 4096);
     console.log("Claude raw response length:", raw.length);
     parsed = parseJsonFromClaude(raw);
   } catch (err) {
@@ -207,11 +261,12 @@ Return ONLY valid JSON, no other text:
     return "error";
   }
 
-  // Upsert enrichment
+  // Upsert enrichment — all v1 fields preserved + v2 fields added
   const { error: upsertErr } = await supabase
     .from("micro_market_ai_enrichment")
     .upsert({
       micro_market_id: microMarketId,
+      // v1 fields (backward compat)
       market_maturity: parsed.market_maturity ?? null,
       builder_activity: parsed.builder_activity ?? null,
       buyer_profile: parsed.buyer_profile ?? null,
@@ -220,9 +275,33 @@ Return ONLY valid JSON, no other text:
       price_per_sqft_current: parsed.price_per_sqft_current ?? null,
       market_summary: parsed.market_summary ?? null,
       top_developers: parsed.top_developers ?? null,
-      key_infrastructure_updates: parsed.key_infrastructure_updates ?? null,
+      key_infrastructure_updates: parsed.infrastructure_pipeline ? (parsed.infrastructure_pipeline as string[]).join("; ") : null,
       market_risks: parsed.market_risks ?? null,
       confidence: parsed.confidence ?? null,
+      // v2 fields
+      zone_type: parsed.zone_type ?? null,
+      market_character: parsed.market_character ?? null,
+      price_band_current: parsed.price_band_current ?? null,
+      buyer_profile_detail: parsed.buyer_profile_detail ?? null,
+      lifestyle_score: parsed.lifestyle_score ?? null,
+      possession_wait: parsed.possession_wait ?? null,
+      best_for: parsed.best_for ?? null,
+      appreciation_5yr: parsed.appreciation_5yr ?? null,
+      rental_yield_detail: parsed.rental_yield_detail ?? null,
+      entry_timing: parsed.entry_timing ?? null,
+      entry_reasoning: parsed.entry_reasoning ?? null,
+      employment_drivers: parsed.employment_drivers ?? null,
+      infrastructure_pipeline: parsed.infrastructure_pipeline ?? null,
+      social_infrastructure: parsed.social_infrastructure ?? null,
+      risk_level: parsed.risk_level ?? null,
+      primary_risk: parsed.primary_risk ?? null,
+      secondary_risks: parsed.secondary_risks ?? null,
+      bull_case: parsed.bull_case ?? null,
+      bear_case: parsed.bear_case ?? null,
+      analyst_recommendation: parsed.analyst_recommendation ?? null,
+      commercial_rental_yield_min: parsed.commercial_rental_yield_min ?? null,
+      commercial_rental_yield_max: parsed.commercial_rental_yield_max ?? null,
+      commercial_rental_yield_detail: parsed.commercial_rental_yield_detail ?? null,
       fetched_at: new Date().toISOString(),
     }, { onConflict: "micro_market_id" });
 
@@ -272,7 +351,7 @@ Return ONLY valid JSON:
 
   let parsed: Record<string, unknown>;
   try {
-    const raw = await callClaude(prompt);
+    const raw = await callClaude(prompt, 1024);
     parsed = parseJsonFromClaude(raw);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);

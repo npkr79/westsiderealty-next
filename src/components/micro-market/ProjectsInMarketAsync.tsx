@@ -12,6 +12,7 @@ interface ProjectsInMarketAsyncProps {
   citySlug: string;
   microMarketSlug: string;
   marketName: string;
+  marketMaturity?: string | null;
 }
 
 function toSummaryV2(
@@ -31,6 +32,7 @@ export default async function ProjectsInMarketAsync({
   citySlug,
   microMarketSlug,
   marketName,
+  marketMaturity,
 }: ProjectsInMarketAsyncProps) {
   const [summaryV3, summaryV2, summaryV1, topProjects] =
     await Promise.all([
@@ -49,6 +51,7 @@ export default async function ProjectsInMarketAsync({
       marketName={marketName}
       summaryV2={summary}
       topProjects={topProjects}
+      marketMaturity={marketMaturity}
     />
   );
 }

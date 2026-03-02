@@ -16,6 +16,7 @@ interface ProjectsInMarketProps {
   marketName: string;
   summaryV2: MicroMarketProjectSummaryV2 | null;
   topProjects: MicroMarketProjectRowV2[];
+  marketMaturity?: string | null;
 }
 
 function cleanDeveloperName(name: string): string {
@@ -88,23 +89,46 @@ function FeaturedProjectCard({
   );
 }
 
-function SnapshotBlock({ summary }: { summary: MicroMarketProjectSummaryV2 | null }) {
+function SnapshotBlock({
+  summary,
+  marketMaturity,
+}: {
+  summary: MicroMarketProjectSummaryV2 | null;
+  marketMaturity?: string | null;
+}) {
   const total = summary?.total ?? 0;
   const active = summary?.active ?? 0;
   const underConstruction = summary?.under_construction ?? 0;
   const earlyStage = summary?.early_stage ?? 0;
   const delayed = summary?.delayed ?? 0;
 
-  const metrics = [
-    { label: "Total", value: total, max: Math.max(total, 1) },
-    { label: "Active", value: active, max: Math.max(total, 1) },
-    { label: "Under construction", value: underConstruction, max: Math.max(total, 1) },
-    { label: "Early stage", value: earlyStage, max: Math.max(total, 1) },
-    { label: "Delayed", value: delayed, max: Math.max(total, 1) },
+  const isEstablishedOrPeak = marketMaturity === "Established" || marketMaturity === "Peak";
+  const isGrowing = marketMaturity === "Growing";
+
+  const baseMetrics = [
+    { label: "Total", value: total, max: Math.max(total, 1), note: null },
+    { label: "Active", value: active, max: Math.max(total, 1), note: null },
+    { label: "Under construction", value: underConstruction, max: Math.max(total, 1), note: null },
+    { label: "Early stage", value: earlyStage, max: Math.max(total, 1), note: null },
   ];
 
+  // Established/Peak: hide Delayed — RERA date math is unreliable for mature markets
+  // Growing: show Delayed with caveat note
+  // Emerging/null: show Delayed as-is
+  const metrics = isEstablishedOrPeak
+    ? baseMetrics
+    : [
+        ...baseMetrics,
+        {
+          label: "Delayed",
+          value: delayed,
+          max: Math.max(total, 1),
+          note: isGrowing ? "Based on RERA validity dates — may not reflect actual status" : null,
+        },
+      ];
+
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+    <div className={`grid gap-4 sm:grid-cols-2 ${isEstablishedOrPeak ? "lg:grid-cols-4" : "lg:grid-cols-5"}`}>
       {metrics.map((m) => (
         <div key={m.label} className="rounded-lg border border-border bg-card p-4">
           <div className="mb-2 flex items-baseline justify-between">
@@ -112,6 +136,9 @@ function SnapshotBlock({ summary }: { summary: MicroMarketProjectSummaryV2 | nul
             <span className="text-xl font-semibold text-foreground">{m.value}</span>
           </div>
           <ProgressBar value={m.value} max={m.max} showValue={false} />
+          {m.note && (
+            <p className="text-xs text-muted-foreground mt-2 italic">{m.note}</p>
+          )}
         </div>
       ))}
     </div>
@@ -178,6 +205,7 @@ export default function ProjectsInMarket({
   marketName,
   summaryV2,
   topProjects,
+  marketMaturity,
 }: ProjectsInMarketProps) {
   return (
     <section className="mt-14">
@@ -186,7 +214,7 @@ export default function ProjectsInMarket({
       </h2>
 
       <div className="space-y-10">
-        <SnapshotBlock summary={summaryV2} />
+        <SnapshotBlock summary={summaryV2} marketMaturity={marketMaturity} />
         <FeaturedProjectsBlock projects={topProjects} citySlug={citySlug} marketName={marketName} />
       </div>
     </section>

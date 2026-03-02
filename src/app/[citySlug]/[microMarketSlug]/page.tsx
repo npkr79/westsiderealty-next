@@ -88,7 +88,7 @@ export default async function MicroMarketPage({ params }: PageProps) {
       .then(({ data }: { data: Record<string, unknown> | null }) => data),
     supabase
       .from("micro_market_ai_enrichment" as never)
-      .select("market_maturity, builder_activity, buyer_profile, rental_yield_min, rental_yield_max, price_per_sqft_current, market_summary, top_developers, confidence, fetched_at")
+      .select("market_maturity, builder_activity, buyer_profile, rental_yield_min, rental_yield_max, price_per_sqft_current, market_summary, top_developers, market_risks, confidence, zone_type, market_character, price_band_current, buyer_profile_detail, lifestyle_score, possession_wait, best_for, appreciation_5yr, rental_yield_detail, entry_timing, entry_reasoning, employment_drivers, infrastructure_pipeline, social_infrastructure, risk_level, primary_risk, secondary_risks, bull_case, bear_case, analyst_recommendation, commercial_rental_yield_min, commercial_rental_yield_max, commercial_rental_yield_detail, fetched_at")
       .eq("micro_market_id", cache.id)
       .maybeSingle()
       .then(({ data }: { data: Record<string, unknown> | null }) => data),
@@ -188,6 +188,7 @@ export default async function MicroMarketPage({ params }: PageProps) {
     : null;
 
   const aiEnrichment = aiEnrichmentRaw as {
+    // v1 fields
     market_maturity: string | null;
     builder_activity: string | null;
     buyer_profile: string | null;
@@ -196,7 +197,32 @@ export default async function MicroMarketPage({ params }: PageProps) {
     price_per_sqft_current: number | null;
     market_summary: string | null;
     top_developers: string[] | null;
+    market_risks: string | null;
     confidence: string | null;
+    // v2 fields
+    zone_type: string | null;
+    market_character: string | null;
+    price_band_current: string | null;
+    buyer_profile_detail: string | null;
+    lifestyle_score: string | null;
+    possession_wait: string | null;
+    best_for: string | null;
+    appreciation_5yr: string | null;
+    rental_yield_detail: string | null;
+    entry_timing: string | null;
+    entry_reasoning: string | null;
+    employment_drivers: string[] | null;
+    infrastructure_pipeline: string[] | null;
+    social_infrastructure: string | null;
+    risk_level: string | null;
+    primary_risk: string | null;
+    secondary_risks: string[] | null;
+    bull_case: string | null;
+    bear_case: string | null;
+    analyst_recommendation: string | null;
+    commercial_rental_yield_min: number | null;
+    commercial_rental_yield_max: number | null;
+    commercial_rental_yield_detail: string | null;
     fetched_at: string | null;
   } | null;
 
