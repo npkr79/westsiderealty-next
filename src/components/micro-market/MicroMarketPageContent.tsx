@@ -413,11 +413,11 @@ export default function MicroMarketPageContent({
           </div>
 
           {/* Dark stat band */}
-          <div className="bg-slate-900 text-white w-full rounded-xl p-6 mt-6">
+          <div className="bg-slate-900 text-white w-full rounded-xl p-4 sm:p-6 mt-6">
             <div className="grid grid-cols-3 divide-x divide-slate-700">
-              <div className="pr-6">
+              <div className="pr-3 sm:pr-6">
                 <p className="text-slate-400 text-xs uppercase tracking-wide">Price per sqft</p>
-                <p className="text-white text-2xl font-bold mt-1">
+                <p className="text-white text-lg sm:text-2xl font-bold mt-1 whitespace-nowrap">
                   {formatPriceShort(hero.priceRange.min, hero.priceRange.max)}
                 </p>
                 <p className="text-slate-400 text-xs mt-1">per square foot</p>
@@ -427,9 +427,9 @@ export default function MicroMarketPageContent({
                   </p>
                 )}
               </div>
-              <div className="px-6">
+              <div className="px-3 sm:px-6">
                 <p className="text-slate-400 text-xs uppercase tracking-wide">Annual Growth</p>
-                <p className="text-white text-2xl font-bold mt-1">
+                <p className="text-white text-lg sm:text-2xl font-bold mt-1 whitespace-nowrap">
                   {formatPctShort(hero.growth.min, hero.growth.max)}
                 </p>
                 <p className="text-slate-400 text-xs mt-1">year on year</p>
@@ -508,8 +508,8 @@ export default function MicroMarketPageContent({
                     {m.label}
                   </p>
                   {m.small ? (
-                    // Long-text cards (e.g. "Best For") — smaller font, natural wrap
-                    <p className={`text-sm font-medium leading-snug mt-0.5 ${m.value === "—" ? "text-slate-300" : "text-slate-800"}`}>
+                    // Long-text cards (e.g. "Best For") — xs on mobile, sm on larger; natural wrap
+                    <p className={`text-xs sm:text-sm font-medium text-slate-800 leading-snug mt-0.5 ${m.value === "—" ? "text-slate-300" : "text-slate-800"}`}>
                       {m.value}
                     </p>
                   ) : (

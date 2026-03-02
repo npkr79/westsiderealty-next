@@ -45,13 +45,19 @@ function FeaturedProjectCard({
   return (
     <Link href={href} className="block">
       <Card className="h-full overflow-hidden transition-shadow hover:shadow-lg">
-        <div className="aspect-video bg-muted relative">
-          <ImageWithFallback
-            src={imageUrl}
-            alt={`${project.project_name} project`}
-            fill
-            className="object-cover"
-          />
+        <div className="aspect-video bg-slate-100 relative overflow-hidden">
+          {imageUrl ? (
+            <ImageWithFallback
+              src={imageUrl}
+              alt={`${project.project_name} project`}
+              fill
+              className="object-cover"
+            />
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="text-slate-400 text-xs">No image available</span>
+            </div>
+          )}
           <div className="absolute top-2 right-2 flex flex-col gap-1">
             {nearCompletion && (
               <span className="inline-flex items-center gap-1 rounded-md bg-emerald-600/90 px-2 py-0.5 text-xs font-medium text-white">
@@ -128,10 +134,10 @@ function SnapshotBlock({
       ];
 
   return (
-    <div className={`grid gap-4 sm:grid-cols-2 ${isEstablishedOrPeak ? "lg:grid-cols-4" : "lg:grid-cols-5"}`}>
+    <div className="flex overflow-x-auto gap-3 pb-2 scrollbar-hide">
       {metrics.map((m) => (
-        <div key={m.label} className="rounded-lg border border-border bg-card p-4">
-          <div className="mb-2 flex items-baseline justify-between">
+        <div key={m.label} className="min-w-[120px] flex-shrink-0 rounded-lg border border-border bg-card p-4">
+          <div className="mb-2 flex items-baseline justify-between gap-2">
             <span className="text-sm text-muted-foreground">{m.label}</span>
             <span className="text-xl font-semibold text-foreground">{m.value}</span>
           </div>
