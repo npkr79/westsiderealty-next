@@ -132,7 +132,7 @@ function FeaturedProjectsBlock({
       <div className="mb-6">
         <h3 className="text-lg font-semibold text-foreground">Featured Projects in {marketName}</h3>
         <p className="mt-1 text-sm text-muted-foreground">
-          Institutional-grade projects with execution visibility and strong developer credibility.
+          Top ranked projects by developer track record and RERA compliance.
         </p>
       </div>
       {projects.length > 0 ? (

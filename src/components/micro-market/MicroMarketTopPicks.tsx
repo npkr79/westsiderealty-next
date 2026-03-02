@@ -122,7 +122,7 @@ export default function MicroMarketTopPicks({
           Top Picks
         </h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Institutional-grade projects with execution visibility and strong developer credibility.
+          Top ranked projects by developer track record and RERA compliance.
         </p>
       </div>
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

@@ -1,40 +1,14 @@
 import BreadcrumbNav from "@/components/layout/BreadcrumbNav";
-import {
-  WhyThisMarket,
-  SupplyDevelopment,
-  DemandLiquidity,
-  DeveloperCapital,
-  InfrastructureFuture,
-  RiskOutlook,
-} from "./index";
 import { ProjectsInMarketWithSkeleton } from "./ProjectsInMarketAsync";
 import type { MicroMarketViewModel } from "@/services/microMarketViewModel";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
-import { MessageCircle, Phone, School, Hospital, ShoppingBag, Pill, Shield, Database, Train } from "lucide-react";
+import MarketIntelligenceAccordion from "./MarketIntelligenceAccordion";
+import FaqAccordion from "./FaqAccordion";
+import { MessageCircle, Phone, School, Hospital, ShoppingBag, Pill, Shield, Database } from "lucide-react";
 
 function buildMapEmbedUrl(lat: number, lng: number): string {
   return `https://maps.google.com/maps?q=${lat},${lng}&z=14&output=embed`;
 }
 
-function formatPrice(min: number | null, max: number | null): string {
-  if (min != null && max != null)
-    return `₹${min.toLocaleString("en-IN")}–₹${max.toLocaleString("en-IN")}/sqft`;
-  if (min != null) return `₹${min.toLocaleString("en-IN")}/sqft+`;
-  if (max != null) return `Up to ₹${max.toLocaleString("en-IN")}/sqft`;
-  return "Price on request";
-}
-
-function formatPct(min: number | null, max: number | null, suffix = ""): string {
-  if (min != null && max != null) return `${min}%–${max}%${suffix}`;
-  if (min != null) return `${min}%+${suffix}`;
-  if (max != null) return `Up to ${max}%${suffix}`;
-  return "—";
-}
 
 function formatPriceShort(min: number | null, max: number | null): string {
   if (min != null && max != null)
@@ -52,6 +26,16 @@ function truncateHeroText(html: string): string {
   return lastPeriod > 100 ? truncated.substring(0, lastPeriod + 1) : truncated + "...";
 }
 
+function hasHtml(str: string): boolean {
+  return /<[a-z][\s\S]*>/i.test(str);
+}
+
+// FIX 3: cap AI summary to 2 sentences
+function twoSentences(text: string): string {
+  const sentences = text.match(/[^.!?]+[.!?]+/g) ?? [];
+  return sentences.slice(0, 2).join(" ").trim() || text;
+}
+
 function formatPctShort(min: number | null, max: number | null): string {
   if (min != null && max != null) return `${min}% – ${max}%`;
   if (min != null) return `${min}%+`;
@@ -62,9 +46,14 @@ function formatPctShort(min: number | null, max: number | null): string {
 function signalDotColor(value: string | null): string {
   if (!value) return "bg-gray-300";
   const v = value.toLowerCase();
+  // FIX 6: market maturity-specific colors
+  if (v === "peak") return "bg-amber-400";
+  if (v === "established" || v === "growing") return "bg-green-500";
+  if (v === "emerging") return "bg-orange-400";
+  // Generic signals
   if (["accumulation", "expansion", "active", "high", "strong"].some((kw) => v.includes(kw)))
     return "bg-green-500";
-  if (["low", "emerging", "early"].some((kw) => v === kw)) return "bg-red-400";
+  if (["low", "early"].some((kw) => v === kw)) return "bg-red-400";
   return "bg-amber-400";
 }
 
@@ -176,7 +165,7 @@ export default function MicroMarketPageContent({
       label: "Buyer Profile",
       value: aiEnrichment?.buyer_profile ?? null,
     },
-    { label: "Growth Momentum", value: hero.keySignals.capitalMomentum },
+    { label: "Market Stage", value: aiEnrichment?.market_maturity ?? null },
   ];
 
   // CHANGE 6: buyer-friendly labels + subtitles, no icons
@@ -285,7 +274,9 @@ export default function MicroMarketPageContent({
               </p>
               {(aiEnrichment?.market_summary || hero.hook) && (
                 <p className="mt-4 text-gray-600 leading-relaxed max-w-xl">
-                  {aiEnrichment?.market_summary || truncateHeroText(hero.hook!)}
+                  {aiEnrichment?.market_summary
+                    ? twoSentences(aiEnrichment.market_summary)
+                    : truncateHeroText(hero.hook!)}
                 </p>
               )}
               {/* RERA trust badges */}
@@ -357,9 +348,13 @@ export default function MicroMarketPageContent({
               </div>
               <div className="pl-6">
                 <p className="text-slate-400 text-xs uppercase tracking-wide">Rental Yield</p>
-                <p className="text-white text-2xl font-bold mt-1">
-                  {formatPctShort(hero.rental.min, hero.rental.max)}
-                </p>
+                {hero.rental.min == null && hero.rental.max == null ? (
+                  <p className="text-slate-400 text-xl font-semibold mt-1">Data pending</p>
+                ) : (
+                  <p className="text-white text-2xl font-bold mt-1">
+                    {formatPctShort(hero.rental.min, hero.rental.max)}
+                  </p>
+                )}
                 <p className="text-slate-400 text-xs mt-1">gross yield</p>
               </div>
             </div>
@@ -393,22 +388,36 @@ export default function MicroMarketPageContent({
         <section className="mt-10 border-t border-gray-100 pt-10">
           <h2 className="text-xl font-bold text-slate-900 mb-4">Location &amp; Connectivity</h2>
           <div className="bg-white border border-slate-200 rounded-xl p-6">
-            {/* Connectivity distance grid */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-              {[
-                { label: "ORR", value: "Direct Access" },
-                { label: "HITEC City", value: "~18 km" },
-                { label: "Financial District", value: "~16 km" },
-                { label: "Airport", value: "~30 km" },
-              ].map((item) => (
-                <div key={item.label} className="bg-slate-50 rounded-lg p-3">
-                  <p className="text-xs text-slate-500 uppercase tracking-wide">
-                    {item.label}
-                  </p>
-                  <p className="text-sm font-semibold text-slate-800 mt-1">{item.value}</p>
-                </div>
-              ))}
-            </div>
+            {/* connectivity_details: render as HTML if it contains tags, otherwise plain text */}
+            {locationData?.connectivityDetails && (
+              hasHtml(locationData.connectivityDetails) ? (
+                <div
+                  className="text-sm text-slate-600 leading-relaxed prose prose-sm max-w-none mb-4"
+                  dangerouslySetInnerHTML={{ __html: locationData.connectivityDetails }}
+                />
+              ) : (
+                <p className="text-sm text-slate-600 leading-relaxed mb-4">
+                  {locationData.connectivityDetails}
+                </p>
+              )
+            )}
+
+            {/* FIX 1: commute_matrix grid from DB */}
+            {locationData?.commuteMatrix && locationData.commuteMatrix.length > 0 && (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                {locationData.commuteMatrix.map((entry) => (
+                  <div key={entry.destination} className="bg-slate-50 rounded-lg p-3">
+                    <p className="text-xs text-slate-500 uppercase tracking-wide">
+                      {entry.destination}
+                    </p>
+                    <p className="text-sm font-semibold text-slate-800 mt-1">{entry.distance}</p>
+                    {entry.time && (
+                      <p className="text-xs text-slate-400 mt-0.5">{entry.time}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
 
             {/* Amenity chips */}
             {amenities && (amenities.schools || amenities.hospitals || amenities.dailyConveniences || amenities.pharmacy) && (
@@ -471,79 +480,18 @@ export default function MicroMarketPageContent({
         {/* 6. MARKET INTELLIGENCE */}
         <section className="py-8 border-t border-gray-100">
           <h2 className="text-2xl font-bold text-slate-900 mb-6">Market Intelligence</h2>
-          <Accordion type="single" collapsible className="space-y-3">
-            <AccordionItem
-              value="why-invest"
-              className="rounded-xl border border-gray-200 bg-white px-4"
-            >
-              <AccordionTrigger className="text-left hover:no-underline">
-                <span className="flex flex-col items-start">
-                  <span className="font-semibold text-slate-900">Why invest here?</span>
-                  <span className="text-xs text-gray-400 font-normal mt-0.5">
-                    {whyInvestSummary}
-                  </span>
-                </span>
-              </AccordionTrigger>
-              <AccordionContent>
-                <WhyThisMarket data={whyThisMarket} />
-              </AccordionContent>
-            </AccordionItem>
-
-            <AccordionItem
-              value="supply-demand"
-              className="rounded-xl border border-gray-200 bg-white px-4"
-            >
-              <AccordionTrigger className="text-left hover:no-underline">
-                <span className="flex flex-col items-start">
-                  <span className="font-semibold text-slate-900">Supply &amp; Demand</span>
-                  <span className="text-xs text-gray-400 font-normal mt-0.5">
-                    {supplyDemandSummary}
-                  </span>
-                </span>
-              </AccordionTrigger>
-              <AccordionContent>
-                <div className="space-y-8">
-                  <SupplyDevelopment data={supplyDevelopment} />
-                  <DemandLiquidity data={demandLiquidity} />
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-
-            <AccordionItem
-              value="developer-activity"
-              className="rounded-xl border border-gray-200 bg-white px-4"
-            >
-              <AccordionTrigger className="text-left hover:no-underline">
-                <span className="flex flex-col items-start">
-                  <span className="font-semibold text-slate-900">Developer Activity</span>
-                  <span className="text-xs text-gray-400 font-normal mt-0.5">
-                    {developerSummary}
-                  </span>
-                </span>
-              </AccordionTrigger>
-              <AccordionContent>
-                <DeveloperCapital data={developerCapital} />
-              </AccordionContent>
-            </AccordionItem>
-
-            <AccordionItem
-              value="risk-outlook"
-              className="rounded-xl border border-gray-200 bg-white px-4"
-            >
-              <AccordionTrigger className="text-left hover:no-underline">
-                <span className="flex flex-col items-start">
-                  <span className="font-semibold text-slate-900">Risk &amp; Outlook</span>
-                  <span className="text-xs text-gray-400 font-normal mt-0.5">{riskSummary}</span>
-                </span>
-              </AccordionTrigger>
-              <AccordionContent>
-                <div className="space-y-8">
-                  <InfrastructureFuture data={infrastructureFuture} />
-                  <RiskOutlook data={riskOutlook} />
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
+          <MarketIntelligenceAccordion
+            whyThisMarket={whyThisMarket}
+            supplyDevelopment={supplyDevelopment}
+            demandLiquidity={demandLiquidity}
+            developerCapital={developerCapital}
+            infrastructureFuture={infrastructureFuture}
+            riskOutlook={riskOutlook}
+            whyInvestSummary={whyInvestSummary}
+            supplyDemandSummary={supplyDemandSummary}
+            developerSummary={developerSummary}
+            riskSummary={riskSummary}
+          />
         </section>
 
         {/* CHANGE 1: FAQ section — before CTA */}
@@ -552,22 +500,7 @@ export default function MicroMarketPageContent({
             <h2 className="text-2xl font-bold text-slate-900 mb-6">
               Frequently Asked Questions
             </h2>
-            <Accordion type="single" collapsible className="space-y-2">
-              {faqs.map((faq, i) => (
-                <AccordionItem
-                  key={i}
-                  value={`faq-${i}`}
-                  className="border border-slate-200 rounded-lg px-4"
-                >
-                  <AccordionTrigger className="text-left font-medium text-slate-800 hover:no-underline py-4">
-                    {faq.question}
-                  </AccordionTrigger>
-                  <AccordionContent className="text-slate-600 pb-4 leading-relaxed">
-                    {faq.answer}
-                  </AccordionContent>
-                </AccordionItem>
-              ))}
-            </Accordion>
+            <FaqAccordion faqs={faqs.filter((f) => f.question?.trim()).slice(0, 6)} />
           </section>
         )}
 
