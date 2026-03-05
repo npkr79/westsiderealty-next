@@ -1,5 +1,31 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Manual Navigation Audit
+
+Run this any time architecture/navigation changes are made:
+
+```bash
+npm run audit:investor-journey
+```
+
+Debug replay mode (visible browser + slower traversal):
+
+```bash
+npm run audit:investor-journey:debug
+```
+
+Optional slow-network simulation:
+
+```bash
+AUDIT_NETWORK_DELAY_MS=250 npm run audit:investor-journey
+```
+
+Outputs are written to:
+
+- `reports/nav-audit/investor-journey-baseline-<timestamp>.json`
+- `reports/nav-audit/investor-journey-baseline-<timestamp>.md`
+- `reports/nav-audit/artifacts/<timestamp>/` (screenshots/DOM snapshots on failures)
+
 ## Getting Started
 
 First, run the development server:

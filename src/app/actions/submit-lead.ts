@@ -2,6 +2,11 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/serviceClient";
+import { routeLeadByOwnership } from "@/services/crmLeadRoutingService";
+import { extractLeadAttribution } from "@/lib/crm/leadAttribution";
+import { mapBehaviorToLead } from "@/services/behaviorLeadMappingService";
+import { toBudgetNumber } from "@/lib/crm/budget";
+import { sanitizeLeadPayload } from "@/lib/crm/sanitizeLeadPayload";
 
 export type LeadType = 
   | "PROJECT_INTEREST"
@@ -18,7 +23,7 @@ export interface SubmitLeadData {
   email?: string | null;
   type: LeadType;
   source_page: string;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
 }
 
 export interface SubmitLeadResponse {
@@ -62,7 +67,11 @@ export async function submitLead(formData: SubmitLeadData): Promise<SubmitLeadRe
       email: string | null;
       type: string;
       source_page: string;
-      details: Record<string, any>;
+      details: Record<string, unknown>;
+      source_type?: string | null;
+      source_name?: string | null;
+      project_id?: string | null;
+      assignment_status?: string | null;
       assigned_to?: string | null;
       assigned_agent_id?: string | null;
       interest_details?: string | null;
@@ -80,6 +89,10 @@ export async function submitLead(formData: SubmitLeadData): Promise<SubmitLeadRe
     };
 
     const details = formData.details || {};
+    const attribution = extractLeadAttribution({
+      sourcePage: formData.source_page,
+      details,
+    });
     const possibleAgentId =
       details.assignedAgentId ||
       details.assigned_agent_id ||
@@ -100,8 +113,18 @@ export async function submitLead(formData: SubmitLeadData): Promise<SubmitLeadRe
       details.message ||
       null;
 
-    insertData.interest_details = interestMessage;
-    insertData.lead_source = details.source || details.lead_source || "website";
+    insertData.interest_details = typeof interestMessage === "string" ? interestMessage : null;
+    insertData.lead_source =
+      (typeof details.source === "string" ? details.source : null) ||
+      (typeof details.lead_source === "string" ? details.lead_source : null) ||
+      attribution.source_name;
+    insertData.source_type = attribution.source_type;
+    insertData.source_name = attribution.source_name;
+    insertData.project_id =
+      (typeof details.project_id === "string" ? details.project_id : null) ||
+      (typeof details.projectId === "string" ? details.projectId : null) ||
+      null;
+    insertData.assignment_status = "pending";
 
     if (possibleAgentId) {
       const { data: agent } = await supabase
@@ -122,7 +145,7 @@ export async function submitLead(formData: SubmitLeadData): Promise<SubmitLeadRe
     });
 
     // Insert into leads table with explicit error handling
-    let error: any = null;
+    let error: { message?: string; code?: string; details?: string; hint?: string } | null = null;
     try {
       const { error: insertError } = await supabase.from("leads").insert(insertData);
       if (insertError?.code === "42501" || /permission denied/i.test(String(insertError?.message ?? ""))) {
@@ -131,19 +154,16 @@ export async function submitLead(formData: SubmitLeadData): Promise<SubmitLeadRe
       } else {
         error = insertError;
       }
-    } catch (dbError: any) {
+    } catch (dbError: unknown) {
+      const dbMessage = dbError instanceof Error ? dbError.message : "Database error occurred. Please try again.";
       // Catch any unexpected errors during the insert operation
       console.error("Unexpected error during Supabase insert:", {
         error: dbError,
-        message: dbError?.message,
-        code: dbError?.code,
-        details: dbError?.details,
-        hint: dbError?.hint,
-        stack: dbError?.stack,
+        message: dbError instanceof Error ? dbError.message : undefined,
       });
       return {
         success: false,
-        error: dbError?.message || "Database error occurred. Please try again.",
+        error: dbMessage,
       };
     }
 
@@ -173,14 +193,60 @@ export async function submitLead(formData: SubmitLeadData): Promise<SubmitLeadRe
       };
     }
 
+    // Mirror to crm_leads with attribution for CRM routing and marketing analytics.
+    const crmLeadPayload = {
+      name: formData.name.trim(),
+      phone: normalizedPhone,
+      email: formData.email?.trim() || null,
+      source_id: attribution.source_name,
+      budget_min: toBudgetNumber(details.budget_min ?? details.budget),
+      budget_max: toBudgetNumber(details.budget_max ?? details.budget),
+      location_preference:
+        (typeof details.location_preference === "string" ? details.location_preference : null) ||
+        (typeof details.location === "string" ? details.location : null),
+      property_type: typeof details.property_type === "string" ? details.property_type : null,
+      buyer_type: typeof details.buyer_type === "string" ? details.buyer_type : null,
+      timeline: typeof details.timeline === "string" ? details.timeline : null,
+      wealth_bracket: typeof details.wealth_bracket === "string" ? details.wealth_bracket : null,
+      investment_style: typeof details.investment_style === "string" ? details.investment_style : null,
+      risk_appetite: typeof details.risk_appetite === "string" ? details.risk_appetite : null,
+      notes: typeof details.notes === "string" ? details.notes : null,
+      utm_source: attribution.utm_source,
+      utm_medium: attribution.utm_medium,
+      utm_campaign: attribution.utm_campaign,
+      utm_term: attribution.utm_term,
+      utm_content: attribution.utm_content,
+      gclid: attribution.gclid,
+      fb_lead_id: attribution.fbclid,
+      landing_page: attribution.landing_page_url,
+      attribution_metadata: attribution.attribution_metadata,
+    };
+    const sanitizedCrmLeadPayload = sanitizeLeadPayload(crmLeadPayload);
+
+    const { data: crmInserted, error: crmInsertError } = await serviceClient
+      .from("crm_leads")
+      .insert(sanitizedCrmLeadPayload)
+      .select("id")
+      .single();
+
+    if (!crmInsertError && crmInserted?.id) {
+      await mapBehaviorToLead(String(crmInserted.id), normalizedPhone);
+      await routeLeadByOwnership({
+        leadId: String(crmInserted.id),
+        sourceType: null,
+        sourceName: null,
+        projectId: null,
+      });
+    }
+
     return {
       success: true,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Unexpected error in submitLead:", error);
     return {
       success: false,
-      error: error?.message || "An unexpected error occurred. Please try again.",
+      error: error instanceof Error ? error.message : "An unexpected error occurred. Please try again.",
     };
   }
 }

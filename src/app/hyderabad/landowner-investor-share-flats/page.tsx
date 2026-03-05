@@ -4,6 +4,7 @@ import { JsonLd } from "@/components/common/SEO";
 import { Breadcrumbs } from "@/components/seo/Breadcrumbs";
 import { getLandownerInvestorProjects } from "@/lib/supabase/landowner-projects";
 import { generateUnifiedSchema } from "@/lib/seo-utils";
+import { buildProjectAbsoluteUrl } from "@/lib/routes";
 import { HeroSection } from "./components/HeroSection";
 import { ExplanationSection } from "./components/ExplanationSection";
 import { BenefitsGrid } from "./components/BenefitsGrid";
@@ -239,7 +240,7 @@ export default async function LandownerInvestorSharePage() {
       item: {
         "@type": "RealEstateListing",
         name: project.project_name,
-        url: `https://www.westsiderealty.in/hyderabad/projects/${project.url_slug}`,
+        url: buildProjectAbsoluteUrl("hyderabad", project.url_slug),
         address: {
           "@type": "PostalAddress",
           addressLocality: project.micro_market?.micro_market_name || "Hyderabad",

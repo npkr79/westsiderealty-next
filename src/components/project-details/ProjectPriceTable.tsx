@@ -1,5 +1,8 @@
 "use client";
 
+import { useEffect } from "react";
+import { trackBehaviorEvent } from "@/lib/analytics/behaviorTracking";
+
 interface SnapshotItem {
   label: string;
   type?: string;
@@ -8,7 +11,7 @@ interface SnapshotItem {
 }
 
 interface ProjectPriceTableProps {
-  projectSnapshotJson?: SnapshotItem[] | any;
+  projectSnapshotJson?: SnapshotItem[] | unknown;
 }
 
 export default function ProjectPriceTable({
@@ -17,6 +20,13 @@ export default function ProjectPriceTable({
   const rows: SnapshotItem[] = Array.isArray(projectSnapshotJson)
     ? projectSnapshotJson
     : [];
+
+  useEffect(() => {
+    if (!rows.length) return;
+    void trackBehaviorEvent("pricing_view", {
+      row_count: rows.length,
+    });
+  }, [rows.length]);
 
   if (!rows.length) return null;
 

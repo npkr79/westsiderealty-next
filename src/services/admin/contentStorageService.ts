@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import type { Json } from "@/integrations/supabase/types";
+import { buildProjectUrl } from "@/lib/routes";
 
 export interface GeneratedContent {
   seo_title: string;
@@ -497,7 +498,7 @@ export const contentStorageService = {
           }
 
           // Use canonical project URL: /citySlug/projects/projectSlug
-          const constructedUrl = `/${city.url_slug}/projects/${project.url_slug}`;
+          const constructedUrl = buildProjectUrl(city.url_slug, project.url_slug);
           console.log('Constructed URL:', constructedUrl);
           console.log('=== End of URL construction ===');
 

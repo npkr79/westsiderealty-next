@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/select";
 import { createClient } from "@/lib/supabase/client";
 import { parseSearchQuery } from "@/lib/search/queryParser";
+import { buildProjectUrl } from "@/lib/routes";
 
 interface SearchSuggestion {
   id: string;
@@ -174,10 +175,9 @@ export default function TabbedSearch() {
 
       const [projectsResult, developersResult, microMarketsResult] = await Promise.all([
         supabase
-          .from("projects")
-          .select("id, project_name, url_slug, city:cities(url_slug), micro_market:micro_markets!projects_micromarket_id_fkey(url_slug)")
+          .from("v_micro_market_projects")
+          .select("id, project_name, url_slug, city_slug")
           .ilike("project_name", `%${query}%`)
-          .or("status.ilike.published,status.ilike.%under construction%")
           .limit(5),
         supabase
           .from("developers")
@@ -196,22 +196,13 @@ export default function TabbedSearch() {
       const suggestionsList: SearchSuggestion[] = [];
 
       if (projectsResult.data) {
-        projectsResult.data.forEach((p: any) => {
-          // Skip projects without url_slug to avoid broken links
-          if (!p.url_slug) return;
-          
-          const citySlug = Array.isArray(p.city) ? p.city[0]?.url_slug : p.city?.url_slug;
-          // Skip if citySlug or url_slug is missing
-          if (!citySlug || !p.url_slug) return;
-          
-          // Use canonical URL format: /citySlug/projects/projectSlug
-          const url = `/${citySlug}/projects/${p.url_slug}`;
-
+        projectsResult.data.forEach((p: { id: string; project_name: string; url_slug: string; city_slug: string }) => {
+          if (!p.url_slug || !p.city_slug) return;
           suggestionsList.push({
             id: p.id,
             name: p.project_name,
             type: "project",
-            url,
+            url: buildProjectUrl(p.city_slug, p.url_slug),
           });
         });
       }

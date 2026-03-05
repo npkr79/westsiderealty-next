@@ -115,8 +115,7 @@ export default async function ProjectIntelligenceTemplate({
               bhkConfig={(project as any).bhk_config}
               carpetArea={(project as any).carpet_area}
               possessionDate={(project as any).possession_date || (project as any).possession_date_text}
-              propertyType={(project as any).property_type || (project as any).property_types}
-              propertyTypes={(project as any).property_types}
+              configurationDisplay={(project as any).configuration_display}
               priceMin={(project as any).price_min}
               priceMax={(project as any).price_max}
               priceRangeText={project.price_range_text}

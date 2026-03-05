@@ -10,6 +10,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import CityHubBacklink from "@/components/seo/CityHubBacklink";
 import { buildMetadata } from "@/components/common/SEO";
 import type { ProjectWithRelations } from "@/services/projectService";
+import { buildProjectUrl } from "@/lib/routes";
+import { getProjectsFromViewForCategory } from "@/services/microMarketProjectsService";
 
 // --- CONFIGURATION ---
 const CATEGORY_FILTERS: Record<string, {
@@ -118,37 +120,26 @@ export default async function CategoryComparisonPage({ params }: PageProps) {
 
   if (!microMarket) notFound();
 
-  // 3. Fetch ALL Projects for this Market (Simpler Query = Safer)
-  // We removed the complex .or() filters causing the crash.
-  const { data: projects, error: projError } = await supabase
-    .from("projects")
-    .select(`
-      *,
-      city:cities(city_name, url_slug),
-      micro_market:micro_markets(micro_market_name, url_slug),
-      developer:developers(developer_name, url_slug)
-    `)
-    .eq("micro_market_id", microMarket.id)
-    .order("display_order", { ascending: true });
+  // 3. Fetch Projects from v_micro_market_projects (RERA-driven, ranked)
+  const viewRows = await getProjectsFromViewForCategory(citySlug, slug);
 
-  if (projError) console.error("[Page] Projects Error:", projError);
-
-  console.log(`[Page] Fetched ${projects?.length || 0} projects`);
+  let projects = viewRows;
+  if (categoryConfig.status) {
+    projects = viewRows.filter(
+      (p) =>
+        (p.completion_status && p.completion_status.toLowerCase().includes(categoryConfig.status!.toLowerCase())) ||
+        (p.status && p.status.toLowerCase().includes(categoryConfig.status!.toLowerCase()))
+    );
+  }
 
   // 4. Heavy Filtering in JavaScript (Reliable)
-  const filteredProjects: ProjectWithRelations[] = (projects || [])
-    .filter((p: any) => {
+  const filteredProjects: ProjectWithRelations[] = projects
+    .filter((p) => {
       
-      // Filter Status (Moved from DB to here)
-      if (categoryConfig.status) {
-        const s1 = p.status?.toLowerCase() || "";
-        const s2 = p.completion_status?.toLowerCase() || "";
-        const target = categoryConfig.status.toLowerCase();
-        if (!s1.includes(target) && !s2.includes(target)) return false;
-      } else {
-        // Default: Show Published or Under Construction
+      // Filter Status (when not pre-filtered)
+      if (!categoryConfig.status) {
         const s = p.status?.toLowerCase() || "";
-        if (!s.includes('published') && !s.includes('construction')) return false;
+        if (!s.includes("published") && !s.includes("construction")) return false;
       }
 
       // Filter Type
@@ -173,8 +164,8 @@ export default async function CategoryComparisonPage({ params }: PageProps) {
       if (categoryConfig.minPrice) {
         if (p.min_price && p.min_price >= categoryConfig.minPrice) return true;
         if (!p.min_price && p.price_range_text) {
-           const match = p.price_range_text.match(/(\d+\.?\d*)\s*Cr/i);
-           if (match && (parseFloat(match[1]) * 10000000) >= categoryConfig.minPrice) return true;
+          const match = String(p.price_range_text).match(/(\d+\.?\d*)\s*Cr/i);
+          if (match && parseFloat(match[1]) * 10000000 >= categoryConfig.minPrice) return true;
         }
         if (p.min_price && p.min_price < categoryConfig.minPrice) return false;
       }
@@ -183,9 +174,15 @@ export default async function CategoryComparisonPage({ params }: PageProps) {
         if (p.max_price && p.max_price <= categoryConfig.maxPrice) return true;
         if (p.max_price && p.max_price > categoryConfig.maxPrice) return false;
       }
-      
+
       return true;
-    }) as ProjectWithRelations[];
+    })
+    .map((p) => ({
+      ...p,
+      city,
+      micro_market: { micro_market_name: p.micro_market_name || microMarket.micro_market_name, url_slug: p.micro_market },
+      developer: p.developer_name ? { developer_name: p.developer_name, url_slug: p.developer_url_slug || "" } : null,
+    })) as ProjectWithRelations[];
 
   // 5. Render
   const pageTitle = `${categoryConfig.title} ${microMarket.micro_market_name}`;
@@ -219,11 +216,7 @@ export default async function CategoryComparisonPage({ params }: PageProps) {
                   {filteredProjects.map((project) => (
                     <ProjectCard
                       key={project.id}
-                      project={{
-                        ...project,
-                        city: Array.isArray(project.city) ? project.city[0] : (project.city || city),
-                        micro_market: Array.isArray(project.micro_market) ? project.micro_market[0] : (project.micro_market || microMarket)
-                      }}
+                      project={project}
                       citySlug={city.url_slug}
                     />
                   ))}
@@ -241,7 +234,7 @@ export default async function CategoryComparisonPage({ params }: PageProps) {
                     {filteredProjects.map((project) => (
                       <TableRow key={project.id}>
                         <TableCell className="font-medium text-primary">
-                          <Link href={`/${city.url_slug}/projects/${project.url_slug}`}>{project.project_name}</Link>
+                          <Link href={buildProjectUrl(city.url_slug, project.url_slug)}>{project.project_name}</Link>
                         </TableCell>
                         <TableCell className="font-semibold">{project.price_range_text || "Enquire"}</TableCell>
                         <TableCell className="text-muted-foreground">{formatConfigs(project)}</TableCell>

@@ -27,24 +27,37 @@ interface SmartLinkGridProps {
   mode?: "microMarket" | "developer" | "city" | "microMarketDeveloper";
 }
 
+type SmartLinkItem = { url: string; label: string };
+
+function dedupeLinks(links: SmartLinkItem[]): SmartLinkItem[] {
+  const seen = new Set<string>();
+  return links.filter((link) => {
+    const key = link.url.trim().toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 /**
  * Render a single smartlink grid section
  */
 function renderGridSection(
   title: string,
-  links: Array<{ url: string; label: string }>,
+  links: SmartLinkItem[],
   citySlug: string,
   locationName: string
 ) {
-  if (links.length === 0) return null;
+  const uniqueLinks = dedupeLinks(links);
+  if (uniqueLinks.length === 0) return null;
 
   return (
     <div>
       <h3 className="text-base font-semibold text-gray-900 mb-3">{title}</h3>
       <div className="space-y-2">
-        {links.map((link) => (
+        {uniqueLinks.map((link, index) => (
           <Link
-            key={link.url}
+            key={`${link.url}::${index}`}
             href={link.url}
             className="text-sm text-gray-600 hover:text-blue-600 transition-colors py-1 block"
           >
@@ -65,7 +78,7 @@ function generateSmartLinks(
   locationName: string,
   context?: { microMarketSlug?: string; developerSlug?: string }
 ) {
-  const links: Array<{ category: string; title: string; links: Array<{ url: string; label: string }> }> = [];
+  const links: Array<{ category: string; title: string; links: SmartLinkItem[] }> = [];
 
   // Category 1: Discover Dream Home (Property Types)
   if (stats.propertyTypes.length > 0) {
@@ -80,7 +93,7 @@ function generateSmartLinks(
       links.push({
         category: "discover",
         title: `Discover Dream Home in ${locationName} ${citySlug === "hyderabad" ? "Hyderabad" : citySlug.charAt(0).toUpperCase() + citySlug.slice(1)}`,
-        links: propertyTypeLinks
+      links: dedupeLinks(propertyTypeLinks)
       });
     }
   }
@@ -96,7 +109,7 @@ function generateSmartLinks(
       links.push({
         category: "choose",
         title: `Choose Ideal Home in ${locationName} ${citySlug === "hyderabad" ? "Hyderabad" : citySlug.charAt(0).toUpperCase() + citySlug.slice(1)}`,
-        links: budgetLinks
+        links: dedupeLinks(budgetLinks)
       });
     }
   }
@@ -112,7 +125,7 @@ function generateSmartLinks(
       links.push({
         category: "budget",
         title: `Find Home by Budget in ${locationName} ${citySlug === "hyderabad" ? "Hyderabad" : citySlug.charAt(0).toUpperCase() + citySlug.slice(1)}`,
-        links: priceLinks
+        links: dedupeLinks(priceLinks)
       });
     }
   }
@@ -128,7 +141,7 @@ function generateSmartLinks(
       links.push({
         category: "bhk",
         title: `Search Home by BHK in ${locationName} ${citySlug === "hyderabad" ? "Hyderabad" : citySlug.charAt(0).toUpperCase() + citySlug.slice(1)}`,
-        links: bhkLinks
+        links: dedupeLinks(bhkLinks)
       });
     }
   }
@@ -144,7 +157,7 @@ function generateSmartLinks(
       links.push({
         category: "projects",
         title: `Explore New Projects in ${locationName} ${citySlug === "hyderabad" ? "Hyderabad" : citySlug.charAt(0).toUpperCase() + citySlug.slice(1)}`,
-        links: statusLinks
+        links: dedupeLinks(statusLinks)
       });
     }
   }
@@ -160,7 +173,7 @@ function generateSmartLinks(
       links.push({
         category: "view",
         title: `Find Perfect View Home in ${locationName} ${citySlug === "hyderabad" ? "Hyderabad" : citySlug.charAt(0).toUpperCase() + citySlug.slice(1)}`,
-        links: viewLinks
+        links: dedupeLinks(viewLinks)
       });
     }
   }
@@ -350,7 +363,7 @@ export default async function SmartLinkGrid({
       developerSlug: developerSlug || undefined,
     };
 
-    const sections: Array<{ category: string; title: string; links: Array<{ url: string; label: string }> }> = [];
+    const sections: Array<{ category: string; title: string; links: SmartLinkItem[] }> = [];
 
     // For microMarketDeveloper mode, show both micro market and developer sections
     if (actualMode === "microMarketDeveloper") {
@@ -380,13 +393,13 @@ export default async function SmartLinkGrid({
           </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {sections.slice(0, 6).map((section) => (
-              <div key={section.category}>
+            {sections.slice(0, 6).map((section, sectionIndex) => (
+              <div key={`${section.category}::${section.title}::${sectionIndex}`}>
                 <h3 className="text-base font-semibold text-gray-900 mb-3">{section.title}</h3>
                 <div className="space-y-2">
-                  {section.links.map((link) => (
+                  {dedupeLinks(section.links).map((link, linkIndex) => (
                     <Link
-                      key={link.url}
+                      key={`${link.url}::${linkIndex}`}
                       href={link.url}
                       className="text-sm text-gray-600 hover:text-blue-600 transition-colors py-1 block"
                     >

@@ -2,6 +2,7 @@ import { MetadataRoute } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { getLocalityStats, generateFilterSlug } from "@/lib/utils/localityStats";
 import { parseJsonb, asArray } from "@/lib/parse-jsonb";
+import { buildProjectAbsoluteUrl } from "@/lib/routes";
 
 const baseUrl = "https://www.westsiderealty.in";
 
@@ -317,7 +318,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         const citySlug = cityData?.url_slug;
         if (p.url_slug && citySlug) {
           urls.push({
-            url: `${baseUrl}/${citySlug}/projects/${p.url_slug}`,
+            url: buildProjectAbsoluteUrl(citySlug, p.url_slug),
             lastModified: p.updated_at ? new Date(p.updated_at) : new Date(),
             changeFrequency: "weekly",
             priority: 0.8,

@@ -2,6 +2,7 @@
 
 import { JsonLd } from "@/components/common/SEO";
 import type { ProjectWithRelations } from "@/services/projectService";
+import { buildProjectAbsoluteUrl } from "@/lib/routes";
 
 interface ProjectSEOProps {
   project: ProjectWithRelations;
@@ -21,7 +22,7 @@ export default function ProjectSEO({
   projectSlug,
 }: ProjectSEOProps) {
   // Use canonical project URL: /citySlug/projects/projectSlug
-  const canonicalUrl = `https://www.westsiderealty.in/${citySlug}/projects/${projectSlug}`;
+  const canonicalUrl = buildProjectAbsoluteUrl(citySlug, projectSlug);
 
   const schema = {
     "@context": "https://schema.org",

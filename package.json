@@ -7,7 +7,11 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "audit:investor-journey": "AUDIT_BASE_URL=\"http://localhost:3000\" tsx scripts/audit-investor-journey.ts",
+    "audit:investor-journey:debug": "AUDIT_DEBUG=1 AUDIT_BASE_URL=\"http://localhost:3000\" tsx scripts/audit-investor-journey.ts",
+    "audit:reliability-dashboard": "tsx scripts/build-audit-reliability-dashboard.ts",
     "check:routes": "tsx scripts/check-routes.ts",
+    "check:links": "tsx --env-file .env.local scripts/check-links.ts",
     "submit-sitemap": "tsx scripts/submit-sitemap.ts",
     "generate-favicons": "tsx scripts/generate-favicons.ts",
     "generate-favicons-sharp": "node scripts/favicon-with-sharp.js",
@@ -15,6 +19,9 @@
     "validate-favicon-implementation": "node scripts/validate-favicon-implementation.js"
   },
   "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
     "@hookform/resolvers": "^5.2.2",
     "@next/third-parties": "^16.1.1",
     "@radix-ui/react-accordion": "^1.2.12",
@@ -39,6 +46,7 @@
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "embla-carousel-react": "^8.6.0",
+    "framer-motion": "^12.33.0",
     "googleapis": "^144.0.0",
     "lucide-react": "^0.561.0",
     "next": "16.0.10",
@@ -50,6 +58,7 @@
     "recharts": "^3.6.0",
     "sharp": "^0.34.5",
     "sonner": "^2.0.7",
+    "swr": "^2.4.0",
     "tailwind-merge": "^3.4.0",
     "zod": "^4.2.0"
   },
@@ -61,6 +70,7 @@
     "autoprefixer": "^10.4.23",
     "eslint": "^9",
     "eslint-config-next": "16.0.10",
+    "playwright": "^1.58.2",
     "tailwindcss": "^4",
     "tsx": "^4.19.2",
     "typescript": "^5"

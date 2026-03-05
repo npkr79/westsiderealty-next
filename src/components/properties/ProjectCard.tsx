@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import type { ProjectWithRelations } from "@/services/projectService";
 import ImageWithFallback from "@/components/common/ImageWithFallback";
 import { parseJsonb, asArray } from "@/lib/parse-jsonb";
+import { buildProjectUrl } from "@/lib/routes";
 
 interface ProjectCardProps {
   project: ProjectWithRelations | any;
@@ -35,7 +36,7 @@ export default function ProjectCard({ project, citySlug }: ProjectCardProps) {
   // For Goa properties, use /goa/buy/ URL format
   const href = (project as any)._isGoaProperty 
     ? `/goa/buy/${project.url_slug}`
-    : `/${validCitySlug}/projects/${project.url_slug}`;
+    : buildProjectUrl(validCitySlug, project.url_slug);
   
   // Get primary image - use parseJsonb to safely extract from gallery_images_json
   // Parse gallery_images_json if it exists

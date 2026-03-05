@@ -152,6 +152,9 @@ export default function ProjectDetailClient(props: { citySlug: string; projectSl
   }
 
   const microMarketSlug = project.micro_market?.url_slug;
+  const displayDeveloperName =
+    String((project as any).display_developer_name ?? project.developer?.developer_name ?? (project as any).developer_name ?? "").trim() ||
+    undefined;
   const landmarks = Array.isArray((project as any).landmarks_json)
     ? (project as any).landmarks_json
     : [];
@@ -196,7 +199,12 @@ export default function ProjectDetailClient(props: { citySlug: string; projectSl
             />
 
             {/* Trust Strip */}
-            <TrustStrip />
+            <TrustStrip
+              reraId={(project as any).rera_id}
+              developerName={displayDeveloperName}
+              developerYears={project.developer?.years_in_business ?? null}
+              possession={(project as any).possession_date_text || (project as any).rera_possession_date}
+            />
 
             {/* Project Overview */}
             <ProjectOverviewSection
@@ -260,10 +268,10 @@ export default function ProjectDetailClient(props: { citySlug: string; projectSl
             {project.developer && (
               <section>
                 <h2 className="text-2xl font-bold text-slate-900 mb-6">
-                  About {project.developer.developer_name}
+                  About {displayDeveloperName || project.developer.developer_name}
                 </h2>
                 <AboutDeveloperSection
-                  developerName={project.developer.developer_name}
+                  developerName={displayDeveloperName || project.developer.developer_name}
                   citySlug={citySlug}
                   developerSlug={project.developer.url_slug}
                   logoUrl={project.developer.logo_url}
@@ -384,7 +392,7 @@ export default function ProjectDetailClient(props: { citySlug: string; projectSl
             <BottomLeadFormSection
               projectName={project.project_name}
               projectId={project.id}
-              developerName={project.developer?.developer_name}
+              developerName={displayDeveloperName}
               brochureUrl={brochureUrl || undefined}
             />
           </div>
@@ -416,7 +424,7 @@ export default function ProjectDetailClient(props: { citySlug: string; projectSl
             <ProjectLeadForm
               projectName={project.project_name}
               projectId={project.id}
-              developerName={project.developer?.developer_name}
+              developerName={displayDeveloperName}
               brochureUrl={brochureUrl || undefined}
             />
           </DialogContent>

@@ -6,6 +6,7 @@
  */
 
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/serviceClient";
 import { parseJsonb, asArray } from "@/lib/parse-jsonb";
 
 export interface LocalityStats {
@@ -15,6 +16,30 @@ export interface LocalityStats {
   statuses: string[]; // e.g., ["Under Construction", "Ready to Move", "New Launch"]
   totalProjects: number;
 }
+
+const EMPTY_LOCALITY_STATS: LocalityStats = {
+  residentialTypes: [],
+  commercialTypes: [],
+  priceRanges: [],
+  statuses: [],
+  totalProjects: 0,
+};
+
+const isPermissionLikeError = (error: unknown): boolean => {
+  if (!error || typeof error !== "object") return false;
+  const err = error as Record<string, unknown>;
+  const message = String(err.message ?? "").toLowerCase();
+  const code = String(err.code ?? "");
+  const status = Number(err.status ?? 0);
+  const hasNoFields = Object.keys(err).length === 0;
+
+  return (
+    code === "42501" ||
+    status === 403 ||
+    message.includes("permission denied") ||
+    hasNoFields
+  );
+};
 
 // Residential property types (case-insensitive matching)
 const RESIDENTIAL_KEYWORDS = ["apartment", "villa", "gated community", "plot", "residential"];
@@ -116,14 +141,8 @@ export async function getLocalityStats(
 ): Promise<LocalityStats> {
   // Validate inputs
   if (!microMarketId || !cityId) {
-    console.error("[getLocalityStats] Missing required IDs:", { microMarketId, cityId });
-    return {
-      residentialTypes: [],
-      commercialTypes: [],
-      priceRanges: [],
-      statuses: [],
-      totalProjects: 0,
-    };
+    console.warn("[getLocalityStats] Missing required IDs", { microMarketId, cityId });
+    return EMPTY_LOCALITY_STATS;
   }
 
   const supabase = await createClient();
@@ -133,36 +152,40 @@ export async function getLocalityStats(
   // Fetch all projects for this micro-market (need price data too)
   // Use same status filter pattern as projectService.getProjectsByMicroMarket
   // FIXED: Use correct column names min_price and max_price
-  const { data: projects, error } = await supabase
-    .from("projects")
-    .select(`
-      id,
-      property_types,
-      min_price,
-      max_price,
-      price_range_text,
-      completion_status,
-      status,
-      page_status
-    `)
-    .eq("micro_market_id", microMarketId)
-    .eq("city_id", cityId)
-    .or("status.ilike.published,status.ilike.%under construction%");
+  const runProjectsQuery = (client: Awaited<ReturnType<typeof createClient>>) =>
+    client
+      .from("projects")
+      .select(`
+        id,
+        property_types,
+        min_price,
+        max_price,
+        price_range_text,
+        completion_status,
+        status,
+        page_status
+      `)
+      .eq("micro_market_id", microMarketId)
+      .eq("city_id", cityId)
+      .or("status.ilike.published,status.ilike.%under construction%");
+
+  let { data: projects, error } = await runProjectsQuery(supabase);
+
+  if (error && isPermissionLikeError(error)) {
+    const serviceClient = createServiceClient();
+    const serviceResult = await runProjectsQuery(serviceClient);
+    projects = serviceResult.data;
+    error = serviceResult.error;
+  }
 
   if (error) {
-    console.error("[getLocalityStats] Error fetching projects:", error, {
+    console.warn("[getLocalityStats] Failed to fetch projects", {
       microMarketId,
       cityId,
-      errorCode: error.code,
-      errorMessage: error.message,
+      errorCode: error.code ?? "unknown",
+      errorMessage: error.message ?? "Unknown error",
     });
-    return {
-      residentialTypes: [],
-      commercialTypes: [],
-      priceRanges: [],
-      statuses: [],
-      totalProjects: 0,
-    };
+    return EMPTY_LOCALITY_STATS;
   }
 
   console.log(`[getLocalityStats] Found ${projects?.length || 0} projects for microMarketId=${microMarketId}, cityId=${cityId}`);

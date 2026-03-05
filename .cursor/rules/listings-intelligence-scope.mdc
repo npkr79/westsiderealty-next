@@ -1,0 +1,36 @@
+---
+description: Keep listings intelligence advisory and conversion-first
+alwaysApply: true
+---
+
+# Listings Intelligence Scope Guardrail
+
+This repository's listings experience is an advisory-led, high-conversion product.
+
+## Do
+
+- Use deterministic, high-level signals that improve buyer decisions:
+  - buyer fit
+  - corridor positioning
+  - livability clarity
+  - risk and upside
+  - developer confidence
+  - micro-market context
+- Prioritize work that improves:
+  - trust
+  - clarity
+  - decision confidence
+  - lead capture
+- Focus roadmap on conversion optimization, personalization, lead quality/qualification, advisory workflows, CRM and funnel analytics.
+
+## Do Not Build In Listings
+
+- Numeric scoring models presented as institutional analytics
+- Institutional dashboards or portfolio analytics
+- Forecasting or supply-shock UI
+- Heavy quantitative frameworks intended for investment research products
+
+## Architecture Intent
+
+- The institutional intelligence layer evolves in a separate system.
+- Listings should consume only decision-friendly summary signals, not expose full analytics machinery.

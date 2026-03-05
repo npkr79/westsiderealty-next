@@ -11,13 +11,16 @@ interface ProjectStickyCardProps {
   bhkConfig?: string | null;
   carpetArea?: string | number | null;
   possessionDate?: string | null;
-  propertyType?: string | null;
-  propertyTypes?: string[] | any;
+  configurationDisplay?: string | null;
   priceMin?: number | null;
   priceMax?: number | null;
   priceRangeText?: string | null;
   reraNumber?: string | null;
   developerName?: string | null;
+  microMarketName?: string | null;
+  demandContext?: string;
+  advisoryYears?: number | null;
+  buyersHelped?: number | null;
   onCallBack?: () => void;
   onBrochure?: () => void;
 }
@@ -28,13 +31,16 @@ export default function ProjectStickyCard({
   bhkConfig,
   carpetArea,
   possessionDate,
-  propertyType,
-  propertyTypes,
+  configurationDisplay,
   priceMin,
   priceMax,
   priceRangeText,
   reraNumber,
   developerName,
+  microMarketName,
+  demandContext,
+  advisoryYears,
+  buyersHelped,
   onCallBack,
   onBrochure,
 }: ProjectStickyCardProps) {
@@ -53,8 +59,14 @@ export default function ProjectStickyCard({
     (priceMin && priceMax ? `₹${(priceMin / 10000000).toFixed(1)} - ${(priceMax / 10000000).toFixed(1)} Cr` : null) ||
     (priceMin ? `From ₹${(priceMin / 10000000).toFixed(1)} Cr` : null);
 
+  const demandLine =
+    demandContext ||
+    `Buyer activity remains active in ${microMarketName || "this micro-market"}, with serious demand focused on quality inventory.`;
+
+  const socialProofLine = `${buyersHelped || 1200}+ buyers advised • ${advisoryYears || 12}+ years in market • Strong local corridor expertise`;
+
   return (
-    <Card className="shadow-lg">
+    <Card className="border-slate-300 shadow-[0_20px_45px_-20px_rgba(15,23,42,0.55)]">
       <CardContent className="p-4 lg:p-6 space-y-4 lg:space-y-6">
         {/* Project Name */}
         <div>
@@ -109,36 +121,15 @@ export default function ProjectStickyCard({
             </div>
           )}
 
-          {(propertyType || propertyTypes) && (() => {
-            // Parse property types - handle array or string
-            let typesToDisplay: string[] = [];
-            if (Array.isArray(propertyTypes)) {
-              typesToDisplay = propertyTypes;
-            } else if (typeof propertyTypes === 'string') {
-              try {
-                const parsed = JSON.parse(propertyTypes);
-                typesToDisplay = Array.isArray(parsed) ? parsed : [parsed];
-              } catch {
-                typesToDisplay = [propertyTypes];
-              }
-            } else if (propertyType) {
-              typesToDisplay = [propertyType];
-            }
-
-            if (typesToDisplay.length === 0) return null;
-
-            return (
-              <div className="flex items-center gap-3">
-                <Building2 className="h-5 w-5 text-muted-foreground" />
-                <div className="flex-1">
-                  <div className="text-xs text-muted-foreground">Property Type</div>
-                  <div className="font-semibold text-foreground">
-                    {typesToDisplay.join(" | ")}
-                  </div>
-                </div>
+          {configurationDisplay && (
+            <div className="flex items-center gap-3">
+              <Building2 className="h-5 w-5 text-muted-foreground" />
+              <div className="flex-1">
+                <div className="text-xs text-muted-foreground">Configuration</div>
+                <div className="font-semibold text-foreground">{configurationDisplay}</div>
               </div>
-            );
-          })()}
+            </div>
+          )}
         </div>
 
         {/* Developer & RERA */}
@@ -161,12 +152,16 @@ export default function ProjectStickyCard({
 
         {/* CTA Buttons */}
         <div className="space-y-2">
+          <div className="rounded-md border border-slate-300 bg-slate-100 p-3">
+            <p className="text-xs font-semibold text-slate-900">Decision support access</p>
+            <p className="mt-1 text-[11px] text-slate-700">{socialProofLine}</p>
+          </div>
           <Button
             onClick={onBrochure}
-            className="w-full bg-primary hover:bg-primary/90"
+            className="w-full bg-slate-900 text-white hover:bg-slate-800"
             size="default"
           >
-            Get Brochure
+            Instant Brochure & Floor Plans
           </Button>
           <Button
             onClick={onCallBack}
@@ -174,8 +169,11 @@ export default function ProjectStickyCard({
             className="w-full"
             size="default"
           >
-            Request Call Back
+            Quick Callback in 10 Minutes
           </Button>
+          <p className="text-[11px] text-slate-500 leading-relaxed">
+            {demandLine}
+          </p>
         </div>
       </CardContent>
     </Card>
