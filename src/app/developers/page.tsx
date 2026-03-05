@@ -15,6 +15,7 @@ type Developer = {
 export default function DevelopersPage() {
   const [developers, setDevelopers] = useState<Developer[]>([]);
   const [projectCount, setProjectCount] = useState<number | null>(null);
+  const [developerCount, setDeveloperCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -25,20 +26,23 @@ export default function DevelopersPage() {
     (async () => {
       setLoading(true);
 
-      // Fetch all developers (only 37, no pagination needed)
-      const { data } = await supabase
-        .from("v_developer_brand_profile")
-        .select("brand_name, url_slug, total_projects")
-        .order("total_projects", { ascending: false });
-
-      // Real project count from rera_projects
-      const { count } = await supabase
-        .from("rera_projects")
-        .select("id", { count: "exact", head: true })
-        .eq("city_slug", "hyderabad");
+      const [{ data }, { count: reraCount }, { count: devCount }] = await Promise.all([
+        supabase
+          .from("v_developer_brand_profile")
+          .select("brand_name, url_slug, total_projects")
+          .order("total_projects", { ascending: false }),
+        supabase
+          .from("rera_projects")
+          .select("id", { count: "exact", head: true })
+          .eq("city_slug", "hyderabad"),
+        supabase
+          .from("developers")
+          .select("id", { count: "exact", head: true }),
+      ]);
 
       setDevelopers(((data as any[]) ?? []) as Developer[]);
-      setProjectCount(count);
+      setProjectCount(reraCount);
+      setDeveloperCount(devCount);
       setLoading(false);
     })();
   }, []);
@@ -60,7 +64,7 @@ export default function DevelopersPage() {
           {!loading && (
             <div className="flex flex-wrap gap-4 mt-10">
               <div className="rounded-xl border border-white/10 bg-white/4 px-5 py-3">
-                <p className="text-2xl font-bold text-white">{developers.length}</p>
+                <p className="text-2xl font-bold text-white">{developerCount != null ? `${developerCount}+` : "500+"}</p>
                 <p className="text-xs text-slate-500 uppercase tracking-wide mt-0.5">Builders tracked</p>
               </div>
               {projectCount != null && (
