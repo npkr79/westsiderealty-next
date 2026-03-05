@@ -5,7 +5,6 @@ import { projectInsightsService } from "@/services/projectInsightsService";
 import { optimizeSupabaseImage, getHeroImageUrl } from "@/utils/imageOptimization";
 import { buildProjectAbsoluteUrl, buildProjectUrl } from "@/lib/routes";
 import ProjectPageV2 from "@/components/project-details/ProjectPageV2";
-import { Skeleton } from "@/components/ui/skeleton";
 import { createServiceClient } from "@/lib/supabase/serviceClient";
 
 export const dynamic = "force-dynamic";
@@ -57,7 +56,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       return { title: "Project Not Found" };
     }
 
-    const project = await projectService.getCityLevelProjectBySlug(citySlug, projectSlug);
+    let project = await projectService.getCityLevelProjectBySlug(citySlug, projectSlug);
+    if (!project) {
+      project = await projectService.getOldProjectBySlug(citySlug, projectSlug);
+    }
 
     if (!project) {
       return { title: "Project Not Found" };
@@ -122,26 +124,17 @@ export default async function ProjectDetailPage({ params }: PageProps) {
   let project = await projectService.getCityLevelProjectBySlug(citySlug, projectSlug);
 
   if (!project) {
+    // Try the legacy projects table as fallback (slugs that aren't in the enriched MV yet)
+    project = await projectService.getOldProjectBySlug(citySlug, projectSlug);
+  }
+
+  if (!project) {
+    // Check if the project exists under a different city slug and redirect
     const resolvedCity = await projectService.findProjectCityBySlug(projectSlug);
     if (resolvedCity && resolvedCity !== citySlug) {
       redirect(buildProjectUrl(resolvedCity, projectSlug));
     }
-    return (
-      <div className="min-h-screen bg-background">
-        <div className="container mx-auto px-4 py-8 space-y-6">
-          <Skeleton className="h-8 w-56" />
-          <Skeleton className="h-[340px] w-full rounded-xl" />
-          <div className="grid grid-cols-1 lg:grid-cols-[65%_35%] gap-8">
-            <div className="space-y-6">
-              <Skeleton className="h-28 w-full rounded-xl" />
-              <Skeleton className="h-28 w-full rounded-xl" />
-              <Skeleton className="h-28 w-full rounded-xl" />
-            </div>
-            <Skeleton className="h-80 w-full rounded-xl" />
-          </div>
-        </div>
-      </div>
-    );
+    notFound();
   }
 
   // Fetch developer RERA projects in parallel with other data

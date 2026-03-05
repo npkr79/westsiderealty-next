@@ -485,6 +485,17 @@ export const projectService = {
   },
 
   /**
+   * Fallback: look up a project in the old `projects` table.
+   * Used when the enriched MV doesn't have the slug yet.
+   */
+  async getOldProjectBySlug(
+    citySlug: string,
+    projectSlug: string
+  ): Promise<ProjectWithRelations | null> {
+    return fetchProjectFromProjectsTable(citySlug, projectSlug);
+  },
+
+  /**
    * Get city-level project by slug (no micro-market)
    * Query by url_slug only, validate city match in code
    */
