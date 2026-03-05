@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { mapRoleNameToCrmRole, getDashboardPathForRole } from "@/lib/crm/roles";
 
-export default function CrmLoginPage() {
+function CrmLoginContent() {
   const getErrorMessage = (errorValue: unknown, fallback: string): string =>
     errorValue instanceof Error ? errorValue.message : fallback;
 
@@ -150,6 +150,14 @@ export default function CrmLoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function CrmLoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-slate-950" />}>
+      <CrmLoginContent />
+    </Suspense>
   );
 }
 

@@ -9,106 +9,80 @@ import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/s
 import { ChevronDown, Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { siteImagesService } from "@/services/admin/siteImagesService";
-const primaryNavLinks = [
-  {
-    label: "Invest",
-    href: "/investor-dashboard",
-    dropdown: {
-      title: "Institutional Opportunities",
-      sections: [
-        {
-          label: "Institutional Opportunities",
-          href: "/investor-dashboard",
-          highlight: "Institutional deals",
-        },
-        { label: "Early Alpha", href: "/projects?signal=early-alpha", highlight: "Early alpha" },
-        { label: "Core Allocation", href: "/projects?allocation=core" },
-        { label: "Tactical Allocation", href: "/projects?allocation=tactical" },
-      ],
-      geographies: [
-        { label: "Hyderabad", href: "/projects?city=hyderabad" },
-        {
-          label: "Goa",
-          href: "/contact?intent=goa-investor-interest",
-          comingSoon: true,
-          tooltip: "Data layer launching soon",
-        },
-      ],
-    },
-  },
+
+function badgeClass(badge: string) {
+  if (badge === "HOT") return "bg-red-500/20 text-red-300 border border-red-400/30";
+  if (badge === "NEW") return "bg-emerald-500/20 text-emerald-300 border border-emerald-400/30";
+  if (badge === "LIVE") return "bg-emerald-500/20 text-emerald-300 border border-emerald-400/30";
+  if (badge === "AI") return "bg-violet-500/20 text-violet-300 border border-violet-400/30";
+  return "bg-white/10 text-white/70 border border-white/20";
+}
+
+const NAV_ITEMS = [
   {
     label: "Markets",
-    href: "/hyderabad/micro-markets",
-    dropdown: {
-      title: "Market Intelligence",
-      sections: [
-        { label: "Hyderabad Corridors", href: "/hyderabad/micro-markets" },
-        { label: "Capital Flow", href: "/investor-dashboard" },
-        { label: "Wealth Zones", href: "/hyderabad/micro-markets?focus=wealth-zones" },
-        { label: "Emerging Areas", href: "/hyderabad/micro-markets?focus=emerging-areas" },
-        { label: "Corridor Rankings", href: "/hyderabad/micro-markets?focus=rankings" },
-      ],
-      geographies: [
-        { label: "Hyderabad", href: "/hyderabad/micro-markets" },
-        {
-          label: "Goa",
-          href: "/contact?intent=goa-market-intelligence-waitlist",
-          comingSoon: true,
-          tooltip: "Data layer launching soon",
-        },
-      ],
-    },
+    href: "/hyderabad/markets",
+    description: "Live price intelligence across Hyderabad's fastest-growing corridors",
+    links: [
+      { label: "Gachibowli", href: "/hyderabad/gachibowli", badge: "HOT" },
+      { label: "Financial District", href: "/hyderabad/financial-district", badge: "HOT" },
+      { label: "Kokapet", href: "/hyderabad/kokapet", badge: "NEW" },
+      { label: "Narsingi", href: "/hyderabad/narsingi" },
+      { label: "Kondapur", href: "/hyderabad/kondapur" },
+      { label: "Tellapur", href: "/hyderabad/tellapur" },
+      { label: "Puppalaguda", href: "/hyderabad/puppalaguda" },
+      { label: "Kollur", href: "/hyderabad/kollur" },
+    ],
+    cta: { label: "View all 19 markets →", href: "/hyderabad/markets" },
+  },
+  {
+    label: "Projects",
+    href: "/hyderabad/projects",
+    description: "Every RERA-registered project with pricing, possession dates, and AI insights",
+    links: [
+      { label: "New Launches", href: "/hyderabad/projects?status=new", badge: "LIVE" },
+      { label: "Under Construction", href: "/hyderabad/projects?status=construction" },
+      { label: "Ready to Move", href: "/hyderabad/projects?status=ready" },
+      { label: "Luxury ₹2Cr+", href: "/hyderabad/projects?budget=luxury" },
+      { label: "Investment Picks", href: "/hyderabad/projects?tag=investment", badge: "AI" },
+    ],
+    cta: { label: "View all projects →", href: "/hyderabad/projects" },
   },
   {
     label: "Developers",
     href: "/developers",
-    dropdown: {
-      title: "Developer Underwriting",
-      sections: [
-        { label: "Institutional Developers", href: "/developers" },
-        { label: "Emerging Sponsors", href: "/developers?segment=emerging" },
-        { label: "Execution Rankings", href: "/developers?view=execution-rankings" },
-        { label: "Capital Strategy", href: "/developers?view=capital-strategy" },
-        { label: "Developer Intelligence", href: "/developers?view=intelligence" },
-      ],
-      geographies: [],
-    },
+    description: "Track record, delivery history, and buyer ratings for every major builder",
+    links: [
+      { label: "My Home Group", href: "/developers/my-home-group" },
+      { label: "Aparna Group", href: "/developers/aparna-group" },
+      { label: "Prestige Group", href: "/developers/prestige-group" },
+      { label: "Rajapushpa Group", href: "/developers/rajapushpa-group" },
+      { label: "Godrej Properties", href: "/developers/godrej-properties" },
+    ],
+    cta: { label: "View all developers →", href: "/developers" },
   },
   {
-    label: "Opportunities",
-    href: "/projects",
-    dropdown: {
-      title: "Exclusive Deal Flow",
-      sections: [
-        { label: "New Launches", href: "/projects?stage=new-launches" },
-        { label: "Off-market", href: "/projects?channel=off-market", highlight: "Exclusive" },
-        { label: "Structured Deals", href: "/projects?deal=structured", highlight: "Institutional deals" },
-        { label: "Land and JVs", href: "/projects?deal=land-jv" },
-        { label: "Investor Club", href: "/investor-dashboard", highlight: "Members only" },
-      ],
-      geographies: [],
-    },
-  },
-  {
-    label: "Research",
-    href: "/investor-research",
-    dropdown: {
-      title: "Institutional Research",
-      sections: [
-        { label: "Market Reports", href: "/investor-research?section=market-reports" },
-        { label: "Corridor Outlook", href: "/investor-research?section=corridor-outlook" },
-        { label: "Capital Trends", href: "/investor-research?section=capital-trends" },
-        { label: "Sponsor Intelligence", href: "/investor-research?section=sponsor-intelligence" },
-        { label: "Whitepapers", href: "/investor-research?section=whitepapers", highlight: "Institutional" },
-      ],
-      geographies: [],
-    },
+    label: "Insights",
+    href: "/insights",
+    description: "Market analysis, price trends, and buyer guides updated weekly",
+    links: [
+      { label: "Price Tracker", href: "/insights/price-tracker", badge: "LIVE" },
+      { label: "Market Reports", href: "/insights/reports" },
+      { label: "5-Year Outlook", href: "/insights/outlook", badge: "AI" },
+      { label: "Buyer's Guide", href: "/insights/buyers-guide" },
+      { label: "RERA Updates", href: "/insights/rera" },
+    ],
+    cta: { label: "View all insights →", href: "/insights" },
   },
 ] as const;
 
-const rightNavLinks = [
-  { label: "Insights", href: "/blog" },
-  { label: "Contact", href: "/contact" },
+const TICKER_ITEMS = [
+  { market: "Gachibowli", price: "₹12,400/sqft", change: "↑2.1%", up: true },
+  { market: "Financial District", price: "₹13,800/sqft", change: "↑1.4%", up: true },
+  { market: "Kokapet", price: "₹11,200/sqft", change: "↑3.2%", up: true },
+  { market: "Narsingi", price: "₹9,800/sqft", change: "↓0.3%", up: false },
+  { market: "Kondapur", price: "₹10,500/sqft", change: "↑0.8%", up: true },
+  { market: "Tellapur", price: "₹8,900/sqft", change: "↑1.9%", up: true },
 ];
 
 const Header = () => {
@@ -121,322 +95,239 @@ const Header = () => {
 
   useEffect(() => {
     setIsMounted(true);
-    const defaultLogo =
-      "https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/brand-assets//REMAX%20WR%20Logo%20with%20no%20background.jpg";
-
+    const defaultLogo = "/agency_logo.png";
     const loadLogo = async () => {
       try {
         const imgs = siteImagesService.getSiteImages();
         const logoUrl = imgs?.headerLogo || defaultLogo;
         setHeaderLogo(logoUrl);
-      } catch (error) {
-        console.error("Error loading logo from service:", error);
+      } catch {
         setHeaderLogo(defaultLogo);
       }
     };
-
     loadLogo();
   }, []);
 
   const isActive = (href: string) => {
-    if (href === "/") {
-      return pathname === "/";
-    }
-    return pathname.startsWith(href);
+    if (href === "/") return pathname === "/";
+    return pathname.startsWith(href.split("?")[0]);
   };
-  const mobilePrimaryLabels = new Set(["Invest", "Markets", "Developers", "Opportunities"]);
-  const mobilePrimaryLinks = primaryNavLinks.filter((link) => mobilePrimaryLabels.has(link.label));
-  const mobileSecondaryLinks = [
-    { label: "Research", href: "/investor-research" },
-    ...rightNavLinks,
-  ];
 
   return (
     <>
-      <header className="audit-hide-in-audit-mode sticky top-0 z-50 w-full border-b border-white/10 bg-gradient-to-b from-[#060f1f]/95 via-[#081429]/95 to-[#071325]/95 shadow-[0_12px_30px_rgba(2,6,23,0.45)] backdrop-blur-md">
-        <div className="container relative flex h-16 items-center justify-between">
-        <Link
-          href="/"
-          className={cn(
-            "flex items-center",
-            "h-16"
-          )}
-          style={{ width: "auto", maxWidth: "200px" }}
-        >
-          {!imgError && headerLogo ? (
-            <Image
-              src={headerLogo}
-              alt="Westside Realty Intelligence"
-              className="h-12 w-auto object-contain max-w-[180px]"
-              width={180}
-              height={48}
-              draggable={false}
-              onError={() => setImgError(true)}
-              data-testid="header-logo"
-              priority
-            />
-          ) : (
-            <span
-              className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-100 whitespace-nowrap"
-              data-testid="header-logo-fallback"
-            >
-              Westside Intelligence
-            </span>
-          )}
-        </Link>
+      <header className="audit-hide-in-audit-mode sticky top-0 z-50 w-full border-b border-white/10 bg-[#0a0a0a]/95 shadow-[0_8px_30px_rgba(0,0,0,0.5)] backdrop-blur-md">
 
-        {isMounted ? (
-          <nav className="hidden lg:flex absolute left-1/2 -translate-x-1/2">
-            <ul className="flex items-center gap-1">
-              {primaryNavLinks.map((link) => (
-                <li key={link.href} className={cn(link.dropdown ? "relative group" : undefined)}>
-                  <Link
-                    href={link.href}
-                    className={cn(
-                      "rounded-md px-3 py-2 text-[12px] font-semibold uppercase tracking-[0.16em] transition-all duration-300",
-                      isActive(link.href)
-                        ? "text-white bg-white/10"
-                        : "text-slate-300 hover:-translate-y-0.5 hover:text-white hover:bg-white/8 hover:shadow-[0_8px_20px_rgba(15,23,42,0.45)]"
-                    )}
-                  >
-                    {link.label}
-                  </Link>
-                  {link.dropdown ? (
-                    <div className="invisible absolute left-0 top-[calc(100%+10px)] z-50 w-[360px] rounded-2xl border border-white/10 bg-gradient-to-br from-[#050f20]/95 via-[#0a1930]/95 to-[#091427]/95 p-4 opacity-0 shadow-[0_24px_50px_rgba(2,6,23,0.6)] backdrop-blur-md transition-all duration-200 group-hover:visible group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:visible group-focus-within:translate-y-0 group-focus-within:opacity-100 -translate-y-1">
-                      <p className="flex items-center gap-2 text-[10px] uppercase tracking-[0.18em] text-slate-400">
-                        <span className="h-1.5 w-1.5 rounded-full bg-cyan-300" />
-                        {link.dropdown.title}
-                      </p>
-                      <div className="mt-2 space-y-1.5">
-                        {link.dropdown.sections.map((item) => (
+        {/* ── Main nav bar ───────────────────────────────────────── */}
+        <div className="container relative flex h-16 items-center justify-between">
+
+          {/* Logo */}
+          <Link href="/" className="flex items-center h-16" style={{ width: "auto", maxWidth: "200px" }}>
+            {!imgError && headerLogo ? (
+              <Image
+                src={headerLogo}
+                alt="Westside Realty Intelligence"
+                className="w-auto object-contain"
+                style={{ height: 40, width: "auto", display: "block" }}
+                width={180}
+                height={40}
+                draggable={false}
+                onError={() => setImgError(true)}
+                data-testid="header-logo"
+                priority
+              />
+            ) : (
+              <span className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-100 whitespace-nowrap" data-testid="header-logo-fallback">
+                Westside Intelligence
+              </span>
+            )}
+          </Link>
+
+          {/* Desktop nav — centered */}
+          {isMounted && (
+            <nav className="hidden lg:flex absolute left-1/2 -translate-x-1/2">
+              <ul className="flex items-center gap-0.5">
+                {NAV_ITEMS.map((item) => (
+                  <li key={item.href} className="relative group">
+                    <Link
+                      href={item.href}
+                      className={cn(
+                        "flex items-center gap-1 rounded-md px-3.5 py-2 text-[12px] font-semibold uppercase tracking-[0.16em] transition-all duration-200",
+                        isActive(item.href)
+                          ? "text-white bg-white/10"
+                          : "text-slate-300 hover:text-white hover:bg-white/8"
+                      )}
+                    >
+                      {item.label}
+                      <ChevronDown className="h-3 w-3 opacity-50 transition-transform duration-200 group-hover:rotate-180 group-hover:opacity-100" />
+                    </Link>
+
+                    {/* Mega menu */}
+                    <div className="invisible absolute left-1/2 -translate-x-1/2 top-[calc(100%+6px)] z-50 w-[400px] rounded-2xl border border-white/10 bg-[#0d0d0d]/98 p-5 opacity-0 -translate-y-1 shadow-[0_24px_60px_rgba(0,0,0,0.7)] backdrop-blur-xl transition-all duration-200 group-hover:visible group-hover:translate-y-0 group-hover:opacity-100">
+                      <p className="text-[11px] text-slate-500 mb-4 leading-relaxed">{item.description}</p>
+
+                      {/* 2-column link grid */}
+                      <div className="grid grid-cols-2 gap-1 mb-4">
+                        {item.links.map((link) => (
                           <Link
-                            key={item.label}
-                            href={item.href}
-                            className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-slate-200 transition-all duration-300 hover:-translate-y-0.5 hover:border-white/25 hover:bg-white/[0.1] hover:shadow-[0_12px_28px_rgba(15,23,42,0.5)]"
+                            key={link.href}
+                            href={link.href}
+                            className="flex items-center justify-between rounded-lg px-3 py-2 text-[13px] text-slate-300 hover:text-white hover:bg-white/8 transition-colors duration-150"
                           >
-                            <span>{item.label}</span>
-                            {item.highlight ? (
-                              <span
-                                className={cn(
-                                  "rounded-full border px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.14em]",
-                                  item.highlight.toLowerCase().includes("early")
-                                    ? "border-cyan-300/40 bg-cyan-400/20 text-cyan-100"
-                                    : item.highlight.toLowerCase().includes("exclusive") ||
-                                        item.highlight.toLowerCase().includes("members")
-                                      ? "border-violet-300/40 bg-violet-400/20 text-violet-100"
-                                    : "border-emerald-300/40 bg-emerald-400/20 text-emerald-100"
-                                )}
-                              >
-                                {item.highlight}
+                            <span>{link.label}</span>
+                            {"badge" in link && link.badge && (
+                              <span className={cn("rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide", badgeClass(link.badge))}>
+                                {link.badge}
                               </span>
-                            ) : null}
+                            )}
                           </Link>
                         ))}
                       </div>
-                      {link.dropdown.geographies.length > 0 ? (
-                        <div className="mt-3 border-t border-white/10 pt-3">
-                          <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">Geographies</p>
-                          <div className="mt-2 flex gap-2">
-                            {link.dropdown.geographies.map((geo) => (
-                              <Link
-                                key={geo.label}
-                                href={geo.href}
-                                title={geo.tooltip}
-                                className={cn(
-                                  "rounded-full border px-3 py-1 text-[11px] font-medium transition-all duration-300",
-                                  geo.comingSoon
-                                    ? "border-slate-400/30 bg-slate-500/10 text-slate-300 hover:-translate-y-0.5 hover:border-slate-300/40 hover:bg-slate-400/15 hover:text-slate-100"
-                                    : "border-white/15 text-slate-200 hover:-translate-y-0.5 hover:border-white/35 hover:bg-white/12 hover:text-white"
-                                )}
-                              >
-                                {geo.label}
-                                {geo.comingSoon ? (
-                                  <span className="ml-1.5 rounded-full border border-slate-300/30 bg-slate-400/15 px-1.5 py-0.5 text-[9px] uppercase tracking-[0.08em] text-slate-300">
-                                    Coming Soon
-                                  </span>
-                                ) : null}
-                              </Link>
-                            ))}
-                          </div>
-                        </div>
-                      ) : null}
+
+                      {/* CTA */}
+                      <div className="border-t border-white/10 pt-3">
+                        <Link
+                          href={item.cta.href}
+                          className="text-[12px] font-semibold transition-colors"
+                          style={{ color: "#c8a96e" }}
+                        >
+                          {item.cta.label}
+                        </Link>
+                      </div>
                     </div>
-                  ) : null}
-                </li>
-              ))}
-            </ul>
-          </nav>
-        ) : null}
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          )}
 
-        <div className="hidden lg:flex items-center gap-1.5">
-          {rightNavLinks.map((link) => (
+          {/* Right side */}
+          <div className="hidden lg:flex items-center gap-4">
+            {/* Live indicator */}
+            <div className="flex items-center gap-1.5">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+              </span>
+              <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-400">Live Data</span>
+            </div>
+
+            {/* Gold CTA */}
             <Link
-              key={link.href}
-              href={link.href}
-              className={cn(
-                "rounded-md px-3 py-2 text-[11px] font-medium uppercase tracking-[0.14em] transition-all duration-300",
-                isActive(link.href)
-                  ? "text-white bg-white/10"
-                  : "text-slate-300 hover:-translate-y-0.5 hover:text-white hover:bg-white/8"
-              )}
+              href="/contact"
+              className="rounded-full px-4 py-1.5 text-[11px] font-bold uppercase tracking-[0.12em] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(200,169,110,0.4)]"
+              style={{
+                background: "linear-gradient(135deg, #c8a96e 0%, #a8843e 100%)",
+                color: "#0a0a0a",
+                boxShadow: "0 4px 14px rgba(200,169,110,0.25)",
+              }}
             >
-              {link.label}
+              Get Expert Advice
             </Link>
-          ))}
-          <Button
-            className="rounded-full border border-cyan-300/30 bg-cyan-400/20 text-cyan-100 shadow-[0_10px_24px_rgba(34,211,238,0.18)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-cyan-300/25"
-            size="sm"
-            variant="outline"
-            asChild
-          >
-            <Link href="/join_us">Partner With Us</Link>
-          </Button>
-        </div>
+          </div>
 
-        {isMounted ? (
-          <Sheet open={isOpen} onOpenChange={setIsOpen}>
-            <SheetTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="lg:hidden text-slate-200 hover:bg-white/10 hover:text-white"
-                aria-label="Open Menu"
-              >
-                <Menu className="h-5 w-5" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="right" className="w-80 border-l-white/10 bg-gradient-to-b from-[#060f1f] via-[#081429] to-[#071325] p-0 text-white">
-              <SheetTitle className="sr-only">Main navigation</SheetTitle>
-              <div className="flex h-full flex-col">
-                <div className="mt-8 flex-1 overflow-y-auto px-4 pb-6">
-                  <p className="px-1 text-[10px] uppercase tracking-[0.18em] text-slate-500">Primary</p>
-                  <div className="mt-2 space-y-2">
-                    {mobilePrimaryLinks.map((link) => {
-                      const isExpanded = expandedMobileSection === link.label;
+          {/* Mobile hamburger */}
+          {isMounted && (
+            <Sheet open={isOpen} onOpenChange={setIsOpen}>
+              <SheetTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="lg:hidden text-slate-200 hover:bg-white/10 hover:text-white"
+                  aria-label="Open Menu"
+                >
+                  <Menu className="h-5 w-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-80 border-l-white/10 bg-[#0a0a0a] p-0 text-white">
+                <SheetTitle className="sr-only">Main navigation</SheetTitle>
+                <div className="flex h-full flex-col">
+                  <div className="mt-8 flex-1 overflow-y-auto px-4 pb-6 space-y-2">
+                    {NAV_ITEMS.map((item) => {
+                      const isExpanded = expandedMobileSection === item.label;
                       return (
-                        <div key={link.href} className="rounded-lg border border-white/10 bg-white/[0.03] shadow-[0_10px_22px_rgba(15,23,42,0.32)]">
+                        <div key={item.href} className="rounded-lg border border-white/10 bg-white/[0.03]">
                           <button
                             type="button"
                             className={cn(
-                              "flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-sm font-semibold uppercase tracking-[0.14em] transition-all duration-300",
-                              isActive(link.href)
-                                ? "bg-white/10 text-white"
-                                : "text-slate-300 hover:bg-white/8 hover:text-white"
+                              "flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-sm font-semibold uppercase tracking-[0.14em] transition-colors",
+                              isActive(item.href) ? "bg-white/10 text-white" : "text-slate-300 hover:text-white"
                             )}
-                            onClick={() =>
-                              setExpandedMobileSection((prev) =>
-                                prev === link.label ? null : link.label
-                              )
-                            }
+                            onClick={() => setExpandedMobileSection((prev) => prev === item.label ? null : item.label)}
                           >
-                            <span>{link.label}</span>
-                            <ChevronDown
-                              className={cn(
-                                "h-4 w-4 transition-transform duration-200",
-                                isExpanded ? "rotate-180" : "rotate-0"
-                              )}
-                            />
+                            <span>{item.label}</span>
+                            <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", isExpanded ? "rotate-180" : "")} />
                           </button>
-                          {link.dropdown && isExpanded ? (
-                            <div className="px-2 pb-2">
-                              <div className="space-y-1">
-                                {link.dropdown.sections.map((item) => (
-                                  <Link
-                                    key={item.label}
-                                    href={item.href}
-                                    className="flex items-center justify-between rounded-md px-2 py-1.5 text-sm text-slate-300 transition-all duration-300 hover:bg-white/10 hover:text-white"
-                                    onClick={() => setIsOpen(false)}
-                                  >
-                                    <span>{item.label}</span>
-                                    {item.highlight ? (
-                                      <span
-                                        className={cn(
-                                          "rounded-full border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.1em]",
-                                          item.highlight.toLowerCase().includes("early")
-                                            ? "border-cyan-300/40 bg-cyan-400/20 text-cyan-100"
-                                            : item.highlight.toLowerCase().includes("exclusive") ||
-                                                item.highlight.toLowerCase().includes("members")
-                                              ? "border-violet-300/40 bg-violet-400/20 text-violet-100"
-                                            : "border-emerald-300/40 bg-emerald-400/20 text-emerald-100"
-                                        )}
-                                      >
-                                        {item.highlight}
-                                      </span>
-                                    ) : null}
-                                  </Link>
-                                ))}
-                              </div>
-                              {link.dropdown.geographies.length > 0 ? (
-                                <div className="mt-2 border-t border-white/10 pt-2">
-                                  <div className="flex flex-wrap gap-1.5 px-1">
-                                    {link.dropdown.geographies.map((geo) => (
-                                      <Link
-                                        key={geo.label}
-                                        href={geo.href}
-                                        title={geo.tooltip}
-                                        className={cn(
-                                          "rounded-full border px-2 py-0.5 text-[11px] transition-colors",
-                                          geo.comingSoon
-                                            ? "border-slate-400/30 bg-slate-500/10 text-slate-300 hover:bg-slate-400/20 hover:text-slate-100"
-                                            : "border-white/15 text-slate-300 hover:bg-white/10 hover:text-white"
-                                        )}
-                                        onClick={() => setIsOpen(false)}
-                                      >
-                                        {geo.label}
-                                        {geo.comingSoon ? " (Coming Soon)" : ""}
-                                      </Link>
-                                    ))}
-                                  </div>
-                                </div>
-                              ) : null}
+                          {isExpanded && (
+                            <div className="px-2 pb-2 space-y-0.5">
+                              {item.links.map((link) => (
+                                <Link
+                                  key={link.href}
+                                  href={link.href}
+                                  className="flex items-center justify-between rounded-md px-2 py-1.5 text-sm text-slate-300 hover:text-white hover:bg-white/10 transition-colors"
+                                  onClick={() => setIsOpen(false)}
+                                >
+                                  <span>{link.label}</span>
+                                  {"badge" in link && link.badge && (
+                                    <span className={cn("rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase", badgeClass(link.badge))}>
+                                      {link.badge}
+                                    </span>
+                                  )}
+                                </Link>
+                              ))}
+                              <Link
+                                href={item.cta.href}
+                                className="block px-2 py-2 text-[11px] font-semibold"
+                                style={{ color: "#c8a96e" }}
+                                onClick={() => setIsOpen(false)}
+                              >
+                                {item.cta.label}
+                              </Link>
                             </div>
-                          ) : null}
+                          )}
                         </div>
                       );
                     })}
                   </div>
 
-                  <div className="mt-5 border-t border-white/10 pt-3">
-                    <p className="px-1 text-[10px] uppercase tracking-[0.18em] text-slate-500">
-                      Secondary
-                    </p>
-                    <div className="mt-2 space-y-1">
-                      {mobileSecondaryLinks.map((link) => (
-                        <Link
-                          key={link.href}
-                          href={link.href}
-                          className={cn(
-                            "block rounded-md px-2 py-2 text-sm font-medium transition-all duration-300",
-                            isActive(link.href)
-                              ? "text-white bg-white/10"
-                              : "text-slate-300 hover:bg-white/8 hover:text-white"
-                          )}
-                          onClick={() => setIsOpen(false)}
-                        >
-                          {link.label}
-                        </Link>
-                      ))}
-                    </div>
+                  <div className="border-t border-white/10 bg-[#0a0a0a] p-4">
+                    <Link
+                      href="/contact"
+                      className="block w-full rounded-full py-2.5 text-center text-sm font-bold uppercase tracking-[0.12em]"
+                      style={{ background: "linear-gradient(135deg, #c8a96e, #a8843e)", color: "#0a0a0a" }}
+                      onClick={() => setIsOpen(false)}
+                    >
+                      Get Expert Advice
+                    </Link>
                   </div>
                 </div>
+              </SheetContent>
+            </Sheet>
+          )}
+        </div>
 
-                <div className="border-t border-white/10 bg-[#060f1f]/95 p-4 shadow-[0_-10px_30px_rgba(2,6,23,0.45)]">
-                  <Button
-                    className="w-full rounded-full border border-cyan-300/30 bg-cyan-400/20 text-cyan-100 shadow-[0_10px_24px_rgba(34,211,238,0.18)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-cyan-300/25"
-                    size="lg"
-                    variant="outline"
-                    asChild
-                    onClick={() => setIsOpen(false)}
-                  >
-                    <Link href="/join_us">Partner With Us</Link>
-                  </Button>
-                </div>
-              </div>
-            </SheetContent>
-          </Sheet>
-        ) : null}
+        {/* ── Ticker strip ───────────────────────────────────────── */}
+        <div className="w-full overflow-hidden border-t border-white/5" style={{ height: 28, background: "#070707" }}>
+          <div className="flex items-center h-full px-2">
+            <div className="flex gap-8 whitespace-nowrap" style={{ animation: "navTicker 40s linear infinite" }}>
+              {[...TICKER_ITEMS, ...TICKER_ITEMS].map((item, i) => (
+                <span key={i} className="inline-flex items-center gap-2 text-[11px]">
+                  <span className="text-slate-500 font-medium">{item.market}</span>
+                  <span className="text-slate-200 font-semibold">{item.price}</span>
+                  <span className={item.up ? "text-emerald-400" : "text-red-400"}>{item.change}</span>
+                  <span className="text-white/15 mx-1">·</span>
+                </span>
+              ))}
+            </div>
+          </div>
         </div>
       </header>
+
+      <style>{`
+        @keyframes navTicker {
+          0%   { transform: translateX(0); }
+          100% { transform: translateX(-50%); }
+        }
+      `}</style>
     </>
   );
 };

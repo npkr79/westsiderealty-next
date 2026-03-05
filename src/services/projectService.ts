@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/serviceClient';
-import { safeJsonParse } from '@/lib/project-utils';
+import { safeJsonParse, computeProjectStatus, toSqft } from '@/lib/project-utils';
 import { parseJsonb, asArray } from '@/lib/parse-jsonb';
 import { generateUnifiedSchema } from '@/lib/seo-utils';
 import { buildProjectAbsoluteUrl, buildProjectUrl } from '@/lib/routes';
@@ -45,6 +45,14 @@ export interface ProjectWithRelations extends Omit<ProjectInfo, 'description'> {
   hero_image_url?: string | null;
   main_image_url?: string | null; // Alternative image field
   description?: string; // Computed field, optional for database queries
+  // RERA & project core fields (from enriched MV)
+  rera_id?: string | null;
+  project_type?: string | null;
+  current_status?: string | null;
+  min_area?: number | null;
+  max_area?: number | null;
+  booked_units?: number | null;
+  developer_name?: string | null;
   project_snapshot_json?: any;
   location_advantages_json?: any;
   investment_analysis_json?: any;
@@ -486,31 +494,12 @@ export const projectService = {
   ): Promise<ProjectWithRelations | null> {
     console.log(`[getCityLevelProjectBySlug] Fetching project: citySlug=${citySlug}, projectSlug=${projectSlug}`);
 
-    const baseSelect = `
-      project_id,
-      project_name,
-      rera_id,
-      configuration_display,
-      min_area,
-      max_area,
-      total_units,
-      booked_units,
-      total_towers,
-      project_type,
-      current_status,
-      proposed_completion_date,
-      actual_completion_date,
-      developer_name,
-      micro_market,
-      latitude,
-      longitude,
-      city_slug,
-      url_slug
-    `;
+    // Select everything from the MV — avoids 42703 errors from guessing column names.
+    // The MV is the enriched view used by all project detail paths.
     let { data, error } = await runWithServiceFallback<any>((client) =>
       client
         .from("listing_project_detail_enriched_mv")
-        .select(baseSelect)
+        .select("*")
         .eq("city_slug", citySlug)
         .eq("url_slug", projectSlug)
         .single()
@@ -533,11 +522,10 @@ export const projectService = {
       return null;
     }
 
-    console.log("PROJECT SOURCE", data);
     const displayDeveloperName = resolveDeveloperDisplayName(data as Record<string, unknown>);
 
     let microMarketPositioningText: string | null = null;
-    const microMarketName = toStringOrNull(data.micro_market);
+    const microMarketName = toStringOrNull(data.micro_market) || toStringOrNull((data as any).micro_market_name);
     if (microMarketName) {
       const { data: locationContext, error: locationContextError } = await runWithServiceFallback<any>((client) =>
         client
@@ -555,6 +543,69 @@ export const projectService = {
           toStringOrNull((locationContext as any).context_text) ||
           toStringOrNull((locationContext as any).micro_market_positioning) ||
           toStringOrNull((locationContext as any).summary);
+      }
+    }
+
+    // Fetch extended micro_market data for V2 page (price, appreciation, hero_hook)
+    let microMarketExtended: {
+      price_per_sqft_min: number | null;
+      price_per_sqft_max: number | null;
+      annual_appreciation_min: number | null;
+      annual_appreciation_max: number | null;
+      hero_hook: string | null;
+      url_slug: string | null;
+    } | null = null;
+    if (microMarketName) {
+      const { data: mmData } = await runWithServiceFallback<any>((client) =>
+        client
+          .from("micro_markets")
+          .select("price_per_sqft_min, price_per_sqft_max, annual_appreciation_min, annual_appreciation_max, hero_hook, url_slug")
+          .ilike("micro_market_name", microMarketName)
+          .limit(1)
+          .maybeSingle()
+      );
+      if (mmData) {
+        microMarketExtended = {
+          price_per_sqft_min: toNumberOrNull((mmData as any).price_per_sqft_min),
+          price_per_sqft_max: toNumberOrNull((mmData as any).price_per_sqft_max),
+          annual_appreciation_min: toNumberOrNull((mmData as any).annual_appreciation_min),
+          annual_appreciation_max: toNumberOrNull((mmData as any).annual_appreciation_max),
+          hero_hook: toStringOrNull((mmData as any).hero_hook),
+          url_slug: toStringOrNull((mmData as any).url_slug),
+        };
+      }
+    }
+
+    // Fetch extended developer data for V2 page (years, total_projects, descriptions)
+    let developerExtended: {
+      years_in_business: number | null;
+      total_projects: number | null;
+      hero_description: string | null;
+      long_description_seo: string | null;
+      logo_url: string | null;
+      notable_projects_json: any;
+      url_slug: string | null;
+    } | null = null;
+    const developerNameForQuery = toStringOrNull((data as any).developer_name);
+    if (developerNameForQuery) {
+      const { data: devData } = await runWithServiceFallback<any>((client) =>
+        client
+          .from("developers")
+          .select("years_in_business, total_projects, hero_description, long_description_seo, logo_url, notable_projects_json, url_slug")
+          .ilike("developer_name", developerNameForQuery)
+          .limit(1)
+          .maybeSingle()
+      );
+      if (devData) {
+        developerExtended = {
+          years_in_business: toNumberOrNull((devData as any).years_in_business),
+          total_projects: toNumberOrNull((devData as any).total_projects),
+          hero_description: toStringOrNull((devData as any).hero_description),
+          long_description_seo: toStringOrNull((devData as any).long_description_seo),
+          logo_url: toStringOrNull((devData as any).logo_url),
+          notable_projects_json: (devData as any).notable_projects_json ?? null,
+          url_slug: toStringOrNull((devData as any).url_slug),
+        };
       }
     }
 
@@ -1068,21 +1119,140 @@ export const projectService = {
       }
     }
 
+    // Fetch clean unit size range, unit count, tower count, and AI status from RERA data
+    let cleanMinArea: number | null = toNumberOrNull(data.min_area);
+    let cleanMaxArea: number | null = toNumberOrNull(data.max_area);
+    let cleanTowerCount: number | null = toNumberOrNull(data.total_towers);
+    let cleanMaxFloors: number | null = toNumberOrNull((data as any).total_floors);
+    let aiKeyUpdatesText: string | null = null;
+    const projectTypeRaw = toStringOrNull((data as any).project_type)?.toLowerCase() ?? "";
+    const isCommercialProject = projectTypeRaw.includes("commercial") || projectTypeRaw.includes("mixed");
+    const unitSizeReraId = toStringOrNull(data.rera_id);
+    if (unitSizeReraId) {
+      try {
+        const { data: reraRow } = await runWithServiceFallback<any>((client) =>
+          client.from("rera_projects").select("id").eq("rera_id", unitSizeReraId).maybeSingle()
+        );
+        if (reraRow?.id) {
+          const [sizeResult, buildingResult, liveIntelResult] = await Promise.all([
+            // Unit sizes (saleable_area only, no amenity/floor rows)
+            runWithServiceFallback<any>((client) => {
+              let q = client
+                .from("rera_units")
+                .select("saleable_area")
+                .eq("project_id", reraRow.id)
+                // Always exclude amenity/facility rows
+                .not("unit_category", "ilike", "%club%")
+                .not("unit_category", "ilike", "%amenity%")
+                .not("unit_category", "ilike", "%amenities%")
+                .not("unit_category", "ilike", "%gym%")
+                .not("unit_category", "ilike", "%common%")
+                .not("unit_category", "ilike", "%library%")
+                .not("unit_category", "ilike", "%guest%")
+                .not("unit_category", "ilike", "%theater%")
+                .not("unit_category", "ilike", "%spa%")
+                .not("unit_category", "ilike", "%first floor%")
+                .not("unit_category", "ilike", "%second floor%")
+                .not("unit_category", "ilike", "%third floor%")
+                .not("unit_category", "ilike", "%fourth floor%")
+                .not("unit_category", "ilike", "%fifth floor%")
+                .not("unit_category", "ilike", "%ground floor%")
+                .not("unit_category", "ilike", "%basement%")
+                .not("unit_category", "ilike", "%stilt%")
+                .not("unit_category", "ilike", "%podium%")
+                .not("unit_category", "ilike", "%terrace%")
+                .gt("saleable_area", 0);
+              // Only exclude shop/office/commercial for residential projects
+              // (for commercial/mixed, these ARE the valid unit types)
+              if (!isCommercialProject) {
+                q = q
+                  .not("unit_category", "ilike", "%office%")
+                  .not("unit_category", "ilike", "%shop%")
+                  .not("unit_category", "ilike", "%commercial%");
+              }
+              return q;
+            }),
+            // Tower count + max floors (residential buildings only, no clubhouse)
+            runWithServiceFallback<any>((client) =>
+              client
+                .from("rera_buildings")
+                .select("id, num_floors")
+                .eq("rera_project_id", reraRow.id)
+                .not("building_name", "ilike", "%club%")
+                .not("building_type", "ilike", "%club%")
+                .not("building_name", "ilike", "%amenity%")
+            ),
+            // AI live intelligence key_updates for status
+            runWithServiceFallback<any>((client) =>
+              client
+                .from("project_live_intelligence")
+                .select("key_updates")
+                .eq("rera_project_id", reraRow.id)
+                .maybeSingle()
+            ),
+          ]);
+
+          // AI status signals
+          const keyUpdates = liveIntelResult.data?.key_updates;
+          if (Array.isArray(keyUpdates) && keyUpdates.length > 0) {
+            aiKeyUpdatesText = keyUpdates.join(" ");
+          }
+
+          // Unit sizes: convert, filter 400–50000 sqft, remove outliers < 50% of max
+          const sizeRows = (sizeResult.data as any[]) || [];
+          const allAreas = sizeRows
+            .map((r: any) => toSqft(r.saleable_area))
+            .filter((v: number) => v >= 400 && v <= 50000);
+          if (allAreas.length) {
+            const maxVal = Math.max(...allAreas);
+            const cleanAreas = allAreas.filter((v: number) => v >= maxVal * 0.5);
+            cleanMinArea = Math.min(...cleanAreas);
+            cleanMaxArea = Math.max(...cleanAreas);
+          }
+
+          // Tower count + max floors: residential buildings only
+          const buildingRows = (buildingResult.data as any[]) || [];
+          if (buildingRows.length > 0) {
+            cleanTowerCount = buildingRows.length;
+            const maxF = buildingRows
+              .map((b: any) => b.num_floors ?? 0)
+              .filter((f: number) => f > 0)
+              .reduce((m: number, f: number) => Math.max(m, f), 0);
+            if (maxF > 0) cleanMaxFloors = maxF;
+          }
+        }
+      } catch { /* fall through to MV values */ }
+    }
+
     const project: ProjectWithRelations = {
+      // Spread all MV fields so gallery_images_json, amenities_json, etc. are available
+      ...(data as any),
       id: String(data.project_id ?? ""),
       project_name: String(data.project_name ?? ""),
       configuration_display: toStringOrNull(data.configuration_display),
-      min_area: toNumberOrNull(data.min_area),
-      max_area: toNumberOrNull(data.max_area),
+      min_area: cleanMinArea,
+      max_area: cleanMaxArea,
       total_units: toNumberOrNull(data.total_units),
       booked_units: toNumberOrNull(data.booked_units),
-      total_towers: toNumberOrNull(data.total_towers),
+      total_towers: cleanTowerCount,
+      total_floors: cleanMaxFloors,
       rera_id: toStringOrNull(data.rera_id),
-      current_status: toStringOrNull(data.current_status),
-      status: toStringOrNull(data.current_status),
+      project_type: toStringOrNull((data as any).project_type),
+      current_status: computeProjectStatus(
+        toStringOrNull(data.current_status),
+        toStringOrNull(data.proposed_completion_date),
+        toStringOrNull((data as any).approved_date),
+        aiKeyUpdatesText,
+      ),
+      status: computeProjectStatus(
+        toStringOrNull(data.current_status),
+        toStringOrNull(data.proposed_completion_date),
+        toStringOrNull((data as any).approved_date),
+        aiKeyUpdatesText,
+      ),
       developer_name: displayDeveloperName || toStringOrNull(data.developer_name),
       display_developer_name: displayDeveloperName,
-      micro_market_name: toStringOrNull(data.micro_market),
+      micro_market_name: toStringOrNull(data.micro_market) || toStringOrNull((data as any).micro_market_name),
       micro_market_institutional_positioning: microMarketPositioningText,
       nearby_supply_within_2km: nearbySupplyCount,
       supply_radius_km: calibratedRadiusKm,
@@ -1128,22 +1298,34 @@ export const projectService = {
       possession_date:
         toStringOrNull(data.actual_completion_date) || toStringOrNull(data.proposed_completion_date),
       possession_date_text:
-        toStringOrNull(data.actual_completion_date) || toStringOrNull(data.proposed_completion_date),
+        toStringOrNull((data as any).possession_date_text) ||
+        toStringOrNull(data.actual_completion_date) ||
+        toStringOrNull(data.proposed_completion_date),
       url_slug: toStringOrNull(data.url_slug) ?? projectSlug,
       city: {
-        city_name: citySlug,
+        city_name: toStringOrNull((data as any).city_name) || citySlug,
         url_slug: toStringOrNull(data.city_slug) ?? citySlug,
       },
-      micro_market: toStringOrNull(data.micro_market)
+      micro_market: (toStringOrNull(data.micro_market) || toStringOrNull((data as any).micro_market_name))
         ? {
-            micro_market_name: String(data.micro_market),
-            url_slug: "",
+            micro_market_name: toStringOrNull(data.micro_market) || toStringOrNull((data as any).micro_market_name) || "",
+            url_slug: toStringOrNull((data as any).micro_market_slug) || microMarketExtended?.url_slug || "",
+            hero_hook: microMarketExtended?.hero_hook ?? null,
+            price_per_sqft_min: microMarketExtended?.price_per_sqft_min ?? null,
+            price_per_sqft_max: microMarketExtended?.price_per_sqft_max ?? null,
+            annual_appreciation_min: microMarketExtended?.annual_appreciation_min ?? null,
           }
         : undefined,
-      developer: toStringOrNull(data.developer_name)
+      developer: (displayDeveloperName || toStringOrNull(data.developer_name))
         ? {
             developer_name: displayDeveloperName || String(data.developer_name),
-            url_slug: "",
+            url_slug: toStringOrNull((data as any).developer_slug) || developerExtended?.url_slug || "",
+            logo_url: developerExtended?.logo_url || toStringOrNull((data as any).developer_logo_url),
+            years_in_business: developerExtended?.years_in_business ?? null,
+            total_projects: developerExtended?.total_projects ?? null,
+            hero_description: developerExtended?.hero_description ?? null,
+            long_description_seo: developerExtended?.long_description_seo ?? null,
+            notable_projects_json: developerExtended?.notable_projects_json ?? null,
           }
         : undefined,
     } as ProjectWithRelations;

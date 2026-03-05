@@ -95,6 +95,10 @@ interface ProjectInsightsInput {
   bhkConfig: string;
   microMarketId: string;
   cityId: string;
+  // Project-specific context for grounded bullet generation
+  projectName: string;
+  developerName: string;
+  microMarketName: string;
 }
 
 const toNumber = (value: unknown): number => {
@@ -285,22 +289,50 @@ const deriveInsights = (input: ProjectInsightsInput, baseline: MicroMarketBaseli
     stageRiskRaw > 60 ? "Immediate-possession buyers" : "High-risk appetite speculators",
     category === "luxury" ? "Strict value-only budget buyers" : "Ultra-luxury requirement seekers",
   ];
+  // Format possession year for use in bullets (e.g. "mid-2026")
+  const possessionYear = (() => {
+    const d = new Date(input.possessionDateText);
+    if (!isNaN(d.getTime())) {
+      const y = d.getFullYear();
+      const m = d.getMonth();
+      const half = m < 6 ? "early" : "mid";
+      return `${half}-${y}`;
+    }
+    return input.possessionDateText || "at handover";
+  })();
+
+  const proj = input.projectName || "This project";
+  const dev = input.developerName || "The developer";
+  const mm = input.microMarketName || "this corridor";
+  const units = input.totalUnits;
+  const towers = input.totalTowers;
+
   const riskUpside = {
     upside: [
+      // Execution / stage upside
+      stageRiskRaw <= 30
+        ? `${dev} has ${towers > 0 ? `${towers} towers` : "the project"} at an advanced structural stage — execution risk is largely behind you.`
+        : stageRiskRaw <= 55
+          ? `${proj} is mid-construction in ${mm} — entry now captures pre-completion pricing before handover appreciation.`
+          : `Early-entry pricing in ${mm} gives patient buyers a cost advantage over ready inventory in the same corridor.`,
+      // Location / demand upside
       input.hasLocationAdvantages
-        ? "Location convenience supports long-term demand."
-        : "Potential upside depends on planned local infrastructure.",
-      stageRiskRaw > 45
-        ? "Entry at this stage can offer better value for patient buyers."
-        : "Delivery visibility improves confidence for end-use buyers.",
+        ? `${mm} has established IT and commercial demand drivers — rental absorption is steady for this configuration type.`
+        : `Infrastructure expansion planned around ${mm} could widen buyer demand over the next 3–5 years.`,
     ],
     risks: [
+      // Density / resale risk
+      densityRaw >= 75 && units > 0
+        ? `${units.toLocaleString()} units means intense resale competition when bulk handover happens around ${possessionYear} — secondary market pricing will be under pressure.`
+        : densityRaw >= 45
+          ? `Mid-scale inventory means moderate resale supply at handover — plan for a 12–18 month absorption window before exit.`
+          : `Lower supply density in ${mm} supports resale liquidity but limits rental-pool depth for investors.`,
+      // Stage / timeline risk
       stageRiskRaw > 60
-        ? "Delivery timelines may vary based on construction progress."
-        : "Lower immediate negotiation room in advanced-stage projects.",
-      densityRaw >= 75
-        ? "High resident load can reduce day-to-day privacy."
-        : "Lower density may limit on-site social/retail vibrancy.",
+        ? `Construction is at an early stage — delivery timelines for ${proj} carry meaningful execution uncertainty until towers are topped out.`
+        : stageRiskRaw > 35
+          ? `Advanced-stage projects in ${mm} typically have limited room for price negotiation — expect list-price transactions.`
+          : `Ready or near-ready inventory in ${mm} leaves minimal capital-appreciation runway before handover.`,
     ],
   };
 
@@ -428,10 +460,13 @@ export const projectInsightsService = {
       completionStatus: String((project as any).completion_status ?? ""),
       possessionDateText: String((project as any).possession_date_text ?? ""),
       priceRangeText: String(project.price_range_text ?? ""),
-      propertyTypes: propertyTypesRaw.map((item) => String(item)),
-      bhkConfig: String((project as any).bhk_config ?? ""),
+      propertyTypes: propertyTypesRaw.map((item: unknown) => String(item)),
+      bhkConfig: String((project as any).bhk_config ?? (project as any).configuration_display ?? ""),
       microMarketId: String(project.micro_market_id ?? ""),
       cityId: String(project.city_id ?? ""),
+      projectName: String(project.project_name ?? ""),
+      developerName: String(project.developer?.developer_name ?? project.developer_name ?? ""),
+      microMarketName: String(project.micro_market?.micro_market_name ?? (project as any).micro_market_name ?? ""),
     };
 
     const baseline =

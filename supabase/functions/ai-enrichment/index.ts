@@ -12,11 +12,12 @@ const CORS_HEADERS = {
 // ---------------------------------------------------------------------------
 
 interface RequestBody {
-  job_type: "micro_market" | "project" | "developer" | "market_pulse";
+  job_type: "micro_market" | "project" | "developer" | "market_pulse" | "project_live_intelligence" | "project_live_intelligence_batch";
   entity_id?: string;
   force_refresh?: boolean;
   offset?: number;
   market_names?: string[];
+  priority?: number;
 }
 
 interface JobResult {
@@ -75,9 +76,150 @@ async function callClaude(prompt: string, maxTokens = 2048): Promise<string> {
 }
 
 function parseJsonFromClaude(raw: string): Record<string, unknown> {
-  // Strip markdown code fences if present
-  const cleaned = raw.replace(/^```(?:json)?\n?/i, "").replace(/\n?```$/i, "").trim();
-  return JSON.parse(cleaned);
+  // Strip all markdown code blocks anywhere in the string
+  const cleaned = raw.replace(/```json|```/g, "").trim();
+
+  // Primary attempt
+  try {
+    return JSON.parse(cleaned);
+  } catch {
+    // Regex fallback: grab the first {...} block
+    const match = cleaned.match(/\{[\s\S]*\}/);
+    if (match) {
+      try {
+        return JSON.parse(match[0]);
+      } catch {
+        // fall through
+      }
+    }
+    // Throw with raw snippet so callers can store it for debugging
+    throw new Error(`JSON parse failed. Raw (first 400 chars): ${raw.slice(0, 400)}`);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Claude with web_search tool (Anthropic-hosted, beta)
+// ---------------------------------------------------------------------------
+
+// Trim web_search_tool_result blocks before forwarding to Claude.
+// Limits to 3 results per tool call and truncates each result's text content
+// to 500 chars to stay well under the 30k tokens/min rate limit.
+function truncateWebSearchResults(
+  blocks: Array<Record<string, unknown>>
+): Array<Record<string, unknown>> {
+  return blocks.map((block) => {
+    if (!Array.isArray(block.content)) return block;
+    const trimmed = (block.content as Array<Record<string, unknown>>)
+      .slice(0, 3)
+      .map((result) => {
+        const r = { ...result };
+        if (typeof r.content === "string" && r.content.length > 500) {
+          r.content = r.content.slice(0, 500) + "…";
+        }
+        return r;
+      });
+    return { ...block, content: trimmed };
+  });
+}
+
+async function callClaudeWithWebSearch(prompt: string, maxTokens = 4096, model = "claude-sonnet-4-6", system?: string): Promise<string> {
+  const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
+  if (!apiKey) throw new Error("Missing ANTHROPIC_API_KEY");
+
+  const messages: Array<{ role: string; content: unknown }> = [
+    { role: "user", content: prompt },
+  ];
+
+  // Agentic loop — Anthropic executes the web searches server-side and
+  // returns them as web_search_tool_result blocks in the same response turn.
+  // We forward those blocks as a user turn so Claude can synthesize them.
+  for (let round = 0; round < 8; round++) {
+    // Retry loop for 429 rate limit errors (up to 3 attempts, 15s apart)
+    let res: Response | null = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      res = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01",
+          "anthropic-beta": "web-search-2025-03-05,prompt-caching-2024-07-31",
+        },
+        body: JSON.stringify({
+          model,
+          max_tokens: maxTokens,
+          ...(system ? {
+            system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
+          } : {}),
+          tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 3 }],
+          messages,
+        }),
+      });
+      if (res.status !== 429) break;
+      console.log(`Rate limited (429), attempt ${attempt + 1}/3 — waiting 60s`);
+      await new Promise((r) => setTimeout(r, 60000));
+    }
+
+    if (!res || !res.ok) {
+      const text = await res!.text();
+      throw new Error(`Claude API error ${res!.status}: ${text}`);
+    }
+
+    const data = await res.json();
+    const stopReason: string = data.stop_reason;
+    const content: Array<Record<string, unknown>> = data.content ?? [];
+
+    if (stopReason === "end_turn") {
+      // Collect all text blocks — this is the final synthesized answer
+      return content
+        .filter((b) => b.type === "text")
+        .map((b) => b.text as string)
+        .join("");
+    }
+
+    if (stopReason === "tool_use") {
+      // Add assistant turn to conversation
+      messages.push({ role: "assistant", content });
+
+      // Anthropic returns web_search_tool_result blocks in the same response.
+      // Forward them back as a user turn so Claude can read and synthesize them.
+      const searchResults = content.filter((b) => b.type === "web_search_tool_result");
+      if (searchResults.length > 0) {
+        const truncated = truncateWebSearchResults(searchResults);
+        console.log(`Truncated search results: ${searchResults.length} blocks → forwarding ≤3 results per block at ≤500 chars`);
+        messages.push({ role: "user", content: truncated });
+        // 30s cooldown between search rounds to avoid rate limiting
+        console.log("Web search round complete — waiting 30s before next round");
+        await new Promise((r) => setTimeout(r, 30000));
+        continue;
+      }
+
+      // Fallback: provide empty tool_result for any unhandled tool_use blocks
+      const toolUses = content.filter((b) => b.type === "tool_use");
+      if (toolUses.length === 0) break;
+      messages.push({
+        role: "user",
+        content: toolUses.map((tu) => ({
+          type: "tool_result",
+          tool_use_id: tu.id as string,
+          content: "No results.",
+        })),
+      });
+      // 30s cooldown after fallback tool responses too
+      await new Promise((r) => setTimeout(r, 30000));
+      continue;
+    }
+
+    // Any other stop reason — extract whatever text is present
+    const text = content
+      .filter((b) => b.type === "text")
+      .map((b) => b.text as string)
+      .join("");
+    if (text) return text;
+    break;
+  }
+
+  throw new Error("Web search loop did not produce a final text response");
 }
 
 // ---------------------------------------------------------------------------
@@ -89,17 +231,21 @@ async function logJob(
   opts: {
     job_type: string;
     entity_id?: string | null;
+    entity_name?: string | null;
     status: "success" | "error" | "skipped";
     message?: string;
   }
 ) {
-  await supabase.from("ai_enrichment_job_log").insert({
+  // Table columns: job_type, entity_id, entity_name, status, error_message, ran_at (auto)
+  const row: Record<string, unknown> = {
     job_type: opts.job_type,
     entity_id: opts.entity_id ?? null,
+    entity_name: opts.entity_name ?? null,
     status: opts.status,
-    message: opts.message ?? null,
-    created_at: new Date().toISOString(),
-  });
+  };
+  if (opts.message) row.error_message = opts.message;
+  const { error } = await supabase.from("ai_enrichment_job_log").insert(row);
+  if (error) console.error("logJob insert failed:", error.message);
 }
 
 // ---------------------------------------------------------------------------
@@ -128,8 +274,10 @@ async function enrichMicroMarket(
 
   console.log("Fetched market:", mm.micro_market_name);
 
-  // Check freshness — skip if enriched within 25 days unless force_refresh
-  if (!forceRefresh) {
+  // Freshness check — bypassed entirely when force_refresh is true
+  if (forceRefresh) {
+    console.log("Force refresh requested — bypassing freshness check for:", mm.micro_market_name);
+  } else {
     const { data: existing } = await supabase
       .from("micro_market_ai_enrichment")
       .select("fetched_at")
@@ -458,6 +606,305 @@ async function runMicroMarketBatch(
 }
 
 // ---------------------------------------------------------------------------
+// PROJECT LIVE INTELLIGENCE enrichment (web search via rera_projects)
+// ---------------------------------------------------------------------------
+
+async function enrichProjectLiveIntelligence(
+  supabase: ReturnType<typeof getSupabase>,
+  reraProjectId: string,
+  forceRefresh: boolean
+): Promise<{ status: "success" | "error" | "skipped"; projectName?: string; errorMsg?: string }> {
+  console.log("enrichProjectLiveIntelligence called, rera_project_id:", reraProjectId, "force:", forceRefresh);
+
+  console.log("entity_id received:", reraProjectId);
+
+  // Fetch from rera_projects — only columns that actually exist in the table
+  const { data: project, error: projectErr } = await supabase
+    .from("rera_projects")
+    .select("id, project_name, rera_id, city_slug, current_status, proposed_completion_date, raw_payload")
+    .eq("id", reraProjectId)
+    .maybeSingle();
+
+  if (projectErr || !project) {
+    const msg = projectErr?.message ?? "RERA project not found";
+    console.error("rera_projects fetch error:", msg, "for id:", reraProjectId);
+    await logJob(supabase, { job_type: "project_live_intelligence", entity_id: reraProjectId, status: "error", message: msg });
+    return { status: "error", errorMsg: msg };
+  }
+
+  const projectName: string = project.project_name ?? "Unknown Project";
+  console.log("Fetched RERA project:", projectName, "| rera_id:", project.rera_id);
+
+  // Extract developer name from raw_payload if available
+  const rawPayload = project.raw_payload as Record<string, unknown> | null;
+  const developerName: string =
+    (rawPayload?.promoter_name as string) ??
+    ((rawPayload?.sections as any)?.promoter_details?.promoter_name as string) ??
+    "Unknown Developer";
+
+  // Freshness check — skip if scraped within last 7 days
+  if (!forceRefresh) {
+    const { data: existing } = await supabase
+      .from("project_live_intelligence")
+      .select("scraped_at")
+      .eq("rera_project_id", reraProjectId)
+      .maybeSingle();
+
+    if (existing?.scraped_at) {
+      const ageDays = (Date.now() - new Date(existing.scraped_at).getTime()) / (1000 * 60 * 60 * 24);
+      if (ageDays < 7) {
+        console.log("Skipping fresh project:", projectName, `(${Math.round(ageDays)}d ago)`);
+        await logJob(supabase, { job_type: "project_live_intelligence", entity_id: reraProjectId, entity_name: projectName, status: "skipped", message: `Fresh (${Math.round(ageDays)}d ago)` });
+        return { status: "skipped", projectName };
+      }
+    }
+  }
+
+  const prompt = `You are a real estate intelligence analyst. Use web_search to research the current on-ground status of ${projectName} by ${developerName} in Hyderabad, India.
+
+Run these three searches in order:
+1. "${projectName} Hyderabad handover possession 2025 2026"
+2. "${projectName} Hyderabad price per sqft 2026"
+3. "${projectName} Hyderabad reviews forum residents"
+
+After reviewing all search results, extract and structure the following as valid JSON.
+Be specific and factual. Use exact numbers from search results where available.
+
+{
+  "developer_price_min": integer (₹/sqft from developer) or null,
+  "developer_price_max": integer (₹/sqft from developer) or null,
+  "resale_price_min": integer (₹/sqft resale market) or null,
+  "resale_price_max": integer (₹/sqft resale market) or null,
+  "price_trend": "rising" | "stable" | "falling" | null,
+  "actual_status": "under_construction" | "partial_handover" | "substantially_complete" | "fully_handed_over",
+  "handover_started": true | false,
+  "handover_notes": "One clear paragraph describing handover situation — tower-wise if known. null if no data found.",
+  "towers_completed": integer or null,
+  "towers_total": integer or null,
+  "forum_sentiment": "positive" | "mixed" | "negative" | null,
+  "key_updates": ["specific factual update 1 (dated if possible)", "update 2", "update 3"],
+  "buyer_concerns": ["concern 1 found in forums or news", "concern 2"],
+  "sources": ["URL or source 1", "URL or source 2", "URL or source 3"],
+  "confidence": "high" | "medium" | "low"
+}
+
+Respond with a single valid JSON object only. Start your response with { and end with }. No other text.`;
+
+  const systemPrompt = "You are a JSON API. You must respond with valid JSON only. No explanation, no preamble, no markdown, no code blocks. Just raw JSON.";
+
+  let parsed: Record<string, unknown>;
+  try {
+    const raw = await callClaudeWithWebSearch(prompt, 4096, "claude-haiku-4-5-20251001", systemPrompt);
+    console.log("Web search response length:", raw.length);
+    parsed = parseJsonFromClaude(raw);
+
+    // Validate prices — Claude sometimes scrapes sq.metre prices (10.764x too high).
+    // Convert to sq.ft if outside the reasonable India range.
+    const MAX_SQFT_PRICE = 50000;
+    const MIN_SQFT_PRICE = 2000;
+    const SQM_TO_SQFT = 10.764;
+    for (const [minKey, maxKey] of [
+      ["developer_price_min", "developer_price_max"],
+      ["resale_price_min", "resale_price_max"],
+    ] as const) {
+      const min = parsed[minKey];
+      if (typeof min === "number" && (min > MAX_SQFT_PRICE || min < MIN_SQFT_PRICE)) {
+        console.log(`Price validation: ${minKey}=${min} out of range — converting sq.m → sq.ft`);
+        if (typeof parsed[minKey] === "number") parsed[minKey] = Math.round((parsed[minKey] as number) / SQM_TO_SQFT);
+        if (typeof parsed[maxKey] === "number") parsed[maxKey] = Math.round((parsed[maxKey] as number) / SQM_TO_SQFT);
+      }
+    }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("Web search/parse error for", projectName, ":", msg);
+    await logJob(supabase, { job_type: "project_live_intelligence", entity_id: reraProjectId, entity_name: projectName, status: "error", message: `Web search error: ${msg}` });
+    return { status: "error", projectName, errorMsg: msg };
+  }
+
+  const payload = {
+    actual_status: parsed.actual_status ?? null,
+    handover_started: parsed.handover_started ?? null,
+    handover_notes: parsed.handover_notes ?? null,
+    towers_completed: parsed.towers_completed ?? null,
+    towers_total: parsed.towers_total ?? null,
+    developer_price_min: parsed.developer_price_min ?? null,
+    developer_price_max: parsed.developer_price_max ?? null,
+    resale_price_min: parsed.resale_price_min ?? null,
+    resale_price_max: parsed.resale_price_max ?? null,
+    price_trend: parsed.price_trend ?? null,
+    forum_sentiment: parsed.forum_sentiment ?? null,
+    key_updates: parsed.key_updates ?? null,
+    buyer_concerns: parsed.buyer_concerns ?? null,
+    sources: parsed.sources ?? null,
+    confidence: parsed.confidence ?? null,
+    scraped_at: new Date().toISOString(),
+  };
+
+  // Manual upsert: check if row exists, then update or insert
+  const { data: existingRow } = await supabase
+    .from("project_live_intelligence")
+    .select("id")
+    .eq("rera_project_id", reraProjectId)
+    .maybeSingle();
+
+  const { error: upsertErr } = existingRow?.id
+    ? await supabase.from("project_live_intelligence").update(payload).eq("id", existingRow.id)
+    : await supabase.from("project_live_intelligence").insert({ rera_project_id: reraProjectId, ...payload });
+
+  if (upsertErr) {
+    console.error("Upsert error for", projectName, ":", upsertErr.message);
+    await logJob(supabase, { job_type: "project_live_intelligence", entity_id: reraProjectId, entity_name: projectName, status: "error", message: `DB upsert error: ${upsertErr.message}` });
+    return { status: "error", projectName, errorMsg: `DB upsert error: ${upsertErr.message}` };
+  }
+
+  console.log("Enriched successfully:", projectName);
+  await logJob(supabase, { job_type: "project_live_intelligence", entity_id: reraProjectId, entity_name: projectName, status: "success" });
+  return { status: "success", projectName };
+}
+
+// ---------------------------------------------------------------------------
+// BATCH: project_live_intelligence (from rera_projects with url_slug)
+// ---------------------------------------------------------------------------
+
+async function runProjectLiveIntelligenceBatch(
+  supabase: ReturnType<typeof getSupabase>,
+  forceRefresh: boolean,
+  offset: number
+): Promise<BatchJobResult> {
+  const LIMIT = 5; // Smaller batches — each project runs 3 web searches
+  const result: BatchJobResult = { success: 0, errors: 0, skipped: 0, total_markets: 0, offset };
+
+  console.log("Running project_live_intelligence batch, force:", forceRefresh, "offset:", offset);
+
+  const { count } = await supabase
+    .from("rera_projects")
+    .select("*", { count: "exact", head: true })
+    .not("url_slug", "is", null);
+
+  result.total_markets = count ?? 0;
+  console.log("Total RERA projects with url_slug:", result.total_markets);
+
+  const { data: projects, error } = await supabase
+    .from("rera_projects")
+    .select("id, project_name")
+    .not("url_slug", "is", null)
+    .order("project_name", { ascending: true })
+    .range(offset, offset + LIMIT - 1);
+
+  if (error || !projects) {
+    console.error("Batch fetch error:", error?.message);
+    await logJob(supabase, { job_type: "project_live_intelligence", status: "error", message: `Batch fetch error: ${error?.message}` });
+    result.errors++;
+    return result;
+  }
+
+  console.log("Batch: processing", projects.length, "projects at offset", offset);
+
+  for (const project of projects) {
+    const { status } = await enrichProjectLiveIntelligence(supabase, project.id, forceRefresh);
+    if (status === "success") result.success++;
+    else if (status === "error") result.errors++;
+    else result.skipped++;
+  }
+
+  return result;
+}
+
+// ---------------------------------------------------------------------------
+// QUEUE BATCH: project_live_intelligence_batch
+// Reads from project_intelligence_queue, drives enrichment per row.
+// Migration required once: ALTER TABLE project_intelligence_queue
+//   ADD COLUMN IF NOT EXISTS error_message text;
+// ---------------------------------------------------------------------------
+
+interface QueueBatchResult {
+  ok: boolean;
+  priority: number;
+  processed: number;
+  succeeded: number;
+  failed: number;
+  remaining: number;
+}
+
+async function runProjectLiveIntelligenceQueueBatch(
+  supabase: ReturnType<typeof getSupabase>,
+  priority: number
+): Promise<QueueBatchResult> {
+  console.log("runProjectLiveIntelligenceQueueBatch, priority:", priority);
+
+  // 1. Fetch 1 pending item for this priority (sequential, one project per call)
+  const { data: queueItems, error: fetchErr } = await supabase
+    .from("project_intelligence_queue")
+    .select("id, project_id")
+    .eq("priority", priority)
+    .eq("status", "pending")
+    .limit(1);
+
+  if (fetchErr) {
+    console.error("Queue fetch error:", fetchErr.message);
+    return { ok: false, priority, processed: 0, succeeded: 0, failed: 0, remaining: 0 };
+  }
+
+  const items = queueItems ?? [];
+  let succeeded = 0;
+  let failed = 0;
+
+  // 2. Process each item
+  for (const item of items) {
+    const queueId: string = item.id;
+    const projectId: string = item.project_id;
+
+    // Mark processing immediately
+    await supabase
+      .from("project_intelligence_queue")
+      .update({ status: "processing" })
+      .eq("id", queueId);
+
+    // Run the full enrichment — always land on done/failed, never leave as processing
+    try {
+      const { status, errorMsg } = await enrichProjectLiveIntelligence(supabase, projectId, false);
+      if (status === "success" || status === "skipped") {
+        await supabase
+          .from("project_intelligence_queue")
+          .update({ status: "done", last_run_at: new Date().toISOString() })
+          .eq("id", queueId);
+        succeeded++;
+      } else {
+        await supabase
+          .from("project_intelligence_queue")
+          .update({ status: "failed", error_message: errorMsg ?? "Unknown error" })
+          .eq("id", queueId);
+        failed++;
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("Unhandled enrichment error for project", projectId, ":", msg);
+      await supabase
+        .from("project_intelligence_queue")
+        .update({ status: "failed", error_message: msg })
+        .eq("id", queueId);
+      failed++;
+    }
+  }
+
+  // 3. Count remaining pending for this priority
+  const { count: remaining } = await supabase
+    .from("project_intelligence_queue")
+    .select("*", { count: "exact", head: true })
+    .eq("priority", priority)
+    .eq("status", "pending");
+
+  return {
+    ok: true,
+    priority,
+    processed: items.length,
+    succeeded,
+    failed,
+    remaining: remaining ?? 0,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Entry point
 // ---------------------------------------------------------------------------
 
@@ -488,9 +935,13 @@ Deno.serve(async (req: Request) => {
     }
 
     const supabase = getSupabase();
-    let result: JobResult | BatchJobResult | { status: string };
+    let result: JobResult | BatchJobResult | QueueBatchResult | { status: string };
 
-    if (job_type === "micro_market") {
+    if (job_type === "project_live_intelligence_batch") {
+      const priority = body.priority ?? 1;
+      result = await runProjectLiveIntelligenceQueueBatch(supabase, priority);
+      return new Response(JSON.stringify(result), { status: 200, headers: CORS_HEADERS });
+    } else if (job_type === "micro_market") {
       if (entity_id) {
         // Single entity
         const status = await enrichMicroMarket(supabase, entity_id, force_refresh);
@@ -506,6 +957,24 @@ Deno.serve(async (req: Request) => {
     } else if (job_type === "market_pulse") {
       const status = await runMarketPulse(supabase);
       result = { status };
+    } else if (job_type === "project_live_intelligence") {
+      if (entity_id) {
+        const { status, projectName, errorMsg } = await enrichProjectLiveIntelligence(supabase, entity_id, force_refresh);
+        if (status === "success") {
+          return new Response(
+            JSON.stringify({ ok: true, project: projectName, status: "enriched" }),
+            { status: 200, headers: CORS_HEADERS }
+          );
+        }
+        result = {
+          success: 0,
+          errors: status === "error" ? 1 : 0,
+          skipped: status === "skipped" ? 1 : 0,
+          debug_error: errorMsg ?? null,
+        } as unknown as JobResult;
+      } else {
+        result = await runProjectLiveIntelligenceBatch(supabase, force_refresh, offset);
+      }
     } else {
       return new Response(
         JSON.stringify({ error: `job_type "${job_type}" not yet implemented` }),
