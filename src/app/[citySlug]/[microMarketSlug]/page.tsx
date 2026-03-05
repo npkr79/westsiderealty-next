@@ -63,8 +63,7 @@ export default async function MicroMarketPage({ params }: PageProps) {
   const cityName = city?.city_name || citySlug;
 
   // Run all independent fetches in parallel
-  const [viewModel, mapCenter, mmData, nearbyMarketsData, metricsData, aiEnrichmentRaw] = await Promise.all([
-    Promise.resolve(buildMicroMarketViewModel(cache)),
+  const [mapCenter, mmData, nearbyMarketsData, metricsData, aiEnrichmentRaw, classRowsData] = await Promise.all([
     getMicroMarketMapCenter(cache.id),
     supabase
       .from("micro_markets")
@@ -92,7 +91,42 @@ export default async function MicroMarketPage({ params }: PageProps) {
       .eq("micro_market_id", cache.id)
       .maybeSingle()
       .then(({ data }: { data: Record<string, unknown> | null }) => data),
+    // Fetch project classifications here so we can augment cache metrics + reuse for BHK/amenities
+    cache.micro_market_name
+      ? supabase
+          .from("project_micro_market_classification")
+          .select("project_id")
+          .eq("resolved_micro_market", cache.micro_market_name)
+          .then(({ data }) => (data ?? []) as Array<{ project_id: string | null }>)
+      : Promise.resolve([] as Array<{ project_id: string | null }>),
   ]);
+
+  // Derive projectIds from classification table
+  const projectIds = classRowsData
+    .map((r) => r.project_id)
+    .filter((id): id is string => id != null);
+
+  // Augment the cache row: fill null RERA metrics from data we have at runtime.
+  // recent_launches = count of projects classified to this market (RERA project count).
+  // velocity_score  = derived from AI enrichment builder_activity when cache has no value.
+  const aiRaw = aiEnrichmentRaw as Record<string, unknown> | null;
+  const derivedVelocityScore = ((): number | null => {
+    if (cache.velocity_score != null) return null; // don't override
+    const ba = String(aiRaw?.builder_activity ?? "").toLowerCase();
+    if (ba.includes("very active")) return 85;
+    if (ba.includes("high") || ba.includes("active")) return 65;
+    if (ba.includes("moderate")) return 45;
+    if (projectIds.length > 0) return 20;
+    return null;
+  })();
+
+  const augmentedCache = {
+    ...cache,
+    recent_launches: cache.recent_launches ?? (projectIds.length > 0 ? projectIds.length : null),
+    velocity_score: cache.velocity_score ?? derivedVelocityScore,
+  };
+
+  const viewModel = buildMicroMarketViewModel(augmentedCache);
 
   // Process FAQs from micro_markets table.
   // Stored as either a JSON string or native array.
@@ -239,24 +273,12 @@ export default async function MicroMarketPage({ params }: PageProps) {
       url_slug: m.url_slug!,
     }));
 
-  // Fetch available BHK types + amenities (two-step: project IDs → unit configs + location access)
+  // Fetch available BHK types + amenities using projectIds already fetched above
   type MarketAmenities = { schools: boolean; hospitals: boolean; dailyConveniences: boolean; pharmacy: boolean };
   let availableBhkTypes: string[] = [];
   let marketAmenities: MarketAmenities | null = null;
-  if (cache.micro_market_name) {
-    const { data: classRows } = await supabase
-      .from("project_micro_market_classification")
-      .select("project_id")
-      .eq("resolved_micro_market", cache.micro_market_name);
-
-    const projectIds = (
-      (classRows ?? []) as Array<{ project_id: string | null }>
-    )
-      .map((r) => r.project_id)
-      .filter((id): id is string => id != null);
-
-    if (projectIds.length > 0) {
-      const [unitResult, amenityResult] = await Promise.all([
+  if (projectIds.length > 0) {
+    const [unitResult, amenityResult] = await Promise.all([
         supabase
           .from("v_project_unit_enriched")
           .select("normalized_unit_config")
@@ -303,7 +325,6 @@ export default async function MicroMarketPage({ params }: PageProps) {
           pharmacy: counts.pharmacy > threshold,
         };
       }
-    }
   }
 
   return (
