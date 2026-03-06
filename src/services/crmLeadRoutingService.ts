@@ -159,11 +159,15 @@ export async function routeLeadByOwnership(input: RouteLeadInput): Promise<Routi
   await insertAssignmentActivity(input.leadId, agentId, "Auto-assigned via source ownership", null);
   const { data: lead } = await supabase.from("crm_leads").select("id,phone").eq("id", input.leadId).maybeSingle();
   if (lead?.id) {
-    await onAssignmentAutomation({
-      leadId: String(lead.id),
-      leadPhone: lead.phone,
-      sentBy: "automation-bot",
-    });
+    try {
+      await onAssignmentAutomation({
+        leadId: String(lead.id),
+        leadPhone: lead.phone,
+        sentBy: "automation-bot",
+      });
+    } catch (_e) {
+      // WhatsApp automation is non-critical — do not fail the assignment
+    }
   }
   return { assigned: true, agentId, reason: "ownership_match" };
 }
@@ -189,11 +193,15 @@ export async function assignLeadManually(input: ManualAssignInput): Promise<Rout
   await insertAssignmentActivity(input.leadId, input.agentId, note, input.assignedBy);
   const { data: lead } = await supabase.from("crm_leads").select("id,phone").eq("id", input.leadId).maybeSingle();
   if (lead?.id) {
-    await onAssignmentAutomation({
-      leadId: String(lead.id),
-      leadPhone: lead.phone,
-      sentBy: input.assignedBy,
-    });
+    try {
+      await onAssignmentAutomation({
+        leadId: String(lead.id),
+        leadPhone: lead.phone,
+        sentBy: input.assignedBy,
+      });
+    } catch (_e) {
+      // WhatsApp automation is non-critical — do not fail the assignment
+    }
   }
   return { assigned: true, agentId: input.agentId, reason: "manual_assignment" };
 }
