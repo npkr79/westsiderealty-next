@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local debug / one-shot scripts — never commit
+test-*.mjs
+src/app/api/admin/fix-db/
