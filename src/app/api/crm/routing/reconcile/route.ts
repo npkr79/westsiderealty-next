@@ -6,9 +6,16 @@ const allowedRoles = new Set(["admin", "sales_head", "team_lead"]);
 
 export async function POST(request: Request) {
   try {
-    const session = await getCrmSessionResult();
-    if (!session.user || !allowedRoles.has(session.user.role)) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Dual auth: CRON_SECRET bearer token (service calls) OR valid CRM session
+    const cronSecret = process.env.CRON_SECRET;
+    const authHeader = request.headers.get("authorization") || "";
+    const isCronCall = cronSecret && authHeader === `Bearer ${cronSecret}`;
+
+    if (!isCronCall) {
+      const session = await getCrmSessionResult();
+      if (!session.user || !allowedRoles.has(session.user.role)) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
     }
 
     const body = await request.json().catch(() => ({}));
