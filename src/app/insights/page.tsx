@@ -36,6 +36,20 @@ const SECTIONS = [
     label: "RERA Updates",
     desc: "Latest regulatory changes and project registrations",
   },
+  {
+    href: "/insights/gcc-hyderabad",
+    label: "The GCC Rush",
+    desc: "How Hyderabad became India's Global Capability Centre capital",
+    badge: "NEW",
+    badgeColor: { bg: "rgba(200,169,110,0.15)", text: "#c8a96e", border: "rgba(200,169,110,0.3)" },
+  },
+  {
+    href: "/insights/institutional-investors",
+    label: "Institutional Capital",
+    desc: "Why global REITs and sovereign funds are choosing Hyderabad",
+    badge: "NEW",
+    badgeColor: { bg: "rgba(200,169,110,0.15)", text: "#c8a96e", border: "rgba(200,169,110,0.3)" },
+  },
 ];
 
 export default function InsightsPage() {
