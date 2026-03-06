@@ -86,6 +86,22 @@ async function insertAssignmentActivity(leadId: string, agentId: string, note: s
   }
 }
 
+// AGENT_ROLE_ID is the role_id for the "agent" role in crm_users
+const AGENT_ROLE_ID = "ba810ef8-af60-428a-a63f-edbba4b4577b";
+
+async function findRoundRobinAgent(): Promise<string | null> {
+  const supabase = createServiceClient();
+  // Get all active agents by role_id, ordered by least-recently assigned
+  const { data: agents } = await supabase
+    .from("crm_users")
+    .select("id")
+    .eq("role_id", AGENT_ROLE_ID)
+    .eq("is_active", true)
+    .order("updated_at", { ascending: true })
+    .limit(1);
+  return agents?.[0]?.id ? String(agents[0].id) : null;
+}
+
 export async function routeLeadByOwnership(input: RouteLeadInput): Promise<RoutingResult> {
   const supabase = createServiceClient();
 
@@ -93,7 +109,8 @@ export async function routeLeadByOwnership(input: RouteLeadInput): Promise<Routi
   const sourceName = normalize(input.sourceName);
   const projectId = normalize(input.projectId);
 
-  if (!sourceType || !sourceName) {
+  // Only gate on sourceName — null sourceType can still match ownership rules
+  if (!sourceName) {
     const pendingPatch = sanitizeLeadPayload({ assignment_status: "pending" });
     if (Object.keys(pendingPatch).length > 0) {
       await supabase
@@ -104,15 +121,20 @@ export async function routeLeadByOwnership(input: RouteLeadInput): Promise<Routi
     return { assigned: false, agentId: null, reason: "missing_source_keys" };
   }
 
-  const { data: ownership, error: ownershipError } = await supabase
+  // Fix: .eq("source_type", null) never matches NULL in Postgres — must use .is()
+  let ownershipQuery = supabase
     .from("crm_source_ownership")
     .select("agent_id, source_type, source_name, project_id")
-    .eq("source_type", sourceType)
     .eq("source_name", sourceName)
     .or(`project_id.eq.${projectId ?? ""},project_id.is.null`)
     .order("project_id", { ascending: false, nullsFirst: false })
-    .limit(1)
-    .maybeSingle();
+    .limit(1);
+
+  ownershipQuery = sourceType
+    ? ownershipQuery.eq("source_type", sourceType)
+    : ownershipQuery.is("source_type", null);
+
+  const { data: ownership, error: ownershipError } = await ownershipQuery.maybeSingle();
 
   if (ownershipError || !ownership?.agent_id) {
     const pendingPatch = sanitizeLeadPayload({ assignment_status: "pending" });
