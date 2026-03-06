@@ -109,30 +109,26 @@ export async function routeLeadByOwnership(input: RouteLeadInput): Promise<Routi
   const sourceName = normalize(input.sourceName);
   const projectId = normalize(input.projectId);
 
-  // Build ownership query — use IS NULL for null values, .eq() for non-null
-  // (.eq("col", null) never matches NULL in Postgres; must use .is("col", null))
-  let query = supabase
+  let ownershipQuery = supabase
     .from("crm_source_ownership")
     .select("agent_id, source_type, source_name, project_id");
 
   if (sourceType) {
-    query = query.eq("source_type", sourceType);
+    ownershipQuery = ownershipQuery.eq("source_type", sourceType);
   } else {
-    query = query.is("source_type", null);
+    ownershipQuery = ownershipQuery.is("source_type", null);
   }
 
   if (sourceName) {
-    query = query.eq("source_name", sourceName);
+    ownershipQuery = ownershipQuery.eq("source_name", sourceName);
   } else {
-    query = query.is("source_name", null);
+    ownershipQuery = ownershipQuery.is("source_name", null);
   }
 
-  query = query
-    .or(`project_id.eq.${projectId ?? ""},project_id.is.null`)
+  const { data: ownership, error: ownershipError } = await ownershipQuery
     .order("project_id", { ascending: false, nullsFirst: false })
-    .limit(1);
-
-  const { data: ownership, error: ownershipError } = await query.maybeSingle();
+    .limit(1)
+    .maybeSingle();
 
   if (ownershipError || !ownership?.agent_id) {
     const pendingPatch = sanitizeLeadPayload({ assignment_status: "pending" });
