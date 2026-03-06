@@ -71,7 +71,6 @@ export async function submitLead(formData: SubmitLeadData): Promise<SubmitLeadRe
       source_type?: string | null;
       source_name?: string | null;
       project_id?: string | null;
-      assignment_status?: string | null;
       assigned_to?: string | null;
       assigned_agent_id?: string | null;
       interest_details?: string | null;
@@ -124,8 +123,6 @@ export async function submitLead(formData: SubmitLeadData): Promise<SubmitLeadRe
       (typeof details.project_id === "string" ? details.project_id : null) ||
       (typeof details.projectId === "string" ? details.projectId : null) ||
       null;
-    insertData.assignment_status = "pending";
-
     if (possibleAgentId) {
       const { data: agent } = await supabase
         .from("raw_agents")
