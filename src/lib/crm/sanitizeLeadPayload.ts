@@ -1,9 +1,13 @@
+// Exact column allowlist from crm_leads table schema
 const CRM_LEADS_ALLOWED_COLUMNS = new Set([
   "id",
   "name",
   "phone",
   "email",
   "source_id",
+  "source_type",
+  "source_channel",
+  "budget",
   "budget_min",
   "budget_max",
   "location_preference",
@@ -13,9 +17,18 @@ const CRM_LEADS_ALLOWED_COLUMNS = new Set([
   "wealth_bracket",
   "investment_style",
   "risk_appetite",
+  "investor_type",
   "notes",
+  "qualification_notes",
   "stage_id",
   "assigned_to",
+  "assignment_status",
+  "status",
+  "priority",
+  "lead_score",
+  "campaign_id",
+  "referral_source",
+  "meta_leadgen_id",
   "attribution_metadata",
   "utm_source",
   "utm_campaign",
@@ -25,6 +38,8 @@ const CRM_LEADS_ALLOWED_COLUMNS = new Set([
   "gclid",
   "fb_lead_id",
   "landing_page",
+  "deal_probability",
+  "expected_closure_date",
 ]);
 
 export type LeadPayload = Record<string, unknown>;
@@ -51,4 +66,3 @@ export function sanitizeLeadPayload(payload: LeadPayload): LeadPayload {
 
   return sanitized;
 }
-

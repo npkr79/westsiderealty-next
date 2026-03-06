@@ -174,7 +174,7 @@ export async function POST(request: Request) {
       name: String(body?.name || "").trim(),
       phone: String(body?.phone || "").trim(),
       email,
-      source_id: sourceId ?? attribution.source_name,
+      source_id: sourceId,  // must be UUID FK or null — never a plain string
       budget_min: budgetMin,
       budget_max: budgetMax,
       location_preference: locationPreference ?? body?.location ?? null,

@@ -184,9 +184,11 @@ export async function assignLeadManually(input: ManualAssignInput): Promise<Rout
 
 export async function reconcilePendingLeadRouting(limit = 100): Promise<{ processed: number; assigned: number }> {
   const supabase = createServiceClient();
+  // Select only columns that exist in crm_leads schema
+  // source_channel stores the routing source name (was previously source_name)
   const { data: pendingLeads } = await supabase
     .from("crm_leads")
-    .select("id,source_type,source_name,project_id")
+    .select("id,source_type,source_channel")
     .eq("assignment_status", "pending")
     .order("created_at", { ascending: true })
     .limit(limit);
@@ -198,8 +200,8 @@ export async function reconcilePendingLeadRouting(limit = 100): Promise<{ proces
     const result = await routeLeadByOwnership({
       leadId: String(lead.id),
       sourceType: lead.source_type,
-      sourceName: lead.source_name,
-      projectId: lead.project_id,
+      sourceName: lead.source_channel,
+      projectId: null,
     });
     if (result.assigned) assigned += 1;
   }
