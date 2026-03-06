@@ -21,6 +21,7 @@ type LeadRow = {
   budget_min?: number | null;
   budget_max?: number | null;
   assigned_agent_id?: string | null;
+  assigned_agent_name?: string | null;
   priority?: string | null;
   lead_priority?: string | null;
 };
@@ -145,6 +146,9 @@ export default function SalesCockpitRealtime({ user, scope = "all" }: SalesCockp
     setError(null);
     try {
       const leadSelectVariants = [
+        "id,created_at,updated_at,status,source_name,stage_id,budget_min,budget_max,assigned_agent_id,assigned_agent_name,priority",
+        "id,created_at,updated_at,status,source_name,stage_id,budget_min,budget_max,assigned_agent_id,assigned_agent_name,lead_priority",
+        "id,created_at,updated_at,status,source_name,stage_id,budget_min,budget_max,assigned_agent_id,assigned_agent_name",
         "id,created_at,updated_at,status,source_name,stage_id,budget_min,budget_max,assigned_agent_id,priority",
         "id,created_at,updated_at,status,source_name,stage_id,budget_min,budget_max,assigned_agent_id,lead_priority",
         "id,created_at,updated_at,status,source_name,stage_id,budget_min,budget_max,assigned_agent_id",
@@ -383,13 +387,14 @@ export default function SalesCockpitRealtime({ user, scope = "all" }: SalesCockp
       if (stage.id) stageMap.set(stage.id, stage.display_name || stage.name || stage.id);
     }
 
-    const grouped = new Map<string, { agentId: string; forecast: number; pipeline: number; wins: number; leads: number }>();
+    const grouped = new Map<string, { agentId: string; agentName: string; forecast: number; pipeline: number; wins: number; leads: number }>();
     for (const lead of leads) {
       const agentId = lead.assigned_agent_id || "unassigned";
+      const agentName = lead.assigned_agent_name?.trim() || "Unassigned";
       const value = getLeadBudgetValue(lead);
       const stageName = (lead.stage_id && stageMap.get(lead.stage_id)) || lead.status || "contacted";
       const probability = getProbabilityForStage(stageName);
-      const row = grouped.get(agentId) || { agentId, forecast: 0, pipeline: 0, wins: 0, leads: 0 };
+      const row = grouped.get(agentId) || { agentId, agentName, forecast: 0, pipeline: 0, wins: 0, leads: 0 };
       row.leads += 1;
       if (!isClosedOrLost(lead.status)) row.pipeline += value;
       row.forecast += value * probability;
@@ -427,14 +432,15 @@ export default function SalesCockpitRealtime({ user, scope = "all" }: SalesCockp
   }, [leads]);
 
   const hotLeadsByAgent = useMemo(() => {
-    const grouped = new Map<string, number>();
+    const grouped = new Map<string, { agentId: string; agentName: string; hotCount: number }>();
     for (const lead of leads) {
       if (getPriorityLabel(lead.priority) !== "HOT") continue;
-      const key = lead.assigned_agent_id || "unassigned";
-      grouped.set(key, (grouped.get(key) || 0) + 1);
+      const agentId = lead.assigned_agent_id || "unassigned";
+      const agentName = lead.assigned_agent_name?.trim() || "Unassigned";
+      const existing = grouped.get(agentId);
+      grouped.set(agentId, { agentId, agentName, hotCount: (existing?.hotCount ?? 0) + 1 });
     }
-    return Array.from(grouped.entries())
-      .map(([agentId, hotCount]) => ({ agentId, hotCount }))
+    return Array.from(grouped.values())
       .sort((a, b) => b.hotCount - a.hotCount)
       .slice(0, 8);
   }, [leads]);
@@ -473,7 +479,7 @@ export default function SalesCockpitRealtime({ user, scope = "all" }: SalesCockp
           ) : (
             hotLeadsByAgent.map((row) => (
               <div key={row.agentId} className="flex items-center justify-between rounded border p-2 text-sm">
-                <p className="font-medium">{row.agentId}</p>
+                <p className="font-medium">{row.agentName}</p>
                 <Badge className={getPriorityBadgeClassName("HOT")}>{row.hotCount} HOT</Badge>
               </div>
             ))
@@ -567,7 +573,7 @@ export default function SalesCockpitRealtime({ user, scope = "all" }: SalesCockp
               agentForecastPerformance.map((row) => (
                 <div key={row.agentId} className="rounded border p-2 text-sm">
                   <div className="flex items-center justify-between">
-                    <p className="font-medium">{row.agentId}</p>
+                    <p className="font-medium">{row.agentName}</p>
                     <Badge variant="secondary">{row.wins} wins</Badge>
                   </div>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
