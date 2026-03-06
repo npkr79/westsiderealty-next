@@ -256,7 +256,11 @@ async function executeWhatsApp(params: {
   const templateName = typeof payload.template_name === "string" ? payload.template_name : null;
   const messageType = templateName ? "template" : "text";
 
+  // Encode template name into content for fallback when template_name column is absent
+  const contentWithTemplate = content ?? (templateName ? `template:${templateName}` : null);
+
   const candidates = [
+    // Full schema with template_name
     {
       lead_id: params.queue.lead_id,
       message_type: messageType,
@@ -265,10 +269,26 @@ async function executeWhatsApp(params: {
       direction: "outbound",
       status: "queued",
     },
+    // body variant with template_name
     {
       lead_id: params.queue.lead_id,
       body: content,
       template_name: templateName,
+      direction: "outbound",
+      status: "queued",
+    },
+    // Without template_name (crm_whatsapp_messages may not have that column)
+    {
+      lead_id: params.queue.lead_id,
+      message_type: messageType,
+      content: contentWithTemplate,
+      direction: "outbound",
+      status: "queued",
+    },
+    // body variant without template_name
+    {
+      lead_id: params.queue.lead_id,
+      body: contentWithTemplate,
       direction: "outbound",
       status: "queued",
     },
@@ -277,8 +297,12 @@ async function executeWhatsApp(params: {
   for (const candidate of candidates) {
     const { error } = await supabase.from("crm_whatsapp_messages").insert(candidate);
     if (!error) return;
+    // Only try next candidate on column/schema errors; hard-fail otherwise
+    if (!/column .* does not exist|schema cache/i.test(error.message || "")) {
+      throw new Error(error.message || "Unable to enqueue WhatsApp journey message.");
+    }
   }
-  throw new Error("Unable to enqueue WhatsApp journey message.");
+  throw new Error("Unable to enqueue WhatsApp journey message after all candidates.");
 }
 
 async function executeTask(params: { queue: JourneyQueueRow; step: JourneyStepRow }) {

@@ -159,9 +159,13 @@ async function persistOutboundMessage(params: {
   sentBy: string;
 }) {
   const supabase = createServiceClient();
-  const { data, error } = await supabase
-    .from("crm_messages")
-    .insert({
+  // Encode template name into content as fallback when template_name column is absent
+  const contentWithTemplate = params.content ?? (params.templateName ? `template:${params.templateName}` : null);
+
+  // Try multiple payload shapes to handle varying crm_messages / crm_whatsapp_messages schemas
+  const candidates = [
+    // Full schema with template_name
+    {
       conversation_id: params.conversationId,
       lead_id: params.leadId,
       direction: "outbound",
@@ -170,13 +174,49 @@ async function persistOutboundMessage(params: {
       template_name: params.templateName ?? null,
       status: "queued",
       sent_by: params.sentBy,
-    })
-    .select("id")
-    .single();
-  if (error || !data?.id) {
-    throw new Error(error?.message || "Unable to persist outbound message.");
+    },
+    // Without template_name (crm_whatsapp_messages may not have that column)
+    {
+      conversation_id: params.conversationId,
+      lead_id: params.leadId,
+      direction: "outbound",
+      message_type: params.messageType,
+      content: contentWithTemplate,
+      status: "queued",
+      sent_by: params.sentBy,
+    },
+    // body instead of content variant
+    {
+      conversation_id: params.conversationId,
+      lead_id: params.leadId,
+      direction: "outbound",
+      message_type: params.messageType,
+      body: contentWithTemplate,
+      status: "queued",
+    },
+    // Minimal fallback
+    {
+      lead_id: params.leadId,
+      direction: "outbound",
+      message_type: params.messageType,
+      content: contentWithTemplate,
+      status: "queued",
+    },
+  ];
+
+  for (const candidate of candidates) {
+    const { data, error } = await supabase
+      .from("crm_messages")
+      .insert(candidate)
+      .select("id")
+      .maybeSingle();
+    if (!error && data?.id) return String(data.id);
+    // Only retry on column-not-found errors; hard-fail on other errors
+    if (error && !/column .* does not exist|schema cache/i.test(error.message || "")) {
+      throw new Error(error.message || "Unable to persist outbound message.");
+    }
   }
-  return String(data.id);
+  throw new Error("Unable to persist outbound message after all candidates.");
 }
 
 async function updateMessageResult(messageId: string, payload: { status: string; provider_message_id?: string | null; error_message?: string | null }) {

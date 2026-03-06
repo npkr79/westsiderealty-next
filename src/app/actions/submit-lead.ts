@@ -215,13 +215,22 @@ export async function submitLead(formData: SubmitLeadData): Promise<SubmitLeadRe
     }
 
     if (inserted?.id) {
-      await mapBehaviorToLead(String(inserted.id), normalizedPhone);
-      await routeLeadByOwnership({
-        leadId: String(inserted.id),
-        sourceType: attribution.source_type,
-        sourceName: attribution.source_name,
-        projectId: null,
-      });
+      // Post-save actions are non-critical — never let them fail the lead capture
+      try {
+        await mapBehaviorToLead(String(inserted.id), normalizedPhone);
+      } catch (e) {
+        console.warn("[submitLead] mapBehaviorToLead failed (non-critical):", e instanceof Error ? e.message : e);
+      }
+      try {
+        await routeLeadByOwnership({
+          leadId: String(inserted.id),
+          sourceType: attribution.source_type,
+          sourceName: attribution.source_name,
+          projectId: null,
+        });
+      } catch (e) {
+        console.warn("[submitLead] routeLeadByOwnership failed (non-critical):", e instanceof Error ? e.message : e);
+      }
     }
 
     return { success: true };
