@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/serviceClient";
 import type { CrmRole, CrmUser } from "@/lib/crm/types";
 import { getDashboardPathForRole, mapRoleNameToCrmRole } from "@/lib/crm/roles";
 import { CRM_TEST_ADMIN_COOKIE, isCrmTestLoginEnabled } from "@/lib/crm/test-login";
@@ -59,7 +60,8 @@ export async function getCrmSessionResult(): Promise<CrmSessionResult> {
 
   if (!user) return { status: "not_authenticated", user: null };
 
-  const { data, error } = await supabase
+  const serviceClient = createServiceClient();
+  const { data, error } = await serviceClient
     .from("crm_users")
     .select("id, full_name, is_active, crm_roles(name)")
     .eq("id", user.id)
