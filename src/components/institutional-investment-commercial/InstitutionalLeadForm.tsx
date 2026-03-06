@@ -158,7 +158,8 @@ export default function InstitutionalLeadForm() {
 
       {submitted ? (
         <p className="mt-4 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">
-          Access granted to institutional data room.
+          Thank you! We&apos;ve received your enquiry and will be in touch shortly.
+          <span className="mt-1 block text-xs text-emerald-300">One of our Hyderabad specialists will call you within 24 hours.</span>
         </p>
       ) : null}
     </form>
