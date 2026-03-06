@@ -109,32 +109,30 @@ export async function routeLeadByOwnership(input: RouteLeadInput): Promise<Routi
   const sourceName = normalize(input.sourceName);
   const projectId = normalize(input.projectId);
 
-  // Only gate on sourceName — null sourceType can still match ownership rules
-  if (!sourceName) {
-    const pendingPatch = sanitizeLeadPayload({ assignment_status: "pending" });
-    if (Object.keys(pendingPatch).length > 0) {
-      await supabase
-        .from("crm_leads")
-        .update(pendingPatch)
-        .eq("id", input.leadId);
-    }
-    return { assigned: false, agentId: null, reason: "missing_source_keys" };
+  // Build ownership query — use IS NULL for null values, .eq() for non-null
+  // (.eq("col", null) never matches NULL in Postgres; must use .is("col", null))
+  let query = supabase
+    .from("crm_source_ownership")
+    .select("agent_id, source_type, source_name, project_id");
+
+  if (sourceType) {
+    query = query.eq("source_type", sourceType);
+  } else {
+    query = query.is("source_type", null);
   }
 
-  // Fix: .eq("source_type", null) never matches NULL in Postgres — must use .is()
-  let ownershipQuery = supabase
-    .from("crm_source_ownership")
-    .select("agent_id, source_type, source_name, project_id")
-    .eq("source_name", sourceName)
+  if (sourceName) {
+    query = query.eq("source_name", sourceName);
+  } else {
+    query = query.is("source_name", null);
+  }
+
+  query = query
     .or(`project_id.eq.${projectId ?? ""},project_id.is.null`)
     .order("project_id", { ascending: false, nullsFirst: false })
     .limit(1);
 
-  ownershipQuery = sourceType
-    ? ownershipQuery.eq("source_type", sourceType)
-    : ownershipQuery.is("source_type", null);
-
-  const { data: ownership, error: ownershipError } = await ownershipQuery.maybeSingle();
+  const { data: ownership, error: ownershipError } = await query.maybeSingle();
 
   if (ownershipError || !ownership?.agent_id) {
     const pendingPatch = sanitizeLeadPayload({ assignment_status: "pending" });
