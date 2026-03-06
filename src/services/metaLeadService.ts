@@ -198,6 +198,19 @@ export async function processMetaLead(
   }
 
   const sourceId = await resolveMetaSourceId();
+
+  // Check for form-based routing before building payload
+  let formAgentId: string | null = null;
+  if (leadData.form_id) {
+    const { data: formRoute } = await supabase
+      .from("crm_meta_form_routing")
+      .select("agent_id")
+      .eq("form_id", leadData.form_id)
+      .eq("is_active", true)
+      .maybeSingle();
+    formAgentId = formRoute?.agent_id ? String(formRoute.agent_id) : null;
+  }
+
   const crmPayload = sanitizeLeadPayload({
     name: name.trim() || "Meta Lead",
     phone: phone.trim(),
@@ -206,7 +219,8 @@ export async function processMetaLead(
     fb_lead_id: leadgenId,
     source_type: "meta",
     source_channel: "facebook_lead_ads",
-    assignment_status: "pending",
+    assignment_status: formAgentId ? "assigned" : "pending",
+    ...(formAgentId ? { assigned_to: formAgentId } : {}),
     attribution_metadata: {
       source: "meta_lead_ads",
       leadgen_id: leadgenId,
@@ -232,12 +246,25 @@ export async function processMetaLead(
 
     const crmLeadId = String(crmInserted.id);
 
-    await routeLeadByOwnership({
-      leadId: crmLeadId,
-      sourceType: "meta",
-      sourceName: "facebook_lead_ads",
-      projectId: null,
-    });
+    if (formAgentId) {
+      // Form routing matched — skip ownership lookup, just log assignment
+      try {
+        await supabase.from("crm_lead_assignments").insert({
+          lead_id: crmLeadId,
+          agent_id: formAgentId,
+          assignment_note: "Auto-assigned via Meta form routing",
+          assignment_type: "manual_or_auto",
+          assigned_by: null,
+        });
+      } catch { /* non-critical */ }
+    } else {
+      await routeLeadByOwnership({
+        leadId: crmLeadId,
+        sourceType: "meta",
+        sourceName: "facebook_lead_ads",
+        projectId: null,
+      });
+    }
 
     await assignDefaultStageAndAutomation(crmLeadId);
     await mapBehaviorToLead(crmLeadId, phone);
