@@ -204,6 +204,9 @@ export async function processMetaLead(
     email,
     source_id: sourceId,
     fb_lead_id: leadgenId,
+    source_type: "meta",
+    source_channel: "facebook_lead_ads",
+    assignment_status: "pending",
     attribution_metadata: {
       source: "meta_lead_ads",
       leadgen_id: leadgenId,
@@ -216,32 +219,43 @@ export async function processMetaLead(
     },
   });
 
-  const { data: crmInserted, error: crmError } = await supabase
-    .from("crm_leads")
-    .insert(crmPayload)
-    .select("id")
-    .single();
+  try {
+    const { data: crmInserted, error: crmError } = await supabase
+      .from("crm_leads")
+      .insert(crmPayload)
+      .select("id")
+      .single();
 
-  if (crmError || !crmInserted) {
-    console.error("[metaLeadService] Failed to create CRM lead:", crmError);
-    return { rawLeadId, crmLeadId: null, error: crmError?.message ?? "Failed to create CRM lead" };
+    if (crmError || !crmInserted) {
+      throw new Error(crmError?.message ?? "Failed to create CRM lead");
+    }
+
+    const crmLeadId = String(crmInserted.id);
+
+    await routeLeadByOwnership({
+      leadId: crmLeadId,
+      sourceType: "meta",
+      sourceName: "facebook_lead_ads",
+      projectId: null,
+    });
+
+    await assignDefaultStageAndAutomation(crmLeadId);
+    await mapBehaviorToLead(crmLeadId, phone);
+
+    if (rawLeadId) {
+      await supabase.from("crm_meta_raw_leads").update({ crm_lead_id: crmLeadId }).eq("id", rawLeadId);
+    }
+
+    return { rawLeadId, crmLeadId };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("[metaLeadService] crm_leads insert failed:", err);
+    if (rawLeadId) {
+      await supabase
+        .from("crm_meta_raw_leads")
+        .update({ graph_response: { ...(leadData ?? {}), processing_error: message } })
+        .eq("id", rawLeadId);
+    }
+    return { rawLeadId, crmLeadId: null, error: message };
   }
-
-  const crmLeadId = String(crmInserted.id);
-
-  await routeLeadByOwnership({
-    leadId: crmLeadId,
-    sourceType: "meta",
-    sourceName: "facebook_lead_ads",
-    projectId: null,
-  });
-
-  await assignDefaultStageAndAutomation(crmLeadId);
-  await mapBehaviorToLead(crmLeadId, phone);
-
-  if (rawLeadId) {
-    await supabase.from("crm_meta_raw_leads").update({ crm_lead_id: crmLeadId }).eq("id", rawLeadId);
-  }
-
-  return { rawLeadId, crmLeadId };
 }
