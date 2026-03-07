@@ -15,6 +15,18 @@ import type { CrmRole } from "@/lib/crm/types";
 import InvestorLeadIntakeModal from "@/components/crm/leads/InvestorLeadIntakeModal";
 import { formatBudgetRange } from "@/lib/crm/budget";
 
+const SOURCE_LABELS: Record<string, string> = {
+  facebook_lead_ads: "Facebook Ads",
+  meta: "Meta",
+  website: "Website",
+  referral: "Referral",
+  channel: "Channel Partner",
+};
+function formatSource(val: string | null | undefined): string {
+  if (!val) return "-";
+  return SOURCE_LABELS[val] ?? val;
+}
+
 function toIST(dateStr: string | null | undefined): string {
   if (!dateStr) return "-";
   try {
@@ -208,13 +220,13 @@ export default function LeadsTableView({ currentUserRole, currentUserId }: Leads
               {[
                 { key: "name", label: "Name" },
                 { key: "phone", label: "Phone" },
-                  { key: "priority", label: "Priority" },
+                { key: "priority", label: "Priority" },
                 { key: "source", label: "Source" },
                 { key: "budget_range", label: "Budget" },
                 { key: "location", label: "Location" },
                 { key: "buyer_type", label: "Buyer Type" },
                 { key: "status", label: "Status" },
-                { key: "assigned_agent", label: "Assigned Agent" },
+                ...(!isAgent ? [{ key: "assigned_agent", label: "Assigned Agent" }] : []),
                 { key: "last_activity_at", label: "Last Activity" },
               ].map((col) => (
                 <TableHead key={col.key}>
@@ -240,11 +252,11 @@ export default function LeadsTableView({ currentUserRole, currentUserId }: Leads
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={10}>Loading leads...</TableCell>
+                <TableCell colSpan={isAgent ? 9 : 10}>Loading leads...</TableCell>
               </TableRow>
             ) : visibleLeads.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={10}>No leads found.</TableCell>
+                <TableCell colSpan={isAgent ? 9 : 10}>No leads found.</TableCell>
               </TableRow>
             ) : (
               visibleLeads.map((lead) => (
@@ -258,14 +270,14 @@ export default function LeadsTableView({ currentUserRole, currentUserId }: Leads
                   <TableCell>
                     <Badge className={getPriorityBadgeClassName(lead.priority)}>{getPriorityLabel(lead.priority)}</Badge>
                   </TableCell>
-                  <TableCell>{lead.source || "-"}</TableCell>
+                  <TableCell>{formatSource(lead.source_type || lead.source)}</TableCell>
                   <TableCell>{formatBudgetRange(lead.budget_min, lead.budget_max)}</TableCell>
                   <TableCell>{lead.location || "-"}</TableCell>
                   <TableCell>{lead.buyer_type || "-"}</TableCell>
                   <TableCell>
                     <Badge variant="outline">{lead.status || "new"}</Badge>
                   </TableCell>
-                  <TableCell>{lead.assigned_agent_name || lead.assigned_agent_id || "-"}</TableCell>
+                  {!isAgent && <TableCell>{lead.assigned_agent_name || "-"}</TableCell>}
                   <TableCell>{toIST(lead.last_activity_at)}</TableCell>
                 </TableRow>
               ))
