@@ -14,7 +14,7 @@ interface LeadWhatsAppPanelProps {
   leadPhone: string;
 }
 
-const templateOptions = ["lead_acknowledgement_v1", "site_visit_invite_v1", "proposal_followup_v1"];
+const templateOptions = ["instant_greeting", "agent_intro"];
 
 export default function LeadWhatsAppPanel({ leadId, leadPhone }: LeadWhatsAppPanelProps) {
   const supabase = useMemo(() => createClient(), []);

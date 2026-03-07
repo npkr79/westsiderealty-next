@@ -134,20 +134,16 @@ export async function ensureWhatsAppConversation(input: EnsureConversationInput)
   if (findError) throw new Error(findError.message || "Unable to load conversations.");
   if (existing?.id) return existing.id as string;
 
-  const { data: created, error: createError } = await supabase
-    .from("crm_conversations")
-    .insert({
-      lead_id: input.leadId,
-      channel: "whatsapp",
-      recipient_phone: normalizedPhone,
-      status: "open",
-    })
-    .select("id")
-    .single();
-  if (createError || !created?.id) {
-    throw new Error(createError?.message || "Unable to create conversation.");
+  // crm_conversations is a view — insert into the underlying table instead
+  const insertCandidates = [
+    { lead_id: input.leadId, recipient_phone: normalizedPhone, status: "open", last_message_at: new Date().toISOString() },
+    { lead_id: input.leadId, recipient_phone: normalizedPhone, last_message_at: new Date().toISOString() },
+  ];
+  for (const payload of insertCandidates) {
+    const { data, error } = await supabase.from("crm_whatsapp_conversations").insert(payload).select("id").maybeSingle();
+    if (!error && data?.id) return String(data.id);
   }
-  return created.id as string;
+  throw new Error("Unable to create WhatsApp conversation.");
 }
 
 async function persistOutboundMessage(params: {
@@ -233,8 +229,9 @@ async function updateMessageResult(messageId: string, payload: { status: string;
 
 async function touchConversation(conversationId: string) {
   const supabase = createServiceClient();
+  // crm_conversations is a view — update the underlying table
   await supabase
-    .from("crm_conversations")
+    .from("crm_whatsapp_conversations")
     .update({
       last_message_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
