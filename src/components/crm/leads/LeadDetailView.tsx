@@ -112,7 +112,7 @@ interface LeadRecord {
   priority?: string | null;
   notes?: string | null;
   attribution_metadata?: Record<string, unknown> | null;
-  assigned_agent_id: string | null;
+  assigned_to: string | null;
   created_at?: string;
   updated_at?: string;
   last_activity_at?: string | null;
@@ -157,9 +157,9 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
     setLoadingLead(true);
     setLeadError(null);
     const selectVariants = [
-      "id,name,phone,source_channel,source_type,budget_min,budget_max,location,buyer_type,status,priority,notes,attribution_metadata,assigned_agent_id,created_at,updated_at,last_activity_at",
-      "id,name,phone,source_channel,source_type,budget_min,budget_max,location,buyer_type,status,lead_priority,notes,attribution_metadata,assigned_agent_id,created_at,updated_at,last_activity_at",
-      "id,name,phone,source_channel,source_type,budget_min,budget_max,location,buyer_type,status,assigned_agent_id,created_at,updated_at,last_activity_at",
+      "id,name,phone,source_channel,source_type,budget_min,budget_max,location,buyer_type,status,priority,notes,attribution_metadata,assigned_to,created_at,updated_at,last_activity_at",
+      "id,name,phone,source_channel,source_type,budget_min,budget_max,location,buyer_type,status,lead_priority,notes,attribution_metadata,assigned_to,created_at,updated_at,last_activity_at",
+      "id,name,phone,source_channel,source_type,budget_min,budget_max,location,buyer_type,status,assigned_to,created_at,updated_at,last_activity_at",
     ];
     let row: (LeadRecord & { lead_priority?: string | null }) | null = null;
     let found = false;
@@ -296,7 +296,7 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
       due_date: newTaskDueDate || null,
       status: "pending",
       lead_id: leadId,
-      assigned_to: lead?.assigned_agent_id || null,
+      assigned_to: lead?.assigned_to || null,
     });
     setSavingTask(false);
     if (!error) {
@@ -304,7 +304,7 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
       setNewTaskDueDate("");
       loadLeadTasks();
     }
-  }, [lead?.assigned_agent_id, leadId, loadLeadTasks, newTaskDueDate, newTaskTitle, supabase]);
+  }, [lead?.assigned_to, leadId, loadLeadTasks, newTaskDueDate, newTaskTitle, supabase]);
 
   const toggleTask = useCallback(
     async (task: CrmTask, checked: boolean) => {
@@ -564,7 +564,7 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
         </TabsContent>
 
         <TabsContent value="project-activity">
-          <LeadProjectActivityTab leadId={leadId} currentUserId={currentUser.id} assignedAgentId={lead.assigned_agent_id} />
+          <LeadProjectActivityTab leadId={leadId} currentUserId={currentUser.id} assignedAgentId={lead.assigned_to} />
         </TabsContent>
 
         <TabsContent value="smart-shortlist">
