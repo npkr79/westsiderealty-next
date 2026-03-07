@@ -14,6 +14,7 @@ export interface CrmUser {
   role: CrmRole;
   is_active: boolean;
   role_name?: string | null;
+  whatsapp_number?: string | null;
 }
 
 export interface CrmLead {

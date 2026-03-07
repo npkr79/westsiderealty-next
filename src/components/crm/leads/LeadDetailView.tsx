@@ -21,6 +21,27 @@ import LeadWhatsAppLogsTab from "@/components/crm/leads/LeadWhatsAppLogsTab";
 import { getPriorityBadgeClassName, getPriorityLabel } from "@/lib/crm/leadPriority";
 import { formatBudgetRange } from "@/lib/crm/budget";
 
+function getWhatsAppLink(phone: string, leadName: string, agentName: string): string {
+  const cleanPhone = phone.replace(/\D/g, "");
+  const e164 = cleanPhone.startsWith("91") ? cleanPhone : `91${cleanPhone}`;
+  const message = encodeURIComponent(
+    `Hi ${leadName} 👋 I'm ${agentName} from Westside Advisory.\n\nYou enquired about a property in Goa — I'd love to share details about Sapphire, Siolim.\n\nHere's what makes it special:\n🏊 Private plunge pool in every unit\n🌴 In the Morjim-Vagator beach belt\n💰 2BHK from ₹1.87Cr | 3BHK from ₹2.47Cr\n📅 Possession 2027 | Managed rentals available\n\nAre you looking for investment or personal use?`
+  );
+  return `https://wa.me/${e164}?text=${message}`;
+}
+
+async function logCallAttempt(leadId: string): Promise<void> {
+  try {
+    await fetch(`/api/crm/leads/${leadId}/activity`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "call_attempt", notes: "Call initiated from CRM" }),
+    });
+  } catch {
+    // non-critical
+  }
+}
+
 interface LeadDetailViewProps {
   leadId: string;
   currentUser: CrmUser;
@@ -72,6 +93,9 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
 
   const [deals, setDeals] = useState<DealRecord[]>([]);
   const [dealsError, setDealsError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState("overview");
+
+  const agentName = currentUser.full_name || "your advisor";
 
   const loadLead = useCallback(async () => {
     setLoadingLead(true);
@@ -250,12 +274,43 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
         </Link>
         <h1 className="text-2xl font-semibold">{lead.name}</h1>
         <div className="flex flex-wrap items-center gap-2">
-          <p className="text-sm text-slate-500 dark:text-slate-400">{lead.phone}</p>
+          <a
+            href={`tel:${lead.phone}`}
+            onClick={() => void logCallAttempt(lead.id)}
+            className="text-sm font-medium text-blue-600 hover:underline dark:text-blue-400 flex items-center gap-1"
+          >
+            📞 {lead.phone}
+          </a>
           <Badge className={getPriorityBadgeClassName(lead.priority)}>{getPriorityLabel(lead.priority)}</Badge>
         </div>
       </div>
 
-      <Tabs defaultValue="overview">
+      <div className="flex flex-wrap gap-2 mb-4">
+        <a
+          href={`tel:${lead.phone}`}
+          onClick={() => void logCallAttempt(lead.id)}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold"
+        >
+          📞 Call Now
+        </a>
+        <a
+          href={getWhatsAppLink(lead.phone, lead.name, agentName)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-green-500 hover:bg-green-600 text-white text-sm font-semibold"
+        >
+          💬 Send WhatsApp
+        </a>
+        <button
+          type="button"
+          onClick={() => setActiveTab("whatsapp")}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-white text-sm font-semibold"
+        >
+          💬 View Conversation
+        </button>
+      </div>
+
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-9 md:w-auto">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="notes">Notes</TabsTrigger>
