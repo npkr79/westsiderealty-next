@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Search, ArrowUpDown } from "lucide-react";
+import { Search, ArrowUpDown, SlidersHorizontal } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -34,6 +34,20 @@ export default function LeadsTableView({ currentUserRole }: LeadsTableViewProps)
   const [sort, setSort] = useState<LeadsSort>({ key: "updated_at", ascending: false });
   const [hotOnly, setHotOnly] = useState(false);
   const [agents, setAgents] = useState<AgentOption[]>([]);
+  const [showFilters, setShowFilters] = useState(false);
+
+  const activeFilterCount = useMemo(() => {
+    return [
+      filters.source,
+      filters.status,
+      filters.budgetMin,
+      filters.budgetMax,
+      filters.assignedAgentId,
+      filters.location,
+      filters.buyerType,
+      hotOnly ? "hot" : null,
+    ].filter(Boolean).length;
+  }, [filters, hotOnly]);
 
   const { leads, loading, total, error, refetch } = useLeads({ page, pageSize, search, filters, sort });
   const canCreateLead = currentUserRole ? ["admin", "sales_head", "team_lead", "agent"].includes(currentUserRole) : false;
@@ -59,19 +73,28 @@ export default function LeadsTableView({ currentUserRole }: LeadsTableViewProps)
       <div className="flex justify-end">
         <InvestorLeadIntakeModal disabled={!canCreateLead} onCreated={() => refetch()} />
       </div>
-      <div className="grid gap-2 md:grid-cols-9">
-        <div className="relative md:col-span-2">
+      {/* Search row — always visible. Filter toggle only shows on mobile */}
+      <div className="flex gap-2">
+        <div className="relative flex-1 md:max-w-xs">
           <Search className="pointer-events-none absolute left-2 top-2.5 h-4 w-4 text-slate-400" />
           <Input
             placeholder="Search name or phone"
             value={search}
-            onChange={(e) => {
-              setPage(1);
-              setSearch(e.target.value);
-            }}
+            onChange={(e) => { setPage(1); setSearch(e.target.value); }}
             className="pl-8"
           />
         </div>
+        <button
+          onClick={() => setShowFilters(!showFilters)}
+          className="md:hidden flex items-center gap-1 px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800"
+        >
+          <SlidersHorizontal size={15} />
+          {activeFilterCount > 0 ? `Filters (${activeFilterCount})` : "Filters"}
+        </button>
+      </div>
+
+      {/* Collapsible filters — hidden on mobile until toggled, always shown md+ */}
+      <div className={`grid gap-2 grid-cols-1 md:grid-cols-8 ${showFilters ? "grid" : "hidden md:grid"}`}>
         <Select
           value={filters.source || "all"}
           onValueChange={(value) => {
@@ -105,18 +128,12 @@ export default function LeadsTableView({ currentUserRole }: LeadsTableViewProps)
         <Input
           placeholder="Budget min"
           value={filters.budgetMin || ""}
-          onChange={(e) => {
-            setPage(1);
-            setFilters((prev) => ({ ...prev, budgetMin: e.target.value || undefined }));
-          }}
+          onChange={(e) => { setPage(1); setFilters((prev) => ({ ...prev, budgetMin: e.target.value || undefined })); }}
         />
         <Input
           placeholder="Budget max"
           value={filters.budgetMax || ""}
-          onChange={(e) => {
-            setPage(1);
-            setFilters((prev) => ({ ...prev, budgetMax: e.target.value || undefined }));
-          }}
+          onChange={(e) => { setPage(1); setFilters((prev) => ({ ...prev, budgetMax: e.target.value || undefined })); }}
         />
         <Select
           value={filters.assignedAgentId || "all"}
@@ -138,18 +155,12 @@ export default function LeadsTableView({ currentUserRole }: LeadsTableViewProps)
         <Input
           placeholder="Location"
           value={filters.location || ""}
-          onChange={(e) => {
-            setPage(1);
-            setFilters((prev) => ({ ...prev, location: e.target.value || undefined }));
-          }}
+          onChange={(e) => { setPage(1); setFilters((prev) => ({ ...prev, location: e.target.value || undefined })); }}
         />
         <Input
           placeholder="Buyer type"
           value={filters.buyerType || ""}
-          onChange={(e) => {
-            setPage(1);
-            setFilters((prev) => ({ ...prev, buyerType: e.target.value || undefined }));
-          }}
+          onChange={(e) => { setPage(1); setFilters((prev) => ({ ...prev, buyerType: e.target.value || undefined })); }}
         />
         <Select value={hotOnly ? "hot" : "all"} onValueChange={(value) => setHotOnly(value === "hot")}>
           <SelectTrigger><SelectValue placeholder="Priority filter" /></SelectTrigger>

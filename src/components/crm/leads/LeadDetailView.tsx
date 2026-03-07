@@ -59,6 +59,7 @@ interface LeadRecord {
   buyer_type: string | null;
   status: string | null;
   priority?: string | null;
+  notes?: string | null;
   assigned_agent_id: string | null;
   created_at?: string;
   updated_at?: string;
@@ -94,6 +95,9 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
   const [deals, setDeals] = useState<DealRecord[]>([]);
   const [dealsError, setDealsError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("overview");
+  const [editStatus, setEditStatus] = useState("new");
+  const [editPriority, setEditPriority] = useState("cold");
+  const [editNotes, setEditNotes] = useState("");
 
   const agentName = currentUser.full_name || "your advisor";
 
@@ -101,8 +105,8 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
     setLoadingLead(true);
     setLeadError(null);
     const selectVariants = [
-      "id,name,phone,source_name,budget_min,budget_max,location,buyer_type,status,priority,assigned_agent_id,created_at,updated_at,last_activity_at",
-      "id,name,phone,source_name,budget_min,budget_max,location,buyer_type,status,lead_priority,assigned_agent_id,created_at,updated_at,last_activity_at",
+      "id,name,phone,source_name,budget_min,budget_max,location,buyer_type,status,priority,notes,assigned_agent_id,created_at,updated_at,last_activity_at",
+      "id,name,phone,source_name,budget_min,budget_max,location,buyer_type,status,lead_priority,notes,assigned_agent_id,created_at,updated_at,last_activity_at",
       "id,name,phone,source_name,budget_min,budget_max,location,buyer_type,status,assigned_agent_id,created_at,updated_at,last_activity_at",
     ];
     let row: (LeadRecord & { lead_priority?: string | null }) | null = null;
@@ -179,6 +183,15 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
     }, 0);
     return () => window.clearTimeout(timer);
   }, [loadDeals, loadLead, loadLeadTasks, loadNotes]);
+
+  // Sync edit states when lead data loads
+  useEffect(() => {
+    if (lead) {
+      setEditStatus(lead.status || "new");
+      setEditPriority(lead.priority || "cold");
+      setEditNotes(lead.notes || "");
+    }
+  }, [lead]);
 
   useEffect(() => {
     const channel = supabase
@@ -304,16 +317,16 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-9 md:w-auto">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="notes">Notes</TabsTrigger>
-          <TabsTrigger value="activities">Activities</TabsTrigger>
-          <TabsTrigger value="project-activity">Project Activity</TabsTrigger>
-          <TabsTrigger value="smart-shortlist">Smart Shortlist</TabsTrigger>
-          <TabsTrigger value="tasks">Tasks</TabsTrigger>
-          <TabsTrigger value="whatsapp">WhatsApp</TabsTrigger>
-          <TabsTrigger value="whatsapp-logs">WhatsApp Logs</TabsTrigger>
-          <TabsTrigger value="deals">Deals</TabsTrigger>
+        <TabsList className="flex w-full overflow-x-auto whitespace-nowrap scrollbar-hide">
+          <TabsTrigger value="overview" className="flex-shrink-0">Overview</TabsTrigger>
+          <TabsTrigger value="notes" className="flex-shrink-0">Notes</TabsTrigger>
+          <TabsTrigger value="activities" className="flex-shrink-0">Activities</TabsTrigger>
+          <TabsTrigger value="project-activity" className="flex-shrink-0">Project Activity</TabsTrigger>
+          <TabsTrigger value="smart-shortlist" className="flex-shrink-0">Smart Shortlist</TabsTrigger>
+          <TabsTrigger value="tasks" className="flex-shrink-0">Tasks</TabsTrigger>
+          <TabsTrigger value="whatsapp" className="flex-shrink-0">WhatsApp</TabsTrigger>
+          <TabsTrigger value="whatsapp-logs" className="flex-shrink-0">WhatsApp Logs</TabsTrigger>
+          <TabsTrigger value="deals" className="flex-shrink-0">Deals</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview">
@@ -338,15 +351,69 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
                   </p>
                 </div>
                 <div>
-                  <p className="text-slate-500 dark:text-slate-400">Timeline</p>
-                  <p className="font-medium">
-                    Status: {lead.status || "new"} · Last activity:{" "}
+                  <p className="text-slate-500 dark:text-slate-400 mb-1">Status</p>
+                  <select
+                    value={editStatus}
+                    onChange={async (e) => {
+                      setEditStatus(e.target.value);
+                      await fetch(`/api/crm/leads/${lead.id}`, {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ status: e.target.value }),
+                      });
+                    }}
+                    className="text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                  >
+                    <option value="new">New</option>
+                    <option value="contacted">Contacted</option>
+                    <option value="qualified">Qualified</option>
+                    <option value="site_visit">Site Visit</option>
+                    <option value="negotiation">Negotiation</option>
+                    <option value="converted">Converted</option>
+                    <option value="lost">Lost</option>
+                  </select>
+                </div>
+                <div>
+                  <p className="text-slate-500 dark:text-slate-400 mb-1">Priority</p>
+                  <select
+                    value={editPriority}
+                    onChange={async (e) => {
+                      setEditPriority(e.target.value);
+                      await fetch(`/api/crm/leads/${lead.id}`, {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ priority: e.target.value }),
+                      });
+                    }}
+                    className="text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                  >
+                    <option value="cold">Cold</option>
+                    <option value="warm">Warm</option>
+                    <option value="hot">Hot</option>
+                  </select>
+                </div>
+                <div>
+                  <p className="text-slate-500 dark:text-slate-400 mb-1">Last activity</p>
+                  <p className="font-medium text-sm">
                     {lead.last_activity_at ? new Date(lead.last_activity_at).toLocaleString() : "Not updated"}
                   </p>
                 </div>
-                <div>
-                  <p className="text-slate-500 dark:text-slate-400">Priority</p>
-                  <Badge className={getPriorityBadgeClassName(lead.priority)}>{getPriorityLabel(lead.priority)}</Badge>
+                <div className="md:col-span-2">
+                  <p className="text-slate-500 dark:text-slate-400 mb-1">Notes</p>
+                  <textarea
+                    value={editNotes}
+                    onChange={(e) => setEditNotes(e.target.value)}
+                    onBlur={async () => {
+                      await fetch(`/api/crm/leads/${lead.id}`, {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ notes: editNotes }),
+                      });
+                    }}
+                    placeholder="Add notes..."
+                    rows={4}
+                    className="w-full text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white resize-none focus:outline-none focus:ring-2 focus:ring-gray-900 dark:focus:ring-white"
+                  />
                 </div>
               </CardContent>
             </Card>
