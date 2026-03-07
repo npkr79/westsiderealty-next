@@ -285,11 +285,11 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2 mb-4">
+      <div className="flex gap-2 mb-4">
         <a
           href={`tel:${lead.phone}`}
           onClick={() => void logCallAttempt(lead.id)}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold"
+          className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold"
         >
           📞 Call Now
         </a>
@@ -297,17 +297,10 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
           href={getWhatsAppLink(lead.phone, lead.name, agentName)}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-green-500 hover:bg-green-600 text-white text-sm font-semibold"
+          className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-green-500 hover:bg-green-600 text-white text-sm font-semibold"
         >
-          💬 Send WhatsApp
+          💬 WhatsApp
         </a>
-        <button
-          type="button"
-          onClick={() => setActiveTab("whatsapp")}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-white text-sm font-semibold"
-        >
-          💬 View Conversation
-        </button>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>

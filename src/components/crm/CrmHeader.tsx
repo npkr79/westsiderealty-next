@@ -1,34 +1,32 @@
-import { LogOut } from "lucide-react";
-import { cookies } from "next/headers";
+"use client";
+import { LogOut, Menu } from "lucide-react";
 import ThemeToggle from "@/components/crm/ThemeToggle";
 import { Button } from "@/components/ui/button";
-import { createClient } from "@/lib/supabase/server";
 import type { CrmUser } from "@/lib/crm/types";
-import { CRM_TEST_ADMIN_COOKIE, isCrmTestLoginEnabled } from "@/lib/crm/test-login";
+import { logout } from "@/app/actions/crm-logout";
 
 interface CrmHeaderProps {
   user: CrmUser;
+  onMenuClick?: () => void;
 }
 
-async function logout() {
-  "use server";
-  const supabase = await createClient();
-  await supabase.auth.signOut();
-  if (isCrmTestLoginEnabled) {
-    const cookieStore = await cookies();
-    cookieStore.delete(CRM_TEST_ADMIN_COOKIE);
-  }
-}
-
-export default function CrmHeader({ user }: CrmHeaderProps) {
+export default function CrmHeader({ user, onMenuClick }: CrmHeaderProps) {
   return (
-    <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/90 px-4 py-3 backdrop-blur dark:border-slate-800 dark:bg-slate-950/90 md:px-6">
+    <header className="sticky top-0 z-30 border-b border-gray-200 bg-white/90 px-4 py-3 backdrop-blur dark:border-gray-800 dark:bg-gray-900/90 md:px-6">
       <div className="flex items-center justify-between gap-3">
-        <div>
-          <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-            {user.full_name || user.email}
-          </p>
-          <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">{user.role}</p>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onMenuClick}
+            className="md:hidden p-2 -ml-2 rounded-lg text-gray-500 hover:text-gray-900 dark:hover:text-white"
+          >
+            <Menu size={20} />
+          </button>
+          <div>
+            <p className="text-sm font-semibold text-gray-900 dark:text-white">
+              {user.full_name || user.email}
+            </p>
+            <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">{user.role}</p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <ThemeToggle />
@@ -43,4 +41,3 @@ export default function CrmHeader({ user }: CrmHeaderProps) {
     </header>
   );
 }
-
