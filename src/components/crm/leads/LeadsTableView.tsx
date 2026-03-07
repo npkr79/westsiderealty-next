@@ -48,7 +48,7 @@ export default function LeadsTableView({ currentUserRole }: LeadsTableViewProps)
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState<LeadsFilters>({});
-  const [sort, setSort] = useState<LeadsSort>({ key: "updated_at", ascending: false });
+  const [sort, setSort] = useState<LeadsSort>({ key: "last_activity_at", ascending: false });
   const [hotOnly, setHotOnly] = useState(false);
   const [agents, setAgents] = useState<AgentOption[]>([]);
   const [showFilters, setShowFilters] = useState(false);
@@ -209,10 +209,10 @@ export default function LeadsTableView({ currentUserRole }: LeadsTableViewProps)
                 { key: "buyer_type", label: "Buyer Type" },
                 { key: "status", label: "Status" },
                 { key: "assigned_agent", label: "Assigned Agent" },
-                { key: "last_activity", label: "Last Activity" },
+                { key: "last_activity_at", label: "Last Activity" },
               ].map((col) => (
                 <TableHead key={col.key}>
-                  {col.key === "name" || col.key === "status" ? (
+                  {col.key === "name" || col.key === "status" || col.key === "last_activity_at" ? (
                     <button
                       type="button"
                       className="inline-flex items-center gap-1"

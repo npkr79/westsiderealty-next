@@ -19,7 +19,7 @@ export interface LeadsFilters {
 }
 
 export interface LeadsSort {
-  key: "name" | "created_at" | "updated_at" | "status";
+  key: "name" | "created_at" | "updated_at" | "status" | "last_activity_at";
   ascending: boolean;
 }
 
@@ -121,7 +121,9 @@ export function useLeads({
 
         const from = (page - 1) * pageSize;
         const to = from + pageSize - 1;
-        return query.order(sort.key, { ascending: sort.ascending }).range(from, to);
+        return query
+          .order(sort.key, { ascending: sort.ascending, nullsFirst: false })
+          .range(from, to);
       };
 
       let { data, count, error: queryError } = await runQuery(true);
