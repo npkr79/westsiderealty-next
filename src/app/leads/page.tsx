@@ -10,7 +10,7 @@ export default async function LeadsPage() {
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">CRM</p>
         <h1 className="mt-1 text-2xl font-semibold">Leads</h1>
       </div>
-      <LeadsTableView currentUserRole={user.role} />
+      <LeadsTableView currentUserRole={user.role} currentUserId={user.id} />
     </div>
   );
 }

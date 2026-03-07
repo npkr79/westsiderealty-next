@@ -41,13 +41,17 @@ interface AgentOption {
 
 interface LeadsTableViewProps {
   currentUserRole?: CrmRole;
+  currentUserId?: string;
 }
 
-export default function LeadsTableView({ currentUserRole }: LeadsTableViewProps) {
+export default function LeadsTableView({ currentUserRole, currentUserId }: LeadsTableViewProps) {
   const supabase = useMemo(() => createClient(), []);
+  const isAgent = currentUserRole === "agent";
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
-  const [filters, setFilters] = useState<LeadsFilters>({});
+  const [filters, setFilters] = useState<LeadsFilters>(
+    isAgent && currentUserId ? { assignedAgentId: currentUserId } : {}
+  );
   const [sort, setSort] = useState<LeadsSort>({ key: "last_activity_at", ascending: false });
   const [hotOnly, setHotOnly] = useState(false);
   const [agents, setAgents] = useState<AgentOption[]>([]);
@@ -154,23 +158,25 @@ export default function LeadsTableView({ currentUserRole }: LeadsTableViewProps)
           value={filters.budgetMax || ""}
           onChange={(e) => { setPage(1); setFilters((prev) => ({ ...prev, budgetMax: e.target.value || undefined })); }}
         />
-        <Select
-          value={filters.assignedAgentId || "all"}
-          onValueChange={(value) => {
-            setPage(1);
-            setFilters((prev) => ({ ...prev, assignedAgentId: value === "all" ? undefined : value }));
-          }}
-        >
-          <SelectTrigger><SelectValue placeholder="Assigned agent" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All agents</SelectItem>
-            {agents.map((agent) => (
-              <SelectItem key={agent.id} value={agent.id}>
-                {agent.full_name || agent.id}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {!isAgent && (
+          <Select
+            value={filters.assignedAgentId || "all"}
+            onValueChange={(value) => {
+              setPage(1);
+              setFilters((prev) => ({ ...prev, assignedAgentId: value === "all" ? undefined : value }));
+            }}
+          >
+            <SelectTrigger><SelectValue placeholder="Assigned agent" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All agents</SelectItem>
+              {agents.map((agent) => (
+                <SelectItem key={agent.id} value={agent.id}>
+                  {agent.full_name || agent.id}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
         <Input
           placeholder="Location"
           value={filters.location || ""}

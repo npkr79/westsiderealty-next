@@ -114,7 +114,10 @@ export function useLeads({
         if (filters.buyerType) query = query.eq("buyer_type", filters.buyerType);
         if (filters.status) query = query.eq("status", filters.status);
         if (filters.assignmentStatus) query = query.eq("assignment_status", filters.assignmentStatus);
-        if (filters.assignedAgentId) query = query.eq("assigned_agent_id", filters.assignedAgentId);
+        if (filters.assignedAgentId) {
+          // Match both assigned_agent_id (view alias) and assigned_to (base table column)
+          query = query.or(`assigned_agent_id.eq.${filters.assignedAgentId},assigned_to.eq.${filters.assignedAgentId}`);
+        }
         if (filters.unassignedOnly) {
           query = useAssignedToColumn ? query.is("assigned_to", null) : query.is("assigned_agent_id", null);
         }
