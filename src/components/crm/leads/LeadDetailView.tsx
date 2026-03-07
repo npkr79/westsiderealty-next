@@ -52,6 +52,25 @@ function toISTDate(dateStr: string | null | undefined): string {
   }
 }
 
+function normalizeFormQuestions(fq: unknown): Array<{ q: string; a: string }> {
+  if (!fq) return [];
+  if (Array.isArray(fq)) {
+    return (fq as Array<Record<string, unknown>>)
+      .map((item) => ({
+        q: String(item?.question ?? item?.field_name ?? item?.key ?? "").trim(),
+        a: String(item?.answer ?? item?.field_value ?? item?.value ?? "").trim(),
+      }))
+      .filter((item) => item.q);
+  }
+  if (typeof fq === "object") {
+    return Object.entries(fq as Record<string, unknown>).map(([q, a]) => ({
+      q: q.trim(),
+      a: String(a ?? "").trim(),
+    }));
+  }
+  return [];
+}
+
 function getWhatsAppLink(phone: string, leadName: string, agentName: string): string {
   const cleanPhone = phone.replace(/\D/g, "");
   const e164 = cleanPhone.startsWith("91") ? cleanPhone : `91${cleanPhone}`;
@@ -447,23 +466,26 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
                 </div>
               </CardContent>
               {(() => {
-                const fq = lead.attribution_metadata?.form_questions as Record<string, string> | null | undefined;
-                if (!fq || Object.keys(fq).length === 0) return null;
+                const items = normalizeFormQuestions(lead.attribution_metadata?.form_questions);
                 return (
                   <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800 px-6 pb-6">
                     <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-3">Lead Form Answers</p>
-                    <div className="space-y-2">
-                      {Object.entries(fq).map(([question, answer]) => (
-                        <div key={question} className="rounded-lg bg-gray-50 dark:bg-gray-800 px-3 py-2">
-                          <p className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">
-                            {question.replace(/_/g, " ").trim()}
-                          </p>
-                          <p className="text-sm font-medium text-gray-900 dark:text-white">
-                            {String(answer).replace(/_/g, " ")}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
+                    {items.length === 0 ? (
+                      <p className="text-xs text-gray-400 italic">No form data available.</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {items.map(({ q, a }) => (
+                          <div key={q} className="rounded-lg bg-gray-50 dark:bg-gray-800 px-3 py-2">
+                            <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-0.5">
+                              {q.replace(/_/g, " ")}
+                            </p>
+                            <p className="text-sm font-medium text-gray-900 dark:text-white">
+                              {a.replace(/_/g, " ") || "—"}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 );
               })()}

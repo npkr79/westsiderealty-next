@@ -122,9 +122,11 @@ export default function LeadsTableView({ currentUserRole }: LeadsTableViewProps)
           <SelectTrigger><SelectValue placeholder="Source" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All sources</SelectItem>
+            <SelectItem value="facebook_lead_ads">Facebook Ads</SelectItem>
+            <SelectItem value="meta">Meta</SelectItem>
             <SelectItem value="website">Website</SelectItem>
             <SelectItem value="referral">Referral</SelectItem>
-            <SelectItem value="channel">Channel</SelectItem>
+            <SelectItem value="channel">Channel Partner</SelectItem>
           </SelectContent>
         </Select>
         <Select

@@ -98,7 +98,10 @@ export function useLeads({
           const term = search.trim();
           query = query.or(`name.ilike.%${term}%,phone.ilike.%${term}%`);
         }
-        if (filters.source) query = query.eq("source_name", filters.source);
+        if (filters.source) {
+          // Match against source_type (meta imports), source_channel (facebook_lead_ads), or source_name (legacy)
+          query = query.or(`source_type.eq.${filters.source},source_channel.eq.${filters.source},source_name.eq.${filters.source}`);
+        }
         if (filters.budgetMin) {
           const min = Number(filters.budgetMin);
           if (Number.isFinite(min)) query = query.gte("budget_min", min);
