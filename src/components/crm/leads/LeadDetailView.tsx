@@ -21,6 +21,37 @@ import LeadWhatsAppLogsTab from "@/components/crm/leads/LeadWhatsAppLogsTab";
 import { getPriorityBadgeClassName, getPriorityLabel } from "@/lib/crm/leadPriority";
 import { formatBudgetRange } from "@/lib/crm/budget";
 
+function toIST(dateStr: string | null | undefined): string {
+  if (!dateStr) return "Not updated";
+  try {
+    return new Date(dateStr).toLocaleString("en-IN", {
+      timeZone: "Asia/Kolkata",
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
+  } catch {
+    return "Invalid date";
+  }
+}
+
+function toISTDate(dateStr: string | null | undefined): string {
+  if (!dateStr) return "Not set";
+  try {
+    return new Date(dateStr).toLocaleDateString("en-IN", {
+      timeZone: "Asia/Kolkata",
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+  } catch {
+    return "Invalid date";
+  }
+}
+
 function getWhatsAppLink(phone: string, leadName: string, agentName: string): string {
   const cleanPhone = phone.replace(/\D/g, "");
   const e164 = cleanPhone.startsWith("91") ? cleanPhone : `91${cleanPhone}`;
@@ -60,6 +91,7 @@ interface LeadRecord {
   status: string | null;
   priority?: string | null;
   notes?: string | null;
+  attribution_metadata?: Record<string, unknown> | null;
   assigned_agent_id: string | null;
   created_at?: string;
   updated_at?: string;
@@ -105,8 +137,8 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
     setLoadingLead(true);
     setLeadError(null);
     const selectVariants = [
-      "id,name,phone,source_name,budget_min,budget_max,location,buyer_type,status,priority,notes,assigned_agent_id,created_at,updated_at,last_activity_at",
-      "id,name,phone,source_name,budget_min,budget_max,location,buyer_type,status,lead_priority,notes,assigned_agent_id,created_at,updated_at,last_activity_at",
+      "id,name,phone,source_name,budget_min,budget_max,location,buyer_type,status,priority,notes,attribution_metadata,assigned_agent_id,created_at,updated_at,last_activity_at",
+      "id,name,phone,source_name,budget_min,budget_max,location,buyer_type,status,lead_priority,notes,attribution_metadata,assigned_agent_id,created_at,updated_at,last_activity_at",
       "id,name,phone,source_name,budget_min,budget_max,location,buyer_type,status,assigned_agent_id,created_at,updated_at,last_activity_at",
     ];
     let row: (LeadRecord & { lead_priority?: string | null }) | null = null;
@@ -394,9 +426,7 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
                 </div>
                 <div>
                   <p className="text-slate-500 dark:text-slate-400 mb-1">Last activity</p>
-                  <p className="font-medium text-sm">
-                    {lead.last_activity_at ? new Date(lead.last_activity_at).toLocaleString() : "Not updated"}
-                  </p>
+                  <p className="font-medium text-sm">{toIST(lead.last_activity_at)}</p>
                 </div>
                 <div className="md:col-span-2">
                   <p className="text-slate-500 dark:text-slate-400 mb-1">Notes</p>
@@ -416,6 +446,27 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
                   />
                 </div>
               </CardContent>
+              {(() => {
+                const fq = lead.attribution_metadata?.form_questions as Record<string, string> | null | undefined;
+                if (!fq || Object.keys(fq).length === 0) return null;
+                return (
+                  <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800 px-6 pb-6">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-3">Lead Form Answers</p>
+                    <div className="space-y-2">
+                      {Object.entries(fq).map(([question, answer]) => (
+                        <div key={question} className="rounded-lg bg-gray-50 dark:bg-gray-800 px-3 py-2">
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">
+                            {question.replace(/_/g, " ").trim()}
+                          </p>
+                          <p className="text-sm font-medium text-gray-900 dark:text-white">
+                            {String(answer).replace(/_/g, " ")}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
             </Card>
             <LeadBehaviorIntelligencePanel leadId={leadId} />
           </div>
@@ -455,7 +506,7 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
                         {updatingNoteId === note.id
                           ? "Updating..."
                           : note.created_at
-                            ? new Date(note.created_at).toLocaleString()
+                            ? toIST(note.created_at)
                             : "Unknown time"}
                       </p>
                     </div>
@@ -479,7 +530,7 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
                   <div className="mb-1 flex items-center justify-between">
                     <Badge variant="secondary">{activity.activity_type}</Badge>
                     <p className="text-xs text-slate-500 dark:text-slate-400">
-                      {activity.created_at ? new Date(activity.created_at).toLocaleString() : "-"}
+                      {toIST(activity.created_at)}
                     </p>
                   </div>
                   <p className="text-sm">{activity.notes || "-"}</p>
@@ -526,7 +577,7 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
                       <div>
                         <p className={`text-sm font-medium ${task.status === "completed" ? "line-through opacity-70" : ""}`}>{task.title}</p>
                         <p className="text-xs text-slate-500 dark:text-slate-400">
-                          Due: {task.due_date ? new Date(task.due_date).toLocaleDateString() : "Not set"}
+                          Due: {toISTDate(task.due_date)}
                         </p>
                       </div>
                     </div>

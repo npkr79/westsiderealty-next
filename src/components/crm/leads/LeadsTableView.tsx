@@ -15,6 +15,23 @@ import type { CrmRole } from "@/lib/crm/types";
 import InvestorLeadIntakeModal from "@/components/crm/leads/InvestorLeadIntakeModal";
 import { formatBudgetRange } from "@/lib/crm/budget";
 
+function toIST(dateStr: string | null | undefined): string {
+  if (!dateStr) return "-";
+  try {
+    return new Date(dateStr).toLocaleString("en-IN", {
+      timeZone: "Asia/Kolkata",
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
+  } catch {
+    return "Invalid date";
+  }
+}
+
 const pageSize = 20;
 
 interface AgentOption {
@@ -241,7 +258,7 @@ export default function LeadsTableView({ currentUserRole }: LeadsTableViewProps)
                     <Badge variant="outline">{lead.status || "new"}</Badge>
                   </TableCell>
                   <TableCell>{lead.assigned_agent_name || lead.assigned_agent_id || "-"}</TableCell>
-                  <TableCell>{lead.last_activity_at ? new Date(lead.last_activity_at).toLocaleString() : "-"}</TableCell>
+                  <TableCell>{toIST(lead.last_activity_at)}</TableCell>
                 </TableRow>
               ))
             )}

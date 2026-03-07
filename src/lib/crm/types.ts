@@ -51,6 +51,7 @@ export interface CrmLead {
   fbclid?: string | null;
   landing_page_url?: string | null;
   micro_market?: string | null;
+  attribution_metadata?: Record<string, unknown> | null;
 }
 
 export interface CrmTask {
