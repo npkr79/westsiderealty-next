@@ -102,7 +102,8 @@ interface LeadRecord {
   name: string;
   phone: string;
   source: string | null;
-  source_name?: string | null;
+  source_channel?: string | null;
+  source_type?: string | null;
   budget_min?: number | null;
   budget_max?: number | null;
   location: string | null;
@@ -156,9 +157,9 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
     setLoadingLead(true);
     setLeadError(null);
     const selectVariants = [
-      "id,name,phone,source_name,budget_min,budget_max,location,buyer_type,status,priority,notes,attribution_metadata,assigned_agent_id,created_at,updated_at,last_activity_at",
-      "id,name,phone,source_name,budget_min,budget_max,location,buyer_type,status,lead_priority,notes,attribution_metadata,assigned_agent_id,created_at,updated_at,last_activity_at",
-      "id,name,phone,source_name,budget_min,budget_max,location,buyer_type,status,assigned_agent_id,created_at,updated_at,last_activity_at",
+      "id,name,phone,source_channel,source_type,budget_min,budget_max,location,buyer_type,status,priority,notes,attribution_metadata,assigned_agent_id,created_at,updated_at,last_activity_at",
+      "id,name,phone,source_channel,source_type,budget_min,budget_max,location,buyer_type,status,lead_priority,notes,attribution_metadata,assigned_agent_id,created_at,updated_at,last_activity_at",
+      "id,name,phone,source_channel,source_type,budget_min,budget_max,location,buyer_type,status,assigned_agent_id,created_at,updated_at,last_activity_at",
     ];
     let row: (LeadRecord & { lead_priority?: string | null }) | null = null;
     let found = false;
@@ -182,7 +183,7 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
       row
         ? {
             ...row,
-            source: row.source_name || null,
+            source: row.source_channel || row.source_type || null,
             priority: row.priority || row.lead_priority || null,
           }
         : null
