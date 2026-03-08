@@ -270,7 +270,7 @@ export default function LeadsTableView({ currentUserRole, currentUserId }: Leads
                   <TableCell>
                     <Badge className={getPriorityBadgeClassName(lead.priority)}>{getPriorityLabel(lead.priority)}</Badge>
                   </TableCell>
-                  <TableCell>{formatSource(lead.source_type || lead.source)}</TableCell>
+                  <TableCell>{formatSource(lead.source_channel || lead.source_type)}</TableCell>
                   <TableCell>{formatBudgetRange(lead.budget_min, lead.budget_max)}</TableCell>
                   <TableCell>{lead.location || "-"}</TableCell>
                   <TableCell>{lead.buyer_type || "-"}</TableCell>

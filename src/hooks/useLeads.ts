@@ -33,6 +33,7 @@ const mapLeadRow = (row: Record<string, unknown>): CrmLead => {
     phone: getString(row.phone) ?? "-",
     source: getString(row.source) ?? getString(row.source_name),
     source_type: getString(row.source_type),
+    source_channel: getString(row.source_channel),
     source_name: getString(row.source_name),
     project_id: getString(row.project_id),
     budget_min: toBudgetNumber(row.budget_min),

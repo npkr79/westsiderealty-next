@@ -23,6 +23,7 @@ export interface CrmLead {
   phone: string;
   source: string | null;
   source_type?: string | null;
+  source_channel?: string | null;
   source_name?: string | null;
   project_id?: string | null;
   budget_min?: number | null;
