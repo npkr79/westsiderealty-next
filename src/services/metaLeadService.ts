@@ -201,14 +201,16 @@ export async function processMetaLead(
 
   // Check for form-based routing before building payload
   let formAgentId: string | null = null;
+  let formName: string | null = null;
   if (leadData.form_id) {
     const { data: formRoute } = await supabase
       .from("crm_meta_form_routing")
-      .select("agent_id")
+      .select("agent_id,form_name")
       .eq("form_id", leadData.form_id)
       .eq("is_active", true)
       .maybeSingle();
     formAgentId = formRoute?.agent_id ? String(formRoute.agent_id) : null;
+    formName = formRoute?.form_name ? String(formRoute.form_name) : null;
   }
 
   const crmPayload = sanitizeLeadPayload({
@@ -226,6 +228,8 @@ export async function processMetaLead(
       leadgen_id: leadgenId,
       page_id: value?.page_id,
       form_id: value?.form_id,
+      fb_form_id: leadData.form_id ?? value?.form_id,
+      fb_form_name: formName,
       ad_id: leadData.ad_id ?? value?.ad_id,
       campaign_id: leadData.campaign_id,
       adset_id: leadData.adset_id,
@@ -251,10 +255,9 @@ export async function processMetaLead(
       try {
         await supabase.from("crm_lead_assignments").insert({
           lead_id: crmLeadId,
-          agent_id: formAgentId,
-          assignment_note: "Auto-assigned via Meta form routing",
-          assignment_type: "manual_or_auto",
+          assigned_to: formAgentId,
           assigned_by: null,
+          reason: "Auto-assigned via Meta form routing",
         });
       } catch { /* non-critical */ }
     } else {
