@@ -7,6 +7,29 @@ import { sanitizeLeadPayload } from "@/lib/crm/sanitizeLeadPayload";
 const GRAPH_API_BASE = "https://graph.facebook.com";
 const GRAPH_VERSION = process.env.META_GRAPH_API_VERSION ?? "v21.0";
 
+async function sendAgentWhatsAppAlert(agentPhone: string, leadName: string, leadPhone: string, formName: string | null) {
+  const token = process.env.WHATSAPP_ACCESS_TOKEN;
+  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+  if (!token || !phoneNumberId) return;
+
+  const message = `🔔 New Lead Alert!\n\nName: ${leadName}\nPhone: ${leadPhone}\nForm: ${formName || "Meta Ad"}\n\nLogin to CRM: https://www.westsiderealty.in/crm`;
+  const phone = agentPhone.replace(/[^\d]/g, "");
+
+  await fetch(`https://graph.facebook.com/v20.0/${phoneNumberId}/messages`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      messaging_product: "whatsapp",
+      to: phone,
+      type: "text",
+      text: { body: message },
+    }),
+  });
+}
+
 interface MetaWebhookValue {
   leadgen_id?: string;
   page_id?: string;
@@ -260,6 +283,21 @@ export async function processMetaLead(
           reason: "Auto-assigned via Meta form routing",
         });
       } catch { /* non-critical */ }
+
+      // Send WhatsApp alert to agent
+      const { data: agentData } = await supabase
+        .from("crm_users")
+        .select("whatsapp_number, full_name")
+        .eq("id", formAgentId)
+        .maybeSingle();
+      if (agentData?.whatsapp_number) {
+        await sendAgentWhatsAppAlert(
+          agentData.whatsapp_number,
+          name,
+          phone,
+          formName ?? null
+        ).catch(() => {}); // non-critical, never block lead creation
+      }
     } else {
       await routeLeadByOwnership({
         leadId: crmLeadId,
