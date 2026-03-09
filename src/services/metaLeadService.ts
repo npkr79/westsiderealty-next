@@ -306,7 +306,7 @@ export async function processMetaLead(
         "🔔 New Lead!",
         `${name} • ${phone}`,
         `/leads/${crmLeadId}`
-      ).catch(() => {});
+      ).catch((err) => console.error("[Push] Failed:", err));
     } else {
       await routeLeadByOwnership({
         leadId: crmLeadId,

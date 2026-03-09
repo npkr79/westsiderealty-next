@@ -8,6 +8,7 @@ export async function sendPushToUser(
   url?: string
 ) {
   const messaging = getAdminMessaging();
+  console.log("[Push] messaging:", !!messaging);
   if (!messaging) return; // FIREBASE_PRIVATE_KEY not set
 
   const supabase = createServiceClient();
@@ -16,6 +17,7 @@ export async function sendPushToUser(
     .select("token")
     .eq("user_id", userId);
 
+  console.log("[Push] tokens found:", tokens?.length);
   if (!tokens?.length) return;
 
   const messages = tokens.map(({ token }: { token: string }) => ({
@@ -33,6 +35,8 @@ export async function sendPushToUser(
     },
   }));
 
+  console.log("[Push] sending to tokens:", messages.length);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await Promise.allSettled(messages.map((msg) => messaging.send(msg as any)));
+  const results = await Promise.allSettled(messages.map((msg) => messaging.send(msg as any)));
+  console.log("[Push] results:", JSON.stringify(results));
 }
