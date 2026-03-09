@@ -61,7 +61,7 @@ export default function MarketingIntelligenceDashboard() {
       try {
         const { data: leadsData, error: leadsError } = await supabase
           .from("crm_leads_view")
-          .select("id,source_name,source_type,status,micro_market,campaign_name,campaign_id,buyer_type,budget_min,budget_max,created_at")
+          .select("id,source_channel,source_type,status,micro_market,campaign_name,campaign_id,buyer_type,budget_min,budget_max,created_at")
           .order("created_at", { ascending: false })
           .limit(2000);
         if (leadsError) throw new Error(`Schema validation failed for crm_leads_view: ${leadsError.message || "Unknown query error."}`);
@@ -94,7 +94,7 @@ export default function MarketingIntelligenceDashboard() {
   const leadsBySource = useMemo(() => {
     const map = new Map<string, number>();
     for (const row of crmLeads) {
-      const source = str(row.source_name) || str(row.source_type) || "unknown";
+      const source = str(row.source_channel) || str(row.source_type) || "unknown";
       map.set(source, (map.get(source) || 0) + 1);
     }
     return Array.from(map.entries())

@@ -16,11 +16,12 @@ type LeadRow = {
   updated_at?: string | null;
   status?: string | null;
   source?: string | null;
-  source_name?: string | null;
+  source_channel?: string | null;
+  source_type?: string | null;
   stage_id?: string | null;
   budget_min?: number | null;
   budget_max?: number | null;
-  assigned_agent_id?: string | null;
+  assigned_to?: string | null;
   assigned_agent_name?: string | null;
   priority?: string | null;
   lead_priority?: string | null;
@@ -45,7 +46,6 @@ type DealRow = {
   value?: string | number | null;
   status?: string | null;
   assigned_to?: string | null;
-  assigned_agent_id?: string | null;
   owner_id?: string | null;
   agent_id?: string | null;
 };
@@ -146,17 +146,17 @@ export default function SalesCockpitRealtime({ user, scope = "all" }: SalesCockp
     setError(null);
     try {
       const leadSelectVariants = [
-        "id,created_at,updated_at,status,source_name,stage_id,budget_min,budget_max,assigned_agent_id,assigned_agent_name,priority",
-        "id,created_at,updated_at,status,source_name,stage_id,budget_min,budget_max,assigned_agent_id,assigned_agent_name,lead_priority",
-        "id,created_at,updated_at,status,source_name,stage_id,budget_min,budget_max,assigned_agent_id,assigned_agent_name",
-        "id,created_at,updated_at,status,source_name,stage_id,budget_min,budget_max,assigned_agent_id,priority",
-        "id,created_at,updated_at,status,source_name,stage_id,budget_min,budget_max,assigned_agent_id,lead_priority",
-        "id,created_at,updated_at,status,source_name,stage_id,budget_min,budget_max,assigned_agent_id",
+        "id,created_at,updated_at,status,source_channel,source_type,stage_id,budget_min,budget_max,assigned_to,assigned_agent_name,priority",
+        "id,created_at,updated_at,status,source_channel,source_type,stage_id,budget_min,budget_max,assigned_to,assigned_agent_name,lead_priority",
+        "id,created_at,updated_at,status,source_channel,source_type,stage_id,budget_min,budget_max,assigned_to,assigned_agent_name",
+        "id,created_at,updated_at,status,source_channel,source_type,stage_id,budget_min,budget_max,assigned_to,priority",
+        "id,created_at,updated_at,status,source_channel,source_type,stage_id,budget_min,budget_max,assigned_to,lead_priority",
+        "id,created_at,updated_at,status,source_channel,source_type,stage_id,budget_min,budget_max,assigned_to",
       ];
       let leadRes: { data: LeadRow[] | null; error: Error | null } = { data: null, error: null };
       for (const selectClause of leadSelectVariants) {
         let leadsQuery = supabase.from("crm_leads_view").select(selectClause).order("created_at", { ascending: false }).limit(5000);
-        if (scopedUserId) leadsQuery = leadsQuery.eq("assigned_agent_id", scopedUserId);
+        if (scopedUserId) leadsQuery = leadsQuery.eq("assigned_to", scopedUserId);
         const queryResult = await leadsQuery;
         if (!queryResult.error) {
           leadRes = { data: (queryResult.data as LeadRow[]) || [], error: null };
@@ -180,7 +180,7 @@ export default function SalesCockpitRealtime({ user, scope = "all" }: SalesCockp
       const [taskRes, stageRes, dealRes] = await Promise.all([
         tasksQuery,
         supabase.from("crm_lead_stages").select("id,name,display_name").order("name", { ascending: true }),
-        supabase.from("crm_deals").select("id,value,status,assigned_to,assigned_agent_id,owner_id,agent_id").limit(5000),
+        supabase.from("crm_deals").select("id,value,status,assigned_to,owner_id,agent_id").limit(5000),
       ]);
 
       if (leadRes.error) throw leadRes.error;
@@ -200,7 +200,7 @@ export default function SalesCockpitRealtime({ user, scope = "all" }: SalesCockp
         const rawDeals = (dealRes.data as DealRow[]) || [];
         const filteredDeals = scopedUserId
           ? rawDeals.filter((deal) =>
-              [deal.assigned_to, deal.assigned_agent_id, deal.owner_id, deal.agent_id].some((id) => id && id === scopedUserId)
+              [deal.assigned_to, deal.owner_id, deal.agent_id].some((id) => id && id === scopedUserId)
             )
           : rawDeals;
         setDeals(filteredDeals);
@@ -389,7 +389,7 @@ export default function SalesCockpitRealtime({ user, scope = "all" }: SalesCockp
 
     const grouped = new Map<string, { agentId: string; agentName: string; forecast: number; pipeline: number; wins: number; leads: number }>();
     for (const lead of leads) {
-      const agentId = lead.assigned_agent_id || "unassigned";
+      const agentId = lead.assigned_to || "unassigned";
       const agentName = lead.assigned_agent_name?.trim() || "Unassigned";
       const value = getLeadBudgetValue(lead);
       const stageName = (lead.stage_id && stageMap.get(lead.stage_id)) || lead.status || "contacted";
@@ -415,7 +415,7 @@ export default function SalesCockpitRealtime({ user, scope = "all" }: SalesCockp
   const sourcePerformance = useMemo(() => {
     const grouped = new Map<string, { source: string; total: number; qualified: number; won: number }>();
     for (const lead of leads) {
-      const source = lead.source_name || lead.source || "unknown";
+      const source = lead.source_channel || lead.source_type || lead.source || "unknown";
       const row = grouped.get(source) || { source, total: 0, qualified: 0, won: 0 };
       row.total += 1;
       if (isQualifiedStatus(lead.status)) row.qualified += 1;
@@ -435,7 +435,7 @@ export default function SalesCockpitRealtime({ user, scope = "all" }: SalesCockp
     const grouped = new Map<string, { agentId: string; agentName: string; hotCount: number }>();
     for (const lead of leads) {
       if (getPriorityLabel(lead.priority) !== "HOT") continue;
-      const agentId = lead.assigned_agent_id || "unassigned";
+      const agentId = lead.assigned_to || "unassigned";
       const agentName = lead.assigned_agent_name?.trim() || "Unassigned";
       const existing = grouped.get(agentId);
       grouped.set(agentId, { agentId, agentName, hotCount: (existing?.hotCount ?? 0) + 1 });

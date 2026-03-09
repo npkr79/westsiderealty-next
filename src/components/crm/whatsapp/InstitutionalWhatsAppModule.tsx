@@ -14,7 +14,7 @@ interface LeadRow {
   id: string;
   name: string;
   phone: string | null;
-  assigned_agent_id: string | null;
+  assigned_to: string | null;
   priority: string | null;
 }
 
@@ -167,7 +167,7 @@ export default function InstitutionalWhatsAppModule() {
         if (leadIds.length === 0) return {};
         const { data, error: queryError } = await supabase
           .from("crm_leads_view")
-          .select("id,name,phone,assigned_agent_id,priority,lead_priority")
+          .select("id,name,phone,assigned_to,priority,lead_priority")
           .in("id", leadIds);
         if (queryError) {
           console.error("WhatsApp module error", queryError);
@@ -181,7 +181,7 @@ export default function InstitutionalWhatsAppModule() {
             id,
             name: typeof row.name === "string" ? row.name : "Unnamed lead",
             phone: typeof row.phone === "string" ? row.phone : null,
-            assigned_agent_id: typeof row.assigned_agent_id === "string" ? row.assigned_agent_id : null,
+            assigned_to: typeof row.assigned_to === "string" ? row.assigned_to : null,
             priority:
               typeof row.priority === "string"
                 ? row.priority

@@ -169,9 +169,10 @@ export default function PipelineBoard() {
                   : null,
             phone: "-",
             source: null,
+            assigned_to: null,
+            assigned_agent_id: null,
             location: null,
             buyer_type: null,
-            assigned_agent_id: null,
           }));
           loaded = true;
           break;

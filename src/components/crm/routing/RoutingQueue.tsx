@@ -20,7 +20,7 @@ interface AgentOption {
 }
 
 interface InsightLeadRow {
-  assigned_agent_id: string | null;
+  assigned_to: string | null;
   assigned_agent_name: string | null;
   stage_name: string | null;
   stage_id: string | null;
@@ -138,9 +138,9 @@ export default function RoutingQueue() {
 
   const loadInsights = useCallback(async () => {
     const selectVariants = [
-      "assigned_agent_id,assigned_agent_name,stage_name,stage_id,status",
-      "assigned_agent_id,assigned_agent_name,stage_id,status",
-      "assigned_agent_id,assigned_agent_name,status",
+      "assigned_to,assigned_agent_name,stage_name,stage_id,status",
+      "assigned_to,assigned_agent_name,stage_id,status",
+      "assigned_to,assigned_agent_name,status",
     ];
     for (const selectClause of selectVariants) {
       const { data, error: queryError } = await supabase.from("crm_leads_view").select(selectClause).limit(5000);
@@ -188,7 +188,7 @@ export default function RoutingQueue() {
   const sourceOptions = useMemo(() => {
     const set = new Set<string>();
     for (const lead of leads) {
-      const source = lead.source_name || lead.source;
+      const source = lead.source_channel || lead.source_type || lead.source;
       if (source) set.add(source);
     }
     return Array.from(set).sort((a, b) => a.localeCompare(b));
@@ -233,7 +233,7 @@ export default function RoutingQueue() {
   const agentWorkload = useMemo(() => {
     const map = new Map<string, AgentWorkload>();
     for (const row of insightRows) {
-      const agentId = row.assigned_agent_id;
+      const agentId = row.assigned_to;
       if (!agentId) continue;
       const current = map.get(agentId) || { total: 0, activeDeals: 0 };
       current.total += 1;
@@ -258,11 +258,11 @@ export default function RoutingQueue() {
   const leadsPerAgent = useMemo(() => {
     const map = new Map<string, { agentName: string; count: number }>();
     for (const row of insightRows) {
-      if (!row.assigned_agent_id) continue;
-      const agentName = row.assigned_agent_name || row.assigned_agent_id;
-      const current = map.get(row.assigned_agent_id) || { agentName, count: 0 };
+      if (!row.assigned_to) continue;
+      const agentName = row.assigned_agent_name || row.assigned_to;
+      const current = map.get(row.assigned_to) || { agentName, count: 0 };
       current.count += 1;
-      map.set(row.assigned_agent_id, current);
+      map.set(row.assigned_to, current);
     }
     return Array.from(map.entries())
       .map(([agentId, value]) => ({ agentId, ...value }))
@@ -595,7 +595,7 @@ export default function RoutingQueue() {
                         <TableCell>{lead.phone || "-"}</TableCell>
                         <TableCell>{formatBudgetRange(lead.budget_min, lead.budget_max)}</TableCell>
                         <TableCell>{lead.location || "-"}</TableCell>
-                        <TableCell>{lead.source_name || lead.source || "-"}</TableCell>
+                        <TableCell>{lead.source_channel || lead.source_type || lead.source || "-"}</TableCell>
                         <TableCell>{lead.stage_name || lead.status || "-"}</TableCell>
                         <TableCell onClick={(e) => e.stopPropagation()}>
                           <div className="flex min-w-56 items-center gap-2">
@@ -656,7 +656,7 @@ export default function RoutingQueue() {
                   <div className="grid gap-2 text-sm">
                     <p><span className="font-medium">Location:</span> {activeLead.location || "-"}</p>
                     <p><span className="font-medium">Buyer type:</span> {activeLead.buyer_type || "-"}</p>
-                    <p><span className="font-medium">Source:</span> {activeLead.source_name || activeLead.source || "-"}</p>
+                    <p><span className="font-medium">Source:</span> {activeLead.source_channel || activeLead.source_type || activeLead.source || "-"}</p>
                     <p><span className="font-medium">Stage:</span> {activeLead.stage_name || activeLead.status || "-"}</p>
                     <p><span className="font-medium">Campaign:</span> {activeLead.campaign_name || activeLead.campaign_id || "-"}</p>
                     <p><span className="font-medium">Micro-market:</span> {activeLead.micro_market || "-"}</p>
