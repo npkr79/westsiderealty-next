@@ -1,4 +1,4 @@
-import admin from "@/lib/firebase/firebaseAdmin";
+import { getAdminMessaging } from "@/lib/firebase/firebaseAdmin";
 import { createServiceClient } from "@/lib/supabase/serviceClient";
 
 export async function sendPushToUser(
@@ -7,6 +7,9 @@ export async function sendPushToUser(
   body: string,
   url?: string
 ) {
+  const messaging = getAdminMessaging();
+  if (!messaging) return; // FIREBASE_PRIVATE_KEY not set
+
   const supabase = createServiceClient();
   const { data: tokens } = await supabase
     .from("crm_push_tokens")
@@ -31,5 +34,5 @@ export async function sendPushToUser(
   }));
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await Promise.allSettled(messages.map((msg) => admin.messaging().send(msg as any)));
+  await Promise.allSettled(messages.map((msg) => messaging.send(msg as any)));
 }
