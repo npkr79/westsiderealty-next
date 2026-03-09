@@ -3,6 +3,7 @@ import { routeLeadByOwnership } from "@/services/crmLeadRoutingService";
 import { mapBehaviorToLead } from "@/services/behaviorLeadMappingService";
 import { runStageAutomation } from "@/services/stageAutomationService";
 import { sanitizeLeadPayload } from "@/lib/crm/sanitizeLeadPayload";
+import { sendPushToUser } from "@/services/pushNotificationService";
 
 const GRAPH_API_BASE = "https://graph.facebook.com";
 const GRAPH_VERSION = process.env.META_GRAPH_API_VERSION ?? "v21.0";
@@ -298,6 +299,14 @@ export async function processMetaLead(
           formName ?? null
         ).catch(() => {}); // non-critical, never block lead creation
       }
+
+      // Push notification to agent
+      await sendPushToUser(
+        formAgentId,
+        "🔔 New Lead!",
+        `${name} • ${phone}`,
+        `/leads/${crmLeadId}`
+      ).catch(() => {});
     } else {
       await routeLeadByOwnership({
         leadId: crmLeadId,

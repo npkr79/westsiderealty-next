@@ -4,6 +4,7 @@ import CrmSidebar from "./CrmSidebar";
 import CrmHeader from "./CrmHeader";
 import CrmBottomNav from "./CrmBottomNav";
 import type { CrmUser } from "@/lib/crm/types";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
 
 interface CrmShellProps {
   user: CrmUser;
@@ -12,6 +13,7 @@ interface CrmShellProps {
 
 export default function CrmShell({ user, children }: CrmShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  usePushNotifications(user?.id ?? null);
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
       {/* Mobile overlay */}
