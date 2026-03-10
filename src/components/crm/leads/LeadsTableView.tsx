@@ -208,7 +208,7 @@ export default function LeadsTableView({ currentUserRole, currentUserId }: Leads
         </Select>
       </div>
 
-      <div className="rounded-xl border bg-white dark:bg-slate-950">
+      <div className="rounded-xl border bg-white dark:bg-slate-950" style={{ backgroundColor: '#0f172a' }}>
         {error ? (
           <div className="border-b px-4 py-2 text-sm text-rose-600 dark:text-rose-300">
             Unable to load leads: {error}
@@ -260,27 +260,27 @@ export default function LeadsTableView({ currentUserRole, currentUserId }: Leads
               </TableRow>
             ) : (
               visibleLeads.map((lead) => (
-                <TableRow key={lead.id} style={{ WebkitTransform: "translateZ(0)" } as React.CSSProperties}>
+                <TableRow key={lead.id} style={{ WebkitTransform: "translateZ(0)", backgroundColor: "#0f172a" } as React.CSSProperties}>
                   <TableCell className="font-medium min-w-[140px] whitespace-nowrap">
-                    <Link href={`/leads/${lead.id}`} className="hover:underline" style={{ display: "block", minWidth: 0 }}>
+                    <Link href={`/leads/${lead.id}`} className="hover:underline" style={{ display: "block", minWidth: 0, color: "#ffffff", fontSize: "14px", fontWeight: 500 }}>
                       {lead.name}
                     </Link>
                   </TableCell>
                   <TableCell className="min-w-[120px] whitespace-nowrap">
-                    <span style={{ display: "block", minWidth: 0 }}>{lead.phone}</span>
+                    <span style={{ display: "block", minWidth: 0, color: "#94a3b8", fontSize: "13px" }}>{lead.phone}</span>
                   </TableCell>
                   <TableCell>
                     <Badge className={getPriorityBadgeClassName(lead.priority)}>{getPriorityLabel(lead.priority)}</Badge>
                   </TableCell>
-                  <TableCell>{formatSource(lead.source_channel || lead.source_type)}</TableCell>
-                  <TableCell>{formatBudgetRange(lead.budget_min, lead.budget_max)}</TableCell>
-                  <TableCell>{lead.location || "-"}</TableCell>
-                  <TableCell>{lead.buyer_type || "-"}</TableCell>
+                  <TableCell style={{ color: "#94a3b8" }}>{formatSource(lead.source_channel || lead.source_type)}</TableCell>
+                  <TableCell style={{ color: "#94a3b8" }}>{formatBudgetRange(lead.budget_min, lead.budget_max)}</TableCell>
+                  <TableCell style={{ color: "#94a3b8" }}>{lead.location || "-"}</TableCell>
+                  <TableCell style={{ color: "#94a3b8" }}>{lead.buyer_type || "-"}</TableCell>
                   <TableCell>
                     <Badge variant="outline">{lead.status || "new"}</Badge>
                   </TableCell>
-                  {!isAgent && <TableCell>{lead.assigned_agent_name || "-"}</TableCell>}
-                  <TableCell>{toIST(lead.last_activity_at)}</TableCell>
+                  {!isAgent && <TableCell style={{ color: "#94a3b8" }}>{lead.assigned_agent_name || "-"}</TableCell>}
+                  <TableCell style={{ color: "#94a3b8" }}>{toIST(lead.last_activity_at)}</TableCell>
                 </TableRow>
               ))
             )}
