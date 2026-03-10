@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import VillaEnquiryForm from "./VillaEnquiryForm";
 
 export const metadata: Metadata = {
@@ -108,10 +107,6 @@ export default function KokapetGandipetVillasPage() {
       `}</style>
 
       <div className="vp">
-        <nav className="vp-nav">
-          <Link href="/" className="vp-nav-logo">RE/MAX Westside Realty</Link>
-          <a href="#enquire" className="vp-nav-cta">Enquire Now</a>
-        </nav>
 
         {/* HERO */}
         <section className="vp-hero">

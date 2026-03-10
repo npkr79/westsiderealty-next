@@ -66,6 +66,7 @@ const NAV_ITEMS = [
     href: "/insights",
     description: "Market analysis, price trends, and buyer guides updated weekly",
     links: [
+      { label: "Kokapet & Gandipet Villa Market", href: "/kokapet-gandipet-luxury-villas" },
       { label: "Price Tracker", href: "/insights/price-tracker", badge: "LIVE" },
       { label: "Market Reports", href: "/insights/reports" },
       { label: "5-Year Outlook", href: "/insights/outlook", badge: "AI" },
