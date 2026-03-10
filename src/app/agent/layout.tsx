@@ -27,7 +27,7 @@ export default function AgentLayout({ children }: { children: React.ReactNode })
 
       // Check if user is agent
       const { data: agent } = await supabase
-        .from("raw_agents")
+        .from("crm_users")
         .select("id, is_active")
         .eq("id", session.user.id)
         .single();

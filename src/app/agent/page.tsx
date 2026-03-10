@@ -13,9 +13,7 @@ import { createClient } from "@/lib/supabase/client";
 interface AgentProfile {
   id: string;
   name: string;
-  email: string;
   phone?: string | null;
-  profile_completed?: boolean;
 }
 
 export default function Dashboard() {
@@ -34,20 +32,18 @@ export default function Dashboard() {
   const loadAgentProfile = async (agentId: string) => {
     try {
       const { data, error } = await supabase
-        .from("agents_profile")
-        .select("agent_id, name, email, phone, profile_completed")
-        .eq("agent_id", agentId)
+        .from("crm_users")
+        .select("id, full_name, phone")
+        .eq("id", agentId)
         .single();
 
       if (error) throw error;
 
       if (data) {
         setAgentProfile({
-          id: data.agent_id,
-          name: data.name,
-          email: data.email,
+          id: data.id,
+          name: data.full_name,
           phone: data.phone,
-          profile_completed: data.profile_completed,
         });
       }
     } catch (error) {

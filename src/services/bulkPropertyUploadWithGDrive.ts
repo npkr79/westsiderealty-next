@@ -139,8 +139,9 @@ export const bulkUploadPropertiesWithGDrive = async (
   
   // Get default agent
   const { data: agents } = await supabase
-    .from('raw_agents')
+    .from('crm_users')
     .select('id')
+    .eq('is_active', true)
     .limit(1)
     .single();
   

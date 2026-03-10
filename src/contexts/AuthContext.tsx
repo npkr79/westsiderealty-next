@@ -108,7 +108,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const checkUserRoles = async (authUser: User) => {
     // Check if user is an agent
     const { data: registry, error: registryError } = await supabase
-      .from("raw_agents")
+      .from("crm_users")
       .select("id, is_active")
       .eq("id", authUser.id)
       .maybeSingle();
@@ -117,32 +117,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error("Agent registry lookup error:", registryError);
     }
 
-    const { data: profile, error: profileError } = await supabase
-      .from("agents_profile")
-      .select("profile_completed")
-      .eq("agent_id", authUser.id)
-      .maybeSingle();
-
-    if (profileError && profileError.code !== "PGRST116") {
-      console.error("Agent profile lookup error:", profileError);
-    }
-
     if (registry && registry.is_active) {
       setIsAgent(true);
-      setRequirePasswordChange(!profile?.profile_completed);
+      setRequirePasswordChange(false);
     } else {
       setIsAgent(false);
     }
 
     // Check if user is an admin
     const { data: roleData } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", authUser.id)
+      .from("crm_users")
+      .select("id, crm_roles(name)")
+      .eq("id", authUser.id)
       .maybeSingle();
 
+    const crmRoles = (roleData as any)?.crm_roles;
+    const resolvedRoleName: string | null = Array.isArray(crmRoles)
+      ? (crmRoles[0]?.name ?? null)
+      : (crmRoles?.name ?? null);
+
     const resolvedRole =
-      roleData?.role ||
+      resolvedRoleName ||
       (authUser.email === "npkr79@gmail.com" ? "owner" : null);
 
     setRole(resolvedRole);
@@ -170,52 +165,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const normalizedPhone = phone.replace(/\D/g, "").slice(0, 15);
     const last10 = normalizedPhone.slice(-10);
 
-    // 1) Check admin/owner roles by phone
-    let { data: roleMatch } = await supabase
-      .from("user_roles")
-      .select("user_id, email, role, phone")
-      .eq("phone", normalizedPhone)
-      .maybeSingle();
+    // 1) Check crm_users by phone — email is in auth.users only, not crm_users
+    // Phone-based login via crm_users is not supported (no email column).
+    // Fall through to phone_auth lookup below.
+    console.warn("signInWithPhone: crm_users has no email column; skipping role-based phone lookup");
 
-    if (!roleMatch && last10) {
-      const { data: fuzzyRoleMatch } = await supabase
-        .from("user_roles")
-        .select("user_id, email, role, phone")
-        .ilike("phone", `%${last10}`)
-        .maybeSingle();
-      roleMatch = fuzzyRoleMatch || null;
-    }
-
-    if (roleMatch?.email) {
-      const { error } = await supabase.auth.signInWithPassword({
-        email: roleMatch.email,
-        password,
-      });
-      return { error, agentId: undefined };
-    }
-
-    // 2) Check agents by phone
+    // 2) Check crm_users by phone for active agents
     let { data: agentByPhone } = await supabase
-      .from("raw_agents")
-      .select("id, email, is_active")
+      .from("crm_users")
+      .select("id, phone, is_active")
       .eq("phone", normalizedPhone)
       .single();
 
     if (!agentByPhone && last10) {
       const { data: fuzzyAgent } = await supabase
-        .from("raw_agents")
-        .select("id, email, is_active")
+        .from("crm_users")
+        .select("id, phone, is_active")
         .ilike("phone", `%${last10}`)
         .single();
       agentByPhone = fuzzyAgent || null;
     }
 
-    if (agentByPhone?.email && agentByPhone.is_active) {
-      const { error } = await supabase.auth.signInWithPassword({
-        email: agentByPhone.email,
-        password,
-      });
-      return { error, agentId: agentByPhone.id };
+    if (agentByPhone?.is_active) {
+      // email is not on crm_users — must use phone_auth flow
+      console.warn("signInWithPhone: crm_users found but email not available; falling through to phone_auth");
     }
 
     // 3) Legacy phone_auth lookup
@@ -231,21 +204,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     const { data: agentByAuthId } = await supabase
-      .from("raw_agents")
-      .select("email, is_active")
+      .from("crm_users")
+      .select("id, is_active")
       .eq("id", phoneAuth.agent_id)
       .single();
 
-    if (!agentByAuthId?.email || !agentByAuthId?.is_active) {
+    if (!agentByAuthId?.is_active) {
       return { error: { message: "Invalid phone number" } };
     }
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email: agentByAuthId.email,
-      password,
-    });
-
-    return { error, agentId: phoneAuth.agent_id };
+    // email is in auth.users only — phone login must go through phone_auth RPC or OTP
+    console.warn("signInWithPhone: Phone login not available without email. Use email login or OTP.");
+    return { error: { message: "Phone login not available" } };
   };
 
   const signUp = async (email: string, password: string, metadata?: any) => {

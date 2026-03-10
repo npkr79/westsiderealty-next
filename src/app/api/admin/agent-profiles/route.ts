@@ -13,16 +13,14 @@ export async function GET(req: Request) {
     const adminClient = getServiceClient();
 
     let request = adminClient
-      .from("agents_profile")
-      .select(
-        "agent_id, name, email, phone, bio, specialization, profile_image, service_areas, whatsapp, linkedin, instagram, profile_completed, created_at, raw_agents(category, is_active)"
-      )
+      .from("crm_users")
+      .select("id, full_name, phone, is_active, created_at")
       .order("created_at", { ascending: false })
       .limit(100);
 
     if (query) {
       request = request.or(
-        `name.ilike.%${query}%,email.ilike.%${query}%,phone.ilike.%${query}%`
+        `full_name.ilike.%${query}%,phone.ilike.%${query}%`
       );
     }
 
@@ -31,11 +29,23 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
+    // agents_profile-specific fields (bio, specialization, etc.) no longer exist on crm_users
     const profiles = (data || []).map((profile: any) => ({
-      ...profile,
-      id: profile.agent_id,
-      category: profile.raw_agents?.category || null,
-      is_active: profile.raw_agents?.is_active ?? null,
+      id: profile.id,
+      name: profile.full_name,
+      phone: profile.phone,
+      is_active: profile.is_active,
+      created_at: profile.created_at,
+      email: null,
+      specialization: null,
+      bio: null,
+      whatsapp: null,
+      linkedin: null,
+      instagram: null,
+      profile_image: null,
+      service_areas: null,
+      profile_completed: null,
+      category: null,
     }));
 
     return NextResponse.json({ profiles });

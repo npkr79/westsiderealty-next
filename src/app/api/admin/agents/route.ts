@@ -14,14 +14,14 @@ export async function GET(req: Request) {
     const adminClient = getServiceClient();
 
     let request = adminClient
-      .from("raw_agents")
-      .select("id, name, email, phone, category, is_active, created_at")
+      .from("crm_users")
+      .select("id, full_name, phone, is_active, created_at")
       .order("created_at", { ascending: false })
       .limit(50);
 
     if (query) {
       request = request.or(
-        `name.ilike.%${query}%,email.ilike.%${query}%,phone.ilike.%${query}%`
+        `full_name.ilike.%${query}%,phone.ilike.%${query}%`
       );
     }
 
@@ -60,21 +60,21 @@ export async function POST(req: Request) {
     const defaultPassword = "Welcome@123";
 
     const { data: existingAgent, error: existingError } = await adminClient
-      .from("raw_agents")
+      .from("crm_users")
       .select("id")
-      .or(`email.eq.${email},phone.eq.${phone}`)
+      .eq("phone", phone)
       .maybeSingle();
 
     if (existingError) {
       return NextResponse.json(
-        { error: existingError.message, step: "raw_agents_lookup" },
+        { error: existingError.message, step: "crm_users_lookup" },
         { status: 500 }
       );
     }
 
     if (existingAgent?.id) {
       return NextResponse.json(
-        { success: false, error: "Agent with this email or phone number already exists" },
+        { success: false, error: "Agent with this phone number already exists" },
         { status: 409 }
       );
     }
@@ -106,35 +106,20 @@ export async function POST(req: Request) {
       );
     }
 
+    // Insert into crm_users (no email or category columns — category needs separate role mapping)
     const { error: agentError } = await adminClient
-      .from("raw_agents")
+      .from("crm_users")
       .insert({
         id: userId,
-        name,
-        email,
+        full_name: name,
         phone,
-        category,
         is_active: true,
-        created_by: auth.user?.id || null,
       });
     if (agentError) {
-      return NextResponse.json({ error: agentError.message, step: "raw_agents_insert" }, { status: 500 });
+      return NextResponse.json({ error: agentError.message, step: "crm_users_insert" }, { status: 500 });
     }
 
-    const { error: roleError } = await adminClient
-      .from("user_roles")
-      .upsert(
-        {
-          user_id: userId,
-          role: "agent",
-          email,
-          phone,
-        },
-        { onConflict: "user_id" }
-      );
-    if (roleError) {
-      return NextResponse.json({ error: roleError.message, step: "user_roles_upsert" }, { status: 500 });
-    }
+    // Note: role_id must be set separately via crm_roles lookup if needed
 
     const { error: phoneAuthError } = await adminClient.rpc("create_hashed_phone_auth", {
       agent_id: userId,

@@ -1,27 +1,15 @@
 import { NextResponse } from "next/server";
 import { getAdminAuth, getServiceClient } from "../../utils";
 
-const extractProfileUpdates = (updates: Record<string, any>) => {
-  const fields = [
-    "name",
-    "email",
-    "phone",
-    "bio",
-    "specialization",
-    "profile_image",
-    "service_areas",
-    "whatsapp",
-    "linkedin",
-    "instagram",
-    "profile_completed",
-  ];
-
-  return fields.reduce<Record<string, any>>((acc, key) => {
-    if (updates[key] !== undefined) {
-      acc[key] = updates[key];
-    }
-    return acc;
-  }, {});
+const extractCrmUserUpdates = (updates: Record<string, any>) => {
+  // Only fields that exist on crm_users: id, full_name, phone, role_id, is_active, created_at, whatsapp_number
+  const payload: Record<string, any> = {};
+  if (typeof updates.name === "string") payload.full_name = updates.name;
+  if (typeof updates.phone === "string") payload.phone = updates.phone;
+  if (typeof updates.is_active === "boolean") payload.is_active = updates.is_active;
+  // email, bio, specialization, profile_image, service_areas, linkedin, instagram, profile_completed
+  // do NOT exist on crm_users — silently dropped
+  return payload;
 };
 
 export async function PATCH(
@@ -37,26 +25,12 @@ export async function PATCH(
 
     const updates = await req.json();
     const adminClient = getServiceClient();
-    const profileUpdates = extractProfileUpdates(updates || {});
+    const crmUserUpdates = extractCrmUserUpdates(updates || {});
 
-    const { error: profileError } = await adminClient
-      .from("agents_profile")
-      .update(profileUpdates)
-      .eq("agent_id", id);
-
-    if (profileError) {
-      return NextResponse.json({ error: profileError.message }, { status: 500 });
-    }
-
-    const registryUpdates: Record<string, any> = {};
-    if (typeof updates?.name === "string") registryUpdates.name = updates.name;
-    if (typeof updates?.email === "string") registryUpdates.email = updates.email;
-    if (typeof updates?.phone === "string") registryUpdates.phone = updates.phone;
-
-    if (Object.keys(registryUpdates).length) {
+    if (Object.keys(crmUserUpdates).length) {
       const { error: registryError } = await adminClient
-        .from("raw_agents")
-        .update(registryUpdates)
+        .from("crm_users")
+        .update(crmUserUpdates)
         .eq("id", id);
 
       if (registryError) {

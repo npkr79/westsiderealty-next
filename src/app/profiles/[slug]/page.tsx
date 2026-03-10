@@ -13,7 +13,6 @@ import { CheckCircle, Mail, MapPin, ShieldCheck } from "lucide-react";
 interface AgentProfileRow {
   agent_id: string;
   name: string | null;
-  email: string | null;
   phone: string | null;
   bio: {
     bullets?: string[];
@@ -31,10 +30,7 @@ interface AgentProfileRow {
   whatsapp: string | null;
   linkedin: string | null;
   instagram: string | null;
-  raw_agents?: {
-    category?: string | null;
-    is_active?: boolean | null;
-  } | null;
+  is_active?: boolean | null;
 }
 
 interface AgentProperty {
@@ -71,15 +67,33 @@ const FALLBACK_OG_IMAGE = `${SITE_URL}/images/placeholder-agent.png`;
 const fetchAgentBySlug = async (slug: string) => {
   const displayName = toDisplayName(slug);
   const adminClient = getServiceClient();
+  // agents_profile-specific fields (bio, specialization, etc.) no longer exist on crm_users.
+  // Profiles with rich content must be fetched from a separate enriched source if available.
   const { data } = await adminClient
-    .from("agents_profile")
-    .select(
-      "agent_id, name, email, phone, bio, latest_transactions, specialization, profile_image, service_areas, whatsapp, linkedin, instagram, raw_agents(category, is_active)"
-    )
-    .ilike("name", displayName)
+    .from("crm_users")
+    .select("id, full_name, phone, is_active, whatsapp_number")
+    .ilike("full_name", displayName)
     .maybeSingle();
 
-  return { data, displayName };
+  if (!data) return { data: null, displayName };
+
+  // Map crm_users row to the AgentProfileRow shape expected by the page
+  const mapped: AgentProfileRow = {
+    agent_id: data.id,
+    name: data.full_name,
+    phone: data.phone,
+    bio: null,
+    latest_transactions: null,
+    specialization: null,
+    profile_image: null,
+    service_areas: null,
+    whatsapp: data.whatsapp_number,
+    linkedin: null,
+    instagram: null,
+    is_active: data.is_active,
+  };
+
+  return { data: mapped, displayName };
 };
 
 export async function generateMetadata({
@@ -136,7 +150,7 @@ export default async function AgentProfilePage({
 
   const agent = data as AgentProfileRow;
   const name = agent.name || displayName;
-  const badgeLabel = agent.raw_agents?.category || "Westside Realty Professional";
+  const badgeLabel = "Westside Realty Professional";
   const bioParagraphs = agent.bio?.paragraph ?? [];
   const bioBullets = agent.bio?.bullets ?? [];
   const specializationBullets = agent.specialization?.bullets ?? [];
@@ -279,12 +293,7 @@ export default async function AgentProfilePage({
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-4 text-sm text-slate-600 pt-2">
-                  {agent.email && (
-                    <span className="inline-flex items-center gap-2">
-                      <Mail className="h-4 w-4 text-[#003DA5]" />
-                      {agent.email}
-                    </span>
-                  )}
+                  {/* email is in auth.users only — not displayed here */}
                 </div>
               </CardContent>
             </Card>

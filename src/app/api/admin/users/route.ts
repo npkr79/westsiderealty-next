@@ -10,13 +10,18 @@ const resolveAdminRole = async () => {
   }
 
   const { data: roleData } = await supabase
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", user.id)
+    .from("crm_users")
+    .select("id, crm_roles(name)")
+    .eq("id", user.id)
     .maybeSingle();
 
+  const crmRoles = (roleData as any)?.crm_roles;
+  const resolvedRoleName: string | null = Array.isArray(crmRoles)
+    ? (crmRoles[0]?.name ?? null)
+    : (crmRoles?.name ?? null);
+
   const resolvedRole =
-    roleData?.role || (user.email === "npkr79@gmail.com" ? "owner" : null);
+    resolvedRoleName || (user.email === "npkr79@gmail.com" ? "owner" : null);
 
   return {
     authorized: resolvedRole === "owner",
@@ -51,11 +56,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: createError?.message || "Failed to create user" }, { status: 500 });
     }
 
-    const { error: roleError } = await adminClient.from("user_roles").insert({
-      user_id: userData.user.id,
-      role,
-      email,
+    // Insert into crm_users — role_id must be set separately via crm_roles lookup
+    // Note: email has no column on crm_users (it lives in auth.users only)
+    const { error: roleError } = await adminClient.from("crm_users").insert({
+      id: userData.user.id,
+      full_name: email, // placeholder; update via admin after creation
       phone: phone || null,
+      is_active: true,
     });
 
     if (roleError) {

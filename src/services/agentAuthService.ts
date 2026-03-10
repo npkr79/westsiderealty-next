@@ -44,11 +44,7 @@ export const agentAuthService = {
         console.error('Failed to update phone auth:', phoneError);
       }
 
-      // Mark first login as complete
-      await supabase
-        .from('agents_profile')
-        .update({ profile_completed: true })
-        .eq('agent_id', agentId);
+      // profile_completed does not exist on crm_users — no-op
 
       return { success: true };
     } catch (error) {
@@ -75,9 +71,9 @@ export const agentAuthService = {
       }
 
       const { data: agent } = await supabase
-        .from('agents_profile')
-        .select('*')
-        .eq('agent_id', data.agent_id)
+        .from('crm_users')
+        .select('id, full_name, phone, is_active')
+        .eq('id', data.agent_id)
         .single();
 
       return { success: true, agent };
@@ -92,9 +88,9 @@ export const agentAuthService = {
    */
   async deactivateAgent(agentId: string) {
     try {
-      // Deactivate in agents table
+      // Deactivate in crm_users
       const { error: agentError } = await supabase
-        .from('raw_agents')
+        .from('crm_users')
         .update({ is_active: false })
         .eq('id', agentId);
 
@@ -120,9 +116,9 @@ export const agentAuthService = {
    */
   async activateAgent(agentId: string) {
     try {
-      // Activate in agents table
+      // Activate in crm_users
       const { error: agentError } = await supabase
-        .from('raw_agents')
+        .from('crm_users')
         .update({ is_active: true })
         .eq('id', agentId);
 

@@ -15,7 +15,7 @@ export async function PATCH(
 
     const updates = await req.json();
     const adminClient = getServiceClient();
-    const { is_active, category, name, email, phone } = updates || {};
+    const { is_active, category, name, phone } = updates || {};
     const payload: Record<string, any> = {};
     if (typeof is_active === "boolean") payload.is_active = is_active;
     if (typeof category === "string") {
@@ -25,13 +25,13 @@ export async function PATCH(
           { status: 400 }
         );
       }
-      payload.category = category;
+      // category has no direct column on crm_users — skip silently
     }
-    if (typeof name === "string") payload.name = name;
-    if (typeof email === "string") payload.email = email;
+    if (typeof name === "string") payload.full_name = name;
+    // email has no column on crm_users — skip silently
     if (typeof phone === "string") payload.phone = phone;
 
-    const { error } = await adminClient.from("raw_agents").update(payload).eq("id", id);
+    const { error } = await adminClient.from("crm_users").update(payload).eq("id", id);
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
@@ -53,8 +53,8 @@ export async function DELETE(
     }
 
     const adminClient = getServiceClient();
-    await adminClient.from("raw_agents").delete().eq("id", id);
-    await adminClient.from("user_roles").delete().eq("user_id", id);
+    // Deleting the crm_users row would remove the whole user record — skip and just deactivate instead
+    await adminClient.from("crm_users").update({ is_active: false }).eq("id", id);
     await adminClient.auth.admin.deleteUser(id);
 
     return NextResponse.json({ success: true });

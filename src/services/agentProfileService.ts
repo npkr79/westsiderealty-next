@@ -26,24 +26,18 @@ export const agentProfileService = {
     try {
       console.log('AgentProfileService: Updating profile for user:', userId);
 
-      // Update agents table
+      // crm_users only stores: full_name, phone, whatsapp_number
+      // bio, specialization, service_areas, profile_image, linkedin, instagram, profile_completed
+      // do NOT exist on crm_users — update only the available fields
       const { data, error } = await supabase
-        .from('agents_profile')
+        .from('crm_users')
         .update({
-          name: profileData.name,
+          full_name: profileData.name,
           phone: profileData.phone,
-          bio: profileData.bio,
-          specialization: profileData.specialization,
-          service_areas: profileData.service_areas || [],
-          whatsapp: profileData.whatsapp,
-          linkedin: profileData.linkedin,
-          instagram: profileData.instagram,
-          profile_image: profileData.profile_image,
-          profile_completed: true,
-          updated_at: new Date().toISOString()
+          whatsapp_number: profileData.whatsapp,
         })
-        .eq('agent_id', userId)
-        .select()
+        .eq('id', userId)
+        .select('id, full_name, phone, whatsapp_number, created_at, crm_roles(name)')
         .single();
 
       if (error) {
@@ -51,35 +45,27 @@ export const agentProfileService = {
         return null;
       }
 
-      // Get user role
-      const { data: roleData } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', userId)
-        .single();
-
-      const userRole = roleData?.role || 'agent';
-
-      // Fix service areas type conversion
-      const serviceAreas: string[] = Array.isArray(data.service_areas)
-        ? data.service_areas.filter((area: any): area is string => typeof area === 'string')
-        : [];
+      // Get user role from crm_roles join
+      const crmRoles = (data as any)?.crm_roles;
+      const userRole: string = Array.isArray(crmRoles)
+        ? (crmRoles[0]?.name ?? 'agent')
+        : (crmRoles?.name ?? 'agent');
 
       const updatedUser: User = {
-        id: String(data.agent_id),
-        name: String(data.name || ''),
-        email: String(data.email || ''),
-        phone: String(data.phone || ''),
-        role: String(userRole),
-        bio: String(data.bio || ''),
-        specialization: String(data.specialization || ''),
-        profileImage: String(data.profile_image || ''),
-        serviceAreas: serviceAreas,
-        whatsapp: String(data.whatsapp || ''),
-        linkedin: String(data.linkedin || ''),
-        instagram: String(data.instagram || ''),
-        createdAt: String(data.created_at || ''),
-        profileCompleted: Boolean(data.profile_completed)
+        id: String((data as any).id),
+        name: String((data as any).full_name || ''),
+        email: '',
+        phone: String((data as any).phone || ''),
+        role: userRole,
+        bio: '',
+        specialization: '',
+        profileImage: '',
+        serviceAreas: [],
+        whatsapp: String((data as any).whatsapp_number || ''),
+        linkedin: '',
+        instagram: '',
+        createdAt: String((data as any).created_at || ''),
+        profileCompleted: false,
       };
 
       console.log('AgentProfileService: Profile updated successfully');
@@ -93,22 +79,24 @@ export const agentProfileService = {
   async getAllAgents(): Promise<any[]> {
     try {
       const { data, error } = await supabase
-        .from('agents_profile')
-        .select('*, raw_agents!inner(is_active)')
-        .eq('raw_agents.is_active', true)
-        .order('name');
+        .from('crm_users')
+        .select('id, full_name, phone, is_active, created_at')
+        .eq('is_active', true)
+        .order('full_name');
 
       if (error) {
         console.error('AgentProfileService: Get agents error:', error);
         return [];
       }
 
-      return data.map(agent => ({
-        ...agent,
-        id: agent.agent_id,
-        service_areas: Array.isArray(agent.service_areas) 
-          ? agent.service_areas.filter((area: any): area is string => typeof area === 'string')
-          : []
+      return (data || []).map((agent: any) => ({
+        id: agent.id,
+        agent_id: agent.id,
+        name: agent.full_name,
+        phone: agent.phone,
+        is_active: agent.is_active,
+        created_at: agent.created_at,
+        service_areas: [],
       }));
     } catch (error) {
       console.error('AgentProfileService: Get agents exception:', error);
@@ -119,9 +107,9 @@ export const agentProfileService = {
   async getAgentById(agentId: string): Promise<any | null> {
     try {
       const { data, error } = await supabase
-        .from('agents_profile')
-        .select('*')
-        .eq('agent_id', agentId)
+        .from('crm_users')
+        .select('id, full_name, phone, is_active, created_at')
+        .eq('id', agentId)
         .single();
 
       if (error) {
@@ -130,11 +118,13 @@ export const agentProfileService = {
       }
 
       return {
-        ...data,
-        id: data.agent_id,
-        service_areas: Array.isArray(data.service_areas) 
-          ? data.service_areas.filter((area: any): area is string => typeof area === 'string')
-          : []
+        id: data.id,
+        agent_id: data.id,
+        name: data.full_name,
+        phone: data.phone,
+        is_active: data.is_active,
+        created_at: data.created_at,
+        service_areas: [],
       };
     } catch (error) {
       console.error('AgentProfileService: Get agent exception:', error);

@@ -76,17 +76,28 @@ export default function AgentProfilesManager() {
         setProfiles((data.profiles || []) as AgentProfileRow[]);
       } else if (user?.id) {
         const { data, error } = await supabase
-          .from("agents_profile")
-          .select("*")
-          .eq("agent_id", user.id)
+          .from("crm_users")
+          .select("id, full_name, phone, is_active")
+          .eq("id", user.id)
           .single();
         if (error) {
           throw error;
         }
         setProfiles([
           {
-            ...data,
-            id: data.agent_id,
+            id: data.id,
+            name: data.full_name,
+            email: null,
+            phone: data.phone,
+            specialization: null,
+            bio: null,
+            whatsapp: null,
+            linkedin: null,
+            instagram: null,
+            profile_image: null,
+            service_areas: null,
+            profile_completed: null,
+            is_active: data.is_active,
           },
         ]);
       }
@@ -172,10 +183,11 @@ export default function AgentProfilesManager() {
           throw new Error(data?.error || "Failed to update profile.");
         }
       } else if (user?.id) {
+        // Only full_name and phone are updatable on crm_users
         const { error } = await supabase
-          .from("agents_profile")
-          .update(payload)
-          .eq("agent_id", user.id);
+          .from("crm_users")
+          .update({ full_name: payload.name ?? undefined, phone: payload.phone ?? undefined })
+          .eq("id", user.id);
         if (error) {
           throw error;
         }

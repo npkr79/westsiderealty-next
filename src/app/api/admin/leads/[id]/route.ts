@@ -10,13 +10,18 @@ const resolveAdminRole = async () => {
   }
 
   const { data: roleData } = await supabase
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", user.id)
+    .from("crm_users")
+    .select("id, crm_roles(name)")
+    .eq("id", user.id)
     .maybeSingle();
 
+  const crmRoles = (roleData as any)?.crm_roles;
+  const resolvedRoleName: string | null = Array.isArray(crmRoles)
+    ? (crmRoles[0]?.name ?? null)
+    : (crmRoles?.name ?? null);
+
   const resolvedRole =
-    roleData?.role || (user.email === "npkr79@gmail.com" ? "owner" : null);
+    resolvedRoleName || (user.email === "npkr79@gmail.com" ? "owner" : null);
 
   const isAdmin =
     resolvedRole === "owner" ||

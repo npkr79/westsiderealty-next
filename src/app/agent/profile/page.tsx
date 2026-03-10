@@ -22,7 +22,6 @@ import { supabaseImageService } from "@/services/client/supabaseImageService";
 interface AgentProfileData {
   id: string;
   name: string;
-  email: string;
   phone: string;
   bio: string;
   specialization: string;
@@ -71,41 +70,40 @@ export default function AgentProfile() {
       setIsLoading(true);
       try {
         const { data: agentData, error } = await supabase
-          .from("agents_profile")
-          .select("*")
-          .eq("agent_id", user.id)
+          .from("crm_users")
+          .select("id, full_name, phone, whatsapp_number, created_at")
+          .eq("id", user.id)
           .single();
 
         if (error) throw error;
 
         if (agentData) {
           const profileData: AgentProfileData = {
-            id: agentData.agent_id,
-            name: agentData.name,
-            email: agentData.email,
+            id: agentData.id,
+            name: agentData.full_name || "",
             phone: agentData.phone || "",
-            bio: agentData.bio || "",
-            specialization: agentData.specialization || "",
-            profileImage: agentData.profile_image || "",
-            serviceAreas: agentData.service_areas || [],
-            whatsapp: agentData.whatsapp || "",
-            linkedin: agentData.linkedin || "",
-            instagram: agentData.instagram || "",
+            bio: "",
+            specialization: "",
+            profileImage: "",
+            serviceAreas: [],
+            whatsapp: agentData.whatsapp_number || "",
+            linkedin: "",
+            instagram: "",
             createdAt: agentData.created_at,
-            profileCompleted: agentData.profile_completed || false,
+            profileCompleted: false,
           };
 
           setAgent(profileData);
-          setName(agentData.name);
+          setName(agentData.full_name || "");
           setPhone(agentData.phone || "");
-          setBio(agentData.bio || "");
-          setSpecialization(agentData.specialization || "");
-          setServiceAreas(agentData.service_areas || []);
-          setWhatsapp(agentData.whatsapp || "");
-          setLinkedin(agentData.linkedin || "");
-          setInstagram(agentData.instagram || "");
-          setProfileImage(agentData.profile_image || "");
-          setProfileCompleted(agentData.profile_completed || false);
+          setBio("");
+          setSpecialization("");
+          setServiceAreas([]);
+          setWhatsapp(agentData.whatsapp_number || "");
+          setLinkedin("");
+          setInstagram("");
+          setProfileImage("");
+          setProfileCompleted(false);
         } else {
           toast({
             title: "Error",
@@ -209,21 +207,16 @@ export default function AgentProfile() {
         }
       }
 
+      // crm_users only has: full_name, phone, whatsapp_number
+      // bio, specialization, service_areas, linkedin, instagram, profile_image not stored on crm_users
       const { error } = await supabase
-        .from("agents_profile")
+        .from("crm_users")
         .update({
-          name,
+          full_name: name,
           phone,
-          bio,
-          specialization,
-          service_areas: serviceAreas,
-          whatsapp,
-          linkedin,
-          instagram,
-          profile_image: uploadedImageUrl,
-          profile_completed: true,
+          whatsapp_number: whatsapp,
         })
-        .eq("agent_id", user.id);
+        .eq("id", user.id);
 
       if (error) throw error;
 
@@ -410,11 +403,7 @@ export default function AgentProfile() {
                 />
               </div>
 
-              {/* Email */}
-              <div>
-                <Label htmlFor="email">Email Address</Label>
-                <Input id="email" type="email" value={agent.email} disabled />
-              </div>
+              {/* Email — stored in auth.users only, not shown here */}
 
               {/* Phone */}
               <div>

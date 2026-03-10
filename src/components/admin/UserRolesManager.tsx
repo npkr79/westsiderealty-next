@@ -14,7 +14,6 @@ interface UserRole {
   id: string;
   user_id: string;
   role: string;
-  email: string | null;
   phone: string | null;
 }
 
@@ -25,7 +24,6 @@ export default function UserRolesManager() {
   const [loading, setLoading] = useState(true);
   const [formState, setFormState] = useState({
     user_id: "",
-    email: "",
     phone: "",
     role: "dev_admin",
   });
@@ -39,12 +37,24 @@ export default function UserRolesManager() {
     try {
       setLoading(true);
       const { data, error } = await supabase
-        .from("user_roles")
-        .select("id, user_id, role, email, phone")
-        .order("role", { ascending: true });
+        .from("crm_users")
+        .select("id, full_name, phone, crm_roles(name)")
+        .order("full_name", { ascending: true });
 
       if (error) throw error;
-      setRoles((data || []) as UserRole[]);
+      const mapped = (data || []).map((row: any) => {
+        const crmRoles = row.crm_roles;
+        const roleName: string = Array.isArray(crmRoles)
+          ? (crmRoles[0]?.name ?? "")
+          : (crmRoles?.name ?? "");
+        return {
+          id: row.id,
+          user_id: row.id,
+          role: roleName,
+          phone: row.phone ?? null,
+        } as UserRole;
+      });
+      setRoles(mapped);
     } catch (error) {
       console.error("Error loading roles:", error);
       toast({
@@ -68,12 +78,16 @@ export default function UserRolesManager() {
     }
 
     try {
-      const { error } = await supabase.from("user_roles").insert({
-        user_id: formState.user_id,
-        role: formState.role,
-        email: formState.email || null,
-        phone: formState.phone || null,
-      });
+      // crm_users does not have a direct role column — role_id is set via crm_roles FK
+      // This upsert sets phone; role_id must be set manually via DB or separate admin action
+      const { error } = await supabase.from("crm_users").upsert(
+        {
+          id: formState.user_id,
+          phone: formState.phone || null,
+          is_active: true,
+        },
+        { onConflict: "id" }
+      );
 
       if (error) throw error;
 
@@ -82,7 +96,7 @@ export default function UserRolesManager() {
         description: "User role has been assigned.",
       });
 
-      setFormState({ user_id: "", email: "", phone: "", role: "dev_admin" });
+      setFormState({ user_id: "", phone: "", role: "dev_admin" });
       loadRoles();
     } catch (error) {
       console.error("Error adding role:", error);
@@ -96,7 +110,8 @@ export default function UserRolesManager() {
 
   const handleDeleteRole = async (roleId: string) => {
     try {
-      const { error } = await supabase.from("user_roles").delete().eq("id", roleId);
+      // Deleting a crm_users row removes the whole user — deactivate instead
+      const { error } = await supabase.from("crm_users").update({ is_active: false }).eq("id", roleId);
       if (error) throw error;
 
       setRoles((prev) => prev.filter((role) => role.id !== roleId));
@@ -125,11 +140,6 @@ export default function UserRolesManager() {
             placeholder="User ID (UUID)"
             value={formState.user_id}
             onChange={(e) => setFormState({ ...formState, user_id: e.target.value })}
-          />
-          <Input
-            placeholder="Email (optional)"
-            value={formState.email}
-            onChange={(e) => setFormState({ ...formState, email: e.target.value })}
           />
           <Input
             placeholder="Phone (optional)"
@@ -172,7 +182,6 @@ export default function UserRolesManager() {
                   <TableRow>
                     <TableHead>Role</TableHead>
                     <TableHead>User ID</TableHead>
-                    <TableHead>Email</TableHead>
                     <TableHead>Phone</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
@@ -180,7 +189,7 @@ export default function UserRolesManager() {
                 <TableBody>
                   {roles.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center text-muted-foreground py-6">
+                      <TableCell colSpan={4} className="text-center text-muted-foreground py-6">
                         No roles assigned yet.
                       </TableCell>
                     </TableRow>
@@ -189,7 +198,6 @@ export default function UserRolesManager() {
                       <TableRow key={role.id}>
                         <TableCell className="font-medium">{role.role}</TableCell>
                         <TableCell className="text-xs text-muted-foreground">{role.user_id}</TableCell>
-                        <TableCell>{role.email || "-"}</TableCell>
                         <TableCell>{role.phone || "-"}</TableCell>
                         <TableCell>
                           <Button

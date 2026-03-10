@@ -52,9 +52,9 @@ export const agentProfileService = {
   async getAgentById(agentId: string): Promise<AgentProfile | null> {
     const supabase = createClient();
     const { data, error } = await supabase
-      .from('agents_profile')
-      .select('*')
-      .eq('agent_id', agentId)
+      .from('crm_users')
+      .select('id, full_name, phone, is_active, created_at, whatsapp_number')
+      .eq('id', agentId)
       .single();
 
     if (error) {
@@ -63,35 +63,62 @@ export const agentProfileService = {
     }
 
     return {
-      ...data,
-      id: data.agent_id,
-      service_areas: parseJsonField(data.service_areas, [])
+      id: data.id,
+      agent_id: data.id,
+      name: data.full_name || '',
+      email: '',
+      phone: data.phone,
+      bio: null,
+      specialization: null,
+      profile_image: null,
+      service_areas: [],
+      whatsapp: data.whatsapp_number,
+      linkedin: null,
+      instagram: null,
+      active: data.is_active,
+      profile_completed: false,
+      license_number: null,
+      created_at: data.created_at,
+      updated_at: data.created_at,
     };
   },
 
   // Update agent profile
   async updateAgent(agentId: string, updates: Partial<AgentProfile>): Promise<AgentProfile> {
     const supabase = createClient();
-    const updateData: any = { ...updates };
-    
-    // Convert service_areas to JSON string if it's an array
-    if (updates.service_areas) {
-      updateData.service_areas = JSON.stringify(updates.service_areas);
-    }
+    // Only full_name, phone, whatsapp_number exist on crm_users
+    const updateData: Record<string, any> = {};
+    if (updates.name !== undefined) updateData.full_name = updates.name;
+    if (updates.phone !== undefined) updateData.phone = updates.phone;
+    if (updates.whatsapp !== undefined) updateData.whatsapp_number = updates.whatsapp;
 
     const { data, error } = await supabase
-      .from('agents_profile')
+      .from('crm_users')
       .update(updateData)
-      .eq('agent_id', agentId)
-      .select()
+      .eq('id', agentId)
+      .select('id, full_name, phone, is_active, created_at, whatsapp_number')
       .single();
 
     if (error) throw error;
 
     return {
-      ...data,
-      id: data.agent_id,
-      service_areas: parseJsonField(data.service_areas, [])
+      id: data.id,
+      agent_id: data.id,
+      name: data.full_name || '',
+      email: '',
+      phone: data.phone,
+      bio: null,
+      specialization: null,
+      profile_image: null,
+      service_areas: [],
+      whatsapp: data.whatsapp_number,
+      linkedin: null,
+      instagram: null,
+      active: data.is_active,
+      profile_completed: false,
+      license_number: null,
+      created_at: data.created_at,
+      updated_at: data.created_at,
     };
   },
 
@@ -99,17 +126,30 @@ export const agentProfileService = {
   async getAllAgents(): Promise<AgentProfile[]> {
     const supabase = createClient();
     const { data, error } = await supabase
-      .from('agents_profile')
-      .select('*, raw_agents(is_active)')
+      .from('crm_users')
+      .select('id, full_name, phone, is_active, created_at, whatsapp_number')
       .order('created_at', { ascending: false });
 
     if (error) throw error;
 
-    return data.map((agent: any) => ({
-      ...agent,
-      id: agent.agent_id,
-      active: agent.raw_agents?.is_active ?? agent.active ?? true,
-      service_areas: parseJsonField(agent.service_areas, [])
+    return (data || []).map((agent: any) => ({
+      id: agent.id,
+      agent_id: agent.id,
+      name: agent.full_name || '',
+      email: '',
+      phone: agent.phone,
+      bio: null,
+      specialization: null,
+      profile_image: null,
+      service_areas: [],
+      whatsapp: agent.whatsapp_number,
+      linkedin: null,
+      instagram: null,
+      active: agent.is_active ?? true,
+      profile_completed: false,
+      license_number: null,
+      created_at: agent.created_at,
+      updated_at: agent.created_at,
     }));
   },
 
@@ -117,18 +157,31 @@ export const agentProfileService = {
   async getPublicAgents(): Promise<AgentProfile[]> {
     const supabase = createClient();
     const { data, error } = await supabase
-      .from('agents_profile')
-      .select('*, raw_agents!inner(is_active)')
-      .eq('raw_agents.is_active', true)
-      .order('name');
+      .from('crm_users')
+      .select('id, full_name, phone, is_active, created_at, whatsapp_number')
+      .eq('is_active', true)
+      .order('full_name');
 
     if (error) throw error;
 
-    return data.map((agent: any) => ({
-      ...agent,
-      id: agent.agent_id,
-      active: agent.raw_agents?.is_active ?? true,
-      service_areas: parseJsonField(agent.service_areas, [])
+    return (data || []).map((agent: any) => ({
+      id: agent.id,
+      agent_id: agent.id,
+      name: agent.full_name || '',
+      email: '',
+      phone: agent.phone,
+      bio: null,
+      specialization: null,
+      profile_image: null,
+      service_areas: [],
+      whatsapp: agent.whatsapp_number,
+      linkedin: null,
+      instagram: null,
+      active: agent.is_active ?? true,
+      profile_completed: false,
+      license_number: null,
+      created_at: agent.created_at,
+      updated_at: agent.created_at,
     }));
   },
 
@@ -136,28 +189,42 @@ export const agentProfileService = {
   async searchAgents(query: string): Promise<AgentProfile[]> {
     const supabase = createClient();
     const { data, error } = await supabase
-      .from('agents_profile')
-      .select('*, raw_agents!inner(is_active)')
-      .eq('raw_agents.is_active', true)
-      .or(`name.ilike.%${query}%,specialization.ilike.%${query}%,bio.ilike.%${query}%`)
-      .order('name');
+      .from('crm_users')
+      .select('id, full_name, phone, is_active, created_at, whatsapp_number')
+      .eq('is_active', true)
+      .or(`full_name.ilike.%${query}%,phone.ilike.%${query}%`)
+      .order('full_name');
 
     if (error) throw error;
 
-    return data.map((agent: any) => ({
-      ...agent,
-      id: agent.agent_id,
-      active: agent.raw_agents?.is_active ?? true,
-      service_areas: parseJsonField(agent.service_areas, [])
+    return (data || []).map((agent: any) => ({
+      id: agent.id,
+      agent_id: agent.id,
+      name: agent.full_name || '',
+      email: '',
+      phone: agent.phone,
+      bio: null,
+      specialization: null,
+      profile_image: null,
+      service_areas: [],
+      whatsapp: agent.whatsapp_number,
+      linkedin: null,
+      instagram: null,
+      active: agent.is_active ?? true,
+      profile_completed: false,
+      license_number: null,
+      created_at: agent.created_at,
+      updated_at: agent.created_at,
     }));
   },
 
   // Utility methods
   async deleteAgent(agentId: string): Promise<void> {
     const supabase = createClient();
+    // Deleting the whole crm_users row would remove the user — deactivate instead
     const { error } = await supabase
-      .from('raw_agents')
-      .delete()
+      .from('crm_users')
+      .update({ is_active: false })
       .eq('id', agentId);
 
     if (error) throw error;
@@ -166,7 +233,7 @@ export const agentProfileService = {
   async activateAgent(agentId: string): Promise<void> {
     const supabase = createClient();
     const { error } = await supabase
-      .from('raw_agents')
+      .from('crm_users')
       .update({ is_active: true })
       .eq('id', agentId);
 
@@ -176,7 +243,7 @@ export const agentProfileService = {
   async deactivateAgent(agentId: string): Promise<void> {
     const supabase = createClient();
     const { error } = await supabase
-      .from('raw_agents')
+      .from('crm_users')
       .update({ is_active: false })
       .eq('id', agentId);
 

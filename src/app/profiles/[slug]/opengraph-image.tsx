@@ -25,13 +25,13 @@ export default async function Image({
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
     const { data: agent } = await supabase
-      .from("agents_profile")
-      .select("name")
-      .ilike("name", displayName)
+      .from("crm_users")
+      .select("full_name")
+      .ilike("full_name", displayName)
       .maybeSingle();
 
-    if (agent?.name) {
-      agentName = agent.name;
+    if (agent?.full_name) {
+      agentName = agent.full_name;
     }
 
     const formattedName = params.slug.replace(/-/g, "_");

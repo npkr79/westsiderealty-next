@@ -62,8 +62,9 @@ const DEFAULT_AMENITIES = [
 export const bulkUploadUpdateProperties = async (properties: ExcelPropertyRow[], placeholderImageUrl: string) => {
   // Get the first agent to assign properties to
   const { data: agents } = await supabase
-    .from('raw_agents')
+    .from('crm_users')
     .select('id')
+    .eq('is_active', true)
     .limit(1)
     .single();
   
