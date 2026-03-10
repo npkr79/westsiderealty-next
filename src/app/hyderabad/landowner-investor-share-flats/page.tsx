@@ -21,9 +21,9 @@ const LANDOWNER_OG_IMAGE =
   "https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/brand-assets/landowner-share-banner-1200x630.jpg";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const title = "Landowner Share Flats in Hyderabad | 15% Cheaper than Builder Price";
+  const title = "Landowner & Investor Share Flats Hyderabad | Westside Realty";
   const description =
-    "Buy landowner share & investor share apartments in Hyderabad at 10-15% below market rates. RERA approved projects in Gachibowli, Kokapet, Narsingi. Direct from landowners.";
+    "Exclusive landowner and investor share flats available in Hyderabad at below-market prices. Limited availability — West Hyderabad's best value residential deals.";
 
   return {
     title,

@@ -10,7 +10,7 @@ export default function IntelligenceFooter() {
               Westside
             </p>
           </div>
-          <Link href="/about-westside" className="text-sm text-slate-300 hover:text-white">
+          <Link href="/about" className="text-sm text-slate-300 hover:text-white">
             About Westside
           </Link>
           <Link

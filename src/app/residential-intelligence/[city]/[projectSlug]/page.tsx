@@ -1,4 +1,6 @@
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
+import { createClient } from "@/lib/supabase/server";
 import { reraIntelligenceService } from "@/services/reraIntelligenceService";
 import { computeProjectDNA } from "@/intelligence/projectDNA";
 import { computeWestsideDensityIndex } from "@/intelligence/westsideDensityIndex";
@@ -99,6 +101,26 @@ const buildIntelligenceInput = (
     },
   };
 };
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ city: string; projectSlug: string }>;
+}): Promise<Metadata> {
+  const { city, projectSlug } = await params;
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("rera_projects")
+    .select("project_name")
+    .eq("url_slug", projectSlug)
+    .maybeSingle();
+  const projectName = data?.project_name ?? projectSlug;
+  const cityName = city.charAt(0).toUpperCase() + city.slice(1);
+  return {
+    title: `${projectName} | ${cityName} Property Insights | Westside Realty`,
+    description: `Detailed price trends, floor plan analysis and investment outlook for ${projectName} in ${cityName}. Westside Realty residential intelligence.`,
+  };
+}
 
 export default async function Page({
   params,

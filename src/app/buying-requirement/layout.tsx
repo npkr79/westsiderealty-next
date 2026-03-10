@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import { buildMetadata } from "@/components/common/SEO";
 
 export const metadata: Metadata = buildMetadata({
-  title: "Find Your Perfect Property | Buying Requirement | RE/MAX Westside Realty",
-  description: "Tell us what you're looking for, and we'll match you with the best properties. Expert guidance, verified listings, and personalized matching for your property search.",
+  title: "Find Your Ideal Property in Hyderabad | Westside Realty",
+  description: "Tell us what you're looking for and we'll find the perfect property in Hyderabad. Apartments, villas, commercial spaces — Westside Realty finds your match.",
   canonicalUrl: "https://www.westsiderealty.in/buying-requirement",
 });
 

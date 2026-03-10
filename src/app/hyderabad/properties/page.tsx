@@ -11,8 +11,8 @@ export async function generateMetadata(): Promise<Metadata> {
   const canonicalUrl = "https://www.westsiderealty.in/hyderabad/properties";
 
   return buildMetadata({
-    title: "Hyderabad Resale Properties - Premium Homes & Apartments | RE/MAX Westside Realty",
-    description: "Browse 163+ resale properties in Hyderabad. Premium apartments, villas, and homes in Kokapet, Neopolis, Financial District, Gachibowli & more.",
+    title: "Properties in Hyderabad | Buy Apartments & Villas | Westside Realty",
+    description: "Browse properties for sale in Hyderabad. Apartments, villas and plots in Gachibowli, Kokapet, Kondapur and Gandipet. Find your ideal home with Westside Realty.",
     canonicalUrl,
   });
 }

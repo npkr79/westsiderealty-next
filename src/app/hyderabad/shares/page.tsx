@@ -12,8 +12,8 @@ export async function generateMetadata(): Promise<Metadata> {
   const canonicalUrl = "https://www.westsiderealty.in/hyderabad/shares";
 
   return buildMetadata({
-    title: "Landowner & Investor Share Properties in Hyderabad | RE/MAX Westside Realty",
-    description: "Browse exclusive landowner share and investor share properties in Hyderabad. Pre-launch opportunities and investment deals from top developers.",
+    title: "Landowner Shares in Hyderabad | Investment Opportunities | Westside Realty",
+    description: "Invest in landowner shares in Hyderabad's premium residential projects. Early entry pricing, high appreciation potential in West Hyderabad's growth corridor.",
     canonicalUrl,
   });
 }

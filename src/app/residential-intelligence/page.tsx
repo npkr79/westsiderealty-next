@@ -1,3 +1,10 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Residential Intelligence | Hyderabad Property Market Data | Westside Realty",
+  description: "Comprehensive residential property intelligence for Hyderabad — prices, trends, project comparisons and neighbourhood insights to guide your investment.",
+};
+
 import CommandAccess from "@/components/residential-intelligence-dashboard/CommandAccess";
 import CityPressureIndicators from "@/components/residential-intelligence-dashboard/CityPressureIndicators";
 import DensityLandMatrix from "@/components/residential-intelligence-dashboard/DensityLandMatrix";

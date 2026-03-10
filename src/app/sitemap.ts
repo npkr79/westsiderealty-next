@@ -71,6 +71,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       hyderabadPropertiesResult,
       goaPropertiesResult,
       dubaiPropertiesResult,
+      reraProjectsResult,
     ] = await Promise.all([
       supabase.from("cities").select("url_slug, updated_at").eq("page_status", "published"),
       supabase
@@ -110,6 +111,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         .select("seo_slug, slug, updated_at")
         .eq("status", "published")
         .not("seo_slug", "is", null),
+      supabase
+        .from("rera_projects")
+        .select("url_slug, city_slug, updated_at")
+        .not("url_slug", "is", null)
+        .not("city_slug", "is", null),
     ]);
 
     const urls: MetadataRoute.Sitemap = [];
@@ -117,18 +123,26 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // Static pages
     urls.push(
       { url: baseUrl, lastModified: new Date(), changeFrequency: "daily", priority: 1 },
-      { url: `${baseUrl}/about`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.5 },
-      { url: `${baseUrl}/contact`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.5 },
+      { url: `${baseUrl}/about`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.6 },
+      { url: `${baseUrl}/contact`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.6 },
       { url: `${baseUrl}/services`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.7 },
       { url: `${baseUrl}/projects`, lastModified: new Date(), changeFrequency: "daily", priority: 0.9 },
-      { url: `${baseUrl}/developers`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.8 },
+      { url: `${baseUrl}/developers`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.7 },
       { url: `${baseUrl}/blog`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.7 },
       { url: `${baseUrl}/properties`, lastModified: new Date(), changeFrequency: "daily", priority: 0.9 },
-      { url: `${baseUrl}/hyderabad/properties`, lastModified: new Date(), changeFrequency: "daily", priority: 0.9 },
+      { url: `${baseUrl}/hyderabad/properties`, lastModified: new Date(), changeFrequency: "daily", priority: 0.7 },
       { url: `${baseUrl}/privacy-policy`, lastModified: new Date(), changeFrequency: "yearly", priority: 0.3 },
       { url: `${baseUrl}/sell-property`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.8 },
       { url: `${baseUrl}/buying-requirement`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.8 },
-      { url: `${baseUrl}/hyderabad/landowner-investor-share-flats`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.7 }
+      { url: `${baseUrl}/hyderabad/landowner-investor-share-flats`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.7 },
+      { url: `${baseUrl}/commercial-investments`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.9 },
+      { url: `${baseUrl}/kokapet-gandipet-luxury-villas`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.9 },
+      { url: `${baseUrl}/apartment-intelligence`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.8 },
+      { url: `${baseUrl}/villa-intelligence`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.8 },
+      { url: `${baseUrl}/residential-intelligence`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.8 },
+      { url: `${baseUrl}/hyderabad/buy`, lastModified: new Date(), changeFrequency: "daily", priority: 0.8 },
+      { url: `${baseUrl}/hyderabad/shares`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.7 },
+      { url: `${baseUrl}/insights`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.7 }
     );
 
     // Cities and city-specific pages
@@ -389,6 +403,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       if (slug) {
         urls.push({
           url: `${baseUrl}/dubai/buy/${slug}`,
+          lastModified: p.updated_at ? new Date(p.updated_at) : new Date(),
+          changeFrequency: "weekly",
+          priority: 0.7,
+        });
+      }
+    });
+
+    // Residential Intelligence pages (RERA projects)
+    reraProjectsResult.data?.forEach((p) => {
+      if (p.url_slug && p.city_slug) {
+        urls.push({
+          url: `${baseUrl}/residential-intelligence/${p.city_slug}/${p.url_slug}`,
           lastModified: p.updated_at ? new Date(p.updated_at) : new Date(),
           changeFrequency: "weekly",
           priority: 0.7,

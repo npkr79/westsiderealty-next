@@ -5,7 +5,7 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: "*",
       allow: "/",
-      disallow: ["/admin/", "/api/", "/_next/", "/agent/"],
+      disallow: ["/dashboard/", "/crm/", "/api/", "/reset-password"],
     },
     sitemap: "https://www.westsiderealty.in/sitemap.xml",
   };
