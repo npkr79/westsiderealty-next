@@ -6,7 +6,7 @@ import { useState } from "react";
 import CrmSidebar from "./CrmSidebar";
 
 const bottomItems = [
-  { href: "/dashboard", icon: LayoutDashboard, label: "Home" },
+  { href: "/dashboard/agent", icon: LayoutDashboard, label: "Home" },
   { href: "/leads", icon: Users, label: "Leads" },
   { href: "/pipeline", icon: Kanban, label: "Pipeline" },
   { href: "/crm/whatsapp", icon: MessageCircle, label: "WhatsApp" },

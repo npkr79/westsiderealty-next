@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 
 const navItems = [
-  { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
+  { href: "/dashboard/agent", icon: LayoutDashboard, label: "Dashboard" },
   { href: "/leads", icon: Users, label: "Leads" },
   { href: "/pipeline", icon: Kanban, label: "Pipeline" },
   { href: "/crm/whatsapp", icon: MessageCircle, label: "WhatsApp" },
@@ -48,9 +48,7 @@ export default function CrmSidebar({ onClose }: CrmSidebarProps) {
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto py-3 px-2">
         {navItems.map(({ href, icon: Icon, label }) => {
-          const active =
-            pathname.startsWith(href) &&
-            (href !== "/dashboard" || pathname === href || pathname.startsWith("/dashboard/"));
+          const active = pathname.startsWith(href);
           return (
             <Link
               key={href}

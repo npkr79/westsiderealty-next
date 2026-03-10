@@ -208,7 +208,7 @@ export default function LeadsTableView({ currentUserRole, currentUserId }: Leads
         </Select>
       </div>
 
-      <div className="rounded-xl border bg-white dark:bg-slate-950">
+      <div className="rounded-xl border bg-white dark:bg-slate-950 overflow-x-auto">
         {error ? (
           <div className="border-b px-4 py-2 text-sm text-rose-600 dark:text-rose-300">
             Unable to load leads: {error}
@@ -218,8 +218,8 @@ export default function LeadsTableView({ currentUserRole, currentUserId }: Leads
           <TableHeader>
             <TableRow>
               {[
-                { key: "name", label: "Name" },
-                { key: "phone", label: "Phone" },
+                { key: "name", label: "Name", className: "min-w-[140px] whitespace-nowrap" },
+                { key: "phone", label: "Phone", className: "min-w-[120px] whitespace-nowrap" },
                 { key: "priority", label: "Priority" },
                 { key: "source", label: "Source" },
                 { key: "budget_range", label: "Budget" },
@@ -229,7 +229,7 @@ export default function LeadsTableView({ currentUserRole, currentUserId }: Leads
                 ...(!isAgent ? [{ key: "assigned_agent", label: "Assigned Agent" }] : []),
                 { key: "last_activity_at", label: "Last Activity" },
               ].map((col) => (
-                <TableHead key={col.key}>
+                <TableHead key={col.key} className={"className" in col ? col.className : undefined}>
                   {col.key === "name" || col.key === "status" || col.key === "last_activity_at" ? (
                     <button
                       type="button"
@@ -261,12 +261,12 @@ export default function LeadsTableView({ currentUserRole, currentUserId }: Leads
             ) : (
               visibleLeads.map((lead) => (
                 <TableRow key={lead.id}>
-                  <TableCell className="font-medium">
+                  <TableCell className="font-medium min-w-[140px] whitespace-nowrap">
                     <Link href={`/leads/${lead.id}`} className="hover:underline">
                       {lead.name}
                     </Link>
                   </TableCell>
-                  <TableCell>{lead.phone}</TableCell>
+                  <TableCell className="min-w-[120px] whitespace-nowrap">{lead.phone}</TableCell>
                   <TableCell>
                     <Badge className={getPriorityBadgeClassName(lead.priority)}>{getPriorityLabel(lead.priority)}</Badge>
                   </TableCell>
