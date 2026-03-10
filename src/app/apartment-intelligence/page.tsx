@@ -5,6 +5,8 @@ export const metadata: Metadata = {
   description: "Track Hyderabad apartment prices, trends and investment insights across Gachibowli, Kokapet, Kondapur and HITEC City. Data-driven intelligence by Westside Realty.",
 };
 
+export const revalidate = 3600; // revalidate every 1 hour
+
 import Link from "next/link";
 import ApartmentIntelligenceHero from "@/components/apartment-intelligence/Hero";
 import CityVerticalLoadOverview from "@/components/apartment-intelligence/CityVerticalLoadOverview";

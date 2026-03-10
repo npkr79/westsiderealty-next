@@ -7,6 +7,8 @@ import { PageHeader } from "@/components/common/PageHeader";
 import PropertyListingClientWrapper from "@/components/properties/PropertyListingClientWrapper";
 import { UnifiedPropertyService } from "@/services/unifiedPropertyService";
 
+export const revalidate = 3600; // revalidate every 1 hour
+
 export async function generateMetadata(): Promise<Metadata> {
   const canonicalUrl = "https://www.westsiderealty.in/hyderabad/properties";
 

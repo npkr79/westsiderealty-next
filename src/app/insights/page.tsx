@@ -6,6 +6,8 @@ export const metadata: Metadata = {
   description: "Market analysis, price trends, and buyer guides for Hyderabad real estate.",
 };
 
+export const revalidate = 3600; // revalidate every 1 hour
+
 const SECTIONS = [
   {
     href: "/kokapet-gandipet-luxury-villas",

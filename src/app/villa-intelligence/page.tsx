@@ -5,6 +5,8 @@ export const metadata: Metadata = {
   description: "Explore villa price trends, appreciation data and investment insights in Kokapet, Gandipet and West Hyderabad. Expert villa market intelligence by Westside Realty.",
 };
 
+export const revalidate = 3600; // revalidate every 1 hour
+
 import Link from "next/link";
 import VillaIntelligenceHero from "@/components/villa-intelligence/Hero";
 import CityLandDensityOverview from "@/components/villa-intelligence/CityLandDensityOverview";

@@ -5,6 +5,8 @@ export const metadata: Metadata = {
   description: "Comprehensive residential property intelligence for Hyderabad — prices, trends, project comparisons and neighbourhood insights to guide your investment.",
 };
 
+export const revalidate = 3600; // revalidate every 1 hour
+
 import CommandAccess from "@/components/residential-intelligence-dashboard/CommandAccess";
 import CityPressureIndicators from "@/components/residential-intelligence-dashboard/CityPressureIndicators";
 import DensityLandMatrix from "@/components/residential-intelligence-dashboard/DensityLandMatrix";

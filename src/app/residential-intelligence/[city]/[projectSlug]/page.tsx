@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/serviceClient";
 import { reraIntelligenceService } from "@/services/reraIntelligenceService";
 import { computeProjectDNA } from "@/intelligence/projectDNA";
 import { computeWestsideDensityIndex } from "@/intelligence/westsideDensityIndex";
@@ -101,6 +102,24 @@ const buildIntelligenceInput = (
     },
   };
 };
+
+export const revalidate = 86400; // rebuild daily
+
+export async function generateStaticParams() {
+  const supabase = createServiceClient();
+  const { data: projects } = await supabase
+    .from("rera_projects")
+    .select("city_slug, url_slug")
+    .not("city_slug", "is", null)
+    .not("url_slug", "is", null)
+    .limit(50);
+  return (
+    projects?.map((p) => ({
+      city: p.city_slug,
+      projectSlug: p.url_slug,
+    })) ?? []
+  );
+}
 
 export async function generateMetadata({
   params,
