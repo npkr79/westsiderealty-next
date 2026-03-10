@@ -39,40 +39,39 @@ export default function CommercialEnquiryForm() {
     try {
       const supabase = createClient();
       const { data, error } = await supabase
-        .from("crm_leads")
+        .from('crm_leads')
         .insert({
           name: formData.name,
           phone: formData.phone,
-          source_type: "website",
-          source_channel: "organic_landing",
-          status: "new",
-          priority: "high",
-          assigned_to: KRISHNA_ID,
+          source_type: 'website',
+          source_channel: 'organic_landing',
+          status: 'new',
+          priority: 'high',
+          assigned_to: '95061b18-bd2c-4ce9-9d0b-f7a8fd796f07',
           notes: `Commercial Investment Enquiry | Budget: ${formData.budget} | Stage: ${formData.stage} | Timeline: ${formData.timeline} | Message: ${formData.message}`,
         })
         .select();
 
       if (error) {
-        console.error("[Commercial Form] error:", error);
-        alert("Something went wrong. Please try again.");
+        console.error('[Commercial Form] Supabase error:', error);
+        alert('Something went wrong. Please try again.');
         setSubmitting(false);
         return;
       }
 
-      if (data?.[0]?.id) {
-        const { error: aErr } = await supabase.from("crm_lead_assignments").insert({
+      if (data && data[0]?.id) {
+        await supabase.from('crm_lead_assignments').insert({
           lead_id: data[0].id,
-          assigned_to: KRISHNA_ID,
-          assigned_by: KRISHNA_ID,
-          reason: "website commercial page - auto assigned to Krishna",
+          assigned_to: '95061b18-bd2c-4ce9-9d0b-f7a8fd796f07',
+          assigned_by: '95061b18-bd2c-4ce9-9d0b-f7a8fd796f07',
+          reason: 'website commercial page - auto assigned to Krishna',
         });
-        if (aErr) console.error("[Commercial Form] assignment error:", aErr);
       }
 
       setSubmitted(true);
     } catch (err) {
-      console.error("[Commercial Form] unexpected error:", err);
-      alert("Something went wrong. Please try again.");
+      console.error('[Commercial Form] Unexpected error:', err);
+      alert('Something went wrong. Please try again.');
     } finally {
       setSubmitting(false);
     }
