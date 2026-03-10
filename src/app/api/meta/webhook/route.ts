@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import { processMetaLead } from "@/services/metaLeadService";
+import { createServiceClient } from "@/lib/supabase/serviceClient";
 
 const META_VERIFY_TOKEN = "westsiderealty_meta_secret";
+
+// In-memory deduplication cache — survives within a single server instance lifetime
+const processedLeads = new Set<string>();
 
 interface MetaWebhookChange {
   field?: string;
@@ -66,9 +70,34 @@ export async function POST(request: Request) {
 
     for (const { value, fullPayload } of leadgenItems) {
       if (!value) continue;
+
+      const leadgenId = value.leadgen_id!;
+
+      // 1. In-memory deduplication (fast path — same server instance)
+      if (processedLeads.has(leadgenId)) {
+        console.log(`[Meta Webhook] Duplicate event ignored (in-memory): ${leadgenId}`);
+        continue;
+      }
+      processedLeads.add(leadgenId);
+      // Clean up after 5 minutes to prevent unbounded memory growth
+      setTimeout(() => processedLeads.delete(leadgenId), 5 * 60 * 1000);
+
+      // 2. Database-level deduplication (survives server restarts)
+      const supabase = createServiceClient();
+      const { data: existing } = await supabase
+        .from("crm_leads")
+        .select("id")
+        .eq("fb_lead_id", leadgenId)
+        .maybeSingle();
+
+      if (existing) {
+        console.log(`[Meta Webhook] Lead already exists for leadgen_id: ${leadgenId}`);
+        continue;
+      }
+
       const result = await processMetaLead(fullPayload as unknown as Record<string, unknown>, value);
       results.push({
-        leadgen_id: value.leadgen_id ?? "",
+        leadgen_id: leadgenId,
         rawLeadId: result.rawLeadId,
         crmLeadId: result.crmLeadId,
         error: result.error,
