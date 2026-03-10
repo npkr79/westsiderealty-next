@@ -307,6 +307,18 @@ export async function processMetaLead(
         `${name} • ${phone}`,
         `/leads/${crmLeadId}`
       ).catch((err) => console.error("[Push] Failed:", err));
+
+      // Push notification to Praveen (admin) for every new lead
+      const PRAVEEN_ID = "9021aff0-6ba3-4f7b-852f-561862fbc1ac";
+      if (formAgentId !== PRAVEEN_ID) {
+        const agentName = agentData?.full_name ?? "Unknown Agent";
+        await sendPushToUser(
+          PRAVEEN_ID,
+          "New Lead Assigned",
+          `New lead assigned to ${agentName} — ${name}`,
+          `/leads/${crmLeadId}`
+        ).catch((err) => console.error("[Push] Praveen alert failed:", err));
+      }
     } else {
       await routeLeadByOwnership({
         leadId: crmLeadId,
