@@ -18,7 +18,12 @@ function badgeClass(badge: string) {
   return "bg-white/10 text-white/70 border border-white/20";
 }
 
-const NAV_ITEMS = [
+type NavLink = { label: string; href: string; badge?: string };
+type NavItem =
+  | { label: string; href: string; description: string; links: NavLink[]; cta: { label: string; href: string } }
+  | { label: string; href: string; description?: never; links?: never; cta?: never };
+
+const NAV_ITEMS: NavItem[] = [
   {
     label: "Markets",
     href: "/hyderabad/markets",
@@ -62,6 +67,10 @@ const NAV_ITEMS = [
     cta: { label: "View all developers →", href: "/developers" },
   },
   {
+    label: "Commercial",
+    href: "/commercial-investments",
+  },
+  {
     label: "Insights",
     href: "/insights",
     description: "Market analysis, price trends, and buyer guides updated weekly",
@@ -75,7 +84,7 @@ const NAV_ITEMS = [
     ],
     cta: { label: "View all insights →", href: "/insights" },
   },
-] as const;
+];
 
 const TICKER_ITEMS = [
   { market: "Gachibowli", price: "₹12,400/sqft", change: "↑2.1%", up: true },
@@ -159,42 +168,46 @@ const Header = () => {
                       )}
                     >
                       {item.label}
-                      <ChevronDown className="h-3 w-3 opacity-50 transition-transform duration-200 group-hover:rotate-180 group-hover:opacity-100" />
+                      {item.links && (
+                        <ChevronDown className="h-3 w-3 opacity-50 transition-transform duration-200 group-hover:rotate-180 group-hover:opacity-100" />
+                      )}
                     </Link>
 
-                    {/* Mega menu */}
-                    <div className="invisible absolute left-1/2 -translate-x-1/2 top-[calc(100%+6px)] z-50 w-[400px] rounded-2xl border border-white/10 bg-[#0d0d0d]/98 p-5 opacity-0 -translate-y-1 shadow-[0_24px_60px_rgba(0,0,0,0.7)] backdrop-blur-xl transition-all duration-200 group-hover:visible group-hover:translate-y-0 group-hover:opacity-100">
-                      <p className="text-[11px] text-slate-500 mb-4 leading-relaxed">{item.description}</p>
+                    {/* Mega menu — only for items with links */}
+                    {item.links && (
+                      <div className="invisible absolute left-1/2 -translate-x-1/2 top-[calc(100%+6px)] z-50 w-[400px] rounded-2xl border border-white/10 bg-[#0d0d0d]/98 p-5 opacity-0 -translate-y-1 shadow-[0_24px_60px_rgba(0,0,0,0.7)] backdrop-blur-xl transition-all duration-200 group-hover:visible group-hover:translate-y-0 group-hover:opacity-100">
+                        <p className="text-[11px] text-slate-500 mb-4 leading-relaxed">{item.description}</p>
 
-                      {/* 2-column link grid */}
-                      <div className="grid grid-cols-2 gap-1 mb-4">
-                        {item.links.map((link) => (
+                        {/* 2-column link grid */}
+                        <div className="grid grid-cols-2 gap-1 mb-4">
+                          {item.links.map((link) => (
+                            <Link
+                              key={link.href}
+                              href={link.href}
+                              className="flex items-center justify-between rounded-lg px-3 py-2 text-[13px] text-slate-300 hover:text-white hover:bg-white/8 transition-colors duration-150"
+                            >
+                              <span>{link.label}</span>
+                              {link.badge && (
+                                <span className={cn("rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide", badgeClass(link.badge))}>
+                                  {link.badge}
+                                </span>
+                              )}
+                            </Link>
+                          ))}
+                        </div>
+
+                        {/* CTA */}
+                        <div className="border-t border-white/10 pt-3">
                           <Link
-                            key={link.href}
-                            href={link.href}
-                            className="flex items-center justify-between rounded-lg px-3 py-2 text-[13px] text-slate-300 hover:text-white hover:bg-white/8 transition-colors duration-150"
+                            href={item.cta!.href}
+                            className="text-[12px] font-semibold transition-colors"
+                            style={{ color: "#c8a96e" }}
                           >
-                            <span>{link.label}</span>
-                            {"badge" in link && link.badge && (
-                              <span className={cn("rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide", badgeClass(link.badge))}>
-                                {link.badge}
-                              </span>
-                            )}
+                            {item.cta!.label}
                           </Link>
-                        ))}
+                        </div>
                       </div>
-
-                      {/* CTA */}
-                      <div className="border-t border-white/10 pt-3">
-                        <Link
-                          href={item.cta.href}
-                          className="text-[12px] font-semibold transition-colors"
-                          style={{ color: "#c8a96e" }}
-                        >
-                          {item.cta.label}
-                        </Link>
-                      </div>
-                    </div>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -245,6 +258,23 @@ const Header = () => {
                   <div className="mt-8 flex-1 overflow-y-auto px-4 pb-6 space-y-2">
                     {NAV_ITEMS.map((item) => {
                       const isExpanded = expandedMobileSection === item.label;
+                      // Direct link — no dropdown
+                      if (!item.links) {
+                        return (
+                          <div key={item.href} className="rounded-lg border border-white/10 bg-white/[0.03]">
+                            <Link
+                              href={item.href}
+                              className={cn(
+                                "flex w-full items-center rounded-lg px-3 py-2.5 text-sm font-semibold uppercase tracking-[0.14em] transition-colors",
+                                isActive(item.href) ? "bg-white/10 text-white" : "text-slate-300 hover:text-white"
+                              )}
+                              onClick={() => setIsOpen(false)}
+                            >
+                              {item.label}
+                            </Link>
+                          </div>
+                        );
+                      }
                       return (
                         <div key={item.href} className="rounded-lg border border-white/10 bg-white/[0.03]">
                           <button
@@ -268,7 +298,7 @@ const Header = () => {
                                   onClick={() => setIsOpen(false)}
                                 >
                                   <span>{link.label}</span>
-                                  {"badge" in link && link.badge && (
+                                  {link.badge && (
                                     <span className={cn("rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase", badgeClass(link.badge))}>
                                       {link.badge}
                                     </span>
@@ -276,12 +306,12 @@ const Header = () => {
                                 </Link>
                               ))}
                               <Link
-                                href={item.cta.href}
+                                href={item.cta!.href}
                                 className="block px-2 py-2 text-[11px] font-semibold"
                                 style={{ color: "#c8a96e" }}
                                 onClick={() => setIsOpen(false)}
                               >
-                                {item.cta.label}
+                                {item.cta!.label}
                               </Link>
                             </div>
                           )}
