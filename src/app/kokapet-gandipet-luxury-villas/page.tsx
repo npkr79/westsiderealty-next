@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import VillaEnquiryForm from "./VillaEnquiryForm";
+import FooterSection from "@/components/home/FooterSection";
 
 export const metadata: Metadata = {
   title: "Luxury Villas in Kokapet & Gandipet | ₹10 Cr – ₹20 Cr+ | RE/MAX Westside Realty",
@@ -93,9 +94,6 @@ export default function KokapetGandipetVillasPage() {
         .form-field select option { background: #1A1A17; }
         .form-submit { width: 100%; background: var(--gold); color: var(--dark); border: none; padding: 18px; font-family: 'Jost', sans-serif; font-size: 13px; font-weight: 600; letter-spacing: 0.15em; text-transform: uppercase; cursor: pointer; margin-top: 8px; }
         .form-note { font-size: 12px; font-weight: 300; color: var(--muted); text-align: center; margin-top: 16px; line-height: 1.6; }
-        .vp-footer { padding: 36px 48px; background: var(--dark); border-top: 1px solid rgba(201,169,110,0.1); display: flex; justify-content: space-between; align-items: center; }
-        .vp-footer p { font-size: 13px; font-weight: 300; color: var(--muted); }
-        .vp-footer a { color: var(--gold); text-decoration: none; font-size: 13px; margin-left: 24px; }
         @media (max-width: 768px) {
           .vp-nav { padding: 16px 20px; }
           .vp-hero { padding: 0 20px 60px; }
@@ -208,11 +206,8 @@ export default function KokapetGandipetVillasPage() {
           </div>
         </section>
 
-        <div className="vp-footer">
-          <p>© 2026 RE/MAX Westside Realty · Kokapet Terminal, Hyderabad</p>
-          <div><Link href="/" style={{color:'var(--muted)',textDecoration:'none',fontSize:'13px'}}>Home</Link><Link href="/contact" style={{color:'var(--gold)',textDecoration:'none'}}>Contact Us</Link></div>
-        </div>
       </div>
+      <FooterSection />
     </>
   );
 }
