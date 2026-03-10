@@ -208,7 +208,7 @@ export default function LeadsTableView({ currentUserRole, currentUserId }: Leads
         </Select>
       </div>
 
-      <div className="rounded-xl border bg-white dark:bg-slate-950 overflow-x-auto">
+      <div className="rounded-xl border bg-white dark:bg-slate-950">
         {error ? (
           <div className="border-b px-4 py-2 text-sm text-rose-600 dark:text-rose-300">
             Unable to load leads: {error}
@@ -260,13 +260,15 @@ export default function LeadsTableView({ currentUserRole, currentUserId }: Leads
               </TableRow>
             ) : (
               visibleLeads.map((lead) => (
-                <TableRow key={lead.id}>
+                <TableRow key={lead.id} style={{ WebkitTransform: "translateZ(0)" } as React.CSSProperties}>
                   <TableCell className="font-medium min-w-[140px] whitespace-nowrap">
-                    <Link href={`/leads/${lead.id}`} className="hover:underline">
+                    <Link href={`/leads/${lead.id}`} className="hover:underline" style={{ display: "block", minWidth: 0 }}>
                       {lead.name}
                     </Link>
                   </TableCell>
-                  <TableCell className="min-w-[120px] whitespace-nowrap">{lead.phone}</TableCell>
+                  <TableCell className="min-w-[120px] whitespace-nowrap">
+                    <span style={{ display: "block", minWidth: 0 }}>{lead.phone}</span>
+                  </TableCell>
                   <TableCell>
                     <Badge className={getPriorityBadgeClassName(lead.priority)}>{getPriorityLabel(lead.priority)}</Badge>
                   </TableCell>
