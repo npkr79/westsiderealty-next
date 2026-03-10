@@ -12,13 +12,13 @@ export default function KokapetGandipetVillasPage() {
     <main>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=Jost:wght@300;400;500;600&display=swap');
-        :root {
+        .vp {
           --gold: #C9A96E; --gold-light: #E8D5B0; --dark: #0A0A08;
           --dark-2: #111110; --dark-3: #1A1A17; --cream: #F5F0E8;
           --cream-2: #EDE6D6; --muted: #888880;
+          font-family: 'Jost', sans-serif; background: var(--dark); color: var(--cream); overflow-x: hidden;
         }
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        .vp { font-family: 'Jost', sans-serif; background: var(--dark); color: var(--cream); overflow-x: hidden; }
+        .vp, .vp * { box-sizing: border-box; }
         .vp-hero { min-height: 100vh; display: flex; flex-direction: column; justify-content: flex-end; padding: 88px 48px 80px; background: linear-gradient(to bottom, rgba(10,10,8,0.8) 0%, rgba(10,10,8,0.45) 35%, rgba(10,10,8,0.6) 70%, rgba(10,10,8,1) 100%), url('https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1800&q=80') center/cover no-repeat; }
         .vp-tag { display: inline-block; border: 1px solid var(--gold); color: var(--gold); font-size: 11px; font-weight: 500; letter-spacing: 0.2em; text-transform: uppercase; padding: 6px 16px; margin-bottom: 32px; }
         .vp-hero h1 { font-family: 'Cormorant Garamond', serif; font-size: clamp(48px, 6vw, 88px); font-weight: 300; line-height: 1.05; max-width: 800px; margin-bottom: 28px; }
