@@ -3,12 +3,15 @@
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
+const SRINIVAS_ID = "8a0946ec-a736-4d8c-9255-84dbad921fb6";
+
 export default function VillaEnquiryForm() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     phone: "",
+    email: "",
     budget: "",
     location: "",
     requirements: "",
@@ -24,10 +27,12 @@ export default function VillaEnquiryForm() {
         .insert({
           name: formData.name,
           phone: formData.phone,
+          email: formData.email || null,
           source_type: "website",
           source_channel: "organic_landing",
           status: "new",
           priority: "high",
+          assigned_to: SRINIVAS_ID,
           notes: `Project: Kokapet/Gandipet Luxury Villa | Tags: villa_lead, kokapet_gandipet | Budget: ${formData.budget} | Location: ${formData.location} | Requirements: ${formData.requirements}`,
         })
         .select();
@@ -38,6 +43,19 @@ export default function VillaEnquiryForm() {
         return;
       }
       console.log("[Villa Form] Lead saved:", data);
+
+      // Assignment record
+      if (data?.[0]?.id) {
+        await supabase.from("crm_lead_assignments").insert({
+          lead_id: data[0].id,
+          assigned_to: SRINIVAS_ID,
+          assigned_by: SRINIVAS_ID,
+          reason: "website villa landing page - auto assigned",
+        }).then(({ error: aErr }) => {
+          if (aErr) console.error("[Villa Form] Assignment error:", aErr);
+        });
+      }
+
       setSubmitted(true);
     } catch (err) {
       console.error("[Villa Form] Unexpected error:", err);
@@ -72,6 +90,10 @@ export default function VillaEnquiryForm() {
           <label>Mobile Number</label>
           <input type="tel" placeholder="+91 XXXXX XXXXX" required value={formData.phone} onChange={(e) => setFormData((p) => ({ ...p, phone: e.target.value }))} />
         </div>
+      </div>
+      <div className="form-field">
+        <label>Email Address</label>
+        <input type="email" placeholder="your@email.com" value={formData.email} onChange={(e) => setFormData((p) => ({ ...p, email: e.target.value }))} />
       </div>
       <div className="form-row">
         <div className="form-field">
