@@ -24,7 +24,6 @@ type LeadRow = {
   assigned_to?: string | null;
   assigned_agent_name?: string | null;
   priority?: string | null;
-  lead_priority?: string | null;
 };
 
 type TaskRow = {
@@ -146,16 +145,13 @@ export default function SalesCockpitRealtime({ user, scope = "all" }: SalesCockp
     setError(null);
     try {
       const leadSelectVariants = [
-        "id,created_at,updated_at,status,source_channel,source_type,stage_id,budget_min,budget_max,assigned_to,assigned_agent_name,priority",
-        "id,created_at,updated_at,status,source_channel,source_type,stage_id,budget_min,budget_max,assigned_to,assigned_agent_name,lead_priority",
-        "id,created_at,updated_at,status,source_channel,source_type,stage_id,budget_min,budget_max,assigned_to,assigned_agent_name",
-        "id,created_at,updated_at,status,source_channel,source_type,stage_id,budget_min,budget_max,assigned_to,priority",
-        "id,created_at,updated_at,status,source_channel,source_type,stage_id,budget_min,budget_max,assigned_to,lead_priority",
-        "id,created_at,updated_at,status,source_channel,source_type,stage_id,budget_min,budget_max,assigned_to",
+        "id,created_at,updated_at,status,source_channel,source_type,budget_min,budget_max,assigned_to,assigned_agent_name,priority",
+        "id,created_at,updated_at,status,source_channel,source_type,budget_min,budget_max,assigned_to,assigned_agent_name",
+        "id,created_at,updated_at,status,source_channel,source_type,budget_min,budget_max,assigned_to,priority",
+        "id,created_at,updated_at,status,source_channel,source_type,budget_min,budget_max,assigned_to",
         // fallbacks without source_channel in case the view uses a different column name
-        "id,created_at,updated_at,status,stage_id,budget_min,budget_max,assigned_to,priority",
-        "id,created_at,updated_at,status,stage_id,budget_min,budget_max,assigned_to,lead_priority",
-        "id,created_at,updated_at,status,stage_id,budget_min,budget_max,assigned_to",
+        "id,created_at,updated_at,status,budget_min,budget_max,assigned_to,priority",
+        "id,created_at,updated_at,status,budget_min,budget_max,assigned_to",
       ];
       let leadRes: { data: LeadRow[] | null; error: Error | null } = { data: null, error: null };
       for (const selectClause of leadSelectVariants) {
@@ -194,7 +190,7 @@ export default function SalesCockpitRealtime({ user, scope = "all" }: SalesCockp
       setLeads(
         ((leadRes.data as LeadRow[]) || []).map((lead) => ({
           ...lead,
-          priority: lead.priority || lead.lead_priority || null,
+          priority: lead.priority || null,
         }))
       );
       setTasks((taskRes.data as TaskRow[]) || []);

@@ -138,9 +138,8 @@ export default function RoutingQueue() {
 
   const loadInsights = useCallback(async () => {
     const selectVariants = [
-      "assigned_to,assigned_agent_name,stage_name,stage_id,status",
-      "assigned_to,assigned_agent_name,stage_id,status",
       "assigned_to,assigned_agent_name,status",
+      "assigned_to,status",
     ];
     for (const selectClause of selectVariants) {
       const { data, error: queryError } = await supabase.from("crm_leads_view").select(selectClause).limit(5000);

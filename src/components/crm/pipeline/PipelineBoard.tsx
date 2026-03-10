@@ -140,7 +140,6 @@ export default function PipelineBoard() {
       const stageIds = activeStages.map((stage) => stage.id);
       const leadSelectVariants = [
         "id,name,budget_min,budget_max,status,stage_id,priority",
-        "id,name,budget_min,budget_max,status,stage_id,lead_priority",
         "id,name,budget_min,budget_max,status,stage_id",
       ];
       let loadedLeads: CrmLead[] = [];
@@ -148,7 +147,7 @@ export default function PipelineBoard() {
       let lastError: string | null = null;
       for (const selectClause of leadSelectVariants) {
         const { data: leadsData, error: leadsError } = await supabase
-          .from("crm_leads_view")
+          .from("crm_leads")
           .select(selectClause)
           .in("stage_id", stageIds)
           .order("updated_at", { ascending: false })
@@ -161,12 +160,7 @@ export default function PipelineBoard() {
             budget_max: toBudgetNumber(row.budget_max),
             status: typeof row.status === "string" ? row.status : null,
             stage_id: typeof row.stage_id === "string" ? row.stage_id : null,
-            priority:
-              typeof row.priority === "string"
-                ? row.priority
-                : typeof row.lead_priority === "string"
-                  ? row.lead_priority
-                  : null,
+            priority: typeof row.priority === "string" ? row.priority : null,
             phone: "-",
             source: null,
             assigned_to: null,
@@ -180,7 +174,7 @@ export default function PipelineBoard() {
         lastError = leadsError.message || "Unknown query error.";
         if (!/column .* does not exist/i.test(lastError || "")) break;
       }
-      if (!loaded) throw new Error(`Schema validation failed for crm_leads_view pipeline query: ${lastError || "Unknown query error."}`);
+      if (!loaded) throw new Error(`Schema validation failed for crm_leads pipeline query: ${lastError || "Unknown query error."}`);
       const missingStageIdCount = loadedLeads.filter((lead) => !lead.stage_id).length;
       if (missingStageIdCount > 0) {
         console.warn(`[PipelineBoard] ${missingStageIdCount} lead(s) missing stage_id were excluded from kanban.`);

@@ -50,7 +50,7 @@ export default function AgentLeadsPage() {
       const { data, error } = await supabase
         .from("leads")
         .select("id, name, email, phone, created_at, interest_details, status, stage, priority, notes, next_follow_up")
-        .eq("assigned_agent_id", agentId)
+        .eq("assigned_to", agentId)
         .order("created_at", { ascending: false });
 
       if (error) throw error;

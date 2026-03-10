@@ -101,7 +101,7 @@ export function useLeads({
         }
         if (filters.source) {
           // Match against source_type (meta imports), source_channel (facebook_lead_ads), or source_name (legacy)
-          query = query.or(`source_type.eq.${filters.source},source_channel.eq.${filters.source},source_name.eq.${filters.source}`);
+          query = query.or(`source_type.eq.${filters.source},source_channel.eq.${filters.source}`);
         }
         if (filters.budgetMin) {
           const min = Number(filters.budgetMin);

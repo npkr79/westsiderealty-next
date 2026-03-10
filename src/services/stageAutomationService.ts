@@ -43,7 +43,7 @@ interface StageAutomationRule {
 interface LeadContext {
   id: string;
   phone: string | null;
-  assigned_agent_id: string | null;
+  assigned_to: string | null;
   name?: string | null;
 }
 
@@ -192,13 +192,13 @@ async function loadRule(stageKey: StageKey): Promise<StageAutomationRule> {
 
 async function fetchLeadContext(leadId: string): Promise<LeadContext | null> {
   const supabase = createServiceClient();
-  const { data } = await supabase.from("crm_leads").select("id,name,phone,assigned_agent_id").eq("id", leadId).maybeSingle();
+  const { data } = await supabase.from("crm_leads").select("id,name,phone,assigned_to").eq("id", leadId).maybeSingle();
   if (!data?.id) return null;
   return {
     id: String(data.id),
     name: data.name ? String(data.name) : null,
     phone: data.phone ? String(data.phone) : null,
-    assigned_agent_id: data.assigned_agent_id ? String(data.assigned_agent_id) : null,
+    assigned_to: data.assigned_to ? String(data.assigned_to) : null,
   };
 }
 
@@ -274,7 +274,7 @@ async function createTask(lead: LeadContext, action: RuleAction): Promise<void> 
   await withRetries(async () => {
     const { error } = await supabase.from("crm_tasks").insert({
       lead_id: lead.id,
-      assigned_to: lead.assigned_agent_id,
+      assigned_to: lead.assigned_to,
       title: action.taskTitle || "Stage action task",
       description: action.taskDescription || null,
       status: "pending",
@@ -305,7 +305,7 @@ async function sendTemplate(lead: LeadContext, action: RuleAction): Promise<void
 async function setLeadPriority(leadId: string, value: string): Promise<void> {
   const supabase = createServiceClient();
   await withRetries(async () => {
-    const candidates = [{ priority: value }, { lead_priority: value }];
+    const candidates = [{ priority: value }];
     let success = false;
     let lastErr: string | null = null;
     for (const patch of candidates) {
@@ -399,12 +399,12 @@ export async function runStageAutomation(input: { leadId: string; toStageId: str
 
   const rule = await loadRule(stageKey);
 
-  if (lead.assigned_agent_id) {
+  if (lead.assigned_to) {
     await insertStageChangeNotification({
       leadId: lead.id,
       leadName: lead.name || null,
       stageName: stage.name || stageKey,
-      agentId: lead.assigned_agent_id,
+      agentId: lead.assigned_to,
     });
   }
 

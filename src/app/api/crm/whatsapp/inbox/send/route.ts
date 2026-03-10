@@ -112,8 +112,8 @@ export async function POST(request: Request) {
     }
 
     const supabase = createServiceClient();
-    const { data: leadRow } = await supabase.from("crm_leads").select("id,assigned_agent_id").eq("id", leadId).maybeSingle();
-    const assignedAgentId = typeof leadRow?.assigned_agent_id === "string" ? leadRow.assigned_agent_id : null;
+    const { data: leadRow } = await supabase.from("crm_leads").select("id,assigned_to").eq("id", leadId).maybeSingle();
+    const assignedAgentId = typeof leadRow?.assigned_to === "string" ? leadRow.assigned_to : null;
     const canViewAll = managerRoles.has(session.user.role);
     if (!canViewAll && assignedAgentId && assignedAgentId !== session.user.id) {
       return NextResponse.json({ error: "Conversation access denied." }, { status: 403 });

@@ -30,7 +30,6 @@ interface Lead {
   details: Record<string, any> | null;
   created_at: string;
   assigned_to: string | null;
-  assigned_agent_id: string | null;
   interest_details: string | null;
   status: string | null;
   stage: string | null;
@@ -136,10 +135,8 @@ export default function LeadsCRM() {
   };
 
   const handleAssignAgent = async (leadId: string, agentId: string | null) => {
-    const agent = agents.find((item) => item.id === agentId);
     await updateLead(leadId, {
-      assigned_agent_id: agentId,
-      assigned_to: agent?.name || null,
+      assigned_to: agentId,
     });
   };
 
@@ -258,7 +255,7 @@ export default function LeadsCRM() {
                       </TableCell>
                       <TableCell>
                         <Select
-                          value={lead.assigned_agent_id || "unassigned"}
+                          value={lead.assigned_to || "unassigned"}
                           onValueChange={(value) =>
                             handleAssignAgent(lead.id, value === "unassigned" ? null : value)
                           }
@@ -275,7 +272,7 @@ export default function LeadsCRM() {
                             ))}
                           </SelectContent>
                         </Select>
-                        {!lead.assigned_agent_id && (
+                        {!lead.assigned_to && (
                           <p className="mt-1 text-xs text-muted-foreground">
                             Default: Owner / Office Admin
                           </p>
@@ -364,7 +361,7 @@ export default function LeadsCRM() {
                                 <div>
                                   <label className="text-xs text-muted-foreground">Assigned to</label>
                                   <Select
-                                    value={lead.assigned_agent_id || "unassigned"}
+                                    value={lead.assigned_to || "unassigned"}
                                     onValueChange={(value) =>
                                       handleAssignAgent(lead.id, value === "unassigned" ? null : value)
                                     }

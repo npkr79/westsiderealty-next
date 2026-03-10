@@ -20,7 +20,7 @@ async function getLeadContext(leadId: string) {
   const supabase = createServiceClient();
   const { data } = await supabase
     .from("crm_leads")
-    .select("id,name,phone,assigned_agent_id,priority,buyer_type")
+    .select("id,name,phone,assigned_to,priority,buyer_type")
     .eq("id", leadId)
     .maybeSingle();
   return data;
@@ -88,7 +88,7 @@ const isInvestorActivity = (lead: Record<string, unknown>, eventPayload: Record<
 
 async function bumpPriorityHigh(leadId: string) {
   const supabase = createServiceClient();
-  const candidates = [{ priority: "high" }, { lead_priority: "high" }];
+  const candidates = [{ priority: "high" }];
   for (const patch of candidates) {
     const safePatch = sanitizeLeadPayload(patch);
     if (Object.keys(safePatch).length === 0) continue;
@@ -129,7 +129,7 @@ export async function handleIntentSignals(input: IntentSignalInput): Promise<voi
 
   const leadId = String(lead.id);
   const phone = typeof lead.phone === "string" ? lead.phone : "";
-  const agentId = typeof lead.assigned_agent_id === "string" ? lead.assigned_agent_id : null;
+  const agentId = typeof lead.assigned_to === "string" ? lead.assigned_to : null;
 
   if (agentId && isInvestorActivity(lead as Record<string, unknown>, input.eventPayload)) {
     await insertNotification({
