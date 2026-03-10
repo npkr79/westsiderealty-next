@@ -467,7 +467,9 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
                 </div>
               </CardContent>
               {(() => {
-                const items = normalizeFormQuestions(lead.attribution_metadata?.form_questions);
+                const items = normalizeFormQuestions(
+                  lead.attribution_metadata?.form_questions ?? lead.attribution_metadata?.field_data
+                );
                 return (
                   <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800 px-6 pb-6">
                     <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-3">Lead Form Answers</p>
