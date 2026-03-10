@@ -23,7 +23,7 @@ export default function KokapetGandipetVillasPage() {
         .vp-nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; display: flex; justify-content: space-between; align-items: center; padding: 20px 48px; background: linear-gradient(to bottom, rgba(10,10,8,0.95), transparent); }
         .vp-nav-logo { font-family: 'Cormorant Garamond', serif; font-size: 18px; color: var(--gold); text-decoration: none; }
         .vp-nav-cta { background: var(--gold); color: var(--dark); padding: 10px 24px; font-family: 'Jost', sans-serif; font-size: 13px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; text-decoration: none; }
-        .vp-hero { min-height: 100vh; display: flex; flex-direction: column; justify-content: flex-end; padding: 0 48px 80px; background: linear-gradient(to top, rgba(10,10,8,1) 0%, rgba(10,10,8,0.55) 50%, rgba(10,10,8,0.2) 100%), url('https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1800&q=80') center/cover no-repeat; }
+        .vp-hero { min-height: 100vh; display: flex; flex-direction: column; justify-content: flex-end; padding: 0 48px 80px; background: linear-gradient(to bottom, rgba(10,10,8,0.8) 0%, rgba(10,10,8,0.45) 35%, rgba(10,10,8,0.6) 70%, rgba(10,10,8,1) 100%), url('https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1800&q=80') center/cover no-repeat; }
         .vp-tag { display: inline-block; border: 1px solid var(--gold); color: var(--gold); font-size: 11px; font-weight: 500; letter-spacing: 0.2em; text-transform: uppercase; padding: 6px 16px; margin-bottom: 32px; }
         .vp-hero h1 { font-family: 'Cormorant Garamond', serif; font-size: clamp(48px, 6vw, 88px); font-weight: 300; line-height: 1.05; max-width: 800px; margin-bottom: 28px; }
         .vp-hero h1 em { font-style: italic; color: var(--gold); }
@@ -125,7 +125,7 @@ export default function KokapetGandipetVillasPage() {
           <div className="vp-stats">
             <div><div className="vp-stat-val">89%</div><div className="vp-stat-label">Price rise since 2019</div></div>
             <div><div className="vp-stat-val">₹10–20 Cr+</div><div className="vp-stat-label">Current villa range</div></div>
-            <div><div className="vp-stat-val">Zero</div><div className="vp-stat-label">New villa communities planned</div></div>
+            <div><div className="vp-stat-val">Only 1–2</div><div className="vp-stat-label">New villa communities planned</div></div>
           </div>
           <a href="#enquire" className="vp-cta">View Available Villas →</a>
         </section>
@@ -137,7 +137,7 @@ export default function KokapetGandipetVillasPage() {
           <p className="sec-body">In 2019, several villa communities were being developed across Kokapet and Gandipet. By 2024, every major developer had pivoted to high-rise apartments. The land is too valuable for villas now — and that is precisely what makes existing villas so rare.</p>
           <div className="grid3">
             <div className="card"><div className="card-icon">🏗️</div><h3>No New Launches</h3><p>Not a single new villa gated community has launched in Kokapet or Gandipet since 2022. Developers find high-rises more profitable per square yard.</p></div>
-            <div className="card"><div className="card-icon">📈</div><h3>72% Price Surge in 5 Years</h3><p>Kokapet property prices rose 72.3% over five years with no signs of slowing. Villa prices have outpaced apartments due to land scarcity.</p></div>
+            <div className="card"><div className="card-icon">📈</div><h3>10x Returns in a Decade</h3><p>Legend Chimes villas that launched at ₹1.4 Cr in 2015 now trade at ₹12–25 Cr. That is not appreciation — that is transformation of an entire corridor.</p></div>
             <div className="card"><div className="card-icon">🔑</div><h3>Resale Is the Only Route</h3><p>For anyone seeking a private villa with a garden and open sky in these corridors — the secondary market is the only option. These are rare finds.</p></div>
           </div>
         </section>
@@ -148,15 +148,15 @@ export default function KokapetGandipetVillasPage() {
           <h2 className="sec-title">Six Years That Changed<br /><em>Everything</em></h2>
           <div className="journey-grid">
             <div className="timeline">
-              <div className="tl-row"><div className="tl-dot">19</div><div><div className="tl-price">₹4,750/sqft</div><div className="tl-desc">Kokapet still emerging. A 4,500 sqft villa could be had for ₹4–5 Cr. Developers were actively building new communities.</div></div></div>
-              <div className="tl-row"><div className="tl-dot">21</div><div><div className="tl-price">₹6,200/sqft</div><div className="tl-desc">Post-pandemic surge. ORR connectivity drove HNI interest. Villa launches begin to slow as land costs spike dramatically.</div></div></div>
-              <div className="tl-row"><div className="tl-dot">23</div><div><div className="tl-price">₹8,100/sqft</div><div className="tl-desc">Financial District boom spills over. GCC-era executives seek villas. Supply completely dries up — last communities fully absorbed.</div></div></div>
-              <div className="tl-row"><div className="tl-dot">25</div><div><div className="tl-price">₹11,200/sqft</div><div className="tl-desc">Current average. Villas command ₹13,000–18,000/sqft depending on location and finishes. Only resales available.</div></div></div>
+              <div className="tl-row"><div className="tl-dot">19</div><div><div className="tl-price">₹1.4 – 2.1 Cr</div><div className="tl-desc">Legend Chimes launched in Kokapet at ₹1.4 Cr for a 327 sqyd villa and ₹2.1 Cr for 500 sqyd. Buyers who hesitated called it 'too expensive' for the outskirts.</div></div></div>
+              <div className="tl-row"><div className="tl-dot">21</div><div><div className="tl-price">₹4 – 6 Cr</div><div className="tl-desc">Post-pandemic demand surge. Same Legend Chimes villas doubled in value. ORR connectivity and Financial District boom drove HNI migration to Kokapet.</div></div></div>
+              <div className="tl-row"><div className="tl-dot">23</div><div><div className="tl-price">₹8 – 14 Cr</div><div className="tl-desc">GCC-era C-suite executives sought privacy over apartments. Legend Chimes resales crossed ₹8 Cr. Last villa communities fully absorbed — no new launches.</div></div></div>
+              <div className="tl-row"><div className="tl-dot">25</div><div><div className="tl-price">₹12 – 25 Cr</div><div className="tl-desc">Today those same Legend Chimes villas trade at ₹12–25 Cr — a 10x return in a decade. Current villa rate: ₹20,000–25,000 per sqft. Only resales available.</div></div></div>
             </div>
             <div className="insight-box">
               <h3>Why <em>Gandipet</em> commands a premium over Kokapet</h3>
-              <div className="insight-stat"><span className="insight-big">4×</span><span className="insight-label">Lower density than Kokapet.<br />Larger land parcels. More privacy.</span></div>
-              <p>Gandipet sits adjacent to Osman Sagar Lake, offering panoramic views unavailable anywhere else in west Hyderabad. Greenbelt restrictions have limited construction, preserving the exclusivity. A villa in Gandipet today starts at ₹14 Cr for 600 square yards — and rarely comes to market. Kokapet offers better connectivity; Gandipet offers irreplaceable tranquility. Both are irreversibly supply-constrained.</p>
+              <div className="insight-stat"><span className="insight-big">4×</span><span className="insight-label">Lower density than Kokapet.<br />Larger land parcels. More privacy. Lake views.</span></div>
+              <p>Gandipet sits adjacent to Osman Sagar Lake, offering panoramic views unavailable anywhere else in west Hyderabad. Greenbelt restrictions have limited construction, preserving the exclusivity. A villa in Gandipet today starts at ₹18 Cr for 600 square yards — and rarely comes to market. Kokapet offers better connectivity; Gandipet offers irreplaceable tranquility. Both are irreversibly supply-constrained.</p>
             </div>
           </div>
         </section>
@@ -167,10 +167,8 @@ export default function KokapetGandipetVillasPage() {
           <h2 className="sec-title">Why Developers Stopped<br />Building <em>Villas</em></h2>
           <p className="sec-body">The economics no longer work in the buyer's favour when it comes to new villa supply. Understanding why helps you recognise the long-term value of what you're acquiring.</p>
           <div className="grid2">
-            <div className="card"><div className="card-num">01</div><h3>Land Cost Explosion</h3><p>Land prices in Kokapet crossed ₹16,000/sqft. A villa community needs 5–10 acres minimum. At these prices, the FSI economics only work for vertical high-rises — not horizontal villas.</p></div>
-            <div className="card"><div className="card-num">02</div><h3>HMDA & Neopolis Zoning</h3><p>The Neopolis master plan and HMDA's revised zoning guidelines have restricted large-format villa development in core Kokapet and adjacent Gandipet zones.</p></div>
-            <div className="card"><div className="card-num">03</div><h3>Return on Capital</h3><p>A developer can build 200 luxury apartments in the same footprint as 20 villas — and price each at ₹4–6 Cr. Revenue per acre from apartments is 3–4x that of villas.</p></div>
-            <div className="card"><div className="card-num">04</div><h3>Approval Timelines</h3><p>Villa community layouts require DTCP/HMDA approvals that now take 36–48 months. Developers cannot justify this when apartment RERA approvals take 12–18 months.</p></div>
+            <div className="card"><div className="card-num">01</div><h3>Land Cost Explosion</h3><p>Land in Kokapet now trades above ₹1.5 lakh per square yard. A 10-acre villa community needs 4,800+ square yards minimum. At these prices, the math only works for high-rise apartments — not low-density villas.</p></div>
+            <div className="card"><div className="card-num">02</div><h3>Return on Capital</h3><p>A developer building 200 luxury apartments on the same land earns 3–4x the revenue per square yard compared to 20 villas. For every ₹100 of land cost, apartments return ₹380 — villas return ₹95. The choice is obvious.</p></div>
           </div>
         </section>
 
@@ -179,12 +177,12 @@ export default function KokapetGandipetVillasPage() {
           <p className="sec-label">Data Intelligence</p>
           <h2 className="sec-title">Corridor <em>Comparison</em></h2>
           <div className="mkt-table">
-            <div className="mkt-hdr"><div>Micro-Market</div><div>Avg Villa Rate</div><div>5-Year Growth</div><div>New Supply</div></div>
-            <div className="mkt-row"><div>Kokapet</div><div>₹11,200/sqft</div><div className="green">+72.3%</div><div>Zero villas</div></div>
-            <div className="mkt-row"><div>Gandipet</div><div>₹13,500/sqft</div><div className="green">+68%</div><div>Zero villas</div></div>
-            <div className="mkt-row"><div>Narsingi</div><div>₹8,400/sqft</div><div className="green">+55%</div><div>Very limited</div></div>
-            <div className="mkt-row"><div>Puppalaguda</div><div>₹9,200/sqft</div><div className="green">+61%</div><div>Minimal</div></div>
-            <div className="mkt-row"><div>Gachibowli</div><div>₹12,400/sqft</div><div className="green">+48%</div><div>None</div></div>
+            <div className="mkt-hdr"><div>Micro-Market</div><div>Villa Rate (per sqft)</div><div>5-Year Growth</div><div>New Supply</div></div>
+            <div className="mkt-row"><div>Kokapet</div><div>₹20,000–25,000</div><div className="green">+72.3%</div><div>Zero villas</div></div>
+            <div className="mkt-row"><div>Gandipet</div><div>₹25,000–30,000</div><div className="green">+68%</div><div>Zero villas</div></div>
+            <div className="mkt-row"><div>Narsingi</div><div>₹18,000–22,000</div><div className="green">+55%</div><div>Very limited</div></div>
+            <div className="mkt-row"><div>Puppalaguda</div><div>₹20,000–24,000</div><div className="green">+61%</div><div>Minimal</div></div>
+            <div className="mkt-row"><div>Gachibowli</div><div>₹22,000–28,000</div><div className="green">+48%</div><div>None</div></div>
           </div>
         </section>
 
@@ -194,9 +192,9 @@ export default function KokapetGandipetVillasPage() {
           <h2 className="sec-title">Handpicked <em>Rare</em> Listings</h2>
           <p className="sec-body">Select verified listings from our exclusive resale inventory. Each personally assessed by our team. Pricing and availability subject to change — enquire immediately.</p>
           <div className="inv-grid">
-            <div className="inv-card"><span className="inv-badge">Available · Kokapet</span><h3>Legend Chimes Villa</h3><div className="inv-loc">Kokapet, near Financial District</div><div className="inv-price">₹13.2 – 16 Cr</div><div className="inv-size">3,500 – 4,750 sqft · 4 BHK</div><div className="inv-feats"><div className="inv-feat">Gated community · 24/7 security</div><div className="inv-feat">Private garden & covered parking</div><div className="inv-feat">5 min from Financial District</div><div className="inv-feat">Ready to move</div></div></div>
-            <div className="inv-card"><span className="inv-badge">Rare · Gandipet</span><h3>Lake View Villa Estate</h3><div className="inv-loc">Gandipet, Osman Sagar facing</div><div className="inv-price">₹18 – 24 Cr</div><div className="inv-size">600 sqyds · 5 BHK · 7,500 sqft</div><div className="inv-feats"><div className="inv-feat">Osman Sagar lake views</div><div className="inv-feat">Semi-furnished · premium finishes</div><div className="inv-feat">Greenbelt facing — no future construction</div><div className="inv-feat">Extremely rare resale opportunity</div></div></div>
-            <div className="inv-card"><span className="inv-badge">Available · Narsingi</span><h3>Gooncha Hills Villa</h3><div className="inv-loc">Narsingi-Kokapet border</div><div className="inv-price">₹10 – 12 Cr</div><div className="inv-size">4,500 sqft · 4 BHK · G+2</div><div className="inv-feats"><div className="inv-feat">300 sqyds · gated community</div><div className="inv-feat">Club house & swimming pool</div><div className="inv-feat">ORR & schools within 10 min</div><div className="inv-feat">Best value in the corridor</div></div></div>
+            <div className="inv-card"><span className="inv-badge">Available · Kokapet</span><h3>Legend Chimes Villa</h3><div className="inv-loc">Kokapet, near Financial District</div><div className="inv-price">₹16 – 25 Cr</div><div className="inv-size">327–500 sqyds plot · 3,000–4,500 sqft built-up</div><div className="inv-feats"><div className="inv-feat">Gated community · 24/7 security</div><div className="inv-feat">Private garden & covered parking</div><div className="inv-feat">5 min from Financial District</div><div className="inv-feat">Ready to move</div></div></div>
+            <div className="inv-card"><span className="inv-badge">Rare · Gandipet</span><h3>Lake View Villa Estate</h3><div className="inv-loc">Gandipet, Osman Sagar facing</div><div className="inv-price">₹20 – 28 Cr</div><div className="inv-size">600 sqyds plot · 7,500 sqft built-up</div><div className="inv-feats"><div className="inv-feat">Osman Sagar lake views</div><div className="inv-feat">Semi-furnished · premium finishes</div><div className="inv-feat">Greenbelt facing — no future construction</div><div className="inv-feat">Extremely rare resale opportunity</div></div></div>
+            <div className="inv-card"><span className="inv-badge">Available · Narsingi</span><h3>Gooncha Hills Villa</h3><div className="inv-loc">Narsingi-Kokapet border</div><div className="inv-price">₹12 – 15 Cr</div><div className="inv-size">300 sqyds plot · 4,500 sqft built-up</div><div className="inv-feats"><div className="inv-feat">Gated community · 4 BHK · G+2</div><div className="inv-feat">Club house & swimming pool</div><div className="inv-feat">ORR & schools within 10 min</div><div className="inv-feat">Best value in the corridor</div></div></div>
           </div>
         </section>
 
