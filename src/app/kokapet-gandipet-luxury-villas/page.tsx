@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import VillaEnquiryForm from "./VillaEnquiryForm";
-import FooterSection from "@/components/home/FooterSection";
 
 export const metadata: Metadata = {
   title: "Luxury Villas in Kokapet & Gandipet | ₹10 Cr – ₹20 Cr+ | RE/MAX Westside Realty",
@@ -105,7 +104,6 @@ export default function KokapetGandipetVillasPage() {
           .mkt-hdr, .mkt-row { grid-template-columns: 2fr 1fr 1fr; }
           .mkt-hdr div:nth-child(3), .mkt-row div:nth-child(3) { display: none; }
           .form-row { grid-template-columns: 1fr; }
-          .vp-footer { flex-direction: column; gap: 12px; text-align: center; }
         }
       `}</style>
 
@@ -207,7 +205,6 @@ export default function KokapetGandipetVillasPage() {
         </section>
 
       </div>
-      <FooterSection />
     </>
   );
 }

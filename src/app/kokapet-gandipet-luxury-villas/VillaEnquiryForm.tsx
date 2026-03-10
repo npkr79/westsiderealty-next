@@ -14,27 +14,38 @@ export default function VillaEnquiryForm() {
     requirements: "",
   });
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSubmitting(true);
     try {
       const supabase = createClient();
-      await supabase.from("crm_leads").insert({
-        full_name: formData.name,
-        phone: formData.phone,
-        source_type: "website",
-        source_channel: "organic_landing",
-        status: "new",
-        priority: "high",
-        tags: ["villa_lead", "kokapet_gandipet"],
-        notes: `Budget: ${formData.budget} | Location: ${formData.location} | Requirements: ${formData.requirements}`,
-        project_interest: "Kokapet/Gandipet Luxury Villa",
-      });
+      const { data, error } = await supabase
+        .from("crm_leads")
+        .insert({
+          name: formData.name,
+          phone: formData.phone,
+          source_type: "website",
+          source_channel: "organic_landing",
+          status: "new",
+          priority: "high",
+          notes: `Project: Kokapet/Gandipet Luxury Villa | Tags: villa_lead, kokapet_gandipet | Budget: ${formData.budget} | Location: ${formData.location} | Requirements: ${formData.requirements}`,
+        })
+        .select();
+      if (error) {
+        console.error("[Villa Form] Supabase error:", error);
+        alert("Something went wrong. Please try again.");
+        setSubmitting(false);
+        return;
+      }
+      console.log("[Villa Form] Lead saved:", data);
+      setSubmitted(true);
+    } catch (err) {
+      console.error("[Villa Form] Unexpected error:", err);
+      alert("Something went wrong. Please try again.");
     } finally {
       setSubmitting(false);
-      setSubmitted(true);
     }
-  };
+  }
 
   if (submitted) {
     return (
