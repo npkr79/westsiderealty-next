@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 export default function KokapetGandipetVillasPage() {
 
   return (
-    <>
+    <main>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=Jost:wght@300;400;500;600&display=swap');
         :root {
@@ -19,7 +19,7 @@ export default function KokapetGandipetVillasPage() {
         }
         * { box-sizing: border-box; margin: 0; padding: 0; }
         .vp { font-family: 'Jost', sans-serif; background: var(--dark); color: var(--cream); overflow-x: hidden; }
-        .vp-hero { min-height: 100vh; display: flex; flex-direction: column; justify-content: flex-end; padding: 0 48px 80px; background: linear-gradient(to bottom, rgba(10,10,8,0.8) 0%, rgba(10,10,8,0.45) 35%, rgba(10,10,8,0.6) 70%, rgba(10,10,8,1) 100%), url('https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1800&q=80') center/cover no-repeat; }
+        .vp-hero { min-height: 100vh; display: flex; flex-direction: column; justify-content: flex-end; padding: 88px 48px 80px; background: linear-gradient(to bottom, rgba(10,10,8,0.8) 0%, rgba(10,10,8,0.45) 35%, rgba(10,10,8,0.6) 70%, rgba(10,10,8,1) 100%), url('https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1800&q=80') center/cover no-repeat; }
         .vp-tag { display: inline-block; border: 1px solid var(--gold); color: var(--gold); font-size: 11px; font-weight: 500; letter-spacing: 0.2em; text-transform: uppercase; padding: 6px 16px; margin-bottom: 32px; }
         .vp-hero h1 { font-family: 'Cormorant Garamond', serif; font-size: clamp(48px, 6vw, 88px); font-weight: 300; line-height: 1.05; max-width: 800px; margin-bottom: 28px; }
         .vp-hero h1 em { font-style: italic; color: var(--gold); }
@@ -90,7 +90,7 @@ export default function KokapetGandipetVillasPage() {
         .form-submit { width: 100%; background: var(--gold); color: var(--dark); border: none; padding: 18px; font-family: 'Jost', sans-serif; font-size: 13px; font-weight: 600; letter-spacing: 0.15em; text-transform: uppercase; cursor: pointer; margin-top: 8px; }
         .form-note { font-size: 12px; font-weight: 300; color: var(--muted); text-align: center; margin-top: 16px; line-height: 1.6; }
         @media (max-width: 768px) {
-          .vp-hero { padding: 0 20px 60px; }
+          .vp-hero { padding: 88px 20px 60px; }
           .vp-stats { gap: 24px; }
           .sec { padding: 60px 20px; }
           .grid3, .inv-grid { grid-template-columns: 1fr; }
@@ -196,6 +196,6 @@ export default function KokapetGandipetVillasPage() {
         </section>
 
       </div>
-    </>
+    </main>
   );
 }
