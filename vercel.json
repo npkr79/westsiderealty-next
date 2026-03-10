@@ -15,6 +15,10 @@
     {
       "path": "/api/cron/link-checker",
       "schedule": "0 3 * * 1"
+    },
+    {
+      "path": "/api/admin/health-check",
+      "schedule": "30 3 * * 1"
     }
   ]
 }
