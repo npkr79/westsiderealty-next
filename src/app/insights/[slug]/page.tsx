@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { JsonLd } from "@/components/common/SEO";
 
 const PAGE_META: Record<string, { title: string; desc: string; badge?: string }> = {
   "price-tracker": {
@@ -38,8 +39,23 @@ export default function InsightsSubPage({ params }: { params: { slug: string } }
   const desc = meta?.desc ?? "This section is being updated with fresh data and analysis.";
   const badge = meta?.badge;
 
+  const articleSchema = {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: title,
+    description: desc,
+    author: { "@type": "Organization", name: "Westside Realty" },
+    publisher: {
+      "@type": "Organization",
+      name: "Westside Realty",
+      logo: { "@type": "ImageObject", url: "https://www.westsiderealty.in/logo.png" },
+    },
+    url: `https://www.westsiderealty.in/insights/${params.slug}`,
+  };
+
   return (
     <main style={{ background: "#080808", minHeight: "100vh" }}>
+      <JsonLd jsonLd={articleSchema} />
       <section
         className="pt-20 pb-16 px-4"
         style={{ background: "linear-gradient(to bottom, #0d0d0d, #080808)" }}

@@ -14,6 +14,7 @@ import StressSignals from "@/components/apartment-intelligence/StressSignals";
 import IntelligenceIndex from "@/components/apartment-intelligence/IntelligenceIndex";
 import InterpretationFooter from "@/components/apartment-intelligence/InterpretationFooter";
 import { intelligenceDashboardService } from "@/services/intelligenceDashboardService";
+import { JsonLd } from "@/components/common/SEO";
 
 const heightBandLabel = (band: string) => {
   if (band === "unknown") return "Undisclosed";
@@ -248,6 +249,14 @@ export default async function ApartmentIntelligencePage() {
 
   return (
     <main className="bg-slate-50 text-slate-900">
+      <JsonLd jsonLd={{
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          { "@type": "ListItem", position: 1, name: "Home", item: "https://www.westsiderealty.in" },
+          { "@type": "ListItem", position: 2, name: "Apartment Intelligence", item: "https://www.westsiderealty.in/apartment-intelligence" },
+        ],
+      }} />
       <div className="mx-auto max-w-6xl px-6 pt-6">
         <Link
           href="/residential-intelligence"

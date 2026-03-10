@@ -13,6 +13,7 @@ import LandSpatialFootprint from "@/components/villa-intelligence/LandSpatialFoo
 import LandStressSignals from "@/components/villa-intelligence/LandStressSignals";
 import IntelligenceIndex from "@/components/villa-intelligence/IntelligenceIndex";
 import InterpretationFooter from "@/components/villa-intelligence/InterpretationFooter";
+import { JsonLd } from "@/components/common/SEO";
 import {
   normalizeDensityClass,
   normalizeLandStrength,
@@ -295,6 +296,14 @@ export default async function VillaIntelligencePage() {
 
   return (
     <main className="bg-slate-50 text-slate-900">
+      <JsonLd jsonLd={{
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          { "@type": "ListItem", position: 1, name: "Home", item: "https://www.westsiderealty.in" },
+          { "@type": "ListItem", position: 2, name: "Villa Intelligence", item: "https://www.westsiderealty.in/villa-intelligence" },
+        ],
+      }} />
       <div className="mx-auto max-w-6xl px-6 pt-6">
         <Link
           href="/residential-intelligence"

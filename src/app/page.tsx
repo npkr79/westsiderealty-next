@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { createServiceClient } from "@/lib/supabase/serviceClient";
+import { JsonLd } from "@/components/common/SEO";
 
 export const metadata: Metadata = {
   title: "Westside Realty | Hyderabad Real Estate Intelligence",
@@ -125,8 +126,30 @@ export default async function HomePage() {
     getTopDevelopers(),
   ]);
 
+  const businessSchema = {
+    "@context": "https://schema.org",
+    "@type": "RealEstateAgent",
+    name: "Westside Realty",
+    url: "https://www.westsiderealty.in",
+    logo: "https://www.westsiderealty.in/logo.png",
+    description: "Premium real estate advisory in West Hyderabad specialising in apartments, villas and commercial investments",
+    address: {
+      "@type": "PostalAddress",
+      addressLocality: "Hyderabad",
+      addressRegion: "Telangana",
+      addressCountry: "IN",
+    },
+    areaServed: ["Gachibowli", "Kokapet", "Kondapur", "Gandipet", "HITEC City"],
+    telephone: "+91-XXXXXXXXXX",
+    sameAs: [
+      "https://www.facebook.com/westsiderealty",
+      "https://www.instagram.com/westsiderealty",
+    ],
+  };
+
   return (
     <main style={{ background: "#080808", minHeight: "100vh" }}>
+      <JsonLd jsonLd={businessSchema} />
 
       {/* ── Hero ──────────────────────────────────────────────── */}
       <section

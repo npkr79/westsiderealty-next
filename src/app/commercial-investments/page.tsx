@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import CommercialEnquiryForm from "./CommercialEnquiryForm";
+import { JsonLd } from "@/components/common/SEO";
 
 export const metadata: Metadata = {
   title: "Commercial Real Estate Investment | Grade A Offices | West Hyderabad | Westside Realty",
@@ -16,9 +17,32 @@ const muted = "#888880";
 const border = "rgba(201,169,110,0.15)";
 const serif = "Georgia, serif";
 
+const faqSchema = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: [
+    {
+      "@type": "Question",
+      name: "What is the minimum investment for commercial property in Hyderabad?",
+      acceptedAnswer: { "@type": "Answer", text: "Commercial properties in Hyderabad's west corridor start from ₹50 lakhs for early-stage investments. Grade-A office spaces in HITEC City typically range from ₹1.5Cr upward." },
+    },
+    {
+      "@type": "Question",
+      name: "What rental yields can I expect from commercial property in Hyderabad?",
+      acceptedAnswer: { "@type": "Answer", text: "Commercial properties in Hyderabad's HITEC City and Gachibowli corridor deliver 5-9 year lease lock-ins with rents at ₹90-95 per sqft. GCC demand drives 43% of absorption." },
+    },
+    {
+      "@type": "Question",
+      name: "Which areas in Hyderabad are best for commercial investment?",
+      acceptedAnswer: { "@type": "Answer", text: "Gachibowli, HITEC City, Kokapet and the Financial District form Hyderabad's prime commercial corridor. These areas absorbed 12.3 MSF in 2024 driven by GCC expansion." },
+    },
+  ],
+};
+
 export default function CommercialInvestmentsPage() {
   return (
     <main style={{ background: dark, minHeight: "100vh" }}>
+      <JsonLd jsonLd={faqSchema} />
 
       {/* ── SECTION 1: HERO ─────────────────────────────────────── */}
       <section style={{

@@ -13,6 +13,7 @@ import ResidentialIntelligenceHero from "@/components/residential-intelligence-d
 import InterpretationFooter from "@/components/residential-intelligence-dashboard/InterpretationFooter";
 import StructuralComposition from "@/components/residential-intelligence-dashboard/StructuralComposition";
 import SystemTypologies from "@/components/residential-intelligence-dashboard/SystemTypologies";
+import { JsonLd } from "@/components/common/SEO";
 import { normalizeLandStrength, normalizeScaleClass } from "@/constants/intelligenceLanguage";
 import { intelligenceDashboardService } from "@/services/intelligenceDashboardService";
 
@@ -357,6 +358,14 @@ export default async function ResidentialIntelligenceDashboard() {
 
   return (
     <main className="bg-slate-50 text-slate-900">
+      <JsonLd jsonLd={{
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          { "@type": "ListItem", position: 1, name: "Home", item: "https://www.westsiderealty.in" },
+          { "@type": "ListItem", position: 2, name: "Residential Intelligence", item: "https://www.westsiderealty.in/residential-intelligence" },
+        ],
+      }} />
       <ResidentialIntelligenceHero
         ecosystemsAnalyzed={totalEcosystems}
         verticalShare={verticalShare}
