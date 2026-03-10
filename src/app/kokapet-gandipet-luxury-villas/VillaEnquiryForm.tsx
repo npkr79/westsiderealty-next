@@ -1,9 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@/lib/supabase/client";
-
-const SRINIVAS_ID = "8a0946ec-a736-4d8c-9255-84dbad921fb6";
 
 export default function VillaEnquiryForm() {
   const [submitting, setSubmitting] = useState(false);
@@ -21,45 +18,31 @@ export default function VillaEnquiryForm() {
     e.preventDefault();
     setSubmitting(true);
     try {
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from("crm_leads")
-        .insert({
+      const response = await fetch('/api/crm/leads/website', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           name: formData.name,
           phone: formData.phone,
-          email: formData.email || null,
-          source_type: "website",
-          source_channel: "organic_landing",
-          status: "new",
-          priority: "high",
-          assigned_to: SRINIVAS_ID,
-          notes: `Project: Kokapet/Gandipet Luxury Villa | Tags: villa_lead, kokapet_gandipet | Budget: ${formData.budget} | Location: ${formData.location} | Requirements: ${formData.requirements}`,
-        })
-        .select();
-      if (error) {
-        console.error("[Villa Form] Supabase error:", error);
-        alert("Something went wrong. Please try again.");
+          source_type: 'website',
+          source_channel: 'organic_landing',
+          status: 'new',
+          priority: 'high',
+          assigned_to: '8a0946ec-a736-4d8c-9255-84dbad921fb6',
+          notes: `Project: Kokapet/Gandipet Luxury Villa | Budget: ${formData.budget} | Location: ${formData.location} | Requirements: ${formData.requirements}`,
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        console.error('[Villa Form] error:', result.error);
+        alert('Something went wrong. Please try again.');
         setSubmitting(false);
         return;
       }
-      console.log("[Villa Form] Lead saved:", data);
-
-      // Assignment record
-      if (data?.[0]?.id) {
-        await supabase.from("crm_lead_assignments").insert({
-          lead_id: data[0].id,
-          assigned_to: SRINIVAS_ID,
-          assigned_by: SRINIVAS_ID,
-          reason: "website villa landing page - auto assigned",
-        }).then(({ error: aErr }) => {
-          if (aErr) console.error("[Villa Form] Assignment error:", aErr);
-        });
-      }
-
       setSubmitted(true);
     } catch (err) {
-      console.error("[Villa Form] Unexpected error:", err);
-      alert("Something went wrong. Please try again.");
+      console.error('[Villa Form] Unexpected error:', err);
+      alert('Something went wrong. Please try again.');
     } finally {
       setSubmitting(false);
     }

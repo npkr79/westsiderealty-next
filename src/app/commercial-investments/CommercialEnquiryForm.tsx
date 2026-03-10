@@ -1,9 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@/lib/supabase/client";
-
-const KRISHNA_ID = "95061b18-bd2c-4ce9-9d0b-f7a8fd796f07";
 
 const inputStyle: React.CSSProperties = {
   border: "1px solid rgba(201,169,110,0.2)",
@@ -37,10 +34,10 @@ export default function CommercialEnquiryForm() {
     e.preventDefault();
     setSubmitting(true);
     try {
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from('crm_leads')
-        .insert({
+      const response = await fetch('/api/crm/leads/website', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           name: formData.name,
           phone: formData.phone,
           source_type: 'website',
@@ -49,25 +46,15 @@ export default function CommercialEnquiryForm() {
           priority: 'high',
           assigned_to: '95061b18-bd2c-4ce9-9d0b-f7a8fd796f07',
           notes: `Commercial Investment Enquiry | Budget: ${formData.budget} | Stage: ${formData.stage} | Timeline: ${formData.timeline} | Message: ${formData.message}`,
-        })
-        .select();
-
-      if (error) {
-        console.error('[Commercial Form] Supabase error:', error);
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        console.error('[Commercial Form] error:', result.error);
         alert('Something went wrong. Please try again.');
         setSubmitting(false);
         return;
       }
-
-      if (data && data[0]?.id) {
-        await supabase.from('crm_lead_assignments').insert({
-          lead_id: data[0].id,
-          assigned_to: '95061b18-bd2c-4ce9-9d0b-f7a8fd796f07',
-          assigned_by: '95061b18-bd2c-4ce9-9d0b-f7a8fd796f07',
-          reason: 'website commercial page - auto assigned to Krishna',
-        });
-      }
-
       setSubmitted(true);
     } catch (err) {
       console.error('[Commercial Form] Unexpected error:', err);
