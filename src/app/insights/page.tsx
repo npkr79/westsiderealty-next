@@ -8,6 +8,13 @@ export const metadata: Metadata = {
 
 const SECTIONS = [
   {
+    href: "/kokapet-gandipet-luxury-villas",
+    label: "Kokapet & Gandipet Villa Market",
+    desc: "Why luxury villas in Hyderabad's most coveted corridors are now only available as rare resales",
+    badge: "HOT",
+    badgeColor: { bg: "rgba(239,68,68,0.15)", text: "#fca5a5", border: "rgba(239,68,68,0.3)" },
+  },
+  {
     href: "/insights/price-tracker",
     label: "Price Tracker",
     desc: "Live price movements across Hyderabad micro-markets",
