@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, Users, Kanban, MessageCircle, Zap,
   TrendingUp, Bell, GitBranch, Shuffle, CheckSquare,
-  Calendar, Settings, X,
+  Calendar, Settings, X, Activity,
 } from "lucide-react";
 
 const navItems = [
@@ -19,6 +19,7 @@ const navItems = [
   { href: "/routing", icon: Shuffle, label: "Routing" },
   { href: "/tasks", icon: CheckSquare, label: "Tasks" },
   { href: "/calendar", icon: Calendar, label: "Calendar" },
+  { href: "/dashboard/admin/seo", icon: Activity, label: "Site Health" },
   { href: "/settings", icon: Settings, label: "Settings" },
 ];
 
