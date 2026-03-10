@@ -172,7 +172,7 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
         break;
       }
       lastError = error.message || "Failed to load lead.";
-      if (!/column .* does not exist/i.test(lastError)) break;
+      if (!/column .* does not exist|could not find.*column|schema cache/i.test(lastError)) break;
     }
     if (!found) {
       setLeadError(lastError);

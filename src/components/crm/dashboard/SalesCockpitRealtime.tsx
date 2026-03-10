@@ -152,6 +152,10 @@ export default function SalesCockpitRealtime({ user, scope = "all" }: SalesCockp
         "id,created_at,updated_at,status,source_channel,source_type,stage_id,budget_min,budget_max,assigned_to,priority",
         "id,created_at,updated_at,status,source_channel,source_type,stage_id,budget_min,budget_max,assigned_to,lead_priority",
         "id,created_at,updated_at,status,source_channel,source_type,stage_id,budget_min,budget_max,assigned_to",
+        // fallbacks without source_channel in case the view uses a different column name
+        "id,created_at,updated_at,status,stage_id,budget_min,budget_max,assigned_to,priority",
+        "id,created_at,updated_at,status,stage_id,budget_min,budget_max,assigned_to,lead_priority",
+        "id,created_at,updated_at,status,stage_id,budget_min,budget_max,assigned_to",
       ];
       let leadRes: { data: LeadRow[] | null; error: Error | null } = { data: null, error: null };
       for (const selectClause of leadSelectVariants) {
@@ -163,7 +167,8 @@ export default function SalesCockpitRealtime({ user, scope = "all" }: SalesCockp
           break;
         }
         const message = queryResult.error.message || "";
-        if (!/column .* does not exist/i.test(message)) {
+        const isColumnError = /column .* does not exist|could not find.*column|schema cache/i.test(message);
+        if (!isColumnError) {
           leadRes = { data: null, error: queryResult.error as unknown as Error };
           break;
         }
@@ -217,7 +222,8 @@ export default function SalesCockpitRealtime({ user, scope = "all" }: SalesCockp
         }
       }
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Failed to load dashboard.");
+      const msg = e instanceof Error ? e.message : (e as { message?: string } | null)?.message;
+      setError(msg || "Failed to load dashboard.");
     } finally {
       setLoading(false);
     }
