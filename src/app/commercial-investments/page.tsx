@@ -4,7 +4,7 @@ import CommercialEnquiryForm from "./CommercialEnquiryForm";
 export const metadata: Metadata = {
   title: "Commercial Real Estate Investment | Grade A Offices | West Hyderabad | Westside Realty",
   description:
-    "Curated Grade A commercial office investments in Banjara Hills, HITEC City, Financial District and Kokapet. Rental yields 8–10%. Four investment stages from early entry to rental-ready.",
+    "Curated Grade A commercial office investments in Banjara Hills, HITEC City, Financial District and Kokapet. Four investment stages from early entry to rental-ready.",
 };
 
 const gold = "#C9A96E";
@@ -48,8 +48,8 @@ export default function CommercialInvestmentsPage() {
         <div style={{ display: "flex", gap: 56, marginBottom: 52, flexWrap: "wrap" }}>
           {[
             { val: "12.3 MSF", label: "Office space absorbed in Hyderabad 2024" },
-            { val: "8–10%", label: "Rental yields in prime west corridors" },
             { val: "43%", label: "Of demand driven by GCCs — long leases, zero vacancy risk" },
+            { val: "5–9 Yrs", label: "Typical lease lock-in with Fortune 500 tenants" },
           ].map((s) => (
             <div key={s.val}>
               <div style={{ fontFamily: serif, fontSize: 36, fontWeight: 300, color: gold, lineHeight: 1 }}>{s.val}</div>
@@ -134,7 +134,7 @@ export default function CommercialInvestmentsPage() {
                 num: "Stage 04", title: "Rental Ready", tagColor: gold, tag: "ZERO RISK · IMMEDIATE INCOME",
                 timeline: "Immediate Returns",
                 desc: "Fully completed, tenanted Grade A asset. Lease agreements in place. Rental income from day one. Lower appreciation upside but predictable, inflation-protected income stream. Ideal for capital preservation.",
-                m1: "Rental Yield: 8–10% per annum", m2: "Lease Security: 5–9 year lock-ins typical",
+                m1: "Immediate rental income from day one", m2: "Lease Security: 5–9 year lock-ins typical",
               },
             ].map((s) => (
               <div key={s.num} style={{ background: darkCard, padding: "48px 36px", border: `1px solid ${border}` }}>
@@ -176,8 +176,8 @@ export default function CommercialInvestmentsPage() {
             </div>
             <div style={{ fontFamily: serif, fontSize: 24, color: "rgba(201,169,110,0.4)", textAlign: "center" }}>vs</div>
             <div style={{ border: `1px solid rgba(201,169,110,0.4)`, background: darkCard, padding: "40px 32px", textAlign: "center" }}>
-              <div style={{ fontFamily: serif, fontSize: 56, fontWeight: 300, color: gold, lineHeight: 1 }}>8–10%</div>
-              <div style={{ fontSize: 13, color: muted, marginTop: 12 }}>Grade A commercial yield</div>
+              <div style={{ fontFamily: serif, fontSize: 56, fontWeight: 300, color: gold, lineHeight: 1 }}>₹90–95</div>
+              <div style={{ fontSize: 13, color: muted, marginTop: 12 }}>Grade A office rent per sqft/month in HITEC City</div>
             </div>
 
             <div style={{ border: `1px solid ${border}`, background: darkCard, padding: "40px 32px", textAlign: "center" }}>
