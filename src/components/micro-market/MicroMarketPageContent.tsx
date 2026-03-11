@@ -3,7 +3,7 @@ import { ProjectsInMarketWithSkeleton } from "./ProjectsInMarketAsync";
 import type { MicroMarketViewModel } from "@/services/microMarketViewModel";
 import FaqAccordion from "./FaqAccordion";
 import ConnectivityDetails from "./ConnectivityDetails";
-import { MessageCircle, Phone, School, Hospital, ShoppingBag, Pill, Shield, Database } from "lucide-react";
+import { MessageCircle, Phone, School, Hospital, ShoppingBag, Pill, Shield, Database, CheckCircle2 } from "lucide-react";
 
 function buildMapEmbedUrl(lat: number, lng: number): string {
   return `https://maps.google.com/maps?q=${lat},${lng}&z=14&output=embed`;
@@ -738,6 +738,174 @@ export default function MicroMarketPageContent({
                 )}
               </div>
             )}
+
+            {/* Card A: Westside Verdict */}
+            {aiEnrichment && (() => {
+              const rec = aiEnrichment.analyst_recommendation;
+              const isPositive = rec === "Buy";
+              const isNeutral  = rec === "Watch";
+              const borderColor = isPositive ? "border-l-green-500"  : isNeutral ? "border-l-amber-400"  : "border-l-red-400";
+              const badgeCls    = isPositive
+                ? "bg-green-50 border-green-200 text-green-700"
+                : isNeutral
+                  ? "bg-amber-50 border-amber-200 text-amber-700"
+                  : "bg-red-50 border-red-200 text-red-700";
+
+              const checklist: string[] = [
+                "Verify RERA registration and completion certificate status",
+                ...(aiEnrichment.risk_level === "High"
+                  ? ["Assess developer track record carefully before committing"]
+                  : []),
+                ...(aiEnrichment.rental_yield_min != null
+                  ? ["Confirm short-term rental regulations in this micro-market"]
+                  : []),
+                ...(aiEnrichment.zone_type === "Coastal"
+                  ? ["Check CRZ (Coastal Regulation Zone) restrictions on the specific plot"]
+                  : []),
+                ...(aiEnrichment.entry_timing === "Wait"
+                  ? ["Monitor price trends for 2–3 quarters before entry"]
+                  : []),
+                ...((aiEnrichment.top_developers?.length ?? 0) > 0
+                  ? ["Compare at least 3 projects from different developers"]
+                  : []),
+                "Visit the site — inspect infrastructure, road access, and neighbourhood quality",
+                "Clarify exit strategy — rental income vs resale timeline",
+              ];
+
+              const generatedAt = aiEnrichment.fetched_at
+                ? new Date(aiEnrichment.fetched_at).toLocaleDateString("en-IN", { month: "short", year: "numeric" })
+                : null;
+
+              return (
+                <div className={`rounded-xl border border-slate-200 bg-white p-6 border-l-4 ${borderColor}`}>
+                  {/* Header row */}
+                  <div className="flex items-center justify-between gap-3 mb-4">
+                    <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">Westside Verdict</p>
+                    {rec && (
+                      <span className={`text-sm font-bold px-3 py-1 rounded-full border ${badgeCls}`}>
+                        {rec}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Reasoning / summary */}
+                  {(aiEnrichment.entry_reasoning || aiEnrichment.market_summary) && (
+                    <p className="text-sm text-slate-700 leading-relaxed mb-5">
+                      {aiEnrichment.entry_reasoning || aiEnrichment.market_summary}
+                    </p>
+                  )}
+
+                  {/* Pre-investment checklist */}
+                  <div className="bg-slate-50 rounded-lg p-4">
+                    <p className="text-xs font-semibold uppercase tracking-widest text-slate-500 mb-3">
+                      Before You Invest — Check These
+                    </p>
+                    <ul className="space-y-2">
+                      {checklist.map((item) => (
+                        <li key={item} className="flex items-start gap-2 text-sm text-slate-600">
+                          <CheckCircle2 size={14} className="text-green-500 shrink-0 mt-0.5" />
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {/* Footer */}
+                  {generatedAt && (
+                    <p className="text-xs text-slate-400 mt-4">
+                      Analysis based on RERA data + AI market research · {generatedAt}
+                    </p>
+                  )}
+                </div>
+              );
+            })()}
+
+            {/* Card B: Price Intelligence */}
+            {aiEnrichment && (aiEnrichment.price_band_current || aiEnrichment.appreciation_5yr || aiEnrichment.rental_yield_min != null) && (() => {
+              const hasYield = aiEnrichment.rental_yield_min != null || aiEnrichment.rental_yield_max != null;
+
+              const narrative: string[] = [];
+              narrative.push(`In ${hero.name},`);
+              if (aiEnrichment.price_per_sqft_current) {
+                narrative.push(`current market rates are around ₹${aiEnrichment.price_per_sqft_current.toLocaleString("en-IN")}/sqft.`);
+              }
+              if (aiEnrichment.appreciation_5yr) {
+                narrative.push(`Analysts project ${aiEnrichment.appreciation_5yr} appreciation over the next 5 years`);
+                if ((aiEnrichment.employment_drivers?.length ?? 0) > 0) {
+                  narrative.push(`driven by ${aiEnrichment.employment_drivers!.slice(0, 2).join(" and ")}.`);
+                } else {
+                  narrative.push("based on current infrastructure and demand signals.");
+                }
+              }
+              if (hasYield) {
+                narrative.push(
+                  `Investors targeting rental income can expect ${aiEnrichment.rental_yield_min ?? "—"}–${aiEnrichment.rental_yield_max ?? "—"}% gross annual yields.`
+                );
+              }
+              if (aiEnrichment.entry_timing === "Optimal" || aiEnrichment.entry_timing === "Good") {
+                narrative.push("Current market conditions favour early entry.");
+              } else if (aiEnrichment.entry_timing === "Wait") {
+                narrative.push("The market may benefit from a short consolidation phase before entry.");
+              }
+
+              return (
+                <div className="rounded-xl border border-slate-200 bg-white p-6">
+                  <h3 className="text-base font-semibold text-slate-900 mb-4">Price Intelligence</h3>
+
+                  {/* Stat boxes */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
+                    <div className="bg-slate-50 rounded-lg p-4">
+                      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">Current Rate</p>
+                      <p className="text-xl font-bold text-slate-900">
+                        {aiEnrichment.price_band_current ?? "—"}
+                      </p>
+                      <p className="text-xs text-slate-400 mt-0.5">per sqft</p>
+                    </div>
+                    <div className="bg-slate-50 rounded-lg p-4">
+                      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">5-Year Outlook</p>
+                      <p className="text-xl font-bold text-slate-900">
+                        {aiEnrichment.appreciation_5yr ?? "—"}
+                      </p>
+                      <p className="text-xs text-slate-400 mt-0.5">projected appreciation</p>
+                    </div>
+                    <div className="bg-slate-50 rounded-lg p-4">
+                      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">Rental Yield</p>
+                      <p className="text-xl font-bold text-slate-900">
+                        {hasYield
+                          ? `${aiEnrichment.rental_yield_min ?? "—"}–${aiEnrichment.rental_yield_max ?? "—"}%`
+                          : "—"}
+                      </p>
+                      <p className="text-xs text-slate-400 mt-0.5">gross annual yield</p>
+                    </div>
+                  </div>
+
+                  {/* Narrative */}
+                  {narrative.length > 1 && (
+                    <p className="text-sm text-slate-600 leading-relaxed mb-4">
+                      {narrative.join(" ")}
+                    </p>
+                  )}
+
+                  {/* Bull / Bear */}
+                  {(aiEnrichment.bull_case || aiEnrichment.bear_case) && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-4 border-t border-slate-100">
+                      {aiEnrichment.bull_case && (
+                        <div className="bg-green-50 border border-green-200 rounded-lg px-3 py-2.5">
+                          <p className="text-xs font-semibold text-green-700 uppercase tracking-wide mb-1">Upside</p>
+                          <p className="text-xs text-slate-700 leading-relaxed">{aiEnrichment.bull_case}</p>
+                        </div>
+                      )}
+                      {aiEnrichment.bear_case && (
+                        <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2.5">
+                          <p className="text-xs font-semibold text-red-700 uppercase tracking-wide mb-1">Downside</p>
+                          <p className="text-xs text-slate-700 leading-relaxed">{aiEnrichment.bear_case}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* Card 2: By The Numbers — hidden for Established/Peak (RERA data misleading for mature markets) */}
             {byTheNumbers.length > 0 && !isEstablishedOrPeak && (
