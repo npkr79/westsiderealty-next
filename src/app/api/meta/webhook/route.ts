@@ -82,8 +82,18 @@ export async function POST(request: Request) {
       // Clean up after 5 minutes to prevent unbounded memory growth
       setTimeout(() => processedLeads.delete(leadgenId), 5 * 60 * 1000);
 
-      // 2. Database-level deduplication (survives server restarts)
+      // 2. Atomic dedup — PRIMARY KEY prevents simultaneous duplicates across instances
       const supabase = createServiceClient();
+      const { error: dedupError } = await supabase
+        .from("crm_webhook_dedup")
+        .insert({ leadgen_id: leadgenId });
+
+      if (dedupError) {
+        console.log(`[Meta Webhook] Atomic dedup blocked: ${leadgenId}`);
+        continue;
+      }
+
+      // 3. Secondary check — crm_leads fb_lead_id (belt-and-suspenders)
       const { data: existing } = await supabase
         .from("crm_leads")
         .select("id")

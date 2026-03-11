@@ -84,8 +84,14 @@ export async function GET(request: NextRequest) {
   const slow = results.filter((r) => !r.is_broken && r.response_time_ms > SLOW_THRESHOLD_MS);
   const healthy = results.filter((r) => !r.is_broken && r.response_time_ms <= SLOW_THRESHOLD_MS);
 
-  // Save to Supabase
+  // Cleanup old webhook dedup records (older than 24h)
   const supabase = createServiceClient();
+  await supabase
+    .from("crm_webhook_dedup")
+    .delete()
+    .lt("created_at", new Date(Date.now() - 86400000).toISOString());
+
+  // Save to Supabase
   const { data: report, error } = await supabase
     .from("site_health_reports")
     .insert({
