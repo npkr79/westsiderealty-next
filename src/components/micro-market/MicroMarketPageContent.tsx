@@ -821,8 +821,10 @@ export default function MicroMarketPageContent({
             })()}
 
             {/* Card B: Price Intelligence */}
-            {aiEnrichment && (aiEnrichment.price_band_current || aiEnrichment.appreciation_5yr || aiEnrichment.rental_yield_min != null) && (() => {
-              const hasYield = aiEnrichment.rental_yield_min != null || aiEnrichment.rental_yield_max != null;
+            {aiEnrichment && (aiEnrichment.price_band_current || aiEnrichment.price_per_sqft_current || aiEnrichment.appreciation_5yr || aiEnrichment.rental_yield_min != null || hero.rental.min != null) && (() => {
+              const displayYieldMin = aiEnrichment.rental_yield_min ?? hero.rental.min;
+              const displayYieldMax = aiEnrichment.rental_yield_max ?? hero.rental.max;
+              const hasYield = displayYieldMin != null || displayYieldMax != null;
 
               const narrative: string[] = [];
               narrative.push(`In ${hero.name},`);
@@ -839,7 +841,7 @@ export default function MicroMarketPageContent({
               }
               if (hasYield) {
                 narrative.push(
-                  `Investors targeting rental income can expect ${aiEnrichment.rental_yield_min ?? "—"}–${aiEnrichment.rental_yield_max ?? "—"}% gross annual yields.`
+                  `Investors targeting rental income can expect ${displayYieldMin ?? "—"}–${displayYieldMax ?? "—"}% gross annual yields.`
                 );
               }
               if (aiEnrichment.entry_timing === "Optimal" || aiEnrichment.entry_timing === "Good") {
@@ -857,9 +859,10 @@ export default function MicroMarketPageContent({
                     <div className="bg-slate-50 rounded-lg p-4">
                       <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">Current Rate</p>
                       <p className="text-xl font-bold text-slate-900">
-                        {aiEnrichment.price_band_current ?? "—"}
+                        {aiEnrichment.price_per_sqft_current != null
+                          ? `₹${aiEnrichment.price_per_sqft_current.toLocaleString("en-IN")} /sqft`
+                          : (aiEnrichment.price_band_current ?? "—")}
                       </p>
-                      <p className="text-xs text-slate-400 mt-0.5">per sqft</p>
                     </div>
                     <div className="bg-slate-50 rounded-lg p-4">
                       <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">5-Year Outlook</p>
@@ -871,9 +874,9 @@ export default function MicroMarketPageContent({
                     <div className="bg-slate-50 rounded-lg p-4">
                       <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">Rental Yield</p>
                       <p className="text-xl font-bold text-slate-900">
-                        {hasYield
-                          ? `${aiEnrichment.rental_yield_min ?? "—"}–${aiEnrichment.rental_yield_max ?? "—"}%`
-                          : "—"}
+                        {(displayYieldMin != null && displayYieldMax != null)
+                          ? `${displayYieldMin}–${displayYieldMax}%`
+                          : (displayYieldMin != null ? `${displayYieldMin}%+` : "—")}
                       </p>
                       <p className="text-xs text-slate-400 mt-0.5">gross annual yield</p>
                     </div>
