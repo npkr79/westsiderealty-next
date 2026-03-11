@@ -27,7 +27,7 @@ export async function getNavMarkets(): Promise<NavMarketCity[]> {
           .from("micro_markets")
           .select("micro_market_name, url_slug, is_featured, is_luxury")
           .eq("city_id", city.id)
-          .eq("status", "active")
+          .in("status", ["active", "published"])
           .order("is_featured", { ascending: false })
           .order("price_per_sqft_max", { ascending: false })
           .limit(8);
