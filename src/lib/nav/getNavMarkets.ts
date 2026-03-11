@@ -17,6 +17,7 @@ export async function getNavMarkets(): Promise<NavMarketCity[]> {
       .from("cities")
       .select("id, city_name, url_slug")
       .eq("is_active", true)
+      .gt("display_order", 0)
       .order("display_order", { ascending: true });
 
     if (!cities || cities.length === 0) return [];
