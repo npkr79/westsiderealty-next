@@ -3,6 +3,7 @@ import { ProjectsInMarketWithSkeleton } from "./ProjectsInMarketAsync";
 import type { MicroMarketViewModel } from "@/services/microMarketViewModel";
 import FaqAccordion from "./FaqAccordion";
 import ConnectivityDetails from "./ConnectivityDetails";
+import MicroMarketLeadForm from "./MicroMarketLeadForm";
 import { School, Hospital, ShoppingBag, Pill, Shield, Database, CheckCircle2 } from "lucide-react";
 
 function buildMapEmbedUrl(lat: number, lng: number): string {
@@ -1050,6 +1051,9 @@ export default function MicroMarketPageContent({
         )}
 
       </div>
+
+      {/* LEAD CAPTURE — full-width navy form above footer */}
+      <MicroMarketLeadForm marketName={hero.name} citySlug={citySlug} />
 
       {/* Existing JSON-LD */}
       <script
