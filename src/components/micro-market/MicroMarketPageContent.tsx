@@ -4,7 +4,7 @@ import type { MicroMarketViewModel } from "@/services/microMarketViewModel";
 import FaqAccordion from "./FaqAccordion";
 import ConnectivityDetails from "./ConnectivityDetails";
 import MicroMarketLeadForm from "./MicroMarketLeadForm";
-import { School, Hospital, ShoppingBag, Pill, Shield, Database, CheckCircle2 } from "lucide-react";
+import { School, Hospital, ShoppingBag, Pill, Shield, Database, CheckCircle2, Plane } from "lucide-react";
 
 function buildMapEmbedUrl(lat: number, lng: number): string {
   return `https://maps.google.com/maps?q=${lat},${lng}&z=14&output=embed`;
@@ -136,6 +136,13 @@ interface AiEnrichment {
   commercial_rental_yield_max: number | null;
   commercial_rental_yield_detail: string | null;
   fetched_at: string | null;
+  // Goa lifestyle fields
+  lifestyle_summary: string | null;
+  nearest_beaches: Array<{ name: string; distance_km: number; character: string }> | null;
+  top_attractions: string[] | null;
+  airport_distances: Array<{ name: string; distance_km: number; travel_time: string }> | null;
+  things_to_do: string[] | null;
+  dining_nightlife: string[] | null;
 }
 
 interface MarketAmenities {
@@ -550,11 +557,126 @@ export default function MicroMarketPageContent({
           </section>
         )}
 
-        {/* 4. LOCATION & CONNECTIVITY — CHANGE 3+4: map moved here, new design */}
+        {/* 4. LOCATION & CONNECTIVITY */}
         <section className="mt-10 border-t border-gray-100 pt-10">
           <h2 className="text-xl font-bold text-slate-900 mb-4">Location &amp; Connectivity</h2>
-          <div className="bg-white border border-slate-200 rounded-xl p-6">
-            {/* connectivity_details: collapsible, client-side toggle */}
+          <div className="bg-white border border-slate-200 rounded-xl p-6 space-y-6">
+
+            {/* 1. LIFESTYLE SUMMARY */}
+            {aiEnrichment?.lifestyle_summary && (
+              <p className="text-sm italic text-slate-500 leading-relaxed">
+                {aiEnrichment.lifestyle_summary}
+              </p>
+            )}
+
+            {/* 2. NEAREST BEACHES */}
+            {aiEnrichment?.nearest_beaches && aiEnrichment.nearest_beaches.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.15em] text-slate-400 mb-3">
+                  Nearest Beaches
+                </p>
+                <div className="flex gap-3 overflow-x-auto pb-1 md:grid md:grid-cols-3 md:overflow-visible">
+                  {aiEnrichment.nearest_beaches.map((beach) => (
+                    <div
+                      key={beach.name}
+                      className="min-w-[160px] flex-shrink-0 rounded-lg border border-blue-100 bg-blue-50 p-3 md:min-w-0"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="font-semibold text-sm text-slate-800 leading-snug">{beach.name}</p>
+                        <span className="flex-shrink-0 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
+                          {beach.distance_km} km
+                        </span>
+                      </div>
+                      {beach.character && (
+                        <p className="mt-1 text-xs text-slate-500">{beach.character}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 3. AIRPORT CONNECTIVITY */}
+            {aiEnrichment?.airport_distances && aiEnrichment.airport_distances.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.15em] text-slate-400 mb-3">
+                  Airport Connectivity
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {aiEnrichment.airport_distances.map((airport) => (
+                    <div
+                      key={airport.name}
+                      className="flex items-center gap-3 rounded-lg bg-slate-50 border border-slate-100 px-4 py-3"
+                    >
+                      <Plane className="h-4 w-4 flex-shrink-0 text-slate-400" />
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-slate-800 truncate">{airport.name}</p>
+                        <p className="text-xs text-slate-500">
+                          {airport.distance_km} km · {airport.travel_time}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 4. THINGS TO DO */}
+            {aiEnrichment?.things_to_do && aiEnrichment.things_to_do.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.15em] text-slate-400 mb-3">
+                  Things to Do
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {aiEnrichment.things_to_do.slice(0, 6).map((item) => (
+                    <span
+                      key={item}
+                      className="inline-block rounded-full border border-green-100 bg-green-50 px-3 py-1 text-xs font-medium text-green-800"
+                    >
+                      {item}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 5. DINING & NIGHTLIFE */}
+            {aiEnrichment?.dining_nightlife && aiEnrichment.dining_nightlife.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.15em] text-slate-400 mb-3">
+                  Dining &amp; Nightlife
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {aiEnrichment.dining_nightlife.map((item) => (
+                    <span
+                      key={item}
+                      className="inline-block rounded-full border border-orange-100 bg-orange-50 px-3 py-1 text-xs font-medium text-orange-800"
+                    >
+                      {item}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 6. TOP ATTRACTIONS */}
+            {aiEnrichment?.top_attractions && aiEnrichment.top_attractions.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.15em] text-slate-400 mb-3">
+                  Attractions Nearby
+                </p>
+                <ol className="space-y-1.5">
+                  {aiEnrichment.top_attractions.slice(0, 5).map((item, i) => (
+                    <li key={item} className="flex items-start gap-2 text-sm text-slate-500">
+                      <span className="flex-shrink-0 font-semibold text-slate-300">{i + 1}.</span>
+                      {item}
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            )}
+
+            {/* Existing connectivity_details */}
             {locationData?.connectivityDetails && (
               <ConnectivityDetails
                 content={locationData.connectivityDetails}
@@ -562,9 +684,9 @@ export default function MicroMarketPageContent({
               />
             )}
 
-            {/* FIX 1: commute_matrix grid from DB */}
+            {/* Existing commute matrix */}
             {locationData?.commuteMatrix && locationData.commuteMatrix.length > 0 && (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {locationData.commuteMatrix.map((entry) => (
                   <div key={entry.destination} className="bg-slate-50 rounded-lg p-3">
                     <p className="text-xs text-slate-500 uppercase tracking-wide">
@@ -579,9 +701,9 @@ export default function MicroMarketPageContent({
               </div>
             )}
 
-            {/* Amenity chips */}
+            {/* Amenity chips — Hyderabad markets */}
             {amenities && (amenities.schools || amenities.hospitals || amenities.dailyConveniences || amenities.pharmacy) && (
-              <div className="flex flex-wrap gap-2 mb-4">
+              <div className="flex flex-wrap gap-2">
                 {amenities.schools && (
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-green-50 border border-green-200 px-3 py-1 text-xs font-medium text-green-700">
                     <School className="h-3.5 w-3.5" />
@@ -609,9 +731,9 @@ export default function MicroMarketPageContent({
               </div>
             )}
 
-            {/* Map — CHANGE 3: moved here from hero */}
+            {/* Google Maps embed */}
             {mapEmbedUrl && (
-              <div className="rounded-xl overflow-hidden border border-slate-200 h-64 w-full mt-2">
+              <div className="rounded-xl overflow-hidden border border-slate-200 h-64 w-full">
                 <iframe
                   src={mapEmbedUrl}
                   width="100%"
@@ -624,7 +746,7 @@ export default function MicroMarketPageContent({
               </div>
             )}
 
-            <p className="text-xs text-slate-400 mt-3">Source: RERA + Market Data</p>
+            <p className="text-xs text-slate-400">Source: RERA + Market Data</p>
           </div>
         </section>
 
