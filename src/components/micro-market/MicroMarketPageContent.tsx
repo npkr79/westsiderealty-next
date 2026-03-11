@@ -3,7 +3,7 @@ import { ProjectsInMarketWithSkeleton } from "./ProjectsInMarketAsync";
 import type { MicroMarketViewModel } from "@/services/microMarketViewModel";
 import FaqAccordion from "./FaqAccordion";
 import ConnectivityDetails from "./ConnectivityDetails";
-import { MessageCircle, Phone, School, Hospital, ShoppingBag, Pill, Shield, Database, CheckCircle2 } from "lucide-react";
+import { School, Hospital, ShoppingBag, Pill, Shield, Database, CheckCircle2 } from "lucide-react";
 
 function buildMapEmbedUrl(lat: number, lng: number): string {
   return `https://maps.google.com/maps?q=${lat},${lng}&z=14&output=embed`;
@@ -1037,60 +1037,6 @@ export default function MicroMarketPageContent({
           </section>
         )}
 
-        {/* CTA STRIP — desktop inline */}
-        <section className="py-8 mt-6 border-t border-gray-100 hidden sm:block mb-8">
-          <div className="rounded-xl border border-gray-200 bg-white p-8 text-center">
-            <h2 className="text-xl font-bold text-slate-900">
-              Buying in {hero.name}? Talk to a local specialist.
-            </h2>
-            <p className="mt-2 text-sm text-gray-500">
-              Our advisors know this corridor deeply.
-            </p>
-            <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
-              <a
-                href="https://wa.me/917702455243"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center justify-center gap-2 rounded-lg bg-green-600 px-6 py-3 text-sm font-semibold text-white hover:bg-green-700 transition-colors"
-              >
-                <MessageCircle className="h-4 w-4" />
-                WhatsApp Us
-              </a>
-              <a
-                href="/contact"
-                className="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-300 px-6 py-3 text-sm font-semibold text-slate-800 hover:bg-gray-50 transition-colors"
-              >
-                <Phone className="h-4 w-4" />
-                Request Callback
-              </a>
-            </div>
-          </div>
-        </section>
-      </div>
-
-      {/* CTA STRIP — mobile sticky */}
-      <div className="sm:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 p-4">
-        <p className="text-xs font-semibold text-slate-800 text-center mb-3">
-          Buying in {hero.name}? Talk to a specialist.
-        </p>
-        <div className="flex gap-3">
-          <a
-            href="https://wa.me/917702455243"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-2.5 text-sm font-semibold text-white"
-          >
-            <MessageCircle className="h-4 w-4" />
-            WhatsApp
-          </a>
-          <a
-            href="/contact"
-            className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-semibold text-slate-800"
-          >
-            <Phone className="h-4 w-4" />
-            Callback
-          </a>
-        </div>
       </div>
 
       {/* Existing JSON-LD */}

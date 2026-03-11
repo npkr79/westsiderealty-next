@@ -1,23 +1,15 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
 import { useState } from "react";
 
 interface StickyOfferBannerProps {
   message?: string;
-  ctaLabel?: string;
-  onCtaClick?: () => void;
-  onUnlockClick?: () => void;
 }
 
 export default function StickyOfferBanner({
   message = "Limited-time launch offers available. Talk to our team today.",
-  ctaLabel = "Request Callback",
-  onCtaClick,
-  onUnlockClick,
 }: StickyOfferBannerProps) {
-  const handleClick = onUnlockClick || onCtaClick;
   const [visible, setVisible] = useState(true);
   if (!visible) return null;
 
@@ -32,12 +24,7 @@ export default function StickyOfferBanner({
           <X className="h-4 w-4" />
         </button>
         <p className="flex-1 text-sm font-medium">{message}</p>
-        <Button size="sm" variant="secondary" onClick={handleClick}>
-          {ctaLabel}
-        </Button>
       </div>
     </div>
   );
 }
-
-

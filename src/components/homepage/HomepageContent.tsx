@@ -5,8 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ArrowRight,
-  MessageCircle,
-  Phone,
   MapPin,
   Building2,
 } from "lucide-react";
@@ -1037,42 +1035,13 @@ function CTASection() {
         </h2>
 
         <p
-          className="mt-4 mb-8"
+          className="mt-4"
           style={{ fontSize: 16, color: "#94a3b8", lineHeight: 1.75 }}
         >
           Our advisors have walked every street in Hyderabad. Get a free
           30-minute consultation — we&apos;ll map the right markets to your
           budget, timeline, and goals.
         </p>
-
-        <div className="flex flex-wrap justify-center gap-3">
-          <a
-            href="https://wa.me/917702455243"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 rounded-xl font-semibold text-white transition-all duration-200"
-            style={{ fontSize: 14, padding: "14px 24px", background: "#22c55e" }}
-            onMouseEnter={e => ((e.currentTarget as HTMLElement).style.background = "#4ade80")}
-            onMouseLeave={e => ((e.currentTarget as HTMLElement).style.background = "#22c55e")}
-          >
-            <MessageCircle className="h-4 w-4" />
-            💬 WhatsApp Us
-          </a>
-          <Link
-            href="/contact"
-            className="inline-flex items-center gap-2 rounded-xl transition-all duration-200"
-            style={{
-              fontSize: 14,
-              padding: "14px 24px",
-              background: "transparent",
-              border: "1px solid rgba(255,255,255,0.15)",
-              color: "#cbd5e1",
-            }}
-          >
-            <Phone className="h-4 w-4" />
-            Request Callback
-          </Link>
-        </div>
 
         {/* Trust row */}
         <div className="flex flex-wrap justify-center gap-6 mt-8">
