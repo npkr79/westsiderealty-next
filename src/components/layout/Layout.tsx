@@ -8,9 +8,10 @@ import AuditModeController from "@/components/audit/AuditModeController";
 interface LayoutProps {
   children: React.ReactNode;
   className?: string;
+  header?: React.ReactNode;
 }
 
-const Layout = ({ children, className }: LayoutProps) => {
+const Layout = ({ children, className, header }: LayoutProps) => {
   const pathname = usePathname();
   const isCrmRoute =
     pathname?.startsWith("/dashboard") ||
@@ -27,7 +28,7 @@ const Layout = ({ children, className }: LayoutProps) => {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <AuditModeController />
-      <Header />
+      {header ?? <Header />}
       <main className={`flex-grow ${className}`}>
         {children}
       </main>

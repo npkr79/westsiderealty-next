@@ -9,6 +9,7 @@ import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/s
 import { ChevronDown, Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { siteImagesService } from "@/services/admin/siteImagesService";
+import type { NavMarketCity } from "@/lib/nav/getNavMarkets";
 
 function badgeClass(badge: string) {
   if (badge === "HOT") return "bg-red-500/20 text-red-300 border border-red-400/30";
@@ -23,39 +24,7 @@ type NavItem =
   | { label: string; href: string; description: string; links: NavLink[]; cta: { label: string; href: string } }
   | { label: string; href: string; description?: never; links?: never; cta?: never };
 
-const NAV_ITEMS: NavItem[] = [
-  {
-    label: "Hyderabad Markets",
-    href: "/hyderabad/markets",
-    description: "Live price intelligence across Hyderabad's fastest-growing corridors",
-    links: [
-      { label: "Gachibowli", href: "/hyderabad/gachibowli", badge: "HOT" },
-      { label: "Financial District", href: "/hyderabad/financial-district", badge: "HOT" },
-      { label: "Kokapet", href: "/hyderabad/kokapet", badge: "NEW" },
-      { label: "Narsingi", href: "/hyderabad/narsingi" },
-      { label: "Kondapur", href: "/hyderabad/kondapur" },
-      { label: "Tellapur", href: "/hyderabad/tellapur" },
-      { label: "Puppalaguda", href: "/hyderabad/puppalaguda" },
-      { label: "Kollur", href: "/hyderabad/kollur" },
-    ],
-    cta: { label: "View all 19 markets →", href: "/hyderabad/markets" },
-  },
-  {
-    label: "Goa Markets",
-    href: "/goa/micro-markets",
-    description: "Holiday homes, villas and investment properties across Goa's top micro-markets",
-    links: [
-      { label: "Calangute", href: "/goa/calangute", badge: "HOT" },
-      { label: "Assagao",   href: "/goa/assagao",   badge: "HOT" },
-      { label: "Anjuna",    href: "/goa/anjuna" },
-      { label: "Baga",      href: "/goa/baga" },
-      { label: "Vagator",   href: "/goa/vagator" },
-      { label: "Candolim",  href: "/goa/candolim" },
-      { label: "Siolim",    href: "/goa/siolim" },
-      { label: "Morjim",    href: "/goa/morjim" },
-    ],
-    cta: { label: "View all 34 Goa markets →", href: "/goa/micro-markets" },
-  },
+const STATIC_NAV_ITEMS: NavItem[] = [
   {
     label: "Projects",
     href: "/hyderabad/projects",
@@ -131,7 +100,21 @@ function getCityFromPathname(pathname: string): string {
   return KNOWN_CITY_SLUGS.has(first) ? first : "hyderabad";
 }
 
-const Header = () => {
+interface HeaderProps {
+  navMarkets?: NavMarketCity[];
+}
+
+const Header = ({ navMarkets = [] }: HeaderProps) => {
+  const marketNavItems: NavItem[] = navMarkets.map((city) => ({
+    label: city.label,
+    href: city.href,
+    description: city.description,
+    links: city.markets,
+    cta: city.cta,
+  }));
+
+  const NAV_ITEMS: NavItem[] = [...marketNavItems, ...STATIC_NAV_ITEMS];
+
   const [isOpen, setIsOpen] = useState(false);
   const [expandedMobileSection, setExpandedMobileSection] = useState<string | null>(null);
   const [imgError, setImgError] = useState(false);
