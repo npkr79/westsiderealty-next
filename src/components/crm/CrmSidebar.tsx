@@ -4,31 +4,38 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, Users, Kanban, MessageCircle, Zap,
   TrendingUp, Bell, GitBranch, Shuffle, CheckSquare,
-  Calendar, Settings, X, Activity,
+  Calendar, Settings, X, Activity, UserCircle,
 } from "lucide-react";
 
 const navItems = [
-  { href: "/dashboard/agent", icon: LayoutDashboard, label: "Dashboard" },
-  { href: "/leads", icon: Users, label: "Leads" },
-  { href: "/pipeline", icon: Kanban, label: "Pipeline" },
-  { href: "/crm/whatsapp", icon: MessageCircle, label: "WhatsApp" },
-  { href: "/dashboard/automation", icon: Zap, label: "Automation" },
-  { href: "/crm/revenue-dashboard", icon: TrendingUp, label: "Revenue" },
-  { href: "/dashboard/alerts", icon: Bell, label: "Alerts" },
-  { href: "/journeys", icon: GitBranch, label: "Journeys" },
-  { href: "/routing", icon: Shuffle, label: "Routing" },
-  { href: "/tasks", icon: CheckSquare, label: "Tasks" },
-  { href: "/calendar", icon: Calendar, label: "Calendar" },
-  { href: "/dashboard/admin/seo", icon: Activity, label: "Site Health" },
-  { href: "/settings", icon: Settings, label: "Settings" },
+  { href: "/dashboard/agent", icon: LayoutDashboard, label: "Dashboard", roles: ["admin","sales_head","team_lead","agent","marketing","analyst","channel_partner"] },
+  { href: "/leads", icon: Users, label: "Leads", roles: ["admin","sales_head","team_lead","agent","marketing","analyst","channel_partner"] },
+  { href: "/pipeline", icon: Kanban, label: "Pipeline", roles: ["admin","sales_head","team_lead","agent","analyst","channel_partner"] },
+  { href: "/crm/whatsapp", icon: MessageCircle, label: "WhatsApp", roles: ["admin","sales_head","team_lead","agent"] },
+  { href: "/dashboard/automation", icon: Zap, label: "Automation", roles: ["admin","sales_head"] },
+  { href: "/crm/revenue-dashboard", icon: TrendingUp, label: "Revenue", roles: ["admin","sales_head","team_lead","analyst"] },
+  { href: "/dashboard/alerts", icon: Bell, label: "Alerts", roles: ["admin","sales_head","team_lead","agent"] },
+  { href: "/journeys", icon: GitBranch, label: "Journeys", roles: ["admin","sales_head","marketing"] },
+  { href: "/routing", icon: Shuffle, label: "Routing", roles: ["admin","sales_head"] },
+  { href: "/tasks", icon: CheckSquare, label: "Tasks", roles: ["admin","sales_head","team_lead","agent"] },
+  { href: "/calendar", icon: Calendar, label: "Calendar", roles: ["admin","sales_head","team_lead","agent"] },
+  { href: "/dashboard/admin/seo", icon: Activity, label: "Site Health", roles: ["admin"] },
+  { href: "/profile", icon: UserCircle, label: "My Profile", roles: ["admin","sales_head","team_lead","agent","marketing","analyst","channel_partner"] },
+  { href: "/settings", icon: Settings, label: "Settings", roles: ["admin","sales_head","team_lead","agent","marketing","analyst","channel_partner"] },
 ];
 
 interface CrmSidebarProps {
   onClose?: () => void;
+  role?: string | null;
 }
 
-export default function CrmSidebar({ onClose }: CrmSidebarProps) {
+export default function CrmSidebar({ onClose, role }: CrmSidebarProps) {
   const pathname = usePathname();
+
+  const visibleItems = role
+    ? navItems.filter((item) => item.roles.includes(role))
+    : navItems;
+
   return (
     <aside className="flex flex-col h-full bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800">
       {/* Header */}
@@ -48,12 +55,14 @@ export default function CrmSidebar({ onClose }: CrmSidebarProps) {
       </div>
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto py-3 px-2">
-        {navItems.map(({ href, icon: Icon, label }) => {
-          const active = pathname.startsWith(href);
+        {visibleItems.map(({ href, icon: Icon, label }) => {
+          const resolvedHref =
+            label === "Settings" && role !== "admin" ? "/settings/personal" : href;
+          const active = pathname.startsWith(resolvedHref);
           return (
             <Link
               key={href}
-              href={href}
+              href={resolvedHref}
               onClick={onClose}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-lg mb-0.5 text-sm font-medium transition-colors ${
                 active

@@ -29,7 +29,7 @@ export default function CrmShell({ user, children }: CrmShellProps) {
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         } md:block`}
       >
-        <CrmSidebar onClose={() => setSidebarOpen(false)} />
+        <CrmSidebar onClose={() => setSidebarOpen(false)} role={user.role} />
       </div>
       {/* Main content */}
       <div className="md:ml-64 flex flex-col min-h-screen">
