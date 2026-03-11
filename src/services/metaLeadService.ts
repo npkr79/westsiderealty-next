@@ -335,6 +335,32 @@ export async function processMetaLead(
         sourceName: "facebook_lead_ads",
         projectId: null,
       });
+
+      const { data: assignedLead } = await supabase
+        .from("crm_leads")
+        .select("assigned_to")
+        .eq("id", crmLeadId)
+        .maybeSingle();
+
+      const assignedTo = assignedLead?.assigned_to;
+      if (assignedTo) {
+        await sendPushToUser(
+          assignedTo,
+          "🔔 New Lead!",
+          `${name} • ${phone}`,
+          `/leads/${crmLeadId}`
+        ).catch((err) => console.error("[Push] Failed:", err));
+
+        const PRAVEEN_ID = "9021aff0-6ba3-4f7b-852f-561862fbc1ac";
+        if (assignedTo !== PRAVEEN_ID) {
+          await sendPushToUser(
+            PRAVEEN_ID,
+            "New Lead Assigned",
+            `New lead assigned — ${name}`,
+            `/leads/${crmLeadId}`
+          ).catch((err) => console.error("[Push] Praveen alert failed:", err));
+        }
+      }
     }
 
     await assignDefaultStageAndAutomation(crmLeadId);
