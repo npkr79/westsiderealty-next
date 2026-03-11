@@ -270,8 +270,13 @@ export async function processMetaLead(
       .single();
 
     if (insertError || !insertedLead) {
-      console.log("[Meta] Duplicate lead blocked at insert — skipping push");
-      return { rawLeadId, crmLeadId: null };
+      if (insertError?.code === "23505") {
+        // Genuine duplicate — skip silently
+        console.log("[Meta] Duplicate lead blocked at insert — skipping push");
+        return { rawLeadId, crmLeadId: null };
+      }
+      // Real error — throw so catch block handles it properly
+      throw new Error(insertError?.message ?? "Failed to create CRM lead");
     }
 
     const crmLeadId = String(insertedLead.id);
