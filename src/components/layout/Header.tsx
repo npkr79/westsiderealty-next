@@ -21,8 +21,9 @@ function badgeClass(badge: string) {
 
 type NavLink = { label: string; href: string; badge?: string };
 type NavItem =
-  | { label: string; href: string; description: string; links: NavLink[]; cta: { label: string; href: string } }
-  | { label: string; href: string; description?: never; links?: never; cta?: never };
+  | { label: string; href: string; isMegaMenu: true; cities: NavMarketCity[]; description?: never; links?: never; cta?: never }
+  | { label: string; href: string; isMegaMenu?: never; description: string; links: NavLink[]; cta: { label: string; href: string } }
+  | { label: string; href: string; isMegaMenu?: never; description?: never; links?: never; cta?: never };
 
 const STATIC_NAV_ITEMS: NavItem[] = [
   {
@@ -105,15 +106,10 @@ interface HeaderProps {
 }
 
 const Header = ({ navMarkets = [] }: HeaderProps) => {
-  const marketNavItems: NavItem[] = navMarkets.map((city) => ({
-    label: city.label,
-    href: city.href,
-    description: city.description,
-    links: city.markets,
-    cta: city.cta,
-  }));
-
-  const NAV_ITEMS: NavItem[] = [...marketNavItems, ...STATIC_NAV_ITEMS];
+  const marketsItem: NavItem = { label: "Markets", href: "#", isMegaMenu: true, cities: navMarkets };
+  const NAV_ITEMS: NavItem[] = navMarkets.length > 0
+    ? [marketsItem, ...STATIC_NAV_ITEMS]
+    : STATIC_NAV_ITEMS;
 
   const [isOpen, setIsOpen] = useState(false);
   const [expandedMobileSection, setExpandedMobileSection] = useState<string | null>(null);
@@ -196,12 +192,59 @@ const Header = ({ navMarkets = [] }: HeaderProps) => {
                       )}
                     >
                       {item.label}
-                      {item.links && (
+                      {(item.links || item.isMegaMenu) && (
                         <ChevronDown className="h-3 w-3 opacity-50 transition-transform duration-200 group-hover:rotate-180 group-hover:opacity-100" />
                       )}
                     </Link>
 
-                    {/* Mega menu — only for items with links */}
+                    {/* Multi-city mega-menu */}
+                    {item.isMegaMenu && item.cities.length > 0 && (() => {
+                      const cols = Math.min(item.cities.length, 4);
+                      const widthMap: Record<number, string> = { 1: "260px", 2: "520px", 3: "740px", 4: "940px" };
+                      const gridCols: Record<number, string> = { 1: "grid-cols-1", 2: "grid-cols-2", 3: "grid-cols-3", 4: "grid-cols-4" };
+                      return (
+                        <div
+                          className={`invisible absolute left-0 top-[calc(100%+6px)] z-50 rounded-2xl border border-white/10 bg-[#0d0d0d]/98 p-5 opacity-0 -translate-y-1 shadow-[0_24px_60px_rgba(0,0,0,0.7)] backdrop-blur-xl transition-all duration-200 group-hover:visible group-hover:translate-y-0 group-hover:opacity-100`}
+                          style={{ minWidth: widthMap[cols] }}
+                        >
+                          <div className={`grid ${gridCols[cols]} gap-x-6 gap-y-0 divide-x divide-white/8`}>
+                            {item.cities.map((city) => (
+                              <div key={city.citySlug} className="px-3 first:pl-0 last:pr-0">
+                                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400 mb-2">
+                                  {city.citySlug.charAt(0).toUpperCase() + city.citySlug.slice(1)}
+                                </p>
+                                <ul className="space-y-0.5 mb-3">
+                                  {city.markets.slice(0, 6).map((m) => (
+                                    <li key={m.href}>
+                                      <Link
+                                        href={m.href}
+                                        className="flex items-center justify-between rounded-lg px-2 py-1.5 text-[13px] text-slate-300 hover:text-white hover:bg-white/8 transition-colors duration-150"
+                                      >
+                                        <span>{m.label}</span>
+                                        {m.badge && (
+                                          <span className={cn("rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide", badgeClass(m.badge))}>
+                                            {m.badge}
+                                          </span>
+                                        )}
+                                      </Link>
+                                    </li>
+                                  ))}
+                                </ul>
+                                <Link
+                                  href={city.href}
+                                  className="block px-2 text-[11px] font-semibold transition-colors"
+                                  style={{ color: "#c8a96e" }}
+                                >
+                                  {city.cta.label}
+                                </Link>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {/* Standard single-city dropdown */}
                     {item.links && (
                       <div className="invisible absolute left-1/2 -translate-x-1/2 top-[calc(100%+6px)] z-50 w-[400px] rounded-2xl border border-white/10 bg-[#0d0d0d]/98 p-5 opacity-0 -translate-y-1 shadow-[0_24px_60px_rgba(0,0,0,0.7)] backdrop-blur-xl transition-all duration-200 group-hover:visible group-hover:translate-y-0 group-hover:opacity-100">
                         <p className="text-[11px] text-slate-500 mb-4 leading-relaxed">{item.description}</p>
@@ -286,6 +329,57 @@ const Header = ({ navMarkets = [] }: HeaderProps) => {
                   <div className="mt-8 flex-1 overflow-y-auto px-4 pb-6 space-y-2">
                     {NAV_ITEMS.map((item) => {
                       const isExpanded = expandedMobileSection === item.label;
+
+                      // Multi-city mega-menu (mobile: expandable list of cities + their markets)
+                      if (item.isMegaMenu) {
+                        return (
+                          <div key="markets-mega" className="rounded-lg border border-white/10 bg-white/[0.03]">
+                            <button
+                              type="button"
+                              className="flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-sm font-semibold uppercase tracking-[0.14em] text-slate-300 hover:text-white transition-colors"
+                              onClick={() => setExpandedMobileSection((prev) => prev === item.label ? null : item.label)}
+                            >
+                              <span>{item.label}</span>
+                              <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", isExpanded ? "rotate-180" : "")} />
+                            </button>
+                            {isExpanded && (
+                              <div className="px-2 pb-2 space-y-3">
+                                {item.cities.map((city) => (
+                                  <div key={city.citySlug}>
+                                    <p className="px-2 pt-2 pb-1 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">
+                                      {city.citySlug.charAt(0).toUpperCase() + city.citySlug.slice(1)}
+                                    </p>
+                                    {city.markets.slice(0, 6).map((m) => (
+                                      <Link
+                                        key={m.href}
+                                        href={m.href}
+                                        className="flex items-center justify-between rounded-md px-2 py-1.5 text-sm text-slate-300 hover:text-white hover:bg-white/10 transition-colors"
+                                        onClick={() => setIsOpen(false)}
+                                      >
+                                        <span>{m.label}</span>
+                                        {m.badge && (
+                                          <span className={cn("rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase", badgeClass(m.badge))}>
+                                            {m.badge}
+                                          </span>
+                                        )}
+                                      </Link>
+                                    ))}
+                                    <Link
+                                      href={city.href}
+                                      className="block px-2 py-1.5 text-[11px] font-semibold"
+                                      style={{ color: "#c8a96e" }}
+                                      onClick={() => setIsOpen(false)}
+                                    >
+                                      {city.cta.label}
+                                    </Link>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      }
+
                       // Direct link — no dropdown
                       if (!item.links) {
                         return (
@@ -303,6 +397,8 @@ const Header = ({ navMarkets = [] }: HeaderProps) => {
                           </div>
                         );
                       }
+
+                      // Standard dropdown
                       return (
                         <div key={item.href} className="rounded-lg border border-white/10 bg-white/[0.03]">
                           <button
