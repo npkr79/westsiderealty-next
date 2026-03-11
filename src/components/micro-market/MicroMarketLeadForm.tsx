@@ -18,10 +18,14 @@ const BUDGET_OPTIONS = [
 interface MicroMarketLeadFormProps {
   marketName: string;
   citySlug: string;
+  notes?: string;
+  sourceId?: string;
 }
 
 export default function MicroMarketLeadForm({
   marketName,
+  notes,
+  sourceId,
 }: MicroMarketLeadFormProps) {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -58,9 +62,10 @@ export default function MicroMarketLeadForm({
         source_page: sourcePage,
         details: {
           location_preference: marketName,
-          notes: `Micro-market inquiry: ${marketName}`,
+          notes: notes ?? `Micro-market inquiry: ${marketName}`,
           budgetBand: budget,
           budgetRange: budget,
+          ...(sourceId ? { source_id: sourceId } : {}),
         },
       });
       setStatus(result.success ? "success" : "error");

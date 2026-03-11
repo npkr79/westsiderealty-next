@@ -31,6 +31,7 @@ import { generateUnifiedSchema } from "@/lib/seo-utils";
 import { optimizeSupabaseImage } from "@/utils/imageOptimization";
 import SmartLinkGrid from "@/components/shared/SmartLinkGrid";
 import { createServiceClient } from "@/lib/supabase/serviceClient";
+import MicroMarketLeadForm from "@/components/micro-market/MicroMarketLeadForm";
 
 interface PageProps {
   params: Promise<{ citySlug: string }>;
@@ -281,24 +282,26 @@ export default async function CityPage({ params }: PageProps) {
                     className="text-base px-8 shadow-lg hover:shadow-xl transition-shadow bg-primary hover:bg-primary/90"
                     asChild
                   >
-                    <Link
-                      href={
-                        city.city_name.toLowerCase() === "goa"
-                          ? "/goa/buy"
-                          : `/${slug}/buy`
-                      }
+                    {city.city_name.toLowerCase() === "goa" ? (
+                      <Link href="/goa/micro-markets">
+                        View All Markets <ArrowRight className="ml-2 h-5 w-5" />
+                      </Link>
+                    ) : (
+                      <Link href={`/${slug}/buy`}>
+                        View All Properties <ArrowRight className="ml-2 h-5 w-5" />
+                      </Link>
+                    )}
+                  </Button>
+                  {city.city_name.toLowerCase() !== "goa" && (
+                    <Button
+                      size="lg"
+                      variant="secondary"
+                      className="text-base px-8 shadow-lg hover:shadow-xl transition-shadow"
+                      asChild
                     >
-                      View All Properties <ArrowRight className="ml-2 h-5 w-5" />
-                    </Link>
-                  </Button>
-                  <Button
-                    size="lg"
-                    variant="secondary"
-                    className="text-base px-8 shadow-lg hover:shadow-xl transition-shadow"
-                    asChild
-                  >
-                    <Link href="/contact">Talk to Our Team</Link>
-                  </Button>
+                      <Link href="/contact">Talk to Our Team</Link>
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>
@@ -486,6 +489,16 @@ export default async function CityPage({ params }: PageProps) {
             </div>
           </div>
         </section>
+      )}
+
+      {/* Lead Capture Form — Goa only */}
+      {city.city_name.toLowerCase() === "goa" && (
+        <MicroMarketLeadForm
+          marketName="Goa"
+          citySlug="goa"
+          notes="Goa city page inquiry"
+          sourceId="c3b72f38-171b-4ce6-a060-f40beed8bdb4"
+        />
       )}
 
       {/* FAQs */}
