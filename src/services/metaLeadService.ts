@@ -243,6 +243,7 @@ export async function processMetaLead(
     email,
     source_id: sourceId,
     fb_lead_id: leadgenId,
+    meta_leadgen_id: leadgenId,
     source_type: "meta",
     source_channel: "facebook_lead_ads",
     assignment_status: formAgentId ? "assigned" : "pending",
