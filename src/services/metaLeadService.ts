@@ -329,20 +329,16 @@ export async function processMetaLead(
         ).catch((err) => console.error("[Push] Praveen alert failed:", err));
       }
     } else {
-      await routeLeadByOwnership({
+      const routingResult = await routeLeadByOwnership({
         leadId: crmLeadId,
         sourceType: "meta",
         sourceName: "facebook_lead_ads",
         projectId: null,
       });
 
-      const { data: assignedLead } = await supabase
-        .from("crm_leads")
-        .select("assigned_to")
-        .eq("id", crmLeadId)
-        .maybeSingle();
+      console.log("[Push Debug] Routing result:", JSON.stringify(routingResult));
 
-      const assignedTo = assignedLead?.assigned_to;
+      const assignedTo = routingResult.agentId;
       if (assignedTo) {
         await sendPushToUser(
           assignedTo,
