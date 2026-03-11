@@ -87,7 +87,7 @@ export default async function MicroMarketPage({ params }: PageProps) {
       .then(({ data }: { data: Record<string, unknown> | null }) => data),
     supabase
       .from("micro_market_ai_enrichment" as never)
-      .select("market_maturity, builder_activity, buyer_profile, rental_yield_min, rental_yield_max, price_per_sqft_current, market_summary, top_developers, market_risks, confidence, zone_type, market_character, price_band_current, buyer_profile_detail, lifestyle_score, possession_wait, best_for, appreciation_5yr, rental_yield_detail, entry_timing, entry_reasoning, employment_drivers, infrastructure_pipeline, social_infrastructure, risk_level, primary_risk, secondary_risks, bull_case, bear_case, analyst_recommendation, commercial_rental_yield_min, commercial_rental_yield_max, commercial_rental_yield_detail, fetched_at")
+      .select("market_maturity, builder_activity, buyer_profile, rental_yield_min, rental_yield_max, price_per_sqft_current, market_summary, top_developers, market_risks, confidence, zone_type, market_character, price_band_current, buyer_profile_detail, lifestyle_score, possession_wait, best_for, appreciation_5yr, rental_yield_detail, entry_timing, entry_reasoning, employment_drivers, infrastructure_pipeline, social_infrastructure, risk_level, primary_risk, secondary_risks, bull_case, bear_case, analyst_recommendation, commercial_rental_yield_min, commercial_rental_yield_max, commercial_rental_yield_detail, fetched_at, lifestyle_summary, nearest_beaches, top_attractions, airport_distances, things_to_do, dining_nightlife")
       .eq("micro_market_id", cache.id)
       .maybeSingle()
       .then(({ data }: { data: Record<string, unknown> | null }) => data),
