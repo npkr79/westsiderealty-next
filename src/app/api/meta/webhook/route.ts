@@ -89,8 +89,13 @@ export async function POST(request: Request) {
         .insert({ leadgen_id: leadgenId });
 
       if (dedupError) {
-        console.log(`[Meta Webhook] Atomic dedup blocked: ${leadgenId}`);
-        continue;
+        // Only skip if it's a unique violation (duplicate) — PostgreSQL code 23505
+        if (dedupError.code === "23505") {
+          console.log(`[Meta Webhook] Atomic dedup blocked duplicate: ${leadgenId}`);
+          continue;
+        }
+        // Any other error (RLS, permissions, network) — log but continue processing
+        console.error(`[Meta Webhook] Dedup table error (non-fatal): ${dedupError.message}`);
       }
 
       // 3. Secondary check — crm_leads fb_lead_id (belt-and-suspenders)
