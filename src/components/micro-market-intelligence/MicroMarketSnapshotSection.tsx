@@ -4,8 +4,15 @@ import SnapshotAuthorityBlock from "./SnapshotAuthorityBlock";
 import SnapshotGroup from "./SnapshotGroup";
 import SnapshotMetricCard from "./SnapshotMetricCard";
 
+function getReraLabel(citySlug: string): string {
+  if (citySlug === "goa") return "Goa RERA";
+  if (citySlug === "hyderabad") return "Telangana RERA";
+  return "RERA";
+}
+
 interface MicroMarketSnapshotSectionProps {
   microMarketSlug: string;
+  citySlug: string;
 }
 
 const formatNumber = (value: number | null, decimals: number = 0): string | null => {
@@ -78,6 +85,7 @@ export function MicroMarketSnapshotLoading() {
 
 export default async function MicroMarketSnapshotSection({
   microMarketSlug,
+  citySlug,
 }: MicroMarketSnapshotSectionProps) {
   const snapshot = await getMicroMarketSnapshotV1(microMarketSlug);
 
@@ -92,11 +100,11 @@ export default async function MicroMarketSnapshotSection({
               Micro-Market Intelligence Snapshot
             </h2>
             <p className="mt-1 text-sm text-slate-500">
-              Structural overview based on Telangana RERA registered developments
+              Structural overview based on {getReraLabel(citySlug)} registered developments
             </p>
           </div>
           <div className="text-xs text-slate-500">
-            <div>Source: Telangana RERA</div>
+            <div>Source: {getReraLabel(citySlug)}</div>
             <div>Last updated: {lastUpdated}</div>
           </div>
         </div>
@@ -129,11 +137,11 @@ export default async function MicroMarketSnapshotSection({
             Micro-Market Intelligence Snapshot
           </h2>
           <p className="mt-1 text-sm text-slate-500">
-            Structural overview based on Telangana RERA registered developments
+            Structural overview based on {getReraLabel(citySlug)} registered developments
           </p>
         </div>
         <div className="text-xs text-slate-500">
-          <div>Source: Telangana RERA</div>
+          <div>Source: {getReraLabel(citySlug)}</div>
           <div>Last updated: {lastUpdated}</div>
         </div>
       </div>
