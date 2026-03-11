@@ -112,12 +112,7 @@ export default async function MicroMarketPage({ params }: PageProps) {
   const aiRaw = aiEnrichmentRaw as Record<string, unknown> | null;
   const derivedVelocityScore = ((): number | null => {
     if (cache.velocity_score != null) return null; // don't override
-    const ba = String(aiRaw?.builder_activity ?? "").toLowerCase();
-    if (ba.includes("very active")) return 85;
-    if (ba.includes("high") || ba.includes("active")) return 65;
-    if (ba.includes("moderate")) return 45;
-    if (projectIds.length > 0) return 20;
-    return null;
+    return null; // no reliable text-based fallback — hide stat when DB value absent
   })();
 
   const augmentedCache = {

@@ -223,11 +223,11 @@ export default function MicroMarketPageContent({
           value: supplyDevelopment.projectActivity != null ? String(supplyDevelopment.projectActivity) : "—",
           subtitle: "registered since 2017",
         },
-        {
+        ...(supplyDevelopment.velocityScore != null ? [{
           label: "Market Activity",
-          value: supplyDevelopment.velocityScore != null ? String(supplyDevelopment.velocityScore) : "—",
+          value: String(supplyDevelopment.velocityScore),
           subtitle: velocityLabel(supplyDevelopment.velocityScore),
-        },
+        }] : []),
         // FIX 3: Hide "New Builders: 0" for Established/Peak — expected and not useful
         ...(developerCapital.institutionalEntry != null && developerCapital.institutionalEntry > 0
           ? [{ label: "New Builders", value: String(developerCapital.institutionalEntry), subtitle: "developers entered recently" }]
@@ -248,11 +248,11 @@ export default function MicroMarketPageContent({
           value: supplyDevelopment.projectActivity != null ? String(supplyDevelopment.projectActivity) : "—",
           subtitle: "new projects in this corridor",
         },
-        {
+        ...(supplyDevelopment.velocityScore != null ? [{
           label: "Market Activity",
-          value: supplyDevelopment.velocityScore != null ? String(supplyDevelopment.velocityScore) : "—",
+          value: String(supplyDevelopment.velocityScore),
           subtitle: velocityLabel(supplyDevelopment.velocityScore),
-        },
+        }] : []),
       ];
     }
     // Emerging or null — full set
@@ -267,11 +267,11 @@ export default function MicroMarketPageContent({
         value: demandLiquidity.completion != null ? `${Math.round(demandLiquidity.completion * 100)}%` : "—",
         subtitle: "projects delivered so far",
       },
-      {
+      ...(supplyDevelopment.velocityScore != null ? [{
         label: "Market Activity",
-        value: supplyDevelopment.velocityScore != null ? String(supplyDevelopment.velocityScore) : "—",
+        value: String(supplyDevelopment.velocityScore),
         subtitle: "activity score out of 100",
-      },
+      }] : []),
       {
         label: "New Builders",
         value: developerCapital.institutionalEntry != null ? String(developerCapital.institutionalEntry) : "—",
@@ -434,11 +434,35 @@ export default function MicroMarketPageContent({
                 )}
               </div>
               <div className="px-3 sm:px-6">
-                <p className="text-slate-400 text-xs uppercase tracking-wide">Annual Growth</p>
-                <p className="text-white text-lg sm:text-2xl font-bold mt-1 whitespace-nowrap">
-                  {formatPctShort(hero.growth.min, hero.growth.max)}
-                </p>
-                <p className="text-slate-400 text-xs mt-1">year on year</p>
+                {(() => {
+                  const hasGrowth = hero.growth.min != null || hero.growth.max != null;
+                  const has5yr = aiEnrichment?.appreciation_5yr;
+                  if (hasGrowth) return (
+                    <>
+                      <p className="text-slate-400 text-xs uppercase tracking-wide">Annual Growth</p>
+                      <p className="text-white text-lg sm:text-2xl font-bold mt-1 whitespace-nowrap">
+                        {formatPctShort(hero.growth.min, hero.growth.max)}
+                      </p>
+                      <p className="text-slate-400 text-xs mt-1">year on year</p>
+                    </>
+                  );
+                  if (has5yr) return (
+                    <>
+                      <p className="text-slate-400 text-xs uppercase tracking-wide">Growth Outlook</p>
+                      <p className="text-white text-lg sm:text-2xl font-bold mt-1 whitespace-nowrap">
+                        {has5yr}
+                      </p>
+                      <p className="text-slate-400 text-xs mt-1">5-yr outlook</p>
+                    </>
+                  );
+                  return (
+                    <>
+                      <p className="text-slate-400 text-xs uppercase tracking-wide">Annual Growth</p>
+                      <p className="text-slate-500 text-sm mt-1">Insufficient data</p>
+                      <p className="text-slate-600 text-xs mt-1">year on year</p>
+                    </>
+                  );
+                })()}
               </div>
               <div className="pl-6">
                 {/* Split yields for Mixed-Use/Commercial; single yield for Residential */}
