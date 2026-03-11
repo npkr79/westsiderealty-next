@@ -263,17 +263,18 @@ export async function processMetaLead(
   });
 
   try {
-    const { data: crmInserted, error: crmError } = await supabase
+    const { data: insertedLead, error: insertError } = await supabase
       .from("crm_leads")
       .insert(crmPayload)
       .select("id")
       .single();
 
-    if (crmError || !crmInserted) {
-      throw new Error(crmError?.message ?? "Failed to create CRM lead");
+    if (insertError || !insertedLead) {
+      console.log("[Meta] Duplicate lead blocked at insert — skipping push");
+      return { rawLeadId, crmLeadId: null };
     }
 
-    const crmLeadId = String(crmInserted.id);
+    const crmLeadId = String(insertedLead.id);
 
     if (formAgentId) {
       // Form routing matched — skip ownership lookup, just log assignment
