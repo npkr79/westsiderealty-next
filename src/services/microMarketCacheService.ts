@@ -60,7 +60,7 @@ export async function getMicroMarketsForHub(citySlug: string): Promise<MicroMark
     .from("micro_markets")
     .select("id")
     .eq("city_id", city.id)
-    .eq("status", "published");
+    .in("status", ["active", "published"]);
 
   const ids = (publishedIds ?? []).map((r: { id: string }) => r.id);
   if (ids.length === 0) return [];
