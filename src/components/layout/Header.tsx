@@ -25,7 +25,7 @@ type NavItem =
 
 const NAV_ITEMS: NavItem[] = [
   {
-    label: "Markets",
+    label: "Hyderabad Markets",
     href: "/hyderabad/markets",
     description: "Live price intelligence across Hyderabad's fastest-growing corridors",
     links: [
@@ -39,6 +39,22 @@ const NAV_ITEMS: NavItem[] = [
       { label: "Kollur", href: "/hyderabad/kollur" },
     ],
     cta: { label: "View all 19 markets →", href: "/hyderabad/markets" },
+  },
+  {
+    label: "Goa Markets",
+    href: "/goa/micro-markets",
+    description: "Holiday homes, villas and investment properties across Goa's top micro-markets",
+    links: [
+      { label: "Calangute", href: "/goa/calangute", badge: "HOT" },
+      { label: "Assagao",   href: "/goa/assagao",   badge: "HOT" },
+      { label: "Anjuna",    href: "/goa/anjuna" },
+      { label: "Baga",      href: "/goa/baga" },
+      { label: "Vagator",   href: "/goa/vagator" },
+      { label: "Candolim",  href: "/goa/candolim" },
+      { label: "Siolim",    href: "/goa/siolim" },
+      { label: "Morjim",    href: "/goa/morjim" },
+    ],
+    cta: { label: "View all 34 Goa markets →", href: "/goa/micro-markets" },
   },
   {
     label: "Projects",
