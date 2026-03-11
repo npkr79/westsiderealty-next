@@ -86,14 +86,34 @@ const NAV_ITEMS: NavItem[] = [
   },
 ];
 
-const TICKER_ITEMS = [
-  { market: "Gachibowli", price: "₹12,400/sqft", change: "↑2.1%", up: true },
-  { market: "Financial District", price: "₹13,800/sqft", change: "↑1.4%", up: true },
-  { market: "Kokapet", price: "₹11,200/sqft", change: "↑3.2%", up: true },
-  { market: "Narsingi", price: "₹9,800/sqft", change: "↓0.3%", up: false },
-  { market: "Kondapur", price: "₹10,500/sqft", change: "↑0.8%", up: true },
-  { market: "Tellapur", price: "₹8,900/sqft", change: "↑1.9%", up: true },
-];
+interface TickerMarket {
+  name: string;
+  slug: string;
+  pricePerSqft: number | null;
+  maturity: string | null;
+  entryTiming: string | null;
+}
+
+const KNOWN_CITY_SLUGS = new Set(["hyderabad", "goa"]);
+
+const MATURITY_DOT: Record<string, string> = {
+  Established: "#3b82f6",
+  Growing: "#22c55e",
+  Emerging: "#f59e0b",
+  Peak: "#ef4444",
+};
+
+const ENTRY_BADGE: Record<string, { bg: string; color: string }> = {
+  Optimal: { bg: "#dcfce7", color: "#15803d" },
+  Good: { bg: "#dbeafe", color: "#1d4ed8" },
+  Wait: { bg: "#fef3c7", color: "#92400e" },
+  Late: { bg: "#fee2e2", color: "#991b1b" },
+};
+
+function getCityFromPathname(pathname: string): string {
+  const first = pathname.split("/")[1] ?? "";
+  return KNOWN_CITY_SLUGS.has(first) ? first : "hyderabad";
+}
 
 const Header = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -101,6 +121,7 @@ const Header = () => {
   const [imgError, setImgError] = useState(false);
   const [headerLogo, setHeaderLogo] = useState("");
   const [isMounted, setIsMounted] = useState(false);
+  const [tickerMarkets, setTickerMarkets] = useState<TickerMarket[]>([]);
   const pathname = usePathname();
 
   useEffect(() => {
@@ -117,6 +138,14 @@ const Header = () => {
     };
     loadLogo();
   }, []);
+
+  useEffect(() => {
+    const citySlug = getCityFromPathname(pathname);
+    fetch(`/api/ticker-markets?citySlug=${citySlug}`)
+      .then((r) => r.json())
+      .then((data: TickerMarket[]) => { if (Array.isArray(data) && data.length) setTickerMarkets(data); })
+      .catch(() => {});
+  }, [pathname]);
 
   const isActive = (href: string) => {
     if (href === "/") return pathname === "/";
@@ -337,20 +366,33 @@ const Header = () => {
         </div>
 
         {/* ── Ticker strip ───────────────────────────────────────── */}
-        <div className="w-full overflow-hidden border-t border-white/5" style={{ height: 28, background: "#070707" }}>
-          <div className="flex items-center h-full px-2">
-            <div className="flex gap-8 whitespace-nowrap" style={{ animation: "navTicker 40s linear infinite" }}>
-              {[...TICKER_ITEMS, ...TICKER_ITEMS].map((item, i) => (
-                <span key={i} className="inline-flex items-center gap-2 text-[11px]">
-                  <span className="text-slate-500 font-medium">{item.market}</span>
-                  <span className="text-slate-200 font-semibold">{item.price}</span>
-                  <span className={item.up ? "text-emerald-400" : "text-red-400"}>{item.change}</span>
-                  <span className="text-white/15 mx-1">·</span>
-                </span>
-              ))}
+        {tickerMarkets.length > 0 && (
+          <div className="w-full overflow-hidden border-t border-white/5" style={{ height: 28, background: "#070707" }}>
+            <div className="flex items-center h-full px-2">
+              <div className="flex gap-8 whitespace-nowrap" style={{ animation: "navTicker 40s linear infinite" }}>
+                {[...tickerMarkets, ...tickerMarkets].map((m, i) => {
+                  const dot = MATURITY_DOT[m.maturity ?? ""] ?? "#94a3b8";
+                  const badge = m.entryTiming ? ENTRY_BADGE[m.entryTiming] : null;
+                  return (
+                    <span key={i} className="inline-flex items-center gap-2 text-[11px]">
+                      <span className="rounded-full inline-block" style={{ width: 5, height: 5, background: dot, flexShrink: 0 }} />
+                      <span className="text-slate-500 font-medium">{m.name}</span>
+                      {m.pricePerSqft != null && (
+                        <span className="text-slate-200 font-semibold">₹{m.pricePerSqft.toLocaleString("en-IN")}/sqft</span>
+                      )}
+                      {badge && m.entryTiming && (
+                        <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 5px", borderRadius: 100, background: badge.bg, color: badge.color, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                          {m.entryTiming}
+                        </span>
+                      )}
+                      <span className="text-white/15 mx-1">·</span>
+                    </span>
+                  );
+                })}
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </header>
 
       <style>{`
