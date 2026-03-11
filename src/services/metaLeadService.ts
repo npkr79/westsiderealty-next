@@ -303,6 +303,7 @@ export async function processMetaLead(
       }
 
       // Push notification to agent
+      console.log(`[Push Debug] Agent push → userId: ${formAgentId}`);
       await sendPushToUser(
         formAgentId,
         "🔔 New Lead!",
@@ -314,6 +315,7 @@ export async function processMetaLead(
       const PRAVEEN_ID = "9021aff0-6ba3-4f7b-852f-561862fbc1ac";
       if (formAgentId !== PRAVEEN_ID) {
         const agentName = agentData?.full_name ?? "Unknown Agent";
+        console.log(`[Push Debug] Admin push → userId: ${PRAVEEN_ID}`);
         await sendPushToUser(
           PRAVEEN_ID,
           "New Lead Assigned",
