@@ -424,14 +424,11 @@ export default function MicroMarketPageContent({
               <div className="pr-3 sm:pr-6">
                 <p className="text-slate-400 text-xs uppercase tracking-wide">Price per sqft</p>
                 <p className="text-white text-lg sm:text-2xl font-bold mt-1 whitespace-nowrap">
-                  {formatPriceShort(hero.priceRange.min, hero.priceRange.max)}
+                  {aiEnrichment?.price_per_sqft_current != null
+                    ? `₹${aiEnrichment.price_per_sqft_current.toLocaleString("en-IN")} /sqft`
+                    : formatPriceShort(hero.priceRange.min, hero.priceRange.max)}
                 </p>
                 <p className="text-slate-400 text-xs mt-1">per square foot</p>
-                {aiEnrichment?.price_per_sqft_current && (
-                  <p className="text-slate-300 text-xs mt-1">
-                    ₹{aiEnrichment.price_per_sqft_current.toLocaleString("en-IN")} current market rate
-                  </p>
-                )}
               </div>
               <div className="px-3 sm:px-6">
                 {(() => {
@@ -709,13 +706,6 @@ export default function MicroMarketPageContent({
                       <p className="text-sm text-slate-700 font-medium">
                         {aiEnrichment.buyer_profile_detail || aiEnrichment.buyer_profile}
                       </p>
-                    </div>
-                  )}
-                  {/* 5-year appreciation */}
-                  {aiEnrichment.appreciation_5yr && (
-                    <div>
-                      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">5-Year Outlook</p>
-                      <p className="text-sm text-slate-700">{aiEnrichment.appreciation_5yr}</p>
                     </div>
                   )}
                   {/* Possession wait */}
