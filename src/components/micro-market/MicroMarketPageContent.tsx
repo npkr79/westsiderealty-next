@@ -630,15 +630,13 @@ export default function MicroMarketPageContent({
           </div>
         </section>
 
-        {/* 5. PROJECTS — heading rendered inside ProjectsInMarket */}
-        <section className="py-8 mt-6 border-t border-gray-100">
-          <ProjectsInMarketWithSkeleton
-            citySlug={citySlug}
-            microMarketSlug={viewModel.urlSlug}
-            marketName={hero.name}
-            marketMaturity={aiEnrichment?.market_maturity ?? null}
-          />
-        </section>
+        {/* 5. PROJECTS — section hidden entirely when no projects exist */}
+        <ProjectsInMarketWithSkeleton
+          citySlug={citySlug}
+          microMarketSlug={viewModel.urlSlug}
+          marketName={hero.name}
+          marketMaturity={aiEnrichment?.market_maturity ?? null}
+        />
 
         {/* 6. MARKET INTELLIGENCE — 3 clean cards */}
         <section className="py-8 border-t border-gray-100">

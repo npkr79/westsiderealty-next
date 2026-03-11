@@ -213,6 +213,9 @@ export default function ProjectsInMarket({
   topProjects,
   marketMaturity,
 }: ProjectsInMarketProps) {
+  const totalProjects = summaryV2?.total ?? 0;
+  if (totalProjects === 0 && topProjects.length === 0) return null;
+
   return (
     <section className="mt-14">
       <h2 className="mb-8 text-2xl font-semibold tracking-tight text-foreground md:text-3xl">
