@@ -578,8 +578,8 @@ export default function ProjectPageV2({ project, insights, context, citySlug, pr
               <div className="flex items-center gap-2 mb-3">
                 {project.rera_id && <ReraBadge dark />}
                 {(() => {
-                  // Prefer property_types[0] from projects table; fall back to project_type
-                  const ptArr = cleanArray((project as any).property_types);
+                  // For Goa: read property_types from projects table; for other cities: use project_type from MV
+                  const ptArr = citySlug === 'goa' ? cleanArray((project as any).property_types) : [];
                   const rawType = ptArr[0] || project.project_type || "";
                   const type = rawType.toLowerCase();
                   let typeLabel: string | null = null;
@@ -611,9 +611,21 @@ export default function ProjectPageV2({ project, insights, context, citySlug, pr
                 {project.project_name}
               </h1>
 
-              {/* One-liner */}
+              {/* One-liner / BHK line */}
               <p className="text-white/70 text-base mb-5 max-w-xl">
-                {[project.configuration_display, microMarket?.micro_market_name].filter(Boolean).join(" · ")}
+                {citySlug === 'goa' ? (() => {
+                  const configsArr = cleanArray((project as any).configurations);
+                  const bhkNums = [...new Set(
+                    configsArr
+                      .map((c: any) => { const m = String(c).match(/^(\d+)\s*BHK/i); return m ? parseInt(m[1]) : null; })
+                      .filter((n: any): n is number => n !== null)
+                  )].sort((a: number, b: number) => a - b);
+                  if (bhkNums.length === 0) return null;
+                  const ptArr = cleanArray((project as any).property_types);
+                  const ptRaw = (ptArr[0] || project.project_type || "").toLowerCase();
+                  const ptSuffix = ptRaw.includes("villa") ? "Villas" : "Apartments";
+                  return `${bhkNums.join(", ")} BHK ${ptSuffix}${microMarket?.micro_market_name ? ` · ${microMarket.micro_market_name}` : ""}`;
+                })() : [project.configuration_display, microMarket?.micro_market_name].filter(Boolean).join(" · ")}
               </p>
 
               {/* Fact pills */}
@@ -931,7 +943,7 @@ export default function ProjectPageV2({ project, insights, context, citySlug, pr
                   <p className="text-sm text-gray-700 leading-relaxed">{project.westside_realty_review}</p>
                 </div>
               )}
-              {(() => {
+              {citySlug === 'goa' && (() => {
                 const highlights = cleanArray((project as any).project_highlights);
                 if (highlights.length === 0) return null;
                 return (
@@ -996,8 +1008,8 @@ export default function ProjectPageV2({ project, insights, context, citySlug, pr
         );
       })()}
 
-      {/* ── 2.4 AMENITIES ────────────────────────────────────────────────── */}
-      {(() => {
+      {/* ── 2.4 AMENITIES (Goa only) ─────────────────────────────────────── */}
+      {citySlug === 'goa' && (() => {
         const amenities = cleanArray((project as any).amenities_json);
         if (amenities.length === 0) return null;
         return (
@@ -1708,13 +1720,27 @@ export default function ProjectPageV2({ project, insights, context, citySlug, pr
                     </div>
                   )}
 
-                  {/* Location highlights — projects table first, then context fallback */}
-                  {(() => {
-                    const fromTable = cleanArray((project as any).location_highlights);
-                    const fromContext = (context.locationAdvantages && Array.isArray(context.locationAdvantages))
+                  {/* Location highlights — Goa: projects table (location_highlights); other cities: context fallback */}
+                  {citySlug === 'goa' ? (() => {
+                    const items = cleanArray((project as any).location_highlights);
+                    if (items.length === 0) return null;
+                    return (
+                      <div>
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">📍 Nearby</p>
+                        <ul className="space-y-1.5">
+                          {items.slice(0, 6).map((item, i) => (
+                            <li key={i} className="flex items-start gap-2.5 py-2 px-4 rounded-xl bg-gray-50">
+                              <span className="text-indigo-400 text-xs mt-0.5 flex-shrink-0">•</span>
+                              <span className="text-sm text-gray-700">{String(item)}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    );
+                  })() : (() => {
+                    const items = (context.locationAdvantages && Array.isArray(context.locationAdvantages))
                       ? context.locationAdvantages as any[]
                       : [];
-                    const items = fromTable.length > 0 ? fromTable : fromContext;
                     if (items.length === 0) return null;
                     return (
                       <div>
@@ -2019,7 +2045,7 @@ export default function ProjectPageV2({ project, insights, context, citySlug, pr
           },
           {
             q: `Where is ${project.project_name} located?`,
-            a: `${project.project_name} is located in ${locLine}, Hyderabad. ${microMarket?.hero_hook ? microMarket.hero_hook.substring(0, 120) + "." : ""}`,
+            a: `${project.project_name} is located in ${locLine}, ${project.city?.city_name || citySlug}. ${microMarket?.hero_hook ? microMarket.hero_hook.substring(0, 120) + "." : ""}`,
           },
         ];
 
