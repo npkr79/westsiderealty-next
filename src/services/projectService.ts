@@ -620,6 +620,33 @@ export const projectService = {
       }
     }
 
+    // Fetch description/SEO fields from projects table — not exposed by the enriched MV
+    let projectsTableData: {
+      project_overview_seo: string | null;
+      westside_realty_review: string | null;
+      seo_title: string | null;
+      meta_description: string | null;
+      h1_title: string | null;
+    } | null = null;
+    {
+      const { data: projRow } = await runWithServiceFallback<any>((client) =>
+        client
+          .from("projects")
+          .select("project_overview_seo, westside_realty_review, seo_title, meta_description, h1_title")
+          .eq("url_slug", projectSlug)
+          .maybeSingle()
+      );
+      if (projRow) {
+        projectsTableData = {
+          project_overview_seo: toStringOrNull((projRow as any).project_overview_seo),
+          westside_realty_review: toStringOrNull((projRow as any).westside_realty_review),
+          seo_title: toStringOrNull((projRow as any).seo_title),
+          meta_description: toStringOrNull((projRow as any).meta_description),
+          h1_title: toStringOrNull((projRow as any).h1_title),
+        };
+      }
+    }
+
     let nearbySupplyCount: number | null = null;
     let supplyRadiusKm: number | null = null;
     let inventoryDominantConfiguration: string | null = null;
@@ -1238,6 +1265,12 @@ export const projectService = {
     const project: ProjectWithRelations = {
       // Spread all MV fields so gallery_images_json, amenities_json, etc. are available
       ...(data as any),
+      // Merge description/SEO fields from projects table (not in MV)
+      project_overview_seo: projectsTableData?.project_overview_seo ?? toStringOrNull((data as any).project_overview_seo) ?? "",
+      westside_realty_review: projectsTableData?.westside_realty_review ?? toStringOrNull((data as any).westside_realty_review),
+      seo_title: projectsTableData?.seo_title ?? toStringOrNull((data as any).seo_title),
+      meta_description: projectsTableData?.meta_description ?? toStringOrNull((data as any).meta_description) ?? "",
+      h1_title: projectsTableData?.h1_title ?? toStringOrNull((data as any).h1_title),
       id: String(data.project_id ?? ""),
       project_name: String(data.project_name ?? ""),
       configuration_display: toStringOrNull(data.configuration_display),

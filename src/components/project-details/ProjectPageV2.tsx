@@ -620,6 +620,24 @@ export default function ProjectPageV2({ project, insights, context, citySlug, pr
         </div>
       </section>
 
+      {/* ── 2.1 ABOUT THIS PROJECT ────────────────────────────────────────── */}
+      {project.project_overview_seo && (
+        <section data-section="about" className="py-14" style={{ background: T.lightSection }}>
+          <div className="container mx-auto px-4 max-w-3xl">
+            <ScrollReveal>
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">About This Project</h2>
+              <p className="text-gray-600 leading-relaxed text-base mb-6">{project.project_overview_seo}</p>
+              {project.westside_realty_review && (
+                <div className="rounded-xl bg-blue-50 border border-blue-100 p-5">
+                  <p className="text-[10px] font-bold text-blue-500 uppercase tracking-wider mb-2">Westside View</p>
+                  <p className="text-sm text-gray-700 leading-relaxed">{project.westside_realty_review}</p>
+                </div>
+              )}
+            </ScrollReveal>
+          </div>
+        </section>
+      )}
+
       {/* ── 2.3 UNIT MIX ─────────────────────────────────────────────────── */}
       {(() => {
         const validRows = configDistribution.filter(
