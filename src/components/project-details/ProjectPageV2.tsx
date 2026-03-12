@@ -646,8 +646,8 @@ export default function ProjectPageV2({ project, insights, context, citySlug, pr
                   </span>
                 )}
                 {(() => {
-                  // Priority: configurations[] from projects table → configDistribution → skip
-                  const configsArr = cleanArray((project as any).configurations);
+                  // Goa: configurations[] from projects table; all cities: configDistribution fallback
+                  const configsArr = citySlug === 'goa' ? cleanArray((project as any).configurations) : [];
                   const bhkFromConfigs = [...new Set(
                     configsArr.map(c => { const m = String(c).match(/^(\d+)\s*BHK/i); return m ? parseInt(m[1]) : null; })
                       .filter((n): n is number => n !== null)
@@ -662,7 +662,8 @@ export default function ProjectPageV2({ project, insights, context, citySlug, pr
                   const bhkNums = bhkFromConfigs.length > 0 ? bhkFromConfigs : bhkFromDist;
                   if (bhkNums.length === 0) return null;
 
-                  const ptArr = cleanArray((project as any).property_types);
+                  // Goa: property_types from projects table; other cities: project_type from MV
+                  const ptArr = citySlug === 'goa' ? cleanArray((project as any).property_types) : [];
                   const ptRaw = (ptArr[0] || project.project_type || "").toLowerCase();
                   const ptSuffix = ptRaw.includes("villa") ? " Villas" : " Apartments";
 
