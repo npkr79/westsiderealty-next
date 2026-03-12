@@ -144,7 +144,7 @@ export default async function ProjectDetailPage({ params }: PageProps) {
   const cityId = (project as any).city_id || (project.city as any)?.id || null;
   const currentMicroMarketSlug = project.micro_market?.url_slug || null;
 
-  const [brochureResult, insightsResult, developerProjectsResult, liveIntelligenceResult, microMarketDetailResult, relatedProjectsResult, nearbyMarketsResult, configDistributionResult, developerBrandSlugResult] = await Promise.allSettled([
+  const [brochureResult, insightsResult, developerProjectsResult, liveIntelligenceResult, microMarketDetailResult, relatedProjectsResult, nearbyMarketsResult, configDistributionResult, otherProjectsInMarketResult, developerBrandSlugResult] = await Promise.allSettled([
     (async () => {
       try {
         const { findBrochureByProjectName } = await import('@/services/brochureService');
@@ -276,6 +276,23 @@ export default async function ProjectDetailPage({ params }: PageProps) {
         return [];
       }
     })(),
+    // Fetch other projects in same micro-market from enriched MV
+    (async () => {
+      const mmName = (project as any).micro_market as string | null;
+      if (!mmName) return [];
+      try {
+        const supabase = createServiceClient();
+        const { data } = await supabase
+          .from("listing_project_detail_enriched_mv")
+          .select("project_name, url_slug, developer_name, total_units, proposed_completion_date, city_slug")
+          .eq("micro_market", mmName)
+          .neq("url_slug", projectSlug)
+          .limit(3);
+        return data ?? [];
+      } catch {
+        return [];
+      }
+    })(),
     // Fetch developer brand (name + slug) via project→brand map
     (async () => {
       if (!projectId) return null;
@@ -303,6 +320,7 @@ export default async function ProjectDetailPage({ params }: PageProps) {
   const relatedProjects = relatedProjectsResult.status === "fulfilled" ? (relatedProjectsResult.value as any[]) : [];
   const nearbyMarkets = nearbyMarketsResult.status === "fulfilled" ? (nearbyMarketsResult.value as any[]) : [];
   const configDistribution = configDistributionResult.status === "fulfilled" ? (configDistributionResult.value as any[]) : [];
+  const otherProjectsInMarket = otherProjectsInMarketResult.status === "fulfilled" ? (otherProjectsInMarketResult.value as any[]) : [];
   const developerBrandResult = developerBrandSlugResult.status === "fulfilled" ? (developerBrandSlugResult.value as { brandName: string | null; brandSlug: string | null } | null) : null;
   const developerBrandSlug = developerBrandResult?.brandSlug ?? null;
   const developerBrandName = developerBrandResult?.brandName ?? null;
@@ -321,6 +339,7 @@ export default async function ProjectDetailPage({ params }: PageProps) {
       relatedProjects={relatedProjects}
       nearbyMarkets={nearbyMarkets}
       configDistribution={configDistribution}
+      otherProjectsInMarket={otherProjectsInMarket}
       developerBrandSlug={developerBrandSlug}
       developerBrandName={developerBrandName}
     />

@@ -116,6 +116,54 @@ function FaqItem({ q, a }: { q: string; a: string }) {
   );
 }
 
+function InlineLeadForm({ projectName, projectId, reraId }: { projectName: string; projectId: string; reraId?: string | null }) {
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim() || !phone.trim()) return;
+    setSubmitting(true);
+    try {
+      await submitLead({
+        name,
+        phone,
+        type: "PROJECT_INTEREST",
+        source_page: typeof window !== "undefined" ? window.location.href : "project_page_v2",
+        details: { project_name: projectName, project_id: projectId, rera_id: reraId },
+      });
+      setSubmitted(true);
+    } catch {
+      setSubmitted(true);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (submitted) {
+    return (
+      <div className="flex items-center justify-center py-2">
+        <p className="text-green-400 font-semibold text-sm">✓ Got it! We&apos;ll call you shortly.</p>
+      </div>
+    );
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="flex gap-2">
+      <input value={name} onChange={e => setName(e.target.value)} placeholder="Your name" required
+        className="flex-1 min-w-0 px-3 py-2.5 rounded-lg bg-white/10 text-white placeholder-white/40 text-sm border border-white/15 focus:outline-none focus:border-blue-400" />
+      <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="Phone number" required type="tel"
+        className="flex-1 min-w-0 px-3 py-2.5 rounded-lg bg-white/10 text-white placeholder-white/40 text-sm border border-white/15 focus:outline-none focus:border-blue-400" />
+      <button type="submit" disabled={submitting}
+        className="px-4 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold transition-colors flex-shrink-0 disabled:opacity-60">
+        {submitting ? "..." : "Call Me"}
+      </button>
+    </form>
+  );
+}
+
 function CountUp({ target, suffix = "", duration = 1500 }: { target: number; suffix?: string; duration?: number }) {
   const ref = useRef<HTMLSpanElement>(null);
   const [started, setStarted] = useState(false);
@@ -338,6 +386,14 @@ interface ProjectPageV2Props {
     total_units?: number | null;
     config_percent?: number | null;
   }>;
+  otherProjectsInMarket?: Array<{
+    project_name: string;
+    url_slug?: string | null;
+    developer_name?: string | null;
+    total_units?: number | null;
+    proposed_completion_date?: string | null;
+    city_slug?: string | null;
+  }>;
   developerBrandSlug?: string | null;
   developerBrandName?: string | null;
 }
@@ -360,6 +416,15 @@ function parseHandoverBullets(raw: string): string[] {
     .map(s => s.replace(/^[-–•*]\s*/, "").trim())
     .filter(s => s.length > 20 && !/^(source|per|via|as per|according)/i.test(s));
   return parts.slice(0, 3);
+}
+
+// ─── Individual developer detector ───────────────────────────────────────────
+
+const COMPANY_KEYWORDS = /pvt|ltd|llp|limited|group|developer|builders?|constructions?|infra|realty|properties|real\s*estate|corp|projects|ventures|housing|homes|spaces|estates|associates/i;
+
+function isIndividualDeveloper(name: string | null | undefined): boolean {
+  if (!name) return false;
+  return !COMPANY_KEYWORDS.test(name);
 }
 
 // ─── Developer slug generator ────────────────────────────────────────────────
@@ -391,7 +456,7 @@ function cleanArray(raw: any): string[] {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export default function ProjectPageV2({ project, insights, context, citySlug, projectSlug, developerProjects, liveIntelligence, microMarketDetail, relatedProjects = [], nearbyMarkets = [], configDistribution = [], developerBrandSlug, developerBrandName }: ProjectPageV2Props) {
+export default function ProjectPageV2({ project, insights, context, citySlug, projectSlug, developerProjects, liveIntelligence, microMarketDetail, relatedProjects = [], nearbyMarkets = [], configDistribution = [], otherProjectsInMarket = [], developerBrandSlug, developerBrandName }: ProjectPageV2Props) {
   const [modalOpen, setModalOpen] = useState(false);
   const [reraCopied, setReraCopied] = useState(false);
 
@@ -470,8 +535,10 @@ export default function ProjectPageV2({ project, insights, context, citySlug, pr
                     typeLabel = "Mixed Use"; typeColor = "#a78bfa";
                   } else if (type?.includes("commercial")) {
                     typeLabel = "Commercial"; typeColor = "#60a5fa";
-                  } else if (type?.includes("resident") || type?.includes("apartment") || type?.includes("flat")) {
-                    typeLabel = "Residential"; typeColor = "#4ade80";
+                  } else if (type?.includes("villa") || type?.includes("row house") || type?.includes("rowhouse")) {
+                    typeLabel = "Villa"; typeColor = "#fb923c";
+                  } else if (type?.includes("resident") || type?.includes("apartment") || type?.includes("flat") || type?.includes("group housing")) {
+                    typeLabel = "Apartment"; typeColor = "#4ade80";
                   } else if (type?.includes("plotted")) {
                     typeLabel = "Plotted"; typeColor = "#fbbf24";
                   }
@@ -513,9 +580,16 @@ export default function ProjectPageV2({ project, insights, context, citySlug, pr
                     🏗 {project.current_status}
                   </span>
                 )}
+                {project.configuration_display && (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-white/10 text-white/90 border border-white/15">
+                    🏠 {project.configuration_display}
+                  </span>
+                )}
                 {project.min_area && project.max_area && (
                   <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-white/10 text-white/90 border border-white/15">
-                    📐 {fmtArea(project.min_area)}–{fmtArea(project.max_area)} sqft
+                    📐 {project.min_area === project.max_area
+                      ? `${fmtArea(project.min_area)} sqft`
+                      : `${fmtArea(project.min_area)}–${fmtArea(project.max_area)} sqft`}
                   </span>
                 )}
                 {project.possession_date_text && (
@@ -607,7 +681,12 @@ export default function ProjectPageV2({ project, insights, context, citySlug, pr
               </div>
             )}
             {[
-              (project.min_area && project.max_area) ? { label: "Unit Sizes", value: `${fmtArea(project.min_area)}–${fmtArea(project.max_area)} sqft` } : null,
+              (project.min_area && project.max_area) ? {
+                label: "Unit Sizes",
+                value: project.min_area === project.max_area
+                  ? `${fmtArea(project.min_area)} sqft`
+                  : `${fmtArea(project.min_area)}–${fmtArea(project.max_area)} sqft`,
+              } : null,
               project.configuration_display ? { label: "Configurations", value: project.configuration_display } : null,
               { label: "RERA Status", value: project.current_status ?? "Registered" },
             ].filter(Boolean).map(({ label, value }: any) => (
@@ -620,7 +699,48 @@ export default function ProjectPageV2({ project, insights, context, citySlug, pr
         </div>
       </section>
 
-      {/* ── 2.1 ABOUT THIS PROJECT ────────────────────────────────────────── */}
+      {/* ── 2.1 PRICING & ROI ────────────────────────────────────────────── */}
+      {microMarket?.price_per_sqft_min && microMarket?.price_per_sqft_max && (
+        <section data-section="pricing-roi" className="py-10" style={{ background: T.altSection }}>
+          <div className="container mx-auto px-4">
+            <ScrollReveal>
+              <h2 className="text-lg font-semibold text-gray-700 mb-4">
+                Pricing in {microMarket.micro_market_name}
+              </h2>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
+                  <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">Market Price Band</p>
+                  <p className="text-lg font-bold text-gray-900">
+                    ₹{microMarket.price_per_sqft_min.toLocaleString("en-IN")}–{microMarket.price_per_sqft_max.toLocaleString("en-IN")}
+                  </p>
+                  <p className="text-[10px] text-gray-400 mt-0.5">per sqft · corridor average</p>
+                </div>
+                {project.min_area && project.max_area && (
+                  <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
+                    <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">Est. Unit Cost</p>
+                    <p className="text-lg font-bold text-gray-900">
+                      ₹{Math.round(((project.min_area + project.max_area) / 2) * microMarket.price_per_sqft_min / 100000).toLocaleString("en-IN")}–
+                      {Math.round(((project.min_area + project.max_area) / 2) * microMarket.price_per_sqft_max / 100000).toLocaleString("en-IN")} L
+                    </p>
+                    <p className="text-[10px] text-gray-400 mt-0.5">avg area × corridor price</p>
+                  </div>
+                )}
+                {microMarket.annual_appreciation_min && (
+                  <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
+                    <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">Est. Annual Growth</p>
+                    <p className="text-lg font-bold text-gray-900">
+                      {microMarket.annual_appreciation_min}–{Math.min(Math.round(microMarket.annual_appreciation_min * 1.3), 8)}%
+                    </p>
+                    <p className="text-[10px] text-gray-400 mt-0.5">CAGR estimate</p>
+                  </div>
+                )}
+              </div>
+            </ScrollReveal>
+          </div>
+        </section>
+      )}
+
+      {/* ── 2.2 ABOUT THIS PROJECT ────────────────────────────────────────── */}
       {project.project_overview_seo && (
         <section data-section="about" className="py-14" style={{ background: T.lightSection }}>
           <div className="container mx-auto px-4 max-w-3xl">
@@ -910,7 +1030,16 @@ export default function ProjectPageV2({ project, insights, context, citySlug, pr
       })()}
 
       {/* ── 4. DEVELOPER TRACK RECORD ─────────────────────────────────────── */}
-      {developer && (
+      {developer && isIndividualDeveloper(developer.developer_name || project.developer_name) ? (
+        <section data-section="developer" className="py-8" style={{ background: T.altSection }}>
+          <div className="container mx-auto px-4">
+            <p className="text-sm text-gray-500">
+              Developed by an independent developer · RERA registered
+              {project.rera_id && ` · ${project.rera_id}`}
+            </p>
+          </div>
+        </section>
+      ) : developer && (
         <section data-section="developer" className="py-16" style={{ background: T.altSection }}>
           <div className="container mx-auto px-4">
             <ScrollReveal>
@@ -1501,6 +1630,41 @@ export default function ProjectPageV2({ project, insights, context, citySlug, pr
         );
       })()}
 
+      {/* ── OTHER PROJECTS IN MARKET ─────────────────────────────────────── */}
+      {otherProjectsInMarket.length > 0 && (
+        <section data-section="other-projects" className="py-12" style={{ background: T.lightSection }}>
+          <div className="container mx-auto px-4">
+            <ScrollReveal>
+              <h2 className="text-xl font-bold text-gray-900 mb-1">Other Projects in This Market</h2>
+              <p className="text-sm text-gray-400 mb-6">RERA-registered projects in the same micro-market</p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {otherProjectsInMarket.map((op, i) => {
+                  const href = op.city_slug && op.url_slug ? buildProjectUrl(op.city_slug, op.url_slug) : null;
+                  const card = (
+                    <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:border-blue-200 hover:shadow-md transition-all">
+                      <h3 className="font-semibold text-gray-900 text-sm mb-1.5 leading-snug">{op.project_name}</h3>
+                      {op.developer_name && (
+                        <p className="text-xs text-gray-400 mb-3">{op.developer_name}</p>
+                      )}
+                      <div className="flex items-center justify-between flex-wrap gap-2">
+                        {op.total_units && (
+                          <span className="text-xs text-gray-500">{op.total_units.toLocaleString()} units</span>
+                        )}
+                        {op.proposed_completion_date && (
+                          <span className="text-xs text-gray-400">Est. {formatDate(op.proposed_completion_date)}</span>
+                        )}
+                        {href && <span className="text-xs text-blue-600 font-medium">View →</span>}
+                      </div>
+                    </div>
+                  );
+                  return href ? <Link key={i} href={href}>{card}</Link> : <div key={i}>{card}</div>;
+                })}
+              </div>
+            </ScrollReveal>
+          </div>
+        </section>
+      )}
+
       {/* ── QUICK LINKS ───────────────────────────────────────────────────── */}
       {microMarket && (microMarket as any).url_slug && (() => {
         const mmSlug = (microMarket as any).url_slug as string;
@@ -1699,10 +1863,11 @@ export default function ProjectPageV2({ project, insights, context, citySlug, pr
       <div className="fixed bottom-0 left-0 right-0 z-40 lg:hidden safe-area-bottom"
         style={{ background: "rgba(10,15,30,0.95)", backdropFilter: "blur(10px)", borderTop: "1px solid rgba(255,255,255,0.1)" }}>
         <div className="p-3 pb-safe">
-          <button onClick={() => setModalOpen(true)}
-            className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-semibold text-sm text-white bg-indigo-600 hover:bg-indigo-700 transition-colors">
-            Get Expert Analysis — Free
-          </button>
+          <InlineLeadForm
+            projectName={project.project_name}
+            projectId={project.id || String((project as any).project_id || "")}
+            reraId={project.rera_id}
+          />
         </div>
       </div>
 

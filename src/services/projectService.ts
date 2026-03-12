@@ -689,8 +689,23 @@ export const projectService = {
       supply_share_pct: number;
     }> = [];
     const projectId = toStringOrNull(data.project_id);
-    const latitude = toNumberOrNull(data.latitude);
-    const longitude = toNumberOrNull(data.longitude);
+    // Use MV coords; fall back to lat/lng in rera_projects.raw_payload for projects
+    // that were recently scraped but haven't been geocoded into the MV yet (e.g. Goa).
+    let latitude = toNumberOrNull(data.latitude);
+    let longitude = toNumberOrNull(data.longitude);
+    if (!latitude || !longitude) {
+      const reraIdForCoords = toStringOrNull(data.rera_id);
+      if (reraIdForCoords) {
+        const { data: reraRaw } = await runWithServiceFallback<any>((client) =>
+          client.from("rera_projects").select("raw_payload").eq("rera_id", reraIdForCoords).maybeSingle()
+        );
+        if (reraRaw?.raw_payload) {
+          const rp = reraRaw.raw_payload as Record<string, unknown>;
+          latitude = toNumberOrNull(rp.lat) ?? toNumberOrNull(rp.latitude) ?? latitude;
+          longitude = toNumberOrNull(rp.lng) ?? toNumberOrNull(rp.longitude) ?? longitude;
+        }
+      }
+    }
     if (projectId) {
       const { data: supplyRadiusData, error: supplyRadiusError } = await runWithServiceFallback<any>((client) =>
         client
