@@ -123,7 +123,14 @@ interface DealRecord {
   id: string;
   name?: string | null;
   status?: string | null;
-  value?: string | null;
+  value?: number | string | null;
+  deal_value?: number | null;
+  property_description?: string | null;
+  commission_pct?: number | null;
+  commission_value?: number | null;
+  expected_close_date?: string | null;
+  stage?: string | null;
+  notes?: string | null;
   created_at?: string | null;
 }
 
@@ -252,6 +259,17 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
   const [reassignedName, setReassignedName] = useState<string | null>(null);
   const reassignTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Deal creation
+  const [showDealForm, setShowDealForm] = useState(false);
+  const [dealProperty, setDealProperty] = useState("");
+  const [dealValue, setDealValue] = useState("");
+  const [dealCommission, setDealCommission] = useState("2");
+  const [dealCloseDate, setDealCloseDate] = useState("");
+  const [dealStage, setDealStage] = useState("Negotiation");
+  const [dealNotes, setDealNotes] = useState("");
+  const [savingDeal, setSavingDeal] = useState(false);
+  const [dealError, setDealError] = useState<string | null>(null);
+
   // Site visits
   const [siteVisits, setSiteVisits] = useState<SiteVisitActivity[]>([]);
   const [showSiteVisitForm, setShowSiteVisitForm] = useState(false);
@@ -324,13 +342,24 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
     setDealsError(null);
     const { data, error } = await supabase
       .from("crm_deals")
-      .select("id,name,status,value,created_at")
+      .select("id,name,status,value,deal_value,property_description,commission_pct,commission_value,expected_close_date,stage,notes,created_at")
       .eq("lead_id", leadId)
       .order("created_at", { ascending: false })
-      .limit(20);
+      .limit(50);
     if (error) {
-      setDeals([]);
-      setDealsError("Deals table not available yet.");
+      // Fallback: try minimal select in case newer columns don't exist yet
+      const { data: fallbackData, error: fallbackError } = await supabase
+        .from("crm_deals")
+        .select("id,name,status,value,created_at")
+        .eq("lead_id", leadId)
+        .order("created_at", { ascending: false })
+        .limit(50);
+      if (fallbackError) {
+        setDeals([]);
+        setDealsError("Deals table not available yet.");
+        return;
+      }
+      setDeals((fallbackData as DealRecord[]) || []);
       return;
     }
     setDeals((data as DealRecord[]) || []);
@@ -559,6 +588,57 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
     visitDate, visitLocation, visitOutcome, visitNotes,
     currentUser.id, leadId, lead?.assigned_to,
     supabase, loadSiteVisits, loadLeadTasks,
+  ]);
+
+  const createDeal = useCallback(async () => {
+    if (!dealProperty.trim() || !dealValue) return;
+    setSavingDeal(true);
+    setDealError(null);
+    const numValue = Number(dealValue);
+    const commPct = Number(dealCommission) || 0;
+    const commValue = Math.round(numValue * commPct / 100);
+    const fullPayload = {
+      lead_id: leadId,
+      name: dealProperty.trim(),
+      property_description: dealProperty.trim(),
+      value: numValue,          // used by dashboard pipeline calc
+      deal_value: numValue,     // requested schema field
+      commission_pct: commPct,
+      commission_value: commValue,
+      expected_close_date: dealCloseDate || null,
+      stage: dealStage,
+      notes: dealNotes.trim() || null,
+      status: "active",
+      created_by: currentUser.id,
+    };
+    const { error } = await supabase.from("crm_deals").insert(fullPayload);
+    if (error) {
+      // Fallback: minimal insert if newer columns don't exist
+      const { error: fallbackError } = await supabase.from("crm_deals").insert({
+        lead_id: leadId,
+        name: dealProperty.trim(),
+        value: numValue,
+        status: "active",
+        created_by: currentUser.id,
+      });
+      if (fallbackError) {
+        setDealError("Failed to save deal. Please try again.");
+        setSavingDeal(false);
+        return;
+      }
+    }
+    setSavingDeal(false);
+    setShowDealForm(false);
+    setDealProperty("");
+    setDealValue("");
+    setDealCommission("2");
+    setDealCloseDate("");
+    setDealStage("Negotiation");
+    setDealNotes("");
+    void loadDeals();
+  }, [
+    dealProperty, dealValue, dealCommission, dealCloseDate, dealStage, dealNotes,
+    leadId, currentUser.id, supabase, loadDeals,
   ]);
 
   // ── render ───────────────────────────────────────────────────────────────────
@@ -1119,23 +1199,180 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
         {/* ── Deals ── */}
         <TabsContent value="deals">
           <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Related deals</CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="text-lg">Deals</CardTitle>
+              {!showDealForm && (
+                <Button type="button" size="sm" onClick={() => setShowDealForm(true)}>
+                  + Create Deal
+                </Button>
+              )}
             </CardHeader>
-            <CardContent className="space-y-3">
-              {dealsError ? <p className="text-sm text-slate-500 dark:text-slate-400">{dealsError}</p> : null}
+            <CardContent className="space-y-4">
+
+              {/* Create deal form */}
+              {showDealForm && (
+                <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-4 space-y-3 bg-slate-50 dark:bg-slate-800/50">
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <div className="space-y-1 md:col-span-2">
+                      <label className="text-xs font-medium text-slate-500 dark:text-slate-400">Property / Project</label>
+                      <Input
+                        type="text"
+                        placeholder="e.g. Sapphire, Siolim — Unit 302"
+                        value={dealProperty}
+                        onChange={(e) => setDealProperty(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-slate-500 dark:text-slate-400">Deal Value (₹)</label>
+                      <Input
+                        type="number"
+                        placeholder="e.g. 18700000"
+                        value={dealValue}
+                        onChange={(e) => setDealValue(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-slate-500 dark:text-slate-400">Commission %</label>
+                      <Input
+                        type="number"
+                        step="0.1"
+                        placeholder="2"
+                        value={dealCommission}
+                        onChange={(e) => setDealCommission(e.target.value)}
+                      />
+                      {dealValue && dealCommission && (
+                        <p className="text-xs text-slate-400">
+                          ≈ ₹{(Number(dealValue) * Number(dealCommission) / 100).toLocaleString("en-IN")}
+                        </p>
+                      )}
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-slate-500 dark:text-slate-400">Expected Close Date</label>
+                      <Input
+                        type="date"
+                        value={dealCloseDate}
+                        onChange={(e) => setDealCloseDate(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-slate-500 dark:text-slate-400">Stage</label>
+                      <select
+                        value={dealStage}
+                        onChange={(e) => setDealStage(e.target.value)}
+                        className="w-full h-9 text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-3 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                      >
+                        <option value="Negotiation">Negotiation</option>
+                        <option value="Agreement">Agreement</option>
+                        <option value="Registration">Registration</option>
+                        <option value="Closed Won">Closed Won</option>
+                        <option value="Closed Lost">Closed Lost</option>
+                      </select>
+                    </div>
+                    <div className="space-y-1 md:col-span-2">
+                      <label className="text-xs font-medium text-slate-500 dark:text-slate-400">Notes (optional)</label>
+                      <Textarea
+                        placeholder="Any deal notes..."
+                        value={dealNotes}
+                        onChange={(e) => setDealNotes(e.target.value)}
+                        rows={2}
+                      />
+                    </div>
+                  </div>
+                  {dealError && <p className="text-xs text-rose-600 dark:text-rose-400">{dealError}</p>}
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      onClick={createDeal}
+                      disabled={savingDeal || !dealProperty.trim() || !dealValue}
+                    >
+                      {savingDeal ? "Saving..." : "Save Deal"}
+                    </Button>
+                    <Button type="button" variant="ghost" onClick={() => { setShowDealForm(false); setDealError(null); }}>
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Deals error */}
+              {dealsError && <p className="text-sm text-slate-500 dark:text-slate-400">{dealsError}</p>}
+
+              {/* Deals table */}
               {deals.length === 0 ? (
                 <p className="text-sm text-slate-500 dark:text-slate-400">No deals linked yet.</p>
               ) : (
-                deals.map((deal) => (
-                  <div key={deal.id} className="rounded-md border p-3 text-sm">
-                    <div className="flex items-center justify-between">
-                      <p className="font-medium">{deal.name || `Deal ${deal.id}`}</p>
-                      <Badge variant="outline">{deal.status || "open"}</Badge>
-                    </div>
-                    <p className="mt-1 text-slate-600 dark:text-slate-300">Value: {deal.value || "-"}</p>
+                <>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b text-left text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                          <th className="pb-2 pr-4">Property</th>
+                          <th className="pb-2 pr-4">Deal Value</th>
+                          <th className="pb-2 pr-4">Commission</th>
+                          <th className="pb-2 pr-4">Expected Close</th>
+                          <th className="pb-2 pr-4">Stage</th>
+                          <th className="pb-2">Created</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                        {deals.map((deal) => {
+                          const numVal = typeof deal.value === "number" ? deal.value : Number(deal.deal_value ?? deal.value ?? 0);
+                          const commVal = deal.commission_value ?? (numVal * (deal.commission_pct ?? 0) / 100);
+                          const stageBadge = (() => {
+                            const s = deal.stage || deal.status || "";
+                            if (/closed.won|won/i.test(s)) return "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300";
+                            if (/closed.lost|lost/i.test(s)) return "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300";
+                            if (/negotiat/i.test(s)) return "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300";
+                            if (/agreement/i.test(s)) return "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300";
+                            if (/registrat/i.test(s)) return "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300";
+                            return "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300";
+                          })();
+                          return (
+                            <tr key={deal.id} className="py-2">
+                              <td className="py-2.5 pr-4 font-medium text-slate-800 dark:text-slate-200 max-w-[160px] truncate">
+                                {deal.property_description || deal.name || `Deal ${deal.id.slice(0, 8)}`}
+                              </td>
+                              <td className="py-2.5 pr-4 tabular-nums">
+                                {numVal ? `₹${numVal.toLocaleString("en-IN")}` : "—"}
+                              </td>
+                              <td className="py-2.5 pr-4 tabular-nums text-slate-500">
+                                {commVal ? `₹${Math.round(commVal).toLocaleString("en-IN")}` : deal.commission_pct ? `${deal.commission_pct}%` : "—"}
+                              </td>
+                              <td className="py-2.5 pr-4 text-slate-500">
+                                {deal.expected_close_date ? toISTDate(deal.expected_close_date) : "—"}
+                              </td>
+                              <td className="py-2.5 pr-4">
+                                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${stageBadge}`}>
+                                  {deal.stage || deal.status || "open"}
+                                </span>
+                              </td>
+                              <td className="py-2.5 text-slate-400 text-xs whitespace-nowrap">
+                                {toISTDate(deal.created_at ?? undefined)}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
                   </div>
-                ))
+
+                  {/* Total pipeline */}
+                  {(() => {
+                    const total = deals
+                      .filter((d) => !/closed.lost|lost/i.test(d.stage || d.status || ""))
+                      .reduce((sum, d) => {
+                        const v = typeof d.value === "number" ? d.value : Number(d.deal_value ?? d.value ?? 0);
+                        return sum + v;
+                      }, 0);
+                    return total > 0 ? (
+                      <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-end">
+                        <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                          Total Pipeline: ₹{total.toLocaleString("en-IN")}
+                        </p>
+                      </div>
+                    ) : null;
+                  })()}
+                </>
               )}
             </CardContent>
           </Card>
