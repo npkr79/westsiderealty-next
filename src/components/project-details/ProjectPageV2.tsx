@@ -116,7 +116,15 @@ function FaqItem({ q, a }: { q: string; a: string }) {
   );
 }
 
-function InlineLeadForm({ projectName, projectId, reraId }: { projectName: string; projectId: string; reraId?: string | null }) {
+function InlineLeadForm({
+  projectName, projectId, reraId, locationPreference, dark = true,
+}: {
+  projectName: string;
+  projectId: string;
+  reraId?: string | null;
+  locationPreference?: string;
+  dark?: boolean;
+}) {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -132,7 +140,13 @@ function InlineLeadForm({ projectName, projectId, reraId }: { projectName: strin
         phone,
         type: "PROJECT_INTEREST",
         source_page: typeof window !== "undefined" ? window.location.href : "project_page_v2",
-        details: { project_name: projectName, project_id: projectId, rera_id: reraId },
+        details: {
+          source_id: "c3b72f38-171b-4ce6-a060-f40beed8bdb4",
+          project_name: projectName,
+          project_id: projectId,
+          notes: `Enquiry for ${projectName}${reraId ? ` (RERA: ${reraId})` : ""}`,
+          location_preference: locationPreference || "",
+        },
       });
       setSubmitted(true);
     } catch {
@@ -142,20 +156,24 @@ function InlineLeadForm({ projectName, projectId, reraId }: { projectName: strin
     }
   };
 
+  const inputCls = dark
+    ? "flex-1 min-w-0 px-3 py-2.5 rounded-lg bg-white/10 text-white placeholder-white/40 text-sm border border-white/15 focus:outline-none focus:border-blue-400"
+    : "flex-1 min-w-0 px-3 py-2.5 rounded-lg bg-gray-50 text-gray-900 placeholder-gray-400 text-sm border border-gray-200 focus:outline-none focus:border-blue-400";
+
   if (submitted) {
     return (
       <div className="flex items-center justify-center py-2">
-        <p className="text-green-400 font-semibold text-sm">✓ Got it! We&apos;ll call you shortly.</p>
+        <p className={`font-semibold text-sm ${dark ? "text-green-400" : "text-green-600"}`}>
+          ✓ Got it! We&apos;ll call you shortly.
+        </p>
       </div>
     );
   }
 
   return (
     <form onSubmit={handleSubmit} className="flex gap-2">
-      <input value={name} onChange={e => setName(e.target.value)} placeholder="Your name" required
-        className="flex-1 min-w-0 px-3 py-2.5 rounded-lg bg-white/10 text-white placeholder-white/40 text-sm border border-white/15 focus:outline-none focus:border-blue-400" />
-      <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="Phone number" required type="tel"
-        className="flex-1 min-w-0 px-3 py-2.5 rounded-lg bg-white/10 text-white placeholder-white/40 text-sm border border-white/15 focus:outline-none focus:border-blue-400" />
+      <input value={name} onChange={e => setName(e.target.value)} placeholder="Your name" required className={inputCls} />
+      <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="Phone" required type="tel" className={inputCls} />
       <button type="submit" disabled={submitting}
         className="px-4 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold transition-colors flex-shrink-0 disabled:opacity-60">
         {submitting ? "..." : "Call Me"}
@@ -535,12 +553,13 @@ export default function ProjectPageV2({ project, insights, context, citySlug, pr
                     typeLabel = "Mixed Use"; typeColor = "#a78bfa";
                   } else if (type?.includes("commercial")) {
                     typeLabel = "Commercial"; typeColor = "#60a5fa";
-                  } else if (type?.includes("villa") || type?.includes("row house") || type?.includes("rowhouse")) {
-                    typeLabel = "Villa"; typeColor = "#fb923c";
-                  } else if (type?.includes("resident") || type?.includes("apartment") || type?.includes("flat") || type?.includes("group housing")) {
-                    typeLabel = "Apartment"; typeColor = "#4ade80";
                   } else if (type?.includes("plotted")) {
                     typeLabel = "Plotted"; typeColor = "#fbbf24";
+                  } else if (type?.includes("villa") || type?.includes("row house") || type?.includes("rowhouse")) {
+                    typeLabel = "Villa"; typeColor = "#fb923c";
+                  } else {
+                    // Default: Apartment for residential / group housing / unknown
+                    typeLabel = "Apartment"; typeColor = "#4ade80";
                   }
                   if (!typeLabel) return null;
                   return (
@@ -580,11 +599,34 @@ export default function ProjectPageV2({ project, insights, context, citySlug, pr
                     🏗 {project.current_status}
                   </span>
                 )}
-                {project.configuration_display && (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-white/10 text-white/90 border border-white/15">
-                    🏠 {project.configuration_display}
-                  </span>
-                )}
+                {(() => {
+                  // Derive BHK numbers from configDistribution (from rera_units aggregation)
+                  const bhkNums = [...new Set(
+                    configDistribution
+                      .map(r => { const m = (r.unit_category || "").match(/^(\d+)\s*BHK/i); return m ? parseInt(m[1]) : null; })
+                      .filter((n): n is number => n !== null)
+                  )].sort((a, b) => a - b);
+
+                  const isVilla = project.project_type?.toLowerCase().includes("villa");
+                  const ptSuffix = isVilla ? " Villas" : " Apartments";
+
+                  if (bhkNums.length > 0) {
+                    return (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-white/10 text-white/90 border border-white/15">
+                        🏠 {bhkNums.join(", ")} BHK{ptSuffix}
+                      </span>
+                    );
+                  }
+                  // Fallback: use configuration_display directly
+                  if (project.configuration_display) {
+                    return (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-white/10 text-white/90 border border-white/15">
+                        🏠 {project.configuration_display}{ptSuffix}
+                      </span>
+                    );
+                  }
+                  return null;
+                })()}
                 {project.min_area && project.max_area && (
                   <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-white/10 text-white/90 border border-white/15">
                     📐 {project.min_area === project.max_area
@@ -612,7 +654,11 @@ export default function ProjectPageV2({ project, insights, context, citySlug, pr
                 )}
                 <div>
                   <p className="text-white/50 text-[10px] uppercase tracking-wider">Developer</p>
-                  <p className="text-white font-semibold text-sm">{developerBrandName || developer?.developer_name || project.developer_name || "—"}</p>
+                  <p className="text-white font-semibold text-sm">
+                    {isIndividualDeveloper(developerBrandName || developer?.developer_name || project.developer_name)
+                      ? "Independent Developer"
+                      : (developerBrandName || developer?.developer_name || project.developer_name || "—")}
+                  </p>
                 </div>
               </div>
 
@@ -637,11 +683,17 @@ export default function ProjectPageV2({ project, insights, context, citySlug, pr
                 </div>
               )}
 
-              {/* CTA */}
-              <button onClick={() => setModalOpen(true)}
-                className="w-full py-3.5 rounded-xl font-semibold text-sm text-white bg-indigo-600 hover:bg-indigo-700 transition-colors">
-                Get Expert Analysis — Free
-              </button>
+              {/* Lead capture form — desktop sidebar */}
+              <div className="mb-1">
+                <p className="text-white/50 text-[10px] uppercase tracking-wider mb-2">Interested? Get free advice</p>
+                <InlineLeadForm
+                  projectName={project.project_name}
+                  projectId={project.id || String((project as any).project_id || "")}
+                  reraId={project.rera_id}
+                  locationPreference={microMarket?.micro_market_name ? `${microMarket.micro_market_name}, ${citySlug}` : citySlug}
+                  dark
+                />
+              </div>
 
               {/* Trust line */}
               <p className="text-white/40 text-[10px] text-center mt-3">
@@ -1396,7 +1448,8 @@ export default function ProjectPageV2({ project, insights, context, citySlug, pr
 
                 {/* Right col */}
                 <div className="space-y-6">
-                  {/* Distance intelligence */}
+                  {/* Distance intelligence — Hyderabad only (landmarks/ORR are HYD-specific) */}
+                  {citySlug === "hyderabad" && (
                   <div>
                     <div className="flex items-center gap-2 mb-3">
                       <ReraBadge />
@@ -1423,6 +1476,7 @@ export default function ProjectPageV2({ project, insights, context, citySlug, pr
                       })()}
                     </div>
                   </div>
+                  )}
 
                   {/* Nearby schools */}
                   {(() => {
@@ -1867,6 +1921,8 @@ export default function ProjectPageV2({ project, insights, context, citySlug, pr
             projectName={project.project_name}
             projectId={project.id || String((project as any).project_id || "")}
             reraId={project.rera_id}
+            locationPreference={microMarket?.micro_market_name ? `${microMarket.micro_market_name}, ${citySlug}` : citySlug}
+            dark
           />
         </div>
       </div>
