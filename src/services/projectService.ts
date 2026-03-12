@@ -650,7 +650,13 @@ export const projectService = {
           .maybeSingle()
       );
       if (projRow) {
-        const toArr = (v: any): any[] | null => Array.isArray(v) ? v : null;
+        const toArr = (v: any): any[] | null => {
+          if (Array.isArray(v)) return v;
+          if (typeof v === 'string') {
+            try { const p = JSON.parse(v); return Array.isArray(p) ? p : null; } catch { return null; }
+          }
+          return null;
+        };
         projectsTableData = {
           project_overview_seo: toStringOrNull((projRow as any).project_overview_seo),
           westside_realty_review: toStringOrNull((projRow as any).westside_realty_review),
