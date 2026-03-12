@@ -2,10 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Pencil, Phone } from "lucide-react";
+import { ArrowLeft, ArrowRight, FileText, MapPin, Pencil, Phone } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useActivities } from "@/hooks/useActivities";
-import type { CrmActivity, CrmTask, CrmUser } from "@/lib/crm/types";
+import type { CrmTask, CrmUser } from "@/lib/crm/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -220,11 +220,6 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
   const [loadingLead, setLoadingLead] = useState(true);
   const [leadError, setLeadError] = useState<string | null>(null);
 
-  const [notes, setNotes] = useState<CrmActivity[]>([]);
-  const [newNote, setNewNote] = useState("");
-  const [savingNote, setSavingNote] = useState(false);
-  const [updatingNoteId, setUpdatingNoteId] = useState<string | null>(null);
-
   const [tasks, setTasks] = useState<CrmTask[]>([]);
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [newTaskDueDate, setNewTaskDueDate] = useState("");
@@ -332,16 +327,6 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
     setLoadingLead(false);
   }, [leadId, supabase]);
 
-  const loadNotes = useCallback(async () => {
-    const { data } = await supabase
-      .from("crm_lead_activities")
-      .select("id,lead_id,activity_type,notes,created_by,created_at")
-      .eq("lead_id", leadId)
-      .eq("activity_type", "note")
-      .order("created_at", { ascending: false });
-    setNotes((data as CrmActivity[]) || []);
-  }, [leadId, supabase]);
-
   const loadLeadTasks = useCallback(async () => {
     const { data } = await supabase
       .from("crm_tasks")
@@ -411,7 +396,6 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
   useEffect(() => {
     const timer = window.setTimeout(() => {
       void loadLead();
-      void loadNotes();
       void loadLeadTasks();
       void loadDeals();
       void loadSiteVisits();
@@ -419,7 +403,7 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
       void loadCallLogs();
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [loadDeals, loadLead, loadLeadTasks, loadNotes, loadSiteVisits, loadAgents, loadCallLogs]);
+  }, [loadDeals, loadLead, loadLeadTasks, loadSiteVisits, loadAgents, loadCallLogs]);
 
   // Sync edit states when lead data loads
   useEffect(() => {
@@ -446,14 +430,14 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "crm_lead_activities", filter: `lead_id=eq.${leadId}` },
-        () => { void loadNotes(); void loadSiteVisits(); void loadCallLogs(); }
+        () => { void loadSiteVisits(); void loadCallLogs(); }
       )
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [leadId, loadLead, loadLeadTasks, loadNotes, loadSiteVisits, loadCallLogs, supabase]);
+  }, [leadId, loadLead, loadLeadTasks, loadSiteVisits, loadCallLogs, supabase]);
 
   // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -478,33 +462,7 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
   );
 
 
-  // ── note / task / site-visit mutations ──────────────────────────────────────
-
-  const addNote = useCallback(async () => {
-    if (!newNote.trim()) return;
-    setSavingNote(true);
-    const { error } = await supabase.from("crm_lead_activities").insert({
-      lead_id: leadId,
-      activity_type: "note",
-      notes: newNote.trim(),
-      created_by: currentUser.id,
-    });
-    setSavingNote(false);
-    if (!error) {
-      setNewNote("");
-      loadNotes();
-    }
-  }, [currentUser.id, leadId, loadNotes, newNote, supabase]);
-
-  const updateNote = useCallback(
-    async (id: string, text: string) => {
-      setUpdatingNoteId(id);
-      await supabase.from("crm_lead_activities").update({ notes: text }).eq("id", id);
-      setUpdatingNoteId(null);
-      loadNotes();
-    },
-    [loadNotes, supabase]
-  );
+  // ── task / site-visit mutations ──────────────────────────────────────────────
 
   const addTask = useCallback(async () => {
     if (!newTaskTitle.trim()) return;
@@ -811,9 +769,8 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="flex w-full overflow-x-auto whitespace-nowrap scrollbar-hide">
           <TabsTrigger value="overview" className="flex-shrink-0">Overview</TabsTrigger>
-          <TabsTrigger value="notes" className="flex-shrink-0">Notes</TabsTrigger>
           <TabsTrigger value="activities" className="flex-shrink-0">Activities</TabsTrigger>
-          <TabsTrigger value="project-activity" className="flex-shrink-0">Project Activity</TabsTrigger>
+          <TabsTrigger value="project-activity" className="flex-shrink-0">Website Activity</TabsTrigger>
           <TabsTrigger value="smart-shortlist" className="flex-shrink-0">Smart Shortlist</TabsTrigger>
           <TabsTrigger value="tasks" className="flex-shrink-0">Tasks</TabsTrigger>
           <TabsTrigger value="site-visits" className="flex-shrink-0">Site Visits</TabsTrigger>
@@ -1074,52 +1031,6 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
           </div>
         </TabsContent>
 
-        {/* ── Notes ── */}
-        <TabsContent value="notes">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Notes</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <Textarea
-                placeholder="Add a note for this lead..."
-                value={newNote}
-                onChange={(e) => setNewNote(e.target.value)}
-              />
-              <Button type="button" onClick={addNote} disabled={savingNote}>
-                {savingNote ? "Saving..." : "Add note"}
-              </Button>
-
-              <div className="space-y-2">
-                {notes.length === 0 ? (
-                  <p className="text-sm text-slate-500 dark:text-slate-400">No notes added yet.</p>
-                ) : (
-                  notes.map((note) => (
-                    <div key={note.id} className="rounded-md border p-3">
-                      <Textarea
-                        defaultValue={note.notes || ""}
-                        onBlur={(e) => {
-                          const value = e.target.value.trim();
-                          if (value !== (note.notes || "").trim()) {
-                            updateNote(note.id, value);
-                          }
-                        }}
-                      />
-                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                        {updatingNoteId === note.id
-                          ? "Updating..."
-                          : note.created_at
-                            ? toIST(note.created_at)
-                            : "Unknown time"}
-                      </p>
-                    </div>
-                  ))
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
         {/* ── Activities ── */}
         <TabsContent value="activities">
           <Card>
@@ -1129,29 +1040,64 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
             <CardContent className="space-y-3">
               {loadingActivities ? <p className="text-sm">Loading activities...</p> : null}
               {activityError ? <p className="text-sm text-rose-600 dark:text-rose-300">{activityError}</p> : null}
-              {activities.map((activity) => {
-                const isCall = activity.activity_type === "call";
-                const meta = (activity as unknown as CallActivity).metadata;
-                return (
-                  <div key={activity.id} className="rounded-md border p-3">
-                    <div className="mb-1 flex items-center justify-between">
-                      <div className="flex items-center gap-1.5">
-                        {isCall && <Phone className="h-3.5 w-3.5 text-blue-500" />}
-                        <Badge variant="secondary">{activity.activity_type}</Badge>
+              {(() => {
+                const HIDDEN_TYPES = new Set(["stage_automation", "system", "automation"]);
+                const visible = activities.filter((a) => {
+                  if (HIDDEN_TYPES.has(a.activity_type)) return false;
+                  const text = a.description || a.notes || "";
+                  if (text.trimStart().startsWith("{")) return false;
+                  return true;
+                });
+                if (!loadingActivities && visible.length === 0) {
+                  return <p className="text-sm text-slate-500 dark:text-slate-400">No activity recorded yet.</p>;
+                }
+                return visible.map((activity) => {
+                  const type = activity.activity_type;
+                  const text = activity.description || activity.notes || "";
+
+                  let icon: React.ReactNode = null;
+                  let label: string;
+                  let badgeClass = "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300";
+
+                  if (type === "call") {
+                    icon = <Phone className="h-3.5 w-3.5 flex-shrink-0 text-blue-500" />;
+                    label = text ? `Call logged — ${text}` : "Call logged";
+                    badgeClass = "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300";
+                  } else if (type === "note") {
+                    icon = <FileText className="h-3.5 w-3.5 flex-shrink-0 text-slate-500" />;
+                    label = text || "Note";
+                  } else if (type === "site_visit") {
+                    icon = <MapPin className="h-3.5 w-3.5 flex-shrink-0 text-emerald-500" />;
+                    label = text || "Site visit";
+                    badgeClass = "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300";
+                  } else if (type === "stage_change") {
+                    icon = <ArrowRight className="h-3.5 w-3.5 flex-shrink-0 text-amber-500" />;
+                    label = text || "Stage changed";
+                    badgeClass = "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300";
+                  } else {
+                    label = text || type;
+                  }
+
+                  return (
+                    <div key={activity.id} className="rounded-md border p-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-start gap-2 min-w-0">
+                          {icon && <span className="mt-0.5">{icon}</span>}
+                          <div className="min-w-0">
+                            <span className={`inline-block text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded mb-1 ${badgeClass}`}>
+                              {type.replace(/_/g, " ")}
+                            </span>
+                            <p className="text-sm text-slate-700 dark:text-slate-200 break-words">{label}</p>
+                          </div>
+                        </div>
+                        <p className="text-xs text-slate-400 whitespace-nowrap flex-shrink-0">
+                          {toIST(activity.created_at)}
+                        </p>
                       </div>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">
-                        {toIST(activity.created_at)}
-                      </p>
                     </div>
-                    {isCall && meta?.outcome && (
-                      <p className="text-sm font-medium mb-0.5">
-                        {meta.outcome}{meta.duration_minutes ? ` · ${meta.duration_minutes} mins` : ""}
-                      </p>
-                    )}
-                    <p className="text-sm">{activity.notes || "-"}</p>
-                  </div>
-                );
-              })}
+                  );
+                });
+              })()}
             </CardContent>
           </Card>
         </TabsContent>

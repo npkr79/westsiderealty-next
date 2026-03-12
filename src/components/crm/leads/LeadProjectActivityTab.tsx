@@ -358,12 +358,15 @@ export default function LeadProjectActivityTab({ leadId, currentUserId, assigned
 
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">Project activity timeline</CardTitle>
+          <CardTitle className="text-base">Website Activity</CardTitle>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+            Pages and projects this lead viewed on westsiderealty.in
+          </p>
         </CardHeader>
         <CardContent className="space-y-3">
           {error ? <p className="text-sm text-rose-600 dark:text-rose-300">{error}</p> : null}
           {filteredRows.length === 0 ? (
-            <p className="text-sm text-slate-500 dark:text-slate-400">No project interactions found for this lead.</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">No website activity recorded yet.</p>
           ) : (
             filteredRows.map((row) => (
               <div key={row.id} className="rounded-md border-l-4 border-slate-300 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900">

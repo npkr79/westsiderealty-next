@@ -21,7 +21,7 @@ export function useActivities(leadId?: string) {
     try {
       const { data, error: queryError } = await supabase
         .from("crm_lead_activities")
-        .select("id,lead_id,activity_type,notes,created_by,created_at")
+        .select("id,lead_id,activity_type,description,notes,created_by,created_at")
         .eq("lead_id", leadId)
         .order("created_at", { ascending: false })
         .limit(300);

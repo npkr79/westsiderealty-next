@@ -72,6 +72,7 @@ export interface CrmActivity {
   id: string;
   lead_id: string;
   activity_type: string;
+  description?: string | null;
   notes?: string | null;
   created_by?: string | null;
   created_at?: string;
