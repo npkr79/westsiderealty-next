@@ -472,6 +472,38 @@ function cleanArray(raw: any): string[] {
   return [];
 }
 
+// ─── Amenity icon map ─────────────────────────────────────────────────────────
+
+const AMENITY_ICONS: [string, string][] = [
+  ["swimming pool", "🏊"], ["pool", "🏊"],
+  ["gym", "💪"], ["fitness", "💪"],
+  ["clubhouse", "🏛️"], ["club house", "🏛️"],
+  ["garden", "🌿"], ["landscap", "🌿"], ["park", "🌿"],
+  ["security", "🔒"], ["cctv", "📹"],
+  ["parking", "🚗"], ["car park", "🚗"],
+  ["power backup", "⚡"], ["generator", "⚡"],
+  ["children", "🧒"], ["kids", "🧒"], ["play area", "🧒"],
+  ["jogging", "🏃"], ["walking track", "🏃"], ["cycling", "🚴"],
+  ["tennis", "🎾"], ["basketball", "🏀"], ["badminton", "🏸"],
+  ["amphitheater", "🎭"], ["amphitheatre", "🎭"],
+  ["library", "📚"], ["reading", "📚"],
+  ["meditation", "🧘"], ["yoga", "🧘"],
+  ["spa", "🧖"], ["sauna", "🧖"],
+  ["wi-fi", "📶"], ["wifi", "📶"], ["internet", "📶"],
+  ["guest", "🛎️"], ["party hall", "🎉"], ["banquet", "🎉"],
+  ["lift", "🛗"], ["elevator", "🛗"],
+  ["solar", "☀️"], ["rain water", "🌧️"], ["waste", "♻️"],
+  ["sports", "⚽"],
+];
+
+function getAmenityIcon(name: string): string {
+  const lower = name.toLowerCase();
+  for (const [key, icon] of AMENITY_ICONS) {
+    if (lower.includes(key)) return icon;
+  }
+  return "✓";
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function ProjectPageV2({ project, insights, context, citySlug, projectSlug, developerProjects, liveIntelligence, microMarketDetail, relatedProjects = [], nearbyMarkets = [], configDistribution = [], otherProjectsInMarket = [], developerBrandSlug, developerBrandName }: ProjectPageV2Props) {
@@ -546,19 +578,21 @@ export default function ProjectPageV2({ project, insights, context, citySlug, pr
               <div className="flex items-center gap-2 mb-3">
                 {project.rera_id && <ReraBadge dark />}
                 {(() => {
-                  const type = project.project_type?.toLowerCase();
+                  // Prefer property_types[0] from projects table; fall back to project_type
+                  const ptArr = cleanArray((project as any).property_types);
+                  const rawType = ptArr[0] || project.project_type || "";
+                  const type = rawType.toLowerCase();
                   let typeLabel: string | null = null;
                   let typeColor: string | null = null;
-                  if (type?.includes("mixed") || type?.includes("mix")) {
+                  if (type.includes("mixed") || type.includes("mix")) {
                     typeLabel = "Mixed Use"; typeColor = "#a78bfa";
-                  } else if (type?.includes("commercial")) {
+                  } else if (type.includes("commercial")) {
                     typeLabel = "Commercial"; typeColor = "#60a5fa";
-                  } else if (type?.includes("plotted")) {
+                  } else if (type.includes("plotted")) {
                     typeLabel = "Plotted"; typeColor = "#fbbf24";
-                  } else if (type?.includes("villa") || type?.includes("row house") || type?.includes("rowhouse")) {
+                  } else if (type.includes("villa") || type.includes("row house") || type.includes("rowhouse")) {
                     typeLabel = "Villa"; typeColor = "#fb923c";
-                  } else {
-                    // Default: Apartment for residential / group housing / unknown
+                  } else if (rawType) {
                     typeLabel = "Apartment"; typeColor = "#4ade80";
                   }
                   if (!typeLabel) return null;
@@ -600,40 +634,52 @@ export default function ProjectPageV2({ project, insights, context, citySlug, pr
                   </span>
                 )}
                 {(() => {
-                  // Derive BHK numbers from configDistribution (from rera_units aggregation)
-                  const bhkNums = [...new Set(
+                  // Priority: configurations[] from projects table → configDistribution → skip
+                  const configsArr = cleanArray((project as any).configurations);
+                  const bhkFromConfigs = [...new Set(
+                    configsArr.map(c => { const m = String(c).match(/^(\d+)\s*BHK/i); return m ? parseInt(m[1]) : null; })
+                      .filter((n): n is number => n !== null)
+                  )].sort((a, b) => a - b);
+
+                  const bhkFromDist = [...new Set(
                     configDistribution
                       .map(r => { const m = (r.unit_category || "").match(/^(\d+)\s*BHK/i); return m ? parseInt(m[1]) : null; })
                       .filter((n): n is number => n !== null)
                   )].sort((a, b) => a - b);
 
-                  const isVilla = project.project_type?.toLowerCase().includes("villa");
-                  const ptSuffix = isVilla ? " Villas" : " Apartments";
+                  const bhkNums = bhkFromConfigs.length > 0 ? bhkFromConfigs : bhkFromDist;
+                  if (bhkNums.length === 0) return null;
 
-                  if (bhkNums.length > 0) {
+                  const ptArr = cleanArray((project as any).property_types);
+                  const ptRaw = (ptArr[0] || project.project_type || "").toLowerCase();
+                  const ptSuffix = ptRaw.includes("villa") ? " Villas" : " Apartments";
+
+                  return (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-white/10 text-white/90 border border-white/15">
+                      🏠 {bhkNums.join(", ")} BHK{ptSuffix}
+                    </span>
+                  );
+                })()}
+                {(() => {
+                  const sizeRange = (project as any).unit_size_range as string | null;
+                  if (sizeRange) {
                     return (
                       <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-white/10 text-white/90 border border-white/15">
-                        🏠 {bhkNums.join(", ")} BHK{ptSuffix}
+                        📐 {sizeRange}
                       </span>
                     );
                   }
-                  // Fallback: use configuration_display directly
-                  if (project.configuration_display) {
+                  if (project.min_area && project.max_area) {
                     return (
                       <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-white/10 text-white/90 border border-white/15">
-                        🏠 {project.configuration_display}{ptSuffix}
+                        📐 {project.min_area === project.max_area
+                          ? `${fmtArea(project.min_area)} sqft`
+                          : `${fmtArea(project.min_area)}–${fmtArea(project.max_area)} sqft`}
                       </span>
                     );
                   }
                   return null;
                 })()}
-                {project.min_area && project.max_area && (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-white/10 text-white/90 border border-white/15">
-                    📐 {project.min_area === project.max_area
-                      ? `${fmtArea(project.min_area)} sqft`
-                      : `${fmtArea(project.min_area)}–${fmtArea(project.max_area)} sqft`}
-                  </span>
-                )}
                 {project.possession_date_text && (
                   <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-white/10 text-white/90 border border-white/15">
                     📅 {formatDate(project.possession_date_text)}
@@ -733,12 +779,19 @@ export default function ProjectPageV2({ project, insights, context, citySlug, pr
               </div>
             )}
             {[
-              (project.min_area && project.max_area) ? {
+              {
                 label: "Unit Sizes",
-                value: project.min_area === project.max_area
-                  ? `${fmtArea(project.min_area)} sqft`
-                  : `${fmtArea(project.min_area)}–${fmtArea(project.max_area)} sqft`,
-              } : null,
+                value: (project as any).unit_size_range
+                  || ((project.min_area && project.max_area)
+                    ? (project.min_area === project.max_area
+                        ? `${fmtArea(project.min_area)} sqft`
+                        : `${fmtArea(project.min_area)}–${fmtArea(project.max_area)} sqft`)
+                    : "Contact for details"),
+              },
+              {
+                label: "Price",
+                value: (project as any).price_display_string || project.price_range_text || "Contact for details",
+              },
               project.configuration_display ? { label: "Configurations", value: project.configuration_display } : null,
               { label: "RERA Status", value: project.current_status ?? "Registered" },
             ].filter(Boolean).map(({ label, value }: any) => (
@@ -873,11 +926,28 @@ export default function ProjectPageV2({ project, insights, context, citySlug, pr
               <h2 className="text-2xl font-bold text-gray-900 mb-4">About This Project</h2>
               <p className="text-gray-600 leading-relaxed text-base mb-6">{project.project_overview_seo}</p>
               {project.westside_realty_review && (
-                <div className="rounded-xl bg-blue-50 border border-blue-100 p-5">
+                <div className="rounded-xl bg-blue-50 border border-blue-100 p-5 mb-6">
                   <p className="text-[10px] font-bold text-blue-500 uppercase tracking-wider mb-2">Westside View</p>
                   <p className="text-sm text-gray-700 leading-relaxed">{project.westside_realty_review}</p>
                 </div>
               )}
+              {(() => {
+                const highlights = cleanArray((project as any).project_highlights);
+                if (highlights.length === 0) return null;
+                return (
+                  <div>
+                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Key Highlights</p>
+                    <div className="flex flex-wrap gap-2">
+                      {highlights.slice(0, 5).map((h, i) => (
+                        <span key={i}
+                          className="px-3 py-1.5 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-100">
+                          {String(h)}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
             </ScrollReveal>
           </div>
         </section>
@@ -920,6 +990,34 @@ export default function ProjectPageV2({ project, insights, context, citySlug, pr
                     primary buyer segment: {(validRows[0].unit_category || "").includes("3") ? "family end-users" : "young professionals"}
                   </p>
                 )}
+              </ScrollReveal>
+            </div>
+          </section>
+        );
+      })()}
+
+      {/* ── 2.4 AMENITIES ────────────────────────────────────────────────── */}
+      {(() => {
+        const amenities = cleanArray((project as any).amenities_json);
+        if (amenities.length === 0) return null;
+        return (
+          <section data-section="amenities" className="py-12" style={{ background: T.lightSection }}>
+            <div className="container mx-auto px-4">
+              <ScrollReveal>
+                <h2 className="text-xl font-bold text-gray-900 mb-6">Amenities</h2>
+                <div className="flex flex-wrap gap-2.5">
+                  {amenities.map((a, i) => {
+                    const name = String(a);
+                    const icon = getAmenityIcon(name);
+                    return (
+                      <span key={i}
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium bg-gray-50 text-gray-700 border border-gray-200">
+                        <span>{icon}</span>
+                        {name}
+                      </span>
+                    );
+                  })}
+                </div>
               </ScrollReveal>
             </div>
           </section>
@@ -1610,16 +1708,32 @@ export default function ProjectPageV2({ project, insights, context, citySlug, pr
                     </div>
                   )}
 
-                  {/* Location advantage pills */}
-                  {context.locationAdvantages && Array.isArray(context.locationAdvantages) && context.locationAdvantages.length > 0 && (
-                    <div className="flex flex-wrap gap-2">
-                      {(context.locationAdvantages as any[]).slice(0, 5).map((adv: any, i: number) => (
-                        <span key={i} className="px-3 py-1.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-100">
-                          {typeof adv === "string" ? adv : adv?.label || adv?.name || ""}
-                        </span>
-                      ))}
-                    </div>
-                  )}
+                  {/* Location highlights — projects table first, then context fallback */}
+                  {(() => {
+                    const fromTable = cleanArray((project as any).location_highlights);
+                    const fromContext = (context.locationAdvantages && Array.isArray(context.locationAdvantages))
+                      ? context.locationAdvantages as any[]
+                      : [];
+                    const items = fromTable.length > 0 ? fromTable : fromContext;
+                    if (items.length === 0) return null;
+                    return (
+                      <div>
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">📍 Location Highlights</p>
+                        <div className="space-y-1.5">
+                          {items.slice(0, 6).map((item: any, i: number) => {
+                            const text = typeof item === "string" ? item : item?.label || item?.name || "";
+                            if (!text) return null;
+                            return (
+                              <div key={i} className="flex items-start gap-2.5 py-2 px-4 rounded-xl bg-gray-50">
+                                <span className="text-indigo-400 text-xs mt-0.5 flex-shrink-0">→</span>
+                                <span className="text-sm text-gray-700">{text}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
             </ScrollReveal>

@@ -620,29 +620,52 @@ export const projectService = {
       }
     }
 
-    // Fetch description/SEO fields from projects table — not exposed by the enriched MV
+    // Fetch enrichment fields from projects table — not exposed by the enriched MV
     let projectsTableData: {
       project_overview_seo: string | null;
       westside_realty_review: string | null;
       seo_title: string | null;
       meta_description: string | null;
       h1_title: string | null;
+      configurations: any[] | null;
+      unit_size_range: string | null;
+      min_price: number | null;
+      max_price: number | null;
+      price_display_string: string | null;
+      amenities_json: any[] | null;
+      project_highlights: any[] | null;
+      location_highlights: any[] | null;
+      property_types: any[] | null;
     } | null = null;
     {
       const { data: projRow } = await runWithServiceFallback<any>((client) =>
         client
           .from("projects")
-          .select("project_overview_seo, westside_realty_review, seo_title, meta_description, h1_title")
+          .select([
+            "project_overview_seo", "westside_realty_review", "seo_title", "meta_description", "h1_title",
+            "configurations", "unit_size_range", "min_price", "max_price", "price_display_string",
+            "amenities_json", "project_highlights", "location_highlights", "property_types",
+          ].join(", "))
           .eq("url_slug", projectSlug)
           .maybeSingle()
       );
       if (projRow) {
+        const toArr = (v: any): any[] | null => Array.isArray(v) ? v : null;
         projectsTableData = {
           project_overview_seo: toStringOrNull((projRow as any).project_overview_seo),
           westside_realty_review: toStringOrNull((projRow as any).westside_realty_review),
           seo_title: toStringOrNull((projRow as any).seo_title),
           meta_description: toStringOrNull((projRow as any).meta_description),
           h1_title: toStringOrNull((projRow as any).h1_title),
+          configurations: toArr((projRow as any).configurations),
+          unit_size_range: toStringOrNull((projRow as any).unit_size_range),
+          min_price: toNumberOrNull((projRow as any).min_price),
+          max_price: toNumberOrNull((projRow as any).max_price),
+          price_display_string: toStringOrNull((projRow as any).price_display_string),
+          amenities_json: toArr((projRow as any).amenities_json),
+          project_highlights: toArr((projRow as any).project_highlights),
+          location_highlights: toArr((projRow as any).location_highlights),
+          property_types: toArr((projRow as any).property_types),
         };
       }
     }
@@ -1280,12 +1303,22 @@ export const projectService = {
     const project: ProjectWithRelations = {
       // Spread all MV fields so gallery_images_json, amenities_json, etc. are available
       ...(data as any),
-      // Merge description/SEO fields from projects table (not in MV)
+      // Merge enrichment fields from projects table (not in MV)
       project_overview_seo: projectsTableData?.project_overview_seo ?? toStringOrNull((data as any).project_overview_seo) ?? "",
       westside_realty_review: projectsTableData?.westside_realty_review ?? toStringOrNull((data as any).westside_realty_review),
       seo_title: projectsTableData?.seo_title ?? toStringOrNull((data as any).seo_title),
       meta_description: projectsTableData?.meta_description ?? toStringOrNull((data as any).meta_description) ?? "",
       h1_title: projectsTableData?.h1_title ?? toStringOrNull((data as any).h1_title),
+      // Enrichment arrays / pricing
+      configurations: projectsTableData?.configurations ?? null,
+      unit_size_range: projectsTableData?.unit_size_range ?? null,
+      min_price: projectsTableData?.min_price ?? null,
+      max_price: projectsTableData?.max_price ?? null,
+      price_display_string: projectsTableData?.price_display_string ?? null,
+      amenities_json: projectsTableData?.amenities_json ?? ((data as any).amenities_json ?? null),
+      project_highlights: projectsTableData?.project_highlights ?? null,
+      location_highlights: projectsTableData?.location_highlights ?? null,
+      property_types: projectsTableData?.property_types ?? null,
       id: String(data.project_id ?? ""),
       project_name: String(data.project_name ?? ""),
       configuration_display: toStringOrNull(data.configuration_display),
