@@ -86,6 +86,7 @@ export async function PATCH(
     .maybeSingle();
 
   console.log("[PATCH /api/crm/leads/:id] supabase result:", error ? `error: ${error.message}` : `ok, id=${(data as Record<string,unknown> | null)?.id}`);
+  if ("priority" in patch) console.log("Priority updated to:", patch.priority);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json(data);

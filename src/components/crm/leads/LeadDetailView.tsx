@@ -231,7 +231,7 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
 
   // Existing editable fields (status/priority/notes)
   const [editStatus, setEditStatus] = useState("new");
-  const [editPriority, setEditPriority] = useState("cold");
+  const [editPriority, setEditPriority] = useState("");
   const [editNotes, setEditNotes] = useState("");
 
   // Contact detail inline edits
@@ -409,7 +409,7 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
   useEffect(() => {
     if (lead) {
       setEditStatus(lead.status || "new");
-      setEditPriority(lead.priority || "cold");
+      setEditPriority(lead.priority || "");
       setEditNotes(lead.notes || "");
       setEditName(lead.name || "");
       setEditPhone(lead.phone || "");
@@ -920,12 +920,14 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
                     <select
                       value={editPriority}
                       onChange={async (e) => {
-                        setEditPriority(e.target.value);
+                        const newPriority = e.target.value;
+                        setEditPriority(newPriority);
                         await fetch(`/api/crm/leads/${lead.id}`, {
                           method: "PATCH",
                           headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({ priority: e.target.value }),
+                          body: JSON.stringify({ priority: newPriority }),
                         });
+                        console.log("Priority updated to:", newPriority);
                       }}
                       className="w-full h-8 text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                     >
