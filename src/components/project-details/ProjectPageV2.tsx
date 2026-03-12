@@ -751,48 +751,121 @@ export default function ProjectPageV2({ project, insights, context, citySlug, pr
         </div>
       </section>
 
-      {/* ── 2.1 PRICING & ROI ────────────────────────────────────────────── */}
-      {microMarket?.price_per_sqft_min && microMarket?.price_per_sqft_max && (
-        <section data-section="pricing-roi" className="py-10" style={{ background: T.altSection }}>
+      {/* ── 2.1 PRICING ESTIMATE ─────────────────────────────────────────── */}
+      {microMarket?.price_per_sqft_min && microMarket?.price_per_sqft_max && (() => {
+        const priceMin = microMarket.price_per_sqft_min!;
+        const priceMax = microMarket.price_per_sqft_max!;
+        const appMin = microMarket.annual_appreciation_min ?? null;
+        const avgSqft = project.min_area && project.max_area ? (project.min_area + project.max_area) / 2 : null;
+
+        const fmtLakhCrore = (lakhs: number): string => {
+          if (lakhs >= 100) return `₹${(lakhs / 100).toFixed(lakhs >= 200 ? 1 : 2).replace(/\.?0+$/, "")} Cr`;
+          return `₹${Math.round(lakhs)} L`;
+        };
+
+        return (
+          <section data-section="pricing-estimate" className="py-10" style={{ background: T.altSection }}>
+            <div className="container mx-auto px-4">
+              <ScrollReveal>
+                <h2 className="text-xl font-bold text-gray-900 mb-1">Pricing Estimate</h2>
+                <p className="text-sm text-gray-400 mb-6">Based on {microMarket.micro_market_name} corridor data</p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  {/* Card 1: Price Range */}
+                  <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+                    <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">Price Range</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      ₹{priceMin.toLocaleString("en-IN")}–{priceMax.toLocaleString("en-IN")}
+                    </p>
+                    <p className="text-[10px] text-gray-400 mt-1">per sqft</p>
+                  </div>
+
+                  {/* Card 2: Estimated Unit Cost */}
+                  {avgSqft && (
+                    <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+                      <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">Estimated Unit Cost</p>
+                      <p className="text-2xl font-bold text-gray-900">
+                        {fmtLakhCrore(priceMin * avgSqft / 100000)} – {fmtLakhCrore(priceMax * avgSqft / 100000)}
+                      </p>
+                      <p className="text-[10px] text-gray-400 mt-1">avg unit size {Math.round(avgSqft).toLocaleString()} sqft</p>
+                    </div>
+                  )}
+
+                  {/* Card 3: Appreciation */}
+                  {appMin && (
+                    <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+                      <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">Est. Appreciation</p>
+                      <p className="text-2xl font-bold text-gray-900">{appMin}–{appMin + 2}% p.a.</p>
+                      <p className="text-[10px] text-gray-400 mt-1">corridor CAGR estimate</p>
+                    </div>
+                  )}
+                </div>
+              </ScrollReveal>
+            </div>
+          </section>
+        );
+      })()}
+
+      {/* ── 2.15 ABOUT THE MICRO-MARKET ──────────────────────────────────── */}
+      {microMarket?.micro_market_name && (microMarket.hero_hook || microMarket.price_per_sqft_min) && (() => {
+        const mmSlug = (microMarket as any).url_slug as string | null;
+        return (
+          <section data-section="about-market" className="py-10" style={{ background: T.lightSection }}>
+            <div className="container mx-auto px-4 max-w-3xl">
+              <ScrollReveal>
+                <h2 className="text-xl font-bold text-gray-900 mb-3">About {microMarket.micro_market_name}</h2>
+                {microMarket.hero_hook && (
+                  <p className="text-gray-600 leading-relaxed text-base mb-4">{microMarket.hero_hook}</p>
+                )}
+                {microMarket.price_per_sqft_min && microMarket.price_per_sqft_max && (
+                  <p className="text-sm text-gray-500 mb-5">
+                    ₹{microMarket.price_per_sqft_min.toLocaleString("en-IN")}–{microMarket.price_per_sqft_max.toLocaleString("en-IN")}/sqft
+                    {microMarket.annual_appreciation_min && (
+                      <> · Est. {microMarket.annual_appreciation_min}%+ annual appreciation</>
+                    )}
+                  </p>
+                )}
+                {mmSlug && (
+                  <Link href={`/${citySlug}/${mmSlug}`}
+                    className="inline-flex items-center gap-1.5 text-sm font-semibold text-indigo-600 hover:text-indigo-800 transition-colors">
+                    Explore all projects in {microMarket.micro_market_name} <ChevronRight className="w-4 h-4" />
+                  </Link>
+                )}
+              </ScrollReveal>
+            </div>
+          </section>
+        );
+      })()}
+
+      {/* ── 2.2 MORE IN THIS MARKET ───────────────────────────────────────── */}
+      {otherProjectsInMarket.length > 0 && microMarket?.micro_market_name && (
+        <section data-section="other-projects-market" className="py-10" style={{ background: T.altSection }}>
           <div className="container mx-auto px-4">
             <ScrollReveal>
-              <h2 className="text-lg font-semibold text-gray-700 mb-4">
-                Pricing in {microMarket.micro_market_name}
-              </h2>
+              <h2 className="text-xl font-bold text-gray-900 mb-1">More in {microMarket.micro_market_name}</h2>
+              <p className="text-sm text-gray-400 mb-6">Other RERA-registered projects nearby</p>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
-                  <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">Market Price Band</p>
-                  <p className="text-lg font-bold text-gray-900">
-                    ₹{microMarket.price_per_sqft_min.toLocaleString("en-IN")}–{microMarket.price_per_sqft_max.toLocaleString("en-IN")}
-                  </p>
-                  <p className="text-[10px] text-gray-400 mt-0.5">per sqft · corridor average</p>
-                </div>
-                {project.min_area && project.max_area && (
-                  <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
-                    <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">Est. Unit Cost</p>
-                    <p className="text-lg font-bold text-gray-900">
-                      ₹{Math.round(((project.min_area + project.max_area) / 2) * microMarket.price_per_sqft_min / 100000).toLocaleString("en-IN")}–
-                      {Math.round(((project.min_area + project.max_area) / 2) * microMarket.price_per_sqft_max / 100000).toLocaleString("en-IN")} L
-                    </p>
-                    <p className="text-[10px] text-gray-400 mt-0.5">avg area × corridor price</p>
-                  </div>
-                )}
-                {microMarket.annual_appreciation_min && (
-                  <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
-                    <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">Est. Annual Growth</p>
-                    <p className="text-lg font-bold text-gray-900">
-                      {microMarket.annual_appreciation_min}–{Math.min(Math.round(microMarket.annual_appreciation_min * 1.3), 8)}%
-                    </p>
-                    <p className="text-[10px] text-gray-400 mt-0.5">CAGR estimate</p>
-                  </div>
-                )}
+                {otherProjectsInMarket.slice(0, 3).map((op, i) => {
+                  const href = op.city_slug && op.url_slug ? buildProjectUrl(op.city_slug, op.url_slug) : null;
+                  const card = (
+                    <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:border-blue-200 hover:shadow-md transition-all">
+                      <p className="font-semibold text-gray-900 text-sm mb-1 leading-snug">{op.project_name}</p>
+                      {op.developer_name && <p className="text-xs text-gray-400 mb-3">{op.developer_name}</p>}
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500">
+                        {op.total_units && <span>{op.total_units.toLocaleString()} units</span>}
+                        {op.proposed_completion_date && <span>Est. {formatDate(op.proposed_completion_date)}</span>}
+                      </div>
+                      {href && <p className="text-xs text-indigo-600 font-medium mt-3">View Project →</p>}
+                    </div>
+                  );
+                  return href ? <Link key={i} href={href}>{card}</Link> : <div key={i}>{card}</div>;
+                })}
               </div>
             </ScrollReveal>
           </div>
         </section>
       )}
 
-      {/* ── 2.2 ABOUT THIS PROJECT ────────────────────────────────────────── */}
+      {/* ── 2.3 ABOUT THIS PROJECT ────────────────────────────────────────── */}
       {project.project_overview_seo && (
         <section data-section="about" className="py-14" style={{ background: T.lightSection }}>
           <div className="container mx-auto px-4 max-w-3xl">
@@ -1047,7 +1120,9 @@ export default function ProjectPageV2({ project, insights, context, citySlug, pr
                     <div className={`p-8 ${hasLiveData ? "border-b sm:border-b-0 sm:border-r" : ""} border-gray-100`}>
                       <p className="text-[10px] text-gray-400 uppercase tracking-widest font-semibold mb-3">POSSESSION TARGET</p>
                       <p className="text-4xl font-bold text-gray-900 mb-2">{reraDate}</p>
-                      <p className="text-xs text-gray-400">As registered with Telangana RERA</p>
+                      <p className="text-xs text-gray-400">
+                        As registered with {citySlug === "goa" ? "Goa RERA" : citySlug === "hyderabad" ? "Telangana RERA" : "State RERA"}
+                      </p>
                     </div>
                     {/* Live intelligence — right */}
                     {hasLiveData && (
@@ -1280,8 +1355,16 @@ export default function ProjectPageV2({ project, insights, context, citySlug, pr
 
       {/* ── 5. WHY BUY / WHY PAUSE ───────────────────────────────────────── */}
       {(() => {
-        const upside = insights.riskUpside?.upside?.slice(0, 3) ?? [];
-        const risks = insights.riskUpside?.risks?.slice(0, 3) ?? [];
+        // Anonymize individual developer names in AI-generated text
+        const rawDevName = developerBrandName || developer?.developer_name || project.developer_name || null;
+        const anonymizeText = (text: string): string => {
+          if (!rawDevName || !isIndividualDeveloper(rawDevName)) return text;
+          // Replace the name (and common variations) with "The developer"
+          return text.replace(new RegExp(rawDevName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi"), "The developer");
+        };
+
+        const upside = (insights.riskUpside?.upside?.slice(0, 3) ?? []).map(anonymizeText);
+        const risks = (insights.riskUpside?.risks?.slice(0, 3) ?? []).map(anonymizeText);
         const fallbackUpsides = insights.idealBuyers?.slice(0, 3).map(b => `Suitable for ${b}`) ?? [];
         const fallbackRisks = insights.notIdealBuyers?.slice(0, 3).map(b => `May not suit ${b}`) ?? [];
         const reasons = upside.length > 0 ? upside : fallbackUpsides;
@@ -1418,8 +1501,8 @@ export default function ProjectPageV2({ project, insights, context, citySlug, pr
           <div className="container mx-auto px-4">
             <ScrollReveal>
               <h2 className="text-2xl font-bold text-gray-900 mb-8">Location &amp; Neighbourhood</h2>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Map */}
+              <div className={`grid grid-cols-1 gap-8 ${citySlug === "hyderabad" ? "lg:grid-cols-2" : ""}`}>
+                {/* Map — full-width for non-Hyderabad (no distance panel shown) */}
                 <div className="rounded-2xl overflow-hidden border border-gray-100 shadow-sm" style={{ minHeight: 320 }}>
                   {(() => {
                     const gmKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
@@ -1684,41 +1767,6 @@ export default function ProjectPageV2({ project, insights, context, citySlug, pr
         );
       })()}
 
-      {/* ── OTHER PROJECTS IN MARKET ─────────────────────────────────────── */}
-      {otherProjectsInMarket.length > 0 && (
-        <section data-section="other-projects" className="py-12" style={{ background: T.lightSection }}>
-          <div className="container mx-auto px-4">
-            <ScrollReveal>
-              <h2 className="text-xl font-bold text-gray-900 mb-1">Other Projects in This Market</h2>
-              <p className="text-sm text-gray-400 mb-6">RERA-registered projects in the same micro-market</p>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                {otherProjectsInMarket.map((op, i) => {
-                  const href = op.city_slug && op.url_slug ? buildProjectUrl(op.city_slug, op.url_slug) : null;
-                  const card = (
-                    <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:border-blue-200 hover:shadow-md transition-all">
-                      <h3 className="font-semibold text-gray-900 text-sm mb-1.5 leading-snug">{op.project_name}</h3>
-                      {op.developer_name && (
-                        <p className="text-xs text-gray-400 mb-3">{op.developer_name}</p>
-                      )}
-                      <div className="flex items-center justify-between flex-wrap gap-2">
-                        {op.total_units && (
-                          <span className="text-xs text-gray-500">{op.total_units.toLocaleString()} units</span>
-                        )}
-                        {op.proposed_completion_date && (
-                          <span className="text-xs text-gray-400">Est. {formatDate(op.proposed_completion_date)}</span>
-                        )}
-                        {href && <span className="text-xs text-blue-600 font-medium">View →</span>}
-                      </div>
-                    </div>
-                  );
-                  return href ? <Link key={i} href={href}>{card}</Link> : <div key={i}>{card}</div>;
-                })}
-              </div>
-            </ScrollReveal>
-          </div>
-        </section>
-      )}
-
       {/* ── QUICK LINKS ───────────────────────────────────────────────────── */}
       {microMarket && (microMarket as any).url_slug && (() => {
         const mmSlug = (microMarket as any).url_slug as string;
@@ -1829,8 +1877,10 @@ export default function ProjectPageV2({ project, insights, context, citySlug, pr
         const possLine = project.possession_date_text ? formatDate(project.possession_date_text) : "As per RERA";
         const configLine = project.configuration_display ?? "Multiple configurations";
         const devName = developer?.developer_name || project.developer_name || "the developer";
-        const reraLine = project.rera_id ?? "Registered with Telangana RERA";
-        const locLine = microMarket?.micro_market_name ?? "Hyderabad";
+        const reraAuthority = citySlug === "goa" ? "Goa RERA" : citySlug === "hyderabad" ? "Telangana RERA" : "State RERA";
+        const reraPortal = citySlug === "goa" ? "rera.goa.gov.in" : "rera.telangana.gov.in";
+        const reraLine = project.rera_id ?? `Registered with ${reraAuthority}`;
+        const locLine = microMarket?.micro_market_name ?? citySlug;
 
         const faqs = [
           {
@@ -1839,7 +1889,7 @@ export default function ProjectPageV2({ project, insights, context, citySlug, pr
           },
           {
             q: `When will ${project.project_name} be delivered?`,
-            a: `The official RERA-registered possession date for ${project.project_name} is ${possLine}. ${liveIntelligence?.handover_notes ? liveIntelligence.handover_notes : "Construction progress is tracked via Telangana RERA."}`,
+            a: `The official RERA-registered possession date for ${project.project_name} is ${possLine}. ${liveIntelligence?.handover_notes ? liveIntelligence.handover_notes : `Construction progress is tracked via ${reraAuthority}.`}`,
           },
           {
             q: `What configurations are available in ${project.project_name}?`,
@@ -1851,7 +1901,7 @@ export default function ProjectPageV2({ project, insights, context, citySlug, pr
           },
           {
             q: `What is the RERA ID of ${project.project_name}?`,
-            a: `The RERA registration number for ${project.project_name} is ${reraLine}. You can verify all project details on the official Telangana RERA portal at rera.telangana.gov.in.`,
+            a: `The RERA registration number for ${project.project_name} is ${reraLine}. You can verify all project details on the official ${reraAuthority} portal at ${reraPortal}.`,
           },
           {
             q: `Where is ${project.project_name} located?`,

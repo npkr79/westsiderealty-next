@@ -278,7 +278,8 @@ export default async function ProjectDetailPage({ params }: PageProps) {
     })(),
     // Fetch other projects in same micro-market from enriched MV
     (async () => {
-      const mmName = (project as any).micro_market as string | null;
+      // micro_market on the project object is the enriched object; get the name string
+      const mmName = (project.micro_market as any)?.micro_market_name as string | null ?? null;
       if (!mmName) return [];
       try {
         const supabase = createServiceClient();
