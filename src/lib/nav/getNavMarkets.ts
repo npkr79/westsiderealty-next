@@ -9,6 +9,11 @@ export interface NavMarketCity {
   cta: { label: string; href: string };
 }
 
+// Markets to exclude from the Hyderabad nav dropdown
+const HYDERABAD_NAV_EXCLUDES = new Set(["SD Road", "CBI Colony, Jubilee Hills"]);
+// Markets that must always appear in the Hyderabad nav dropdown
+const HYDERABAD_NAV_PRIORITY = ["Tellapur", "Neopolis"];
+
 export async function getNavMarkets(): Promise<NavMarketCity[]> {
   try {
     const supabase = createServiceClient();
@@ -24,6 +29,10 @@ export async function getNavMarkets(): Promise<NavMarketCity[]> {
 
     const results: NavMarketCity[] = await Promise.all(
       cities.map(async (city) => {
+        const isHyderabad = city.url_slug === "hyderabad";
+
+        // Fetch extra rows for Hyderabad to compensate for excluded markets
+        const fetchLimit = isHyderabad ? 15 : 8;
         const { data: markets } = await supabase
           .from("micro_markets")
           .select("micro_market_name, url_slug, is_featured, is_luxury")
@@ -31,14 +40,43 @@ export async function getNavMarkets(): Promise<NavMarketCity[]> {
           .in("status", ["active", "published"])
           .order("is_featured", { ascending: false })
           .order("price_per_sqft_max", { ascending: false })
-          .limit(8);
+          .limit(fetchLimit);
+
+        let displayMarkets = markets ?? [];
+
+        if (isHyderabad) {
+          // Remove excluded markets
+          const filtered = displayMarkets.filter(
+            (m) => !HYDERABAD_NAV_EXCLUDES.has(m.micro_market_name)
+          );
+
+          // Fetch priority markets that may not be in the top results
+          const presentNames = new Set(filtered.map((m) => m.micro_market_name));
+          const missingPriority = HYDERABAD_NAV_PRIORITY.filter(
+            (name) => !presentNames.has(name)
+          );
+
+          if (missingPriority.length > 0) {
+            const { data: priorityMarkets } = await supabase
+              .from("micro_markets")
+              .select("micro_market_name, url_slug, is_featured, is_luxury")
+              .eq("city_id", city.id)
+              .in("status", ["active", "published"])
+              .in("micro_market_name", missingPriority);
+
+            // Prepend priority markets so they appear near the top
+            displayMarkets = [...(priorityMarkets ?? []), ...filtered].slice(0, 8);
+          } else {
+            displayMarkets = filtered.slice(0, 8);
+          }
+        }
 
         return {
           label: `${city.city_name} Markets`,
           citySlug: city.url_slug,
           href: `/${city.url_slug}/micro-markets`,
           description: `Live price intelligence across ${city.city_name}'s top investment micro-markets`,
-          markets: (markets ?? []).map((m, i) => ({
+          markets: displayMarkets.map((m, i) => ({
             label: m.micro_market_name,
             href: `/${city.url_slug}/${m.url_slug}`,
             badge:
