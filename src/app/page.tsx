@@ -170,7 +170,7 @@ export default async function HomePage() {
           </p>
           <div className="flex flex-wrap gap-3 justify-center">
             <Link
-              href="/hyderabad/markets"
+              href="/hyderabad/micro-markets"
               className="rounded-full px-6 py-3 text-sm font-bold uppercase tracking-[0.12em] transition-all hover:-translate-y-0.5"
               style={{ background: "linear-gradient(135deg, #c8a96e, #a8843e)", color: "#0a0a0a", boxShadow: "0 4px 20px rgba(200,169,110,0.3)" }}
             >
@@ -206,7 +206,7 @@ export default async function HomePage() {
               <p className="text-xs font-bold uppercase tracking-[0.18em] mb-2" style={{ color: "#c8a96e" }}>Live Prices</p>
               <h2 className="text-2xl font-bold text-white">Top Markets Right Now</h2>
             </div>
-            <Link href="/hyderabad/markets" className="text-xs text-slate-400 hover:text-white transition-colors">
+            <Link href="/hyderabad/micro-markets" className="text-xs text-slate-400 hover:text-white transition-colors">
               View all 19 →
             </Link>
           </div>

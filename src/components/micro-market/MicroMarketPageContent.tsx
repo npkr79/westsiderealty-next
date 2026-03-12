@@ -192,10 +192,15 @@ export default function MicroMarketPageContent({
     riskOutlook,
   } = viewModel;
 
+  const hubLabel =
+    citySlug === "goa" ? "Goa Markets" :
+    citySlug === "hyderabad" ? "Hyderabad Markets" :
+    `${cityName} Markets`;
+
   const breadcrumbItems = [
     { name: "Home", href: "/" },
     { name: cityName, href: `/${citySlug}` },
-    { name: "Investment Areas", href: `/${citySlug}/micro-markets` },
+    { name: hubLabel, href: `/${citySlug}/micro-markets` },
     { name: hero.name, href: undefined },
   ];
 
@@ -1169,6 +1174,19 @@ export default function MicroMarketPageContent({
                 </div>
               </>
             )}
+
+            <p className="mt-6 text-sm text-slate-400 leading-relaxed">
+              Looking for properties in {hero.name}? Browse our {cityName} real estate
+              intelligence across{" "}
+              <a
+                href={`/${citySlug}/micro-markets`}
+                className="underline underline-offset-2 hover:opacity-80 transition-opacity"
+                style={{ color: "#c9a96e" }}
+              >
+                all {cityName} micro-markets
+              </a>{" "}
+              or get expert advice from our local specialists.
+            </p>
           </section>
         )}
 

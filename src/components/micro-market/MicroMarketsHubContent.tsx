@@ -578,6 +578,68 @@ export default function MicroMarketsHubContent({
         </div>
       </section>
 
+      {/* ── Explore by Region (Goa only) ─────────────────────────────────────── */}
+      {citySlug === "goa" && (
+        <section className="container mx-auto max-w-4xl px-4 py-14 border-t border-slate-100">
+          <h2 className="mb-1 text-lg font-semibold text-slate-800">Explore by Region</h2>
+          <p className="mb-8 text-sm text-slate-500">Browse Goa real estate by region — North Goa and South Goa offer distinct lifestyle and investment profiles.</p>
+          <div className="grid sm:grid-cols-2 gap-10">
+            <div>
+              <h3 className="mb-4 text-xs font-semibold uppercase tracking-[0.15em] text-slate-400">North Goa Markets</h3>
+              <ul className="space-y-2">
+                {[
+                  { name: "Calangute", slug: "calangute" },
+                  { name: "Baga", slug: "baga" },
+                  { name: "Anjuna", slug: "anjuna" },
+                  { name: "Assagao", slug: "assagao" },
+                  { name: "Vagator", slug: "vagator" },
+                  { name: "Siolim", slug: "siolim" },
+                  { name: "Candolim", slug: "candolim" },
+                  { name: "Morjim", slug: "morjim" },
+                  { name: "Arpora", slug: "arpora" },
+                  { name: "Mapusa", slug: "mapusa" },
+                  { name: "Porvorim", slug: "porvorim" },
+                ].map((m) => (
+                  <li key={m.slug}>
+                    <Link
+                      href={`/goa/${m.slug}`}
+                      className="text-sm text-slate-600 hover:text-slate-900 hover:underline underline-offset-2 transition-colors"
+                    >
+                      {m.name} Real Estate
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <h3 className="mb-4 text-xs font-semibold uppercase tracking-[0.15em] text-slate-400">South Goa Markets</h3>
+              <ul className="space-y-2">
+                {[
+                  { name: "Margao", slug: "margao" },
+                  { name: "Colva", slug: "colva" },
+                  { name: "Benaulim", slug: "benaulim" },
+                  { name: "Cavelossim", slug: "cavelossim" },
+                  { name: "Varca", slug: "varca" },
+                  { name: "Bogmalo", slug: "bogmalo" },
+                  { name: "Vasco da Gama", slug: "vasco-da-gama" },
+                  { name: "Dabolim", slug: "dabolim" },
+                  { name: "Ponda", slug: "ponda" },
+                ].map((m) => (
+                  <li key={m.slug}>
+                    <Link
+                      href={`/goa/${m.slug}`}
+                      className="text-sm text-slate-600 hover:text-slate-900 hover:underline underline-offset-2 transition-colors"
+                    >
+                      {m.name} Real Estate
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* ── FAQs ─────────────────────────────────────────────────────────────── */}
       <section className="container mx-auto max-w-2xl px-4 py-16">
         <p className="mb-2 text-center text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
