@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Pencil } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useActivities } from "@/hooks/useActivities";
 import type { CrmActivity, CrmTask, CrmUser } from "@/lib/crm/types";
@@ -101,6 +101,7 @@ interface LeadRecord {
   id: string;
   name: string;
   phone: string;
+  email?: string | null;
   source: string | null;
   source_channel?: string | null;
   source_type?: string | null;
@@ -140,6 +141,68 @@ interface SiteVisitActivity {
   created_at?: string;
 }
 
+interface AgentRecord {
+  id: string;
+  full_name: string | null;
+}
+
+// ── Inline editable field (pencil-to-input pattern) ──────────────────────────
+interface InlineEditFieldProps {
+  fieldKey: string;
+  label: string;
+  displayValue: string;
+  inputType?: string;
+  editValue: string;
+  setEditValue: (v: string) => void;
+  isEditing: boolean;
+  onStartEdit: () => void;
+  onSave: (val: string) => void;
+  isSaved: boolean;
+}
+
+function InlineEditField({
+  label,
+  displayValue,
+  inputType = "text",
+  editValue,
+  setEditValue,
+  isEditing,
+  onStartEdit,
+  onSave,
+  isSaved,
+}: InlineEditFieldProps) {
+  return (
+    <div>
+      <p className="text-slate-500 dark:text-slate-400 text-xs mb-1">{label}</p>
+      {isEditing ? (
+        <Input
+          type={inputType}
+          value={editValue}
+          onChange={(e) => setEditValue(e.target.value)}
+          onBlur={() => onSave(editValue)}
+          onKeyDown={(e) => { if (e.key === "Enter") onSave(editValue); }}
+          autoFocus
+          className="h-7 text-sm"
+        />
+      ) : (
+        <div className="flex items-center gap-1.5 group">
+          {displayValue
+            ? <span className="font-medium text-sm">{displayValue}</span>
+            : <span className="text-slate-400 italic text-sm">Not set</span>}
+          <button
+            type="button"
+            onClick={onStartEdit}
+            className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+          >
+            <Pencil className="h-3 w-3" />
+          </button>
+          {isSaved && <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">Saved ✓</span>}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewProps) {
   const supabase = useMemo(() => createClient(), []);
   const { activities, loading: loadingActivities, error: activityError } = useActivities(leadId);
@@ -162,6 +225,34 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
   const [dealsError, setDealsError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("overview");
 
+  // Existing editable fields (status/priority/notes)
+  const [editStatus, setEditStatus] = useState("new");
+  const [editPriority, setEditPriority] = useState("cold");
+  const [editNotes, setEditNotes] = useState("");
+
+  // Contact detail inline edits
+  const [editingField, setEditingField] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [savedField, setSavedField] = useState<string | null>(null);
+  const savedFieldTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Budget edits
+  const [editBudgetMin, setEditBudgetMin] = useState("");
+  const [editBudgetMax, setEditBudgetMax] = useState("");
+
+  // Location / Buyer type
+  const [editLocation, setEditLocation] = useState("");
+  const [editBuyerType, setEditBuyerType] = useState("");
+
+  // Assigned agent
+  const [agents, setAgents] = useState<AgentRecord[]>([]);
+  const [editAssignedTo, setEditAssignedTo] = useState("");
+  const [reassignedName, setReassignedName] = useState<string | null>(null);
+  const reassignTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Site visits
   const [siteVisits, setSiteVisits] = useState<SiteVisitActivity[]>([]);
   const [showSiteVisitForm, setShowSiteVisitForm] = useState(false);
   const [visitDate, setVisitDate] = useState("");
@@ -169,9 +260,6 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
   const [visitOutcome, setVisitOutcome] = useState("Scheduled");
   const [visitNotes, setVisitNotes] = useState("");
   const [savingSiteVisit, setSavingSiteVisit] = useState(false);
-  const [editStatus, setEditStatus] = useState("new");
-  const [editPriority, setEditPriority] = useState("cold");
-  const [editNotes, setEditNotes] = useState("");
 
   const agentName = currentUser.full_name || "your advisor";
 
@@ -179,7 +267,7 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
     setLoadingLead(true);
     setLeadError(null);
     const selectVariants = [
-      "id,name,phone,source_channel,source_type,budget_min,budget_max,location,buyer_type,status,priority,notes,attribution_metadata,assigned_to,created_at,updated_at,last_activity_at",
+      "id,name,phone,email,source_channel,source_type,budget_min,budget_max,location,buyer_type,status,priority,notes,attribution_metadata,assigned_to,created_at,updated_at,last_activity_at",
       "id,name,phone,source_channel,source_type,budget_min,budget_max,location,buyer_type,status,lead_priority,notes,attribution_metadata,assigned_to,created_at,updated_at,last_activity_at",
       "id,name,phone,source_channel,source_type,budget_min,budget_max,location,buyer_type,status,assigned_to,created_at,updated_at,last_activity_at",
     ];
@@ -258,6 +346,16 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
     setSiteVisits((data as SiteVisitActivity[]) || []);
   }, [leadId, supabase]);
 
+  const loadAgents = useCallback(async () => {
+    const { data } = await supabase
+      .from("crm_users")
+      .select("id,full_name")
+      .eq("is_active", true)
+      .eq("role", "agent")
+      .order("full_name", { ascending: true });
+    setAgents((data as AgentRecord[]) || []);
+  }, [supabase]);
+
   useEffect(() => {
     const timer = window.setTimeout(() => {
       void loadLead();
@@ -265,9 +363,10 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
       void loadLeadTasks();
       void loadDeals();
       void loadSiteVisits();
+      void loadAgents();
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [loadDeals, loadLead, loadLeadTasks, loadNotes, loadSiteVisits]);
+  }, [loadDeals, loadLead, loadLeadTasks, loadNotes, loadSiteVisits, loadAgents]);
 
   // Sync edit states when lead data loads
   useEffect(() => {
@@ -275,6 +374,14 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
       setEditStatus(lead.status || "new");
       setEditPriority(lead.priority || "cold");
       setEditNotes(lead.notes || "");
+      setEditName(lead.name || "");
+      setEditPhone(lead.phone || "");
+      setEditEmail(lead.email || "");
+      setEditBudgetMin(lead.budget_min != null ? String(lead.budget_min) : "");
+      setEditBudgetMax(lead.budget_max != null ? String(lead.budget_max) : "");
+      setEditLocation(lead.location || "");
+      setEditBuyerType(lead.buyer_type || "");
+      setEditAssignedTo(lead.assigned_to || "");
     }
   }, [lead]);
 
@@ -294,6 +401,68 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
       supabase.removeChannel(channel);
     };
   }, [leadId, loadLead, loadLeadTasks, loadNotes, loadSiteVisits, supabase]);
+
+  // ── helpers ──────────────────────────────────────────────────────────────────
+
+  const showSaved = useCallback((field: string) => {
+    setSavedField(field);
+    if (savedFieldTimer.current) clearTimeout(savedFieldTimer.current);
+    savedFieldTimer.current = setTimeout(() => setSavedField(null), 2000);
+  }, []);
+
+  const patchField = useCallback(
+    async (field: string, value: unknown) => {
+      setEditingField(null);
+      await fetch(`/api/crm/leads/${leadId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ [field]: value }),
+      });
+      showSaved(field);
+      void loadLead();
+    },
+    [leadId, loadLead, showSaved]
+  );
+
+  const patchBudget = useCallback(async () => {
+    await fetch(`/api/crm/leads/${leadId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        budget_min: editBudgetMin !== "" ? Number(editBudgetMin) : null,
+        budget_max: editBudgetMax !== "" ? Number(editBudgetMax) : null,
+      }),
+    });
+    showSaved("budget");
+    void loadLead();
+  }, [leadId, editBudgetMin, editBudgetMax, showSaved, loadLead]);
+
+  const reassignLead = useCallback(
+    async (newAgentId: string) => {
+      const newAgent = agents.find((a) => a.id === newAgentId);
+      setEditAssignedTo(newAgentId);
+      await Promise.all([
+        fetch(`/api/crm/leads/${leadId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ assigned_to: newAgentId }),
+        }),
+        supabase.from("crm_lead_assignments" as never).insert({
+          lead_id: leadId,
+          assigned_to: newAgentId,
+          assigned_by: currentUser.id,
+          assigned_at: new Date().toISOString(),
+        }),
+      ]);
+      setReassignedName(newAgent?.full_name ?? "New agent");
+      if (reassignTimer.current) clearTimeout(reassignTimer.current);
+      reassignTimer.current = setTimeout(() => setReassignedName(null), 2000);
+      void loadLead();
+    },
+    [agents, currentUser.id, leadId, supabase, loadLead]
+  );
+
+  // ── note / task / site-visit mutations ──────────────────────────────────────
 
   const addNote = useCallback(async () => {
     if (!newNote.trim()) return;
@@ -392,6 +561,8 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
     supabase, loadSiteVisits, loadLeadTasks,
   ]);
 
+  // ── render ───────────────────────────────────────────────────────────────────
+
   if (loadingLead) {
     return <p className="text-sm">Loading lead details...</p>;
   }
@@ -460,75 +631,208 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
           <TabsTrigger value="deals" className="flex-shrink-0">Deals</TabsTrigger>
         </TabsList>
 
+        {/* ── Overview ── */}
         <TabsContent value="overview">
           <div className="space-y-3">
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">Lead profile</CardTitle>
               </CardHeader>
-              <CardContent className="grid gap-3 text-sm md:grid-cols-2">
+              <CardContent className="space-y-5 text-sm">
+
+                {/* Contact Details */}
                 <div>
-                  <p className="text-slate-500 dark:text-slate-400">Source</p>
-                  <p className="font-medium">{lead.source || "-"}</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500 mb-2">Contact Details</p>
+                  <div className="grid gap-3 md:grid-cols-3">
+                    <InlineEditField
+                      fieldKey="name" label="Full Name"
+                      displayValue={lead.name} editValue={editName} setEditValue={setEditName}
+                      isEditing={editingField === "name"} isSaved={savedField === "name"}
+                      onStartEdit={() => { setEditName(lead.name); setEditingField("name"); }}
+                      onSave={(v) => void patchField("name", v)}
+                    />
+                    <InlineEditField
+                      fieldKey="phone" label="Mobile" inputType="tel"
+                      displayValue={lead.phone} editValue={editPhone} setEditValue={setEditPhone}
+                      isEditing={editingField === "phone"} isSaved={savedField === "phone"}
+                      onStartEdit={() => { setEditPhone(lead.phone); setEditingField("phone"); }}
+                      onSave={(v) => void patchField("phone", v)}
+                    />
+                    <InlineEditField
+                      fieldKey="email" label="Email" inputType="email"
+                      displayValue={lead.email || ""} editValue={editEmail} setEditValue={setEditEmail}
+                      isEditing={editingField === "email"} isSaved={savedField === "email"}
+                      onStartEdit={() => { setEditEmail(lead.email || ""); setEditingField("email"); }}
+                      onSave={(v) => void patchField("email", v)}
+                    />
+                  </div>
                 </div>
+
+                <hr className="border-slate-100 dark:border-slate-800" />
+
+                {/* Budget */}
                 <div>
-                  <p className="text-slate-500 dark:text-slate-400">Budget</p>
-                  <p className="font-medium">{formatBudgetRange(lead.budget_min, lead.budget_max)}</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500 mb-2">Budget</p>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <div>
+                      <p className="text-slate-500 dark:text-slate-400 text-xs mb-1">Min Budget (₹)</p>
+                      <Input
+                        type="number"
+                        value={editBudgetMin}
+                        onChange={(e) => setEditBudgetMin(e.target.value)}
+                        onBlur={() => void patchBudget()}
+                        placeholder="e.g. 5000000"
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <p className="text-slate-500 dark:text-slate-400 text-xs mb-1">Max Budget (₹)</p>
+                      <Input
+                        type="number"
+                        value={editBudgetMax}
+                        onChange={(e) => setEditBudgetMax(e.target.value)}
+                        onBlur={() => void patchBudget()}
+                        placeholder="e.g. 20000000"
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                  </div>
+                  {(editBudgetMin || editBudgetMax) && (
+                    <p className="mt-1 text-xs text-slate-400">
+                      {formatBudgetRange(
+                        editBudgetMin !== "" ? Number(editBudgetMin) : null,
+                        editBudgetMax !== "" ? Number(editBudgetMax) : null
+                      )}
+                      {savedField === "budget" && <span className="ml-2 text-emerald-600 dark:text-emerald-400 font-medium">Saved ✓</span>}
+                    </p>
+                  )}
                 </div>
+
+                <hr className="border-slate-100 dark:border-slate-800" />
+
+                {/* Location + Buyer Type */}
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div>
+                    <p className="text-slate-500 dark:text-slate-400 text-xs mb-1">Location Preference</p>
+                    <Input
+                      type="text"
+                      value={editLocation}
+                      onChange={(e) => setEditLocation(e.target.value)}
+                      onBlur={() => void patchField("location", editLocation)}
+                      placeholder="e.g. North Goa"
+                      className="h-8 text-sm"
+                    />
+                    {savedField === "location" && (
+                      <p className="mt-1 text-xs text-emerald-600 dark:text-emerald-400 font-medium">Saved ✓</p>
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-slate-500 dark:text-slate-400 text-xs mb-1">Buyer Type</p>
+                    <select
+                      value={editBuyerType}
+                      onChange={async (e) => {
+                        setEditBuyerType(e.target.value);
+                        await patchField("buyer_type", e.target.value);
+                      }}
+                      className="w-full h-8 text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                    >
+                      <option value="">— Select —</option>
+                      <option value="End User">End User</option>
+                      <option value="Investor">Investor</option>
+                      <option value="NRI">NRI</option>
+                      <option value="Corporate">Corporate</option>
+                    </select>
+                    {savedField === "buyer_type" && (
+                      <p className="mt-1 text-xs text-emerald-600 dark:text-emerald-400 font-medium">Saved ✓</p>
+                    )}
+                  </div>
+                </div>
+
+                <hr className="border-slate-100 dark:border-slate-800" />
+
+                {/* Status + Priority + Source */}
+                <div className="grid gap-3 md:grid-cols-3">
+                  <div>
+                    <p className="text-slate-500 dark:text-slate-400 text-xs mb-1">Source</p>
+                    <p className="font-medium">{lead.source || "-"}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-500 dark:text-slate-400 text-xs mb-1">Status</p>
+                    <select
+                      value={editStatus}
+                      onChange={async (e) => {
+                        setEditStatus(e.target.value);
+                        await fetch(`/api/crm/leads/${lead.id}`, {
+                          method: "PATCH",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ status: e.target.value }),
+                        });
+                      }}
+                      className="w-full h-8 text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                    >
+                      <option value="new">New</option>
+                      <option value="contacted">Contacted</option>
+                      <option value="qualified">Qualified</option>
+                      <option value="site_visit">Site Visit</option>
+                      <option value="negotiation">Negotiation</option>
+                      <option value="converted">Converted</option>
+                      <option value="lost">Lost</option>
+                    </select>
+                  </div>
+                  <div>
+                    <p className="text-slate-500 dark:text-slate-400 text-xs mb-1">Priority</p>
+                    <select
+                      value={editPriority}
+                      onChange={async (e) => {
+                        setEditPriority(e.target.value);
+                        await fetch(`/api/crm/leads/${lead.id}`, {
+                          method: "PATCH",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ priority: e.target.value }),
+                        });
+                      }}
+                      className="w-full h-8 text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                    >
+                      <option value="cold">Cold</option>
+                      <option value="warm">Warm</option>
+                      <option value="hot">Hot</option>
+                    </select>
+                  </div>
+                </div>
+
+                <hr className="border-slate-100 dark:border-slate-800" />
+
+                {/* Assigned Agent */}
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div>
+                    <p className="text-slate-500 dark:text-slate-400 text-xs mb-1">Assigned Agent</p>
+                    <select
+                      value={editAssignedTo}
+                      onChange={(e) => void reassignLead(e.target.value)}
+                      className="w-full h-8 text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                    >
+                      <option value="">— Unassigned —</option>
+                      {agents.map((a) => (
+                        <option key={a.id} value={a.id}>{a.full_name ?? a.id}</option>
+                      ))}
+                    </select>
+                    {reassignedName && (
+                      <p className="mt-1 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+                        Reassigned to {reassignedName} ✓
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-slate-500 dark:text-slate-400 text-xs mb-1">Last activity</p>
+                    <p className="font-medium">{toIST(lead.last_activity_at)}</p>
+                  </div>
+                </div>
+
+                <hr className="border-slate-100 dark:border-slate-800" />
+
+                {/* Notes */}
                 <div>
-                  <p className="text-slate-500 dark:text-slate-400">Preferences</p>
-                  <p className="font-medium">
-                    {(lead.location || "Any location") + " • " + (lead.buyer_type || "General buyer")}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-slate-500 dark:text-slate-400 mb-1">Status</p>
-                  <select
-                    value={editStatus}
-                    onChange={async (e) => {
-                      setEditStatus(e.target.value);
-                      await fetch(`/api/crm/leads/${lead.id}`, {
-                        method: "PATCH",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ status: e.target.value }),
-                      });
-                    }}
-                    className="text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                  >
-                    <option value="new">New</option>
-                    <option value="contacted">Contacted</option>
-                    <option value="qualified">Qualified</option>
-                    <option value="site_visit">Site Visit</option>
-                    <option value="negotiation">Negotiation</option>
-                    <option value="converted">Converted</option>
-                    <option value="lost">Lost</option>
-                  </select>
-                </div>
-                <div>
-                  <p className="text-slate-500 dark:text-slate-400 mb-1">Priority</p>
-                  <select
-                    value={editPriority}
-                    onChange={async (e) => {
-                      setEditPriority(e.target.value);
-                      await fetch(`/api/crm/leads/${lead.id}`, {
-                        method: "PATCH",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ priority: e.target.value }),
-                      });
-                    }}
-                    className="text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                  >
-                    <option value="cold">Cold</option>
-                    <option value="warm">Warm</option>
-                    <option value="hot">Hot</option>
-                  </select>
-                </div>
-                <div>
-                  <p className="text-slate-500 dark:text-slate-400 mb-1">Last activity</p>
-                  <p className="font-medium text-sm">{toIST(lead.last_activity_at)}</p>
-                </div>
-                <div className="md:col-span-2">
-                  <p className="text-slate-500 dark:text-slate-400 mb-1">Notes</p>
+                  <p className="text-slate-500 dark:text-slate-400 text-xs mb-1">Notes</p>
                   <textarea
                     value={editNotes}
                     onChange={(e) => setEditNotes(e.target.value)}
@@ -544,7 +848,10 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
                     className="w-full text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white resize-none focus:outline-none focus:ring-2 focus:ring-gray-900 dark:focus:ring-white"
                   />
                 </div>
+
               </CardContent>
+
+              {/* Lead Form Answers */}
               {(() => {
                 const items = normalizeFormQuestions(
                   lead.attribution_metadata?.form_questions ?? lead.attribution_metadata?.field_data
@@ -576,6 +883,7 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
           </div>
         </TabsContent>
 
+        {/* ── Notes ── */}
         <TabsContent value="notes">
           <Card>
             <CardHeader>
@@ -621,6 +929,7 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
           </Card>
         </TabsContent>
 
+        {/* ── Activities ── */}
         <TabsContent value="activities">
           <Card>
             <CardHeader>
@@ -652,6 +961,7 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
           <LeadSmartShortlistTab leadId={leadId} leadPhone={lead.phone} currentUserId={currentUser.id} />
         </TabsContent>
 
+        {/* ── Tasks ── */}
         <TabsContent value="tasks">
           <Card>
             <CardHeader>
@@ -692,6 +1002,7 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
           </Card>
         </TabsContent>
 
+        {/* ── Site Visits ── */}
         <TabsContent value="site-visits">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
@@ -754,11 +1065,7 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
                     >
                       {savingSiteVisit ? "Saving..." : "Save Site Visit"}
                     </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      onClick={() => setShowSiteVisitForm(false)}
-                    >
+                    <Button type="button" variant="ghost" onClick={() => setShowSiteVisitForm(false)}>
                       Cancel
                     </Button>
                   </div>
@@ -809,6 +1116,7 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
           <LeadWhatsAppLogsTab leadId={leadId} leadPhone={lead.phone} />
         </TabsContent>
 
+        {/* ── Deals ── */}
         <TabsContent value="deals">
           <Card>
             <CardHeader>
