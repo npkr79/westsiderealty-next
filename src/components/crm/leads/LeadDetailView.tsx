@@ -637,7 +637,7 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
         body: JSON.stringify({
           budget_min: editBudgetMin !== "" ? Number(editBudgetMin) : null,
           budget_max: editBudgetMax !== "" ? Number(editBudgetMax) : null,
-          location: editLocation || null,
+          location_preference: editLocation || null,
           buyer_type: editBuyerType || null,
           assigned_to: editAssignedTo || null,
         }),
