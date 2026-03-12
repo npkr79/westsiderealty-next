@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Pencil } from "lucide-react";
+import { ArrowLeft, Pencil, Phone } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useActivities } from "@/hooks/useActivities";
 import type { CrmActivity, CrmTask, CrmUser } from "@/lib/crm/types";
@@ -80,17 +80,6 @@ function getWhatsAppLink(phone: string, leadName: string, agentName: string): st
   return `https://wa.me/${e164}?text=${message}`;
 }
 
-async function logCallAttempt(leadId: string): Promise<void> {
-  try {
-    await fetch(`/api/crm/leads/${leadId}/activity`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type: "call_attempt", notes: "Call initiated from CRM" }),
-    });
-  } catch {
-    // non-critical
-  }
-}
 
 interface LeadDetailViewProps {
   leadId: string;
@@ -132,6 +121,19 @@ interface DealRecord {
   stage?: string | null;
   notes?: string | null;
   created_at?: string | null;
+}
+
+interface CallActivity {
+  id: string;
+  activity_type: string;
+  description?: string | null;
+  notes?: string | null;
+  metadata?: {
+    duration_minutes?: number | null;
+    outcome?: string;
+    notes?: string | null;
+  } | null;
+  created_at?: string;
 }
 
 interface SiteVisitActivity {
@@ -279,6 +281,14 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
   const [visitNotes, setVisitNotes] = useState("");
   const [savingSiteVisit, setSavingSiteVisit] = useState(false);
 
+  // Call logging
+  const [callLogs, setCallLogs] = useState<CallActivity[]>([]);
+  const [showCallForm, setShowCallForm] = useState(false);
+  const [callDuration, setCallDuration] = useState("");
+  const [callOutcome, setCallOutcome] = useState("Connected");
+  const [callNotes, setCallNotes] = useState("");
+  const [savingCall, setSavingCall] = useState(false);
+
   const agentName = currentUser.full_name || "your advisor";
 
   const loadLead = useCallback(async () => {
@@ -385,6 +395,16 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
     setAgents((data as AgentRecord[]) || []);
   }, [supabase]);
 
+  const loadCallLogs = useCallback(async () => {
+    const { data } = await supabase
+      .from("crm_lead_activities")
+      .select("id,activity_type,description,notes,metadata,created_at")
+      .eq("lead_id", leadId)
+      .eq("activity_type", "call")
+      .order("created_at", { ascending: false });
+    setCallLogs((data as CallActivity[]) || []);
+  }, [leadId, supabase]);
+
   useEffect(() => {
     const timer = window.setTimeout(() => {
       void loadLead();
@@ -393,9 +413,10 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
       void loadDeals();
       void loadSiteVisits();
       void loadAgents();
+      void loadCallLogs();
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [loadDeals, loadLead, loadLeadTasks, loadNotes, loadSiteVisits, loadAgents]);
+  }, [loadDeals, loadLead, loadLeadTasks, loadNotes, loadSiteVisits, loadAgents, loadCallLogs]);
 
   // Sync edit states when lead data loads
   useEffect(() => {
@@ -422,14 +443,14 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "crm_lead_activities", filter: `lead_id=eq.${leadId}` },
-        () => { void loadNotes(); void loadSiteVisits(); }
+        () => { void loadNotes(); void loadSiteVisits(); void loadCallLogs(); }
       )
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [leadId, loadLead, loadLeadTasks, loadNotes, loadSiteVisits, supabase]);
+  }, [leadId, loadLead, loadLeadTasks, loadNotes, loadSiteVisits, loadCallLogs, supabase]);
 
   // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -641,6 +662,46 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
     leadId, currentUser.id, supabase, loadDeals,
   ]);
 
+  const logCall = useCallback(async () => {
+    setSavingCall(true);
+    const duration = callDuration ? parseInt(callDuration, 10) : null;
+    const description = duration
+      ? `Call — ${callOutcome} (${duration} mins)`
+      : `Call — ${callOutcome}`;
+
+    await supabase.from("crm_lead_activities").insert({
+      lead_id: leadId,
+      activity_type: "call",
+      description,
+      notes: callNotes.trim() || null,
+      metadata: {
+        duration_minutes: duration,
+        outcome: callOutcome,
+        notes: callNotes.trim() || null,
+      },
+      created_by: currentUser.id,
+    });
+
+    // Update last_activity_at; promote status New → Contacted on Connected
+    const updates: Record<string, unknown> = { last_activity_at: new Date().toISOString() };
+    if (callOutcome === "Connected" && /^new$/i.test(lead?.status ?? "")) {
+      updates.status = "contacted";
+    }
+    await fetch(`/api/crm/leads/${leadId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updates),
+    });
+
+    setSavingCall(false);
+    setShowCallForm(false);
+    setCallDuration("");
+    setCallOutcome("Connected");
+    setCallNotes("");
+    void loadCallLogs();
+    void loadLead();
+  }, [callDuration, callOutcome, callNotes, leadId, lead?.status, currentUser.id, supabase, loadCallLogs, loadLead]);
+
   // ── render ───────────────────────────────────────────────────────────────────
 
   if (loadingLead) {
@@ -668,25 +729,21 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
         </Link>
         <h1 className="text-2xl font-semibold">{lead.name}</h1>
         <div className="flex flex-wrap items-center gap-2">
-          <a
-            href={`tel:${lead.phone}`}
-            onClick={() => void logCallAttempt(lead.id)}
-            className="text-sm font-medium text-blue-600 hover:underline dark:text-blue-400 flex items-center gap-1"
-          >
-            📞 {lead.phone}
-          </a>
+          <span className="text-sm font-medium text-slate-700 dark:text-slate-300 flex items-center gap-1">
+            <Phone className="h-3.5 w-3.5" /> {lead.phone}
+          </span>
           <Badge className={getPriorityBadgeClassName(lead.priority)}>{getPriorityLabel(lead.priority)}</Badge>
         </div>
       </div>
 
-      <div className="flex gap-2 mb-4">
-        <a
-          href={`tel:${lead.phone}`}
-          onClick={() => void logCallAttempt(lead.id)}
+      <div className="flex gap-2 mb-2">
+        <button
+          type="button"
+          onClick={() => setShowCallForm((v) => !v)}
           className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold"
         >
-          📞 Call Now
-        </a>
+          <Phone className="h-4 w-4" /> Log Call
+        </button>
         <a
           href={getWhatsAppLink(lead.phone, lead.name, agentName)}
           target="_blank"
@@ -697,6 +754,56 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
         </a>
       </div>
 
+      {/* ── Inline Log Call form ── */}
+      {showCallForm && (
+        <div className="rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/40 p-4 space-y-3 mb-4">
+          <p className="text-sm font-semibold text-blue-700 dark:text-blue-300">Log a Call</p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-slate-500 dark:text-slate-400">Call Duration (mins)</label>
+              <Input
+                type="number"
+                min="0"
+                placeholder="e.g. 5"
+                value={callDuration}
+                onChange={(e) => setCallDuration(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-slate-500 dark:text-slate-400">Call Outcome</label>
+              <select
+                value={callOutcome}
+                onChange={(e) => setCallOutcome(e.target.value)}
+                className="w-full h-9 text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-3 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+              >
+                <option value="Connected">Connected</option>
+                <option value="No Answer">No Answer</option>
+                <option value="Busy">Busy</option>
+                <option value="Wrong Number">Wrong Number</option>
+                <option value="Callback Requested">Callback Requested</option>
+              </select>
+            </div>
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-slate-500 dark:text-slate-400">Notes</label>
+            <Textarea
+              placeholder="What was discussed..."
+              value={callNotes}
+              onChange={(e) => setCallNotes(e.target.value)}
+              rows={3}
+            />
+          </div>
+          <div className="flex gap-2">
+            <Button type="button" onClick={logCall} disabled={savingCall}>
+              {savingCall ? "Saving..." : "Save Call Log"}
+            </Button>
+            <Button type="button" variant="ghost" onClick={() => setShowCallForm(false)}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
+
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="flex w-full overflow-x-auto whitespace-nowrap scrollbar-hide">
           <TabsTrigger value="overview" className="flex-shrink-0">Overview</TabsTrigger>
@@ -706,6 +813,7 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
           <TabsTrigger value="smart-shortlist" className="flex-shrink-0">Smart Shortlist</TabsTrigger>
           <TabsTrigger value="tasks" className="flex-shrink-0">Tasks</TabsTrigger>
           <TabsTrigger value="site-visits" className="flex-shrink-0">Site Visits</TabsTrigger>
+          <TabsTrigger value="calls" className="flex-shrink-0">Calls</TabsTrigger>
           <TabsTrigger value="whatsapp" className="flex-shrink-0">WhatsApp</TabsTrigger>
           <TabsTrigger value="whatsapp-logs" className="flex-shrink-0">WhatsApp Logs</TabsTrigger>
           <TabsTrigger value="deals" className="flex-shrink-0">Deals</TabsTrigger>
@@ -1018,17 +1126,29 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
             <CardContent className="space-y-3">
               {loadingActivities ? <p className="text-sm">Loading activities...</p> : null}
               {activityError ? <p className="text-sm text-rose-600 dark:text-rose-300">{activityError}</p> : null}
-              {activities.map((activity) => (
-                <div key={activity.id} className="rounded-md border p-3">
-                  <div className="mb-1 flex items-center justify-between">
-                    <Badge variant="secondary">{activity.activity_type}</Badge>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                      {toIST(activity.created_at)}
-                    </p>
+              {activities.map((activity) => {
+                const isCall = activity.activity_type === "call";
+                const meta = (activity as unknown as CallActivity).metadata;
+                return (
+                  <div key={activity.id} className="rounded-md border p-3">
+                    <div className="mb-1 flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        {isCall && <Phone className="h-3.5 w-3.5 text-blue-500" />}
+                        <Badge variant="secondary">{activity.activity_type}</Badge>
+                      </div>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        {toIST(activity.created_at)}
+                      </p>
+                    </div>
+                    {isCall && meta?.outcome && (
+                      <p className="text-sm font-medium mb-0.5">
+                        {meta.outcome}{meta.duration_minutes ? ` · ${meta.duration_minutes} mins` : ""}
+                      </p>
+                    )}
+                    <p className="text-sm">{activity.notes || "-"}</p>
                   </div>
-                  <p className="text-sm">{activity.notes || "-"}</p>
-                </div>
-              ))}
+                );
+              })}
             </CardContent>
           </Card>
         </TabsContent>
@@ -1183,6 +1303,57 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
                     );
                   })}
                 </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ── Calls ── */}
+        <TabsContent value="calls">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Phone className="h-4 w-4 text-blue-500" /> Call History
+              </CardTitle>
+              <Button type="button" size="sm" onClick={() => setShowCallForm(true)}>
+                + Log Call
+              </Button>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {callLogs.length === 0 ? (
+                <p className="text-sm text-slate-500 dark:text-slate-400">No calls logged yet.</p>
+              ) : (
+                callLogs.map((call) => {
+                  const outcome = call.metadata?.outcome ?? "Unknown";
+                  const outcomeBadge = (() => {
+                    if (outcome === "Connected") return "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300";
+                    if (outcome === "No Answer" || outcome === "Busy") return "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300";
+                    if (outcome === "Wrong Number") return "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300";
+                    if (outcome === "Callback Requested") return "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300";
+                    return "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300";
+                  })();
+                  return (
+                    <div key={call.id} className="rounded-md border p-3 space-y-1.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <Phone className="h-3.5 w-3.5 text-blue-400 flex-shrink-0" />
+                          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${outcomeBadge}`}>
+                            {outcome}
+                          </span>
+                          {call.metadata?.duration_minutes && (
+                            <span className="text-xs text-slate-500 dark:text-slate-400">
+                              {call.metadata.duration_minutes} mins
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-slate-400 whitespace-nowrap">{toIST(call.created_at)}</p>
+                      </div>
+                      {call.metadata?.notes && (
+                        <p className="text-sm text-slate-600 dark:text-slate-300 pl-5">{call.metadata.notes}</p>
+                      )}
+                    </div>
+                  );
+                })
               )}
             </CardContent>
           </Card>
