@@ -126,6 +126,20 @@ interface DealRecord {
   created_at?: string | null;
 }
 
+interface SiteVisitActivity {
+  id: string;
+  activity_type: string;
+  description?: string | null;
+  notes?: string | null;
+  metadata?: {
+    visit_date?: string;
+    location?: string;
+    outcome?: string;
+    notes?: string;
+  } | null;
+  created_at?: string;
+}
+
 export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewProps) {
   const supabase = useMemo(() => createClient(), []);
   const { activities, loading: loadingActivities, error: activityError } = useActivities(leadId);
@@ -147,6 +161,14 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
   const [deals, setDeals] = useState<DealRecord[]>([]);
   const [dealsError, setDealsError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("overview");
+
+  const [siteVisits, setSiteVisits] = useState<SiteVisitActivity[]>([]);
+  const [showSiteVisitForm, setShowSiteVisitForm] = useState(false);
+  const [visitDate, setVisitDate] = useState("");
+  const [visitLocation, setVisitLocation] = useState("");
+  const [visitOutcome, setVisitOutcome] = useState("Scheduled");
+  const [visitNotes, setVisitNotes] = useState("");
+  const [savingSiteVisit, setSavingSiteVisit] = useState(false);
   const [editStatus, setEditStatus] = useState("new");
   const [editPriority, setEditPriority] = useState("cold");
   const [editNotes, setEditNotes] = useState("");
@@ -226,15 +248,26 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
     setDeals((data as DealRecord[]) || []);
   }, [leadId, supabase]);
 
+  const loadSiteVisits = useCallback(async () => {
+    const { data } = await supabase
+      .from("crm_lead_activities")
+      .select("id,activity_type,description,notes,metadata,created_at")
+      .eq("lead_id", leadId)
+      .eq("activity_type", "site_visit")
+      .order("created_at", { ascending: false });
+    setSiteVisits((data as SiteVisitActivity[]) || []);
+  }, [leadId, supabase]);
+
   useEffect(() => {
     const timer = window.setTimeout(() => {
       void loadLead();
       void loadNotes();
       void loadLeadTasks();
       void loadDeals();
+      void loadSiteVisits();
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [loadDeals, loadLead, loadLeadTasks, loadNotes]);
+  }, [loadDeals, loadLead, loadLeadTasks, loadNotes, loadSiteVisits]);
 
   // Sync edit states when lead data loads
   useEffect(() => {
@@ -253,14 +286,14 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "crm_lead_activities", filter: `lead_id=eq.${leadId}` },
-        loadNotes
+        () => { void loadNotes(); void loadSiteVisits(); }
       )
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [leadId, loadLead, loadLeadTasks, loadNotes, supabase]);
+  }, [leadId, loadLead, loadLeadTasks, loadNotes, loadSiteVisits, supabase]);
 
   const addNote = useCallback(async () => {
     if (!newNote.trim()) return;
@@ -313,6 +346,51 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
     },
     [loadLeadTasks, supabase]
   );
+
+  const addSiteVisit = useCallback(async () => {
+    if (!visitDate || !visitLocation.trim()) return;
+    setSavingSiteVisit(true);
+    const description = `Site visit at ${visitLocation.trim()} — ${visitOutcome}`;
+    const taskStatus = visitOutcome === "Completed" ? "completed" : "pending";
+
+    const [{ error: actError }, { error: taskError }] = await Promise.all([
+      supabase.from("crm_lead_activities").insert({
+        lead_id: leadId,
+        activity_type: "site_visit",
+        description,
+        notes: visitNotes.trim() || null,
+        metadata: {
+          visit_date: visitDate,
+          location: visitLocation.trim(),
+          outcome: visitOutcome,
+          notes: visitNotes.trim() || null,
+        },
+        created_by: currentUser.id,
+      }),
+      supabase.from("crm_tasks").insert({
+        lead_id: leadId,
+        title: `Site visit: ${visitLocation.trim()}`,
+        due_date: visitDate,
+        status: taskStatus,
+        assigned_to: lead?.assigned_to || null,
+      }),
+    ]);
+
+    setSavingSiteVisit(false);
+    if (!actError && !taskError) {
+      setVisitDate("");
+      setVisitLocation("");
+      setVisitOutcome("Scheduled");
+      setVisitNotes("");
+      setShowSiteVisitForm(false);
+      void loadSiteVisits();
+      void loadLeadTasks();
+    }
+  }, [
+    visitDate, visitLocation, visitOutcome, visitNotes,
+    currentUser.id, leadId, lead?.assigned_to,
+    supabase, loadSiteVisits, loadLeadTasks,
+  ]);
 
   if (loadingLead) {
     return <p className="text-sm">Loading lead details...</p>;
@@ -376,6 +454,7 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
           <TabsTrigger value="project-activity" className="flex-shrink-0">Project Activity</TabsTrigger>
           <TabsTrigger value="smart-shortlist" className="flex-shrink-0">Smart Shortlist</TabsTrigger>
           <TabsTrigger value="tasks" className="flex-shrink-0">Tasks</TabsTrigger>
+          <TabsTrigger value="site-visits" className="flex-shrink-0">Site Visits</TabsTrigger>
           <TabsTrigger value="whatsapp" className="flex-shrink-0">WhatsApp</TabsTrigger>
           <TabsTrigger value="whatsapp-logs" className="flex-shrink-0">WhatsApp Logs</TabsTrigger>
           <TabsTrigger value="deals" className="flex-shrink-0">Deals</TabsTrigger>
@@ -608,6 +687,115 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
                     </div>
                   </div>
                 ))
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="site-visits">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="text-lg">Site Visits</CardTitle>
+              {!showSiteVisitForm && (
+                <Button type="button" size="sm" onClick={() => setShowSiteVisitForm(true)}>
+                  + Schedule Site Visit
+                </Button>
+              )}
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {showSiteVisitForm && (
+                <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-4 space-y-3 bg-slate-50 dark:bg-slate-800/50">
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-slate-500 dark:text-slate-400">Visit Date &amp; Time</label>
+                      <Input
+                        type="datetime-local"
+                        value={visitDate}
+                        onChange={(e) => setVisitDate(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-slate-500 dark:text-slate-400">Location / Property</label>
+                      <Input
+                        type="text"
+                        placeholder="e.g. Sapphire, Siolim — Unit 302"
+                        value={visitLocation}
+                        onChange={(e) => setVisitLocation(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-slate-500 dark:text-slate-400">Outcome</label>
+                    <select
+                      value={visitOutcome}
+                      onChange={(e) => setVisitOutcome(e.target.value)}
+                      className="w-full text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                    >
+                      <option value="Scheduled">Scheduled</option>
+                      <option value="Completed">Completed</option>
+                      <option value="Cancelled">Cancelled</option>
+                      <option value="No Show">No Show</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-slate-500 dark:text-slate-400">Notes (optional)</label>
+                    <Textarea
+                      placeholder="Any details about the visit..."
+                      value={visitNotes}
+                      onChange={(e) => setVisitNotes(e.target.value)}
+                      rows={3}
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      onClick={addSiteVisit}
+                      disabled={savingSiteVisit || !visitDate || !visitLocation.trim()}
+                    >
+                      {savingSiteVisit ? "Saving..." : "Save Site Visit"}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => setShowSiteVisitForm(false)}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {siteVisits.length === 0 ? (
+                <p className="text-sm text-slate-500 dark:text-slate-400">No site visits logged yet.</p>
+              ) : (
+                <div className="space-y-3">
+                  {siteVisits.map((sv) => {
+                    const outcome = sv.metadata?.outcome ?? "Scheduled";
+                    const outcomeBadgeClass =
+                      outcome === "Completed"
+                        ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
+                        : outcome === "Scheduled"
+                          ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300"
+                          : "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300";
+                    const visitDateStr = sv.metadata?.visit_date
+                      ? toIST(sv.metadata.visit_date)
+                      : toIST(sv.created_at);
+                    return (
+                      <div key={sv.id} className="rounded-md border p-3 space-y-1.5">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-sm font-medium">{sv.metadata?.location ?? "—"}</p>
+                          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${outcomeBadgeClass}`}>
+                            {outcome}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">{visitDateStr}</p>
+                        {sv.metadata?.notes && (
+                          <p className="text-sm text-slate-600 dark:text-slate-300">{sv.metadata.notes}</p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               )}
             </CardContent>
           </Card>
