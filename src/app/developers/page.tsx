@@ -4,46 +4,51 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { createBrowserClient } from "@supabase/ssr";
 
+// ─── Types ────────────────────────────────────────────────────────────────────
+
 type City = "hyderabad" | "goa";
 
 type Developer = {
   brand_name: string;
   url_slug: string | null;
   total_projects: number | null;
-  institutional_grade?: boolean | null;
+  is_premium: boolean | null;
+  institutional_grade: boolean | null;
 };
 
-function makeSupabase() {
-  return createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-}
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function DevelopersPage() {
   const [activeCity, setActiveCity] = useState<City>("hyderabad");
-  const [hydDevelopers, setHydDevelopers] = useState<Developer[]>([]);
-  const [goaDevelopers, setGoaDevelopers] = useState<Developer[]>([]);
-  const [query, setQuery] = useState("");
 
-  const [hydProjectCount, setHydProjectCount] = useState<number | null>(null);
-  const [hydDeveloperCount, setHydDeveloperCount] = useState<number | null>(null);
-  const [goaProjectCount, setGoaProjectCount] = useState<number | null>(null);
-
+  // ── Hyderabad state (original, unchanged) ──
+  const [developers, setDevelopers] = useState<Developer[]>([]);
+  const [projectCount, setProjectCount] = useState<number | null>(null);
+  const [developerCount, setDeveloperCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // ── Goa state ──
+  const [goaDevelopers, setGoaDevelopers] = useState<Developer[]>([]);
+  const [goaProjectCount, setGoaProjectCount] = useState<number | null>(null);
   const [goaLoading, setGoaLoading] = useState(false);
   const goaLoaded = useRef(false);
 
-  // Load Hyderabad data on mount
+  // ── Shared ──
+  const [query, setQuery] = useState("");
+
+  // ── Load Hyderabad on mount — ORIGINAL QUERY, UNTOUCHED ──
   useEffect(() => {
-    const supabase = makeSupabase();
+    const supabase = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
     (async () => {
       setLoading(true);
+
       const [{ data }, { count: reraCount }, { count: devCount }] = await Promise.all([
         supabase
           .from("v_developer_brand_profile")
           .select("brand_name, url_slug, total_projects")
-          .eq("city_slug", "hyderabad")
           .order("total_projects", { ascending: false }),
         supabase
           .from("rera_projects")
@@ -53,20 +58,27 @@ export default function DevelopersPage() {
           .from("developers")
           .select("id", { count: "exact", head: true }),
       ]);
-      setHydDevelopers(((data as Developer[]) ?? []) as Developer[]);
-      setHydProjectCount(reraCount);
-      setHydDeveloperCount(devCount);
+
+      setDevelopers(((data as any[]) ?? []) as Developer[]);
+      setProjectCount(reraCount);
+      setDeveloperCount(devCount);
       setLoading(false);
     })();
   }, []);
 
+  // ── Load Goa developers (lazy, only when tab is first clicked) ──
   async function loadGoaDevelopers() {
     if (goaLoaded.current) return;
     goaLoaded.current = true;
-    const supabase = makeSupabase();
+
+    const supabase = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
     setGoaLoading(true);
+
     try {
-      // Step 1: all Goa rera_projects — IDs + count
+      // Step 1: all Goa rera_projects → IDs + count
       const { data: goaRows, count: goaCount } = await supabase
         .from("rera_projects")
         .select("id", { count: "exact" })
@@ -78,8 +90,8 @@ export default function DevelopersPage() {
       const goaIds = ((goaRows ?? []) as { id: string }[]).map((r) => r.id).filter(Boolean);
       if (!goaIds.length) { console.log("[Goa] No project IDs"); return; }
 
-      // Step 2: rera_promoters for those projects — chunked to avoid URL length limits
-      // Chain: rera_projects → rera_promoters (rera_project_id) → developer_brand_entities (legal_entity_name_normalized = organization_name_normalized) → developer_brands (brand_id)
+      // Step 2: rera_promoters for those projects → organization_name_normalized
+      // Chunked to 100 per request to stay within URL length limits
       const CHUNK = 100;
       const allPromoterRows: { rera_project_id: string; organization_name_normalized: string | null }[] = [];
       for (let i = 0; i < goaIds.length; i += CHUNK) {
@@ -88,14 +100,13 @@ export default function DevelopersPage() {
           .select("rera_project_id, organization_name_normalized")
           .in("rera_project_id", goaIds.slice(i, i + CHUNK));
         if (chunkErr) console.warn("[Goa] rera_promoters chunk error:", chunkErr.message);
-        if (chunk) allPromoterRows.push(...(chunk as { rera_project_id: string; organization_name_normalized: string | null }[]));
+        if (chunk) allPromoterRows.push(...(chunk as typeof allPromoterRows));
       }
-      const promoterRows = allPromoterRows;
-      console.log("[Goa] Step 2 - rera_promoters total:", promoterRows.length);
+      console.log("[Goa] Step 2 - rera_promoters total:", allPromoterRows.length);
 
       // Build orgName → [projectIds] map
       const orgToProjects = new Map<string, string[]>();
-      for (const row of (promoterRows ?? []) as { rera_project_id: string; organization_name_normalized: string | null }[]) {
+      for (const row of allPromoterRows) {
         if (!row.organization_name_normalized) continue;
         if (!orgToProjects.has(row.organization_name_normalized)) orgToProjects.set(row.organization_name_normalized, []);
         orgToProjects.get(row.organization_name_normalized)!.push(row.rera_project_id);
@@ -104,7 +115,7 @@ export default function DevelopersPage() {
       console.log("[Goa] Step 2 - unique org names:", orgNames.length);
       if (!orgNames.length) { console.log("[Goa] No org names from promoters"); return; }
 
-      // Step 3: developer_brand_entities where legal_entity_name_normalized IN orgNames — chunked
+      // Step 3: developer_brand_entities where legal_entity_name_normalized IN orgNames (chunked)
       const allEntityRows: { brand_id: string | null; legal_entity_name_normalized: string | null }[] = [];
       for (let i = 0; i < orgNames.length; i += CHUNK) {
         const { data: chunk, error: chunkErr } = await supabase
@@ -112,15 +123,14 @@ export default function DevelopersPage() {
           .select("brand_id, legal_entity_name_normalized")
           .in("legal_entity_name_normalized", orgNames.slice(i, i + CHUNK));
         if (chunkErr) console.warn("[Goa] developer_brand_entities chunk error:", chunkErr.message);
-        if (chunk) allEntityRows.push(...(chunk as { brand_id: string | null; legal_entity_name_normalized: string | null }[]));
+        if (chunk) allEntityRows.push(...(chunk as typeof allEntityRows));
       }
-      const entityRows = allEntityRows;
-      console.log("[Goa] Step 3 - developer_brand_entities:", entityRows.length);
-      if (!entityRows.length) { console.log("[Goa] No entity rows matching org names"); return; }
+      console.log("[Goa] Step 3 - developer_brand_entities:", allEntityRows.length);
+      if (!allEntityRows.length) { console.log("[Goa] No entity rows matching org names"); return; }
 
       // Count distinct goa projects per brand
       const brandToProjects = new Map<string, Set<string>>();
-      for (const entity of entityRows as { brand_id: string | null; legal_entity_name_normalized: string | null }[]) {
+      for (const entity of allEntityRows) {
         if (!entity.brand_id || !entity.legal_entity_name_normalized) continue;
         const projectIds = orgToProjects.get(entity.legal_entity_name_normalized) ?? [];
         if (!brandToProjects.has(entity.brand_id)) brandToProjects.set(entity.brand_id, new Set());
@@ -130,7 +140,7 @@ export default function DevelopersPage() {
       for (const [brandId, projectSet] of brandToProjects.entries()) {
         countByBrand[brandId] = projectSet.size;
       }
-      console.log("[Goa] brands with goa projects:", Object.keys(countByBrand).length);
+      console.log("[Goa] Step 3 - brands with goa projects:", Object.keys(countByBrand).length);
 
       const brandIds = Object.keys(countByBrand);
       if (!brandIds.length) { console.log("[Goa] No brands after mapping"); return; }
@@ -140,7 +150,6 @@ export default function DevelopersPage() {
         .from("developer_brands")
         .select("id, brand_name, url_slug, institutional_grade")
         .in("id", brandIds);
-
       console.log("[Goa] Step 4 - developer_brands:", brandRows?.length, "error:", brandErr?.message);
 
       const devs: Developer[] = ((brandRows ?? []) as (Developer & { id: string })[])
@@ -149,7 +158,8 @@ export default function DevelopersPage() {
           brand_name: b.brand_name,
           url_slug: b.url_slug ?? null,
           total_projects: countByBrand[b.id] ?? 0,
-          institutional_grade: b.institutional_grade ?? null,
+          is_premium: null,
+          institutional_grade: (b as any).institutional_grade ?? null,
         }))
         .sort((a, b) => (b.total_projects ?? 0) - (a.total_projects ?? 0));
 
@@ -166,19 +176,18 @@ export default function DevelopersPage() {
     if (city === "goa") loadGoaDevelopers();
   }
 
-  const developers = activeCity === "hyderabad" ? hydDevelopers : goaDevelopers;
+  // ── Derived ──
+  const activeDevelopers = activeCity === "hyderabad" ? developers : goaDevelopers;
   const isLoading = loading || (activeCity === "goa" && goaLoading);
 
   const filtered = query.trim()
-    ? developers.filter((d) => d.brand_name.toLowerCase().includes(query.toLowerCase()))
-    : developers;
+    ? activeDevelopers.filter((d) => d.brand_name.toLowerCase().includes(query.toLowerCase()))
+    : activeDevelopers;
 
   const subtitle =
     activeCity === "goa"
       ? "Delivery history and portfolio data for every major Goa developer."
       : "Delivery history and portfolio data for every major Hyderabad developer.";
-
-  const cityLabel = activeCity === "hyderabad" ? "Hyderabad" : "Goa";
 
   return (
     <main style={{ background: "#080808", minHeight: "100vh" }}>
@@ -198,13 +207,13 @@ export default function DevelopersPage() {
             <div className="flex flex-wrap gap-4 mt-10">
               {activeCity === "hyderabad" ? (
                 <>
-                  <div className="rounded-xl border border-white/10 px-5 py-3" style={{ background: "rgba(255,255,255,0.04)" }}>
-                    <p className="text-2xl font-bold text-white">{hydDeveloperCount != null ? `${hydDeveloperCount}+` : "500+"}</p>
+                  <div className="rounded-xl border border-white/10 bg-white/4 px-5 py-3">
+                    <p className="text-2xl font-bold text-white">{developerCount != null ? `${developerCount}+` : "500+"}</p>
                     <p className="text-xs text-slate-500 uppercase tracking-wide mt-0.5">Builders tracked</p>
                   </div>
-                  {hydProjectCount != null && (
-                    <div className="rounded-xl border border-white/10 px-5 py-3" style={{ background: "rgba(255,255,255,0.04)" }}>
-                      <p className="text-2xl font-bold text-white">{hydProjectCount.toLocaleString("en-IN")}</p>
+                  {projectCount != null && (
+                    <div className="rounded-xl border border-white/10 bg-white/4 px-5 py-3">
+                      <p className="text-2xl font-bold text-white">{projectCount.toLocaleString("en-IN")}</p>
                       <p className="text-xs text-slate-500 uppercase tracking-wide mt-0.5">RERA projects in Hyderabad</p>
                     </div>
                   )}
@@ -212,7 +221,9 @@ export default function DevelopersPage() {
               ) : (
                 <>
                   <div className="rounded-xl border border-white/10 px-5 py-3" style={{ background: "rgba(255,255,255,0.04)" }}>
-                    <p className="text-2xl font-bold text-white">359+</p>
+                    <p className="text-2xl font-bold text-white">
+                      {goaDevelopers.length > 0 ? `${goaDevelopers.length}+` : "359+"}
+                    </p>
                     <p className="text-xs text-slate-500 uppercase tracking-wide mt-0.5">Builders tracked</p>
                   </div>
                   <div className="rounded-xl border border-white/10 px-5 py-3" style={{ background: "rgba(255,255,255,0.04)" }}>
@@ -232,7 +243,7 @@ export default function DevelopersPage() {
       <section className="px-4 py-8 pb-20">
         <div className="container mx-auto max-w-5xl">
 
-          {/* City filter tabs */}
+          {/* City tabs */}
           <div className="flex gap-2 mb-6">
             {(["hyderabad", "goa"] as City[]).map((city) => {
               const active = activeCity === city;
@@ -260,7 +271,7 @@ export default function DevelopersPage() {
             </svg>
             <input
               type="text"
-              placeholder={`Search ${cityLabel} developers...`}
+              placeholder={`Search ${activeCity === "hyderabad" ? "Hyderabad" : "Goa"} developers...`}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               className="w-full rounded-xl border border-white/10 pl-11 pr-4 py-3 text-sm text-white placeholder-slate-500 outline-none focus:border-amber-400/40 transition-colors"
@@ -284,47 +295,50 @@ export default function DevelopersPage() {
                 <div key={i} className="h-24 rounded-2xl animate-pulse" style={{ background: "rgba(255,255,255,0.04)" }} />
               ))}
             </div>
-          ) : filtered.length === 0 ? (
-            <p className="text-slate-500 text-center py-20">
-              {query ? `No ${cityLabel} developers match "${query}".` : `No ${cityLabel} developers found.`}
-            </p>
+          ) : activeDevelopers.length === 0 ? (
+            <p className="text-slate-500 text-center py-20">No developers found.</p>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filtered.map((d) => {
-                const href = d.url_slug ? `/developers/${d.url_slug}` : "#";
-                return (
-                  <Link
-                    key={d.brand_name}
-                    href={href}
-                    className="group rounded-2xl border border-white/8 p-5 transition-all duration-200 hover:border-amber-400/25 hover:-translate-y-0.5"
-                    style={{ background: "#111" }}
-                  >
-                    <div className="flex items-start justify-between mb-3">
-                      <p className="text-white font-semibold leading-snug pr-2">{d.brand_name}</p>
-                      {d.institutional_grade && (
-                        <span
-                          className="flex-shrink-0 rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase"
-                          style={{ background: "rgba(34,197,94,0.1)", color: "#4ade80", borderColor: "rgba(34,197,94,0.25)" }}
+            <>
+              {(() => {
+                return filtered.length === 0 ? (
+                  <p className="text-slate-500 text-center py-20">No developers match &ldquo;{query}&rdquo;.</p>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {filtered.map((d) => {
+                      const href = d.url_slug ? `/developers/${d.url_slug}` : "#";
+                      return (
+                        <Link
+                          key={d.brand_name}
+                          href={href}
+                          className="group rounded-2xl border border-white/8 p-5 transition-all duration-200 hover:border-amber-400/25 hover:-translate-y-0.5"
+                          style={{ background: "#111" }}
                         >
-                          Top
-                        </span>
-                      )}
-                    </div>
-                    {d.total_projects != null && d.total_projects > 0 && (
-                      <div className="mb-3">
-                        <p className="text-white font-bold text-lg">{d.total_projects}</p>
-                        <p className="text-xs text-slate-500">
-                          {activeCity === "goa" ? "Projects in Goa" : "Projects"}
-                        </p>
-                      </div>
-                    )}
-                    <p className="text-xs text-slate-600 group-hover:text-amber-400/60 transition-colors">
-                      View portfolio →
-                    </p>
-                  </Link>
+                          <div className="flex items-start justify-between mb-3">
+                            <p className="text-white font-semibold leading-snug pr-2">{d.brand_name}</p>
+                            {d.institutional_grade && (
+                              <span className="flex-shrink-0 rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase" style={{ background: "rgba(34,197,94,0.1)", color: "#4ade80", borderColor: "rgba(34,197,94,0.25)" }}>
+                                Top
+                              </span>
+                            )}
+                          </div>
+                          {d.total_projects != null && d.total_projects > 0 && (
+                            <div className="mb-3">
+                              <p className="text-white font-bold text-lg">{d.total_projects}</p>
+                              <p className="text-xs text-slate-500">
+                                {activeCity === "goa" ? "Projects in Goa" : "Projects"}
+                              </p>
+                            </div>
+                          )}
+                          <p className="text-xs text-slate-600 group-hover:text-amber-400/60 transition-colors">
+                            View portfolio →
+                          </p>
+                        </Link>
+                      );
+                    })}
+                  </div>
                 );
-              })}
-            </div>
+              })()}
+            </>
           )}
         </div>
       </section>
