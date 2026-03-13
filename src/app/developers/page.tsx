@@ -29,7 +29,6 @@ export default function DevelopersPage() {
 
   // ── Goa state ──
   const [goaDevelopers, setGoaDevelopers] = useState<Developer[]>([]);
-  const [goaProjectCount, setGoaProjectCount] = useState<number | null>(null);
   const [goaLoading, setGoaLoading] = useState(false);
   const goaLoaded = useRef(false);
 
@@ -148,7 +147,6 @@ export default function DevelopersPage() {
       if (!res.ok) throw new Error(`API error ${res.status}`);
       const json = await res.json();
       setGoaDevelopers(json.developers ?? []);
-      setGoaProjectCount(json.projectCount ?? null);
     } catch (err) {
       console.error("[Goa] loadGoaDevelopers error:", err);
     } finally {
@@ -213,10 +211,8 @@ export default function DevelopersPage() {
                     <p className="text-xs text-slate-500 uppercase tracking-wide mt-0.5">Builders tracked</p>
                   </div>
                   <div className="rounded-xl border border-white/10 px-5 py-3" style={{ background: "rgba(255,255,255,0.04)" }}>
-                    <p className="text-2xl font-bold text-white">
-                      {goaProjectCount != null ? goaProjectCount.toLocaleString("en-IN") : "463"}
-                    </p>
-                    <p className="text-xs text-slate-500 uppercase tracking-wide mt-0.5">RERA projects in Goa</p>
+                    <p className="text-2xl font-bold text-white">400+</p>
+                    <p className="text-xs text-slate-500 uppercase tracking-wide mt-0.5">Active projects in Goa</p>
                   </div>
                 </>
               )}
