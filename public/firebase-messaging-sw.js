@@ -13,12 +13,12 @@ firebase.initializeApp({
 const messaging = firebase.messaging();
 
 messaging.onBackgroundMessage((payload) => {
-  const { title, body } = payload.notification;
+  const { title, body, url } = payload.data;
   self.registration.showNotification(title, {
     body,
     icon: '/android-chrome-192x192.png',
     badge: '/android-chrome-192x192.png',
-    data: payload.data,
+    data: { url },
   });
 });
 
