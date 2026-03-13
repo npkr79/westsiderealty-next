@@ -1,5 +1,7 @@
 import BreadcrumbNav from "@/components/layout/BreadcrumbNav";
 import { ProjectsInMarketWithSkeleton } from "./ProjectsInMarketAsync";
+import GoaProjectsInMarket from "./GoaProjectsInMarket";
+import type { GoaMarketProject } from "./GoaProjectsInMarket";
 import type { MicroMarketViewModel } from "@/services/microMarketViewModel";
 import FaqAccordion from "./FaqAccordion";
 import ConnectivityDetails from "./ConnectivityDetails";
@@ -167,6 +169,7 @@ interface MicroMarketPageContentProps {
   locationData?: LocationData | null;
   marketMetrics?: MarketMetrics | null;
   aiEnrichment?: AiEnrichment | null;
+  goaProjects?: GoaMarketProject[];
 }
 
 export default function MicroMarketPageContent({
@@ -182,6 +185,7 @@ export default function MicroMarketPageContent({
   locationData,
   marketMetrics,
   aiEnrichment,
+  goaProjects,
 }: MicroMarketPageContentProps) {
   const mapEmbedUrl = mapCenter ? buildMapEmbedUrl(mapCenter.lat, mapCenter.lng) : null;
   const {
@@ -755,7 +759,16 @@ export default function MicroMarketPageContent({
           </div>
         </section>
 
-        {/* 5. PROJECTS — section hidden entirely when no projects exist */}
+        {/* 5a. GOA PROJECTS — Goa-only project grid from rera_projects + projects tables */}
+        {citySlug === "goa" && (
+          <GoaProjectsInMarket
+            projects={goaProjects ?? []}
+            citySlug={citySlug}
+            marketName={hero.name}
+          />
+        )}
+
+        {/* 5b. PROJECTS — Hyderabad / other cities (section hidden when no projects exist) */}
         <ProjectsInMarketWithSkeleton
           citySlug={citySlug}
           microMarketSlug={viewModel.urlSlug}

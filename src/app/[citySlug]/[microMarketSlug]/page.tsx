@@ -7,6 +7,7 @@ import { getProjectsFromView } from "@/services/microMarketProjectsService";
 import { buildMicroMarketViewModel } from "@/services/microMarketViewModel";
 import MicroMarketPageContent from "@/components/micro-market/MicroMarketPageContent";
 import { buildMetadata } from "@/components/common/SEO";
+import type { GoaMarketProject } from "@/components/micro-market/GoaProjectsInMarket";
 
 export const revalidate = 600;
 
@@ -105,6 +106,53 @@ export default async function MicroMarketPage({ params }: PageProps) {
   const projectIds = classRowsData
     .map((r) => r.project_id)
     .filter((id): id is string => id != null);
+
+  // Goa-only: fetch project cards using the projectIds already resolved above
+  type GoaRawRow = {
+    id: string; project_name: string; url_slug: string | null;
+    city_slug: string; proposed_completion_date: string | null;
+  };
+  type GoaEnrichRow = {
+    url_slug: string | null; property_types: unknown;
+    price_display_string: string | null; unit_size_range: string | null;
+    configurations: unknown;
+  };
+  let goaProjects: GoaMarketProject[] = [];
+  if (citySlug === "goa" && projectIds.length > 0) {
+    const [reraRes, enrichRes] = await Promise.all([
+      supabase
+        .from("rera_projects")
+        .select("id, project_name, url_slug, city_slug, proposed_completion_date")
+        .in("id", projectIds)
+        .eq("city_slug", "goa")
+        .limit(12),
+      supabase
+        .from("projects")
+        .select("url_slug, property_types, price_display_string, unit_size_range, configurations")
+        .in("url_slug", projectIds.slice(0, 50)), // fallback — narrowed below after rera fetch
+    ]);
+
+    const reraRows = (reraRes.data ?? []) as GoaRawRow[];
+    const reraUrlSlugs = reraRows.map((r) => r.url_slug).filter((s): s is string => !!s);
+
+    // Re-fetch enrichment narrowed to the actual rera url_slugs (avoids false matches)
+    let enrichRows: GoaEnrichRow[] = [];
+    if (reraUrlSlugs.length > 0) {
+      const { data: narrowed } = await supabase
+        .from("projects")
+        .select("url_slug, property_types, price_display_string, unit_size_range, configurations")
+        .in("url_slug", reraUrlSlugs);
+      enrichRows = (narrowed ?? []) as GoaEnrichRow[];
+    } else {
+      enrichRows = (enrichRes.data ?? []) as GoaEnrichRow[];
+    }
+
+    const enrichMap = new Map(enrichRows.map((e) => [e.url_slug, e]));
+    goaProjects = reraRows.map((r) => {
+      const enrich = enrichMap.get(r.url_slug ?? "") ?? {};
+      return { ...r, ...enrich } as GoaMarketProject;
+    });
+  }
 
   // Augment the cache row: fill null RERA metrics from data we have at runtime.
   // recent_launches = count of projects classified to this market (RERA project count).
@@ -336,6 +384,7 @@ export default async function MicroMarketPage({ params }: PageProps) {
       locationData={locationData}
       marketMetrics={marketMetrics}
       aiEnrichment={aiEnrichment}
+      goaProjects={goaProjects}
     />
   );
 }
