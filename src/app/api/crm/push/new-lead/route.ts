@@ -73,6 +73,10 @@ export async function POST(request: NextRequest) {
 
   const supabase = createServiceClient();
 
+  // Purge stale dedup entries before checking — ensures legitimate retries
+  // after the TTL window are not incorrectly blocked.
+  await supabase.rpc("cleanup_webhook_dedup").catch(() => {});
+
   // DB-level dedup — unique constraint on dedup_key means first insert wins;
   // any subsequent delivery from another serverless instance gets a conflict error.
   const dedupKey = `push:${type}:${record.id}`;
@@ -198,12 +202,6 @@ export async function POST(request: NextRequest) {
     console.log("[PushDebug] Returning", { reason: "update_assigned_ok", leadId });
     return NextResponse.json({ ok: true, event: "update_assigned", leadId });
   }
-
-  // Non-blocking periodic cleanup of expired dedup keys
-  supabase
-    .rpc("cleanup_webhook_dedup")
-    .then(() => {})
-    .catch(() => {});
 
   console.log("[PushDebug] Returning", { reason: "unhandled_event_type" });
   return NextResponse.json({ skipped: true, reason: "unhandled_event_type" });
