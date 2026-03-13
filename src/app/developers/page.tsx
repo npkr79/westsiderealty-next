@@ -138,107 +138,19 @@ export default function DevelopersPage() {
     })();
   }, []);
 
-  // ── Load Goa developers (lazy, only when tab is first clicked) ──
+  // ── Load Goa developers via server-side API route (bypasses RLS on rera_promoters) ──
   async function loadGoaDevelopers() {
     if (goaLoaded.current) return;
     goaLoaded.current = true;
-
-    const supabase = createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
     setGoaLoading(true);
-
     try {
-      // Step 1: all Goa rera_projects → IDs + count
-      const { data: goaRows, count: goaCount } = await supabase
-        .from("rera_projects")
-        .select("id", { count: "exact" })
-        .eq("city_slug", "goa");
-
-      console.log("[Goa] Step 1 - rera_projects count:", goaCount, "rows:", goaRows?.length);
-      setGoaProjectCount(goaCount);
-
-      const goaIds = ((goaRows ?? []) as { id: string }[]).map((r) => r.id).filter(Boolean);
-      if (!goaIds.length) { console.log("[Goa] No project IDs"); return; }
-
-      // Step 2: rera_promoters for those projects → org name
-      // Chunked to 100 per request to stay within URL length limits
-      const CHUNK = 100;
-      const normName = (s: string) => s.toLowerCase().trim().replace(/\s+/g, " ");
-      const allPromoterRows: { rera_project_id: string; organization_name: string | null; organization_name_normalized: string | null }[] = [];
-      for (let i = 0; i < goaIds.length; i += CHUNK) {
-        const { data: chunk, error: chunkErr } = await supabase
-          .from("rera_promoters")
-          .select("rera_project_id, organization_name, organization_name_normalized")
-          .in("rera_project_id", goaIds.slice(i, i + CHUNK));
-        if (chunkErr) console.warn("[Goa] rera_promoters chunk error:", chunkErr.message);
-        if (chunk) allPromoterRows.push(...(chunk as typeof allPromoterRows));
-      }
-      console.log("[Goa] Step 2 - rera_promoters rows:", allPromoterRows.length);
-
-      // Build orgName → [projectIds] map — prefer normalized, fall back to lowercased raw name
-      const orgToProjects = new Map<string, string[]>();
-      for (const row of allPromoterRows) {
-        const name = row.organization_name_normalized ?? (row.organization_name ? normName(row.organization_name) : null);
-        if (!name) continue;
-        if (!orgToProjects.has(name)) orgToProjects.set(name, []);
-        orgToProjects.get(name)!.push(row.rera_project_id);
-      }
-      const orgNames = [...orgToProjects.keys()];
-      console.log("[Goa] Step 2 - unique org names:", orgNames.length);
-      if (!orgNames.length) { console.log("[Goa] No org names from promoters"); return; }
-
-      // Step 3: developer_brand_entities where legal_entity_name_normalized IN orgNames (chunked)
-      const allEntityRows: { brand_id: string | null; legal_entity_name_normalized: string | null }[] = [];
-      for (let i = 0; i < orgNames.length; i += CHUNK) {
-        const { data: chunk, error: chunkErr } = await supabase
-          .from("developer_brand_entities")
-          .select("brand_id, legal_entity_name_normalized")
-          .in("legal_entity_name_normalized", orgNames.slice(i, i + CHUNK));
-        if (chunkErr) console.warn("[Goa] developer_brand_entities chunk error:", chunkErr.message);
-        if (chunk) allEntityRows.push(...(chunk as typeof allEntityRows));
-      }
-      console.log("[Goa] Step 3 - developer_brand_entities:", allEntityRows.length);
-      if (!allEntityRows.length) { console.log("[Goa] No entity rows matching org names"); return; }
-
-      // Count distinct goa projects per brand
-      const brandToProjects = new Map<string, Set<string>>();
-      for (const entity of allEntityRows) {
-        if (!entity.brand_id || !entity.legal_entity_name_normalized) continue;
-        const projectIds = orgToProjects.get(entity.legal_entity_name_normalized) ?? [];
-        if (!brandToProjects.has(entity.brand_id)) brandToProjects.set(entity.brand_id, new Set());
-        for (const pid of projectIds) brandToProjects.get(entity.brand_id)!.add(pid);
-      }
-      const countByBrand: Record<string, number> = {};
-      for (const [brandId, projectSet] of brandToProjects.entries()) {
-        countByBrand[brandId] = projectSet.size;
-      }
-      console.log("[Goa] Step 3 - brands with goa projects:", Object.keys(countByBrand).length);
-
-      const brandIds = Object.keys(countByBrand);
-      if (!brandIds.length) { console.log("[Goa] No brands after mapping"); return; }
-
-      // Step 4: developer_brands for name + slug
-      const { data: brandRows, error: brandErr } = await supabase
-        .from("developer_brands")
-        .select("id, brand_name, url_slug, institutional_grade")
-        .in("id", brandIds);
-      console.log("[Goa] Step 4 - developer_brands:", brandRows?.length, "error:", brandErr?.message);
-
-      const devs: Developer[] = ((brandRows ?? []) as (Developer & { id: string })[])
-        .filter((b) => b.brand_name)
-        .map((b) => ({
-          brand_name: b.brand_name,
-          url_slug: b.url_slug ?? null,
-          total_projects: countByBrand[b.id] ?? 0,
-          is_premium: null,
-          institutional_grade: (b as any).institutional_grade ?? null,
-        }))
-        .sort((a, b) => (b.total_projects ?? 0) - (a.total_projects ?? 0));
-
-      console.log("[Goa] Final devs:", devs.length, devs.slice(0, 3).map((d) => d.brand_name));
-      setGoaDevelopers(devs);
+      const res = await fetch("/api/developers/goa");
+      if (!res.ok) throw new Error(`API error ${res.status}`);
+      const json = await res.json();
+      setGoaDevelopers(json.developers ?? []);
+      setGoaProjectCount(json.projectCount ?? null);
+    } catch (err) {
+      console.error("[Goa] loadGoaDevelopers error:", err);
     } finally {
       setGoaLoading(false);
     }
