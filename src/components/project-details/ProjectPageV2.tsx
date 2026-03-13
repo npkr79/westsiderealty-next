@@ -11,6 +11,7 @@ import { computeProjectStatus } from "@/lib/project-utils";
 import { submitLead } from "@/app/actions/submit-lead";
 import { optimizeSupabaseImage, getHeroImageUrl } from "@/utils/imageOptimization";
 import { buildProjectUrl } from "@/lib/routes";
+import { GoogleMap, Marker, useJsApiLoader } from "@react-google-maps/api";
 
 // ─── Font import (Playfair Display via Google Fonts inline style) ─────────────
 const PLAYFAIR_IMPORT = `@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&display=swap');`;
@@ -259,6 +260,97 @@ function nearestOrrExit(lat: number, lng: number): { label: string; dist: number
     if (d < bestDist) { best = exit; bestDist = d; }
   }
   return { label: best.label, dist: bestDist };
+}
+
+// ─── Goa Google Map with Places API nearby search ─────────────────────────────
+// Must be a stable reference outside the component to avoid reloading the API.
+const GOA_MAP_LIBS: ("places")[] = ["places"];
+
+const GOA_MAP_CATEGORIES = [
+  { type: "beach",        emoji: "🏖️" },
+  { type: "school",       emoji: "🏫" },
+  { type: "hospital",     emoji: "🏥" },
+  { type: "supermarket",  emoji: "🛒" },
+  { type: "restaurant",   emoji: "🍽️" },
+] as const;
+
+interface GoaNearbyPlace { name: string; emoji: string; distKm: number; }
+
+function GoaGoogleMap({ lat, lng, projectName }: { lat: number; lng: number; projectName: string }) {
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
+  const { isLoaded } = useJsApiLoader({ id: "westside-gmap", googleMapsApiKey: apiKey, libraries: GOA_MAP_LIBS });
+  const [nearby, setNearby] = useState<GoaNearbyPlace[]>([]);
+
+  const onMapLoad = useCallback((map: google.maps.Map) => {
+    const gp = (window as any).google?.maps?.places;
+    if (!gp) return;
+    const svc = new gp.PlacesService(map);
+    const center = new google.maps.LatLng(lat, lng);
+    const results: GoaNearbyPlace[] = [];
+    let pending = GOA_MAP_CATEGORIES.length;
+
+    GOA_MAP_CATEGORIES.forEach(({ type, emoji }) => {
+      svc.nearbySearch(
+        { location: center, radius: 3000, type },
+        (places: google.maps.places.PlaceResult[] | null, status: google.maps.places.PlacesServiceStatus) => {
+          if (status === gp.PlacesServiceStatus.OK && places?.length) {
+            const top = places[0];
+            const loc = top.geometry?.location;
+            if (loc) {
+              results.push({
+                name: top.name ?? type,
+                emoji,
+                distKm: distanceInKm(lat, lng, loc.lat(), loc.lng()),
+              });
+            }
+          }
+          pending--;
+          if (pending === 0) setNearby([...results].sort((a, b) => a.distKm - b.distKm));
+        }
+      );
+    });
+  }, [lat, lng]);
+
+  if (!isLoaded) {
+    return <div className="rounded-2xl bg-gray-100 animate-pulse" style={{ height: 400 }} />;
+  }
+
+  return (
+    <div>
+      <div className="rounded-2xl overflow-hidden" style={{ height: 400 }}>
+        <GoogleMap
+          mapContainerStyle={{ width: "100%", height: "100%" }}
+          center={{ lat, lng }}
+          zoom={14}
+          mapTypeId="hybrid"
+          options={{
+            streetViewControl: false,
+            zoomControl: true,
+            fullscreenControl: true,
+            mapTypeControl: false,
+            rotateControl: false,
+          }}
+          onLoad={onMapLoad}
+        >
+          <Marker position={{ lat, lng }} title={projectName} />
+        </GoogleMap>
+      </div>
+      {nearby.length > 0 && (
+        <div className="mt-4">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">📍 Nearby Places</p>
+          <ul className="space-y-1.5">
+            {nearby.map((p) => (
+              <li key={p.emoji} className="flex items-center gap-2.5 py-2 px-4 rounded-xl bg-gray-50">
+                <span className="text-base flex-shrink-0">{p.emoji}</span>
+                <span className="text-sm text-gray-700 flex-1">{p.name}</span>
+                <span className="text-xs font-semibold text-gray-500">{p.distKm.toFixed(1)} km</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function formatDate(dateStr: string | null | undefined): string {
@@ -1613,32 +1705,41 @@ export default function ProjectPageV2({ project, insights, context, citySlug, pr
             <ScrollReveal>
               <h2 className="text-2xl font-bold text-gray-900 mb-8">Location &amp; Neighbourhood</h2>
               <div className={`grid grid-cols-1 gap-8 ${citySlug === "hyderabad" ? "lg:grid-cols-2" : ""}`}>
-                {/* Map — full-width for non-Hyderabad (no distance panel shown) */}
-                <div className="rounded-2xl overflow-hidden border border-gray-100 shadow-sm" style={{ minHeight: 320 }}>
-                  {(() => {
-                    const gmKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-                    const gmUrl = (project as any).google_maps_embed_url as string | null | undefined;
-                    const lat = project.latitude!;
-                    const lng = project.longitude!;
-                    const src = gmKey
-                      ? `https://www.google.com/maps/embed/v1/place?key=${gmKey}&q=${lat},${lng}&zoom=17&maptype=satellite`
-                      : gmUrl
-                        ? gmUrl
-                        : `https://www.openstreetmap.org/export/embed.html?bbox=${lng - 0.012},${lat - 0.012},${lng + 0.012},${lat + 0.012}&layer=mapnik&marker=${lat},${lng}`;
-                    return (
-                      <iframe
-                        src={src}
-                        width="100%"
-                        height="320"
-                        style={{ border: 0, display: "block" }}
-                        allowFullScreen
-                        loading="lazy"
-                        referrerPolicy="no-referrer-when-downgrade"
-                        title={`Satellite map for ${project.project_name}`}
-                      />
-                    );
-                  })()}
-                </div>
+                {/* Map — Goa: interactive Google Map (hybrid) with Places API nearby
+                          Hyderabad / other: Google Maps Embed iframe */}
+                {citySlug === "goa" ? (
+                  <GoaGoogleMap
+                    lat={project.latitude!}
+                    lng={project.longitude!}
+                    projectName={project.project_name}
+                  />
+                ) : (
+                  <div className="rounded-2xl overflow-hidden border border-gray-100 shadow-sm" style={{ minHeight: 320 }}>
+                    {(() => {
+                      const gmKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+                      const gmUrl = (project as any).google_maps_embed_url as string | null | undefined;
+                      const lat = project.latitude!;
+                      const lng = project.longitude!;
+                      const src = gmKey
+                        ? `https://www.google.com/maps/embed/v1/place?key=${gmKey}&q=${lat},${lng}&zoom=17&maptype=satellite`
+                        : gmUrl
+                          ? gmUrl
+                          : `https://www.openstreetmap.org/export/embed.html?bbox=${lng - 0.012},${lat - 0.012},${lng + 0.012},${lat + 0.012}&layer=mapnik&marker=${lat},${lng}`;
+                      return (
+                        <iframe
+                          src={src}
+                          width="100%"
+                          height="320"
+                          style={{ border: 0, display: "block" }}
+                          allowFullScreen
+                          loading="lazy"
+                          referrerPolicy="no-referrer-when-downgrade"
+                          title={`Satellite map for ${project.project_name}`}
+                        />
+                      );
+                    })()}
+                  </div>
+                )}
 
                 {/* Right col */}
                 <div className="space-y-6">
