@@ -18,6 +18,10 @@ const SILENT_SOURCES = new Set([
 
 const PRAVEEN_ID = "9021aff0-6ba3-4f7b-852f-561862fbc1ac";
 
+// Module-level dedup cache — persists across requests within the same serverless instance.
+// Key: `${type}:${record.id}`, Value: timestamp of first seen.
+const dedupCache = new Map<string, number>();
+
 interface LeadRow {
   id: string;
   name?: string | null;
@@ -25,6 +29,7 @@ interface LeadRow {
   source_type?: string | null;
   source_channel?: string | null;
   assigned_to?: string | null;
+  is_bulk_upload?: boolean | null;
 }
 
 // Called by a Supabase Database Webhook on:
@@ -57,11 +62,29 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "No record in payload" }, { status: 400 });
   }
 
+  // Dedup guard — drop duplicate webhook deliveries within 60 seconds
+  const dedupKey = `${type}:${record.id}`;
+  const now = Date.now();
+  for (const [k, ts] of dedupCache.entries()) {
+    if (now - ts > 60_000) dedupCache.delete(k);
+  }
+  if (dedupCache.has(dedupKey)) {
+    console.log(`[Push/new-lead] Skipped duplicate — key: ${dedupKey}`);
+    return NextResponse.json({ skipped: true, reason: "duplicate" });
+  }
+  dedupCache.set(dedupKey, now);
+
   // Skip bulk imports / simulations / test data
   const sourceType = record.source_type?.toLowerCase() ?? null;
   if (sourceType && SILENT_SOURCES.has(sourceType)) {
     console.log(`[Push/new-lead] Skipped alert — silent source: ${sourceType}`);
     return NextResponse.json({ skipped: true, reason: "silent_source" });
+  }
+
+  // Skip any row explicitly flagged as a bulk upload
+  if (record.is_bulk_upload === true) {
+    console.log(`[Push/new-lead] Skipped alert — bulk_upload flag set`);
+    return NextResponse.json({ skipped: true, reason: "bulk_upload" });
   }
 
   const leadId = record.id;

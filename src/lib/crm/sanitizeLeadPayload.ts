@@ -40,6 +40,7 @@ const CRM_LEADS_ALLOWED_COLUMNS = new Set([
   "landing_page",
   "deal_probability",
   "expected_closure_date",
+  "is_bulk_upload",
 ]);
 
 export type LeadPayload = Record<string, unknown>;

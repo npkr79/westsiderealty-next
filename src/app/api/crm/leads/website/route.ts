@@ -13,6 +13,7 @@ export async function POST(req: NextRequest) {
       .insert({
         name, phone, source_type, source_channel, status, priority, assigned_to, notes,
         source_id: "c3b72f38-171b-4ce6-a060-f40beed8bdb4",
+        is_bulk_upload: true,
       })
       .select();
 
