@@ -75,14 +75,19 @@ export async function POST(request: NextRequest) {
 
   // Purge stale dedup entries before checking — ensures legitimate retries
   // after the TTL window are not incorrectly blocked.
-  try { await supabase.rpc("cleanup_webhook_dedup"); } catch (_) {}
+  try {
+    await supabase
+      .from("crm_push_dedup")
+      .delete()
+      .lt("created_at", new Date(Date.now() - 5 * 60 * 1000).toISOString());
+  } catch (_) {}
 
   // DB-level dedup — unique constraint on dedup_key means first insert wins;
   // any subsequent delivery from another serverless instance gets a conflict error.
   const dedupKey = `push:${type}:${record.id}`;
 
   const { error: dedupError } = await supabase
-    .from("crm_webhook_dedup")
+    .from("crm_push_dedup")
     .insert({ dedup_key: dedupKey });
 
   if (dedupError) {
