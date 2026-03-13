@@ -4,7 +4,6 @@ import Link from "next/link";
 import Image from "next/image";
 import { cityService, CityInfo } from "@/services/cityService";
 import { projectService, ProjectInfo } from "@/services/projectService";
-import { goaHolidayPropertyService } from "@/services/goaHolidayPropertyService";
 import type { MicroMarketGridItem } from "@/services/microMarketService";
 // microMarketService imported dynamically to avoid top-level await
 import { UnifiedPropertyService } from "@/services/unifiedPropertyService";
