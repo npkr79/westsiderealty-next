@@ -42,7 +42,7 @@ export default function DevelopersPage() {
       const [{ data }, { count: reraCount }, { count: devCount }] = await Promise.all([
         supabase
           .from("v_developer_brand_profile")
-          .select("brand_name, url_slug, total_projects, institutional_grade")
+          .select("brand_name, url_slug, total_projects")
           .order("total_projects", { ascending: false }),
         supabase
           .from("rera_projects")
@@ -65,38 +65,73 @@ export default function DevelopersPage() {
     const supabase = makeSupabase();
     setGoaLoading(true);
     try {
-      // Step 1: all Goa rera_projects — get IDs and count
+      // Step 1: all Goa rera_projects — IDs + count
       const { data: goaRows, count: goaCount } = await supabase
         .from("rera_projects")
         .select("id", { count: "exact" })
         .eq("city_slug", "goa");
 
+      console.log("[Goa] Step 1 - rera_projects count:", goaCount, "rows:", goaRows?.length);
       setGoaProjectCount(goaCount);
-      const goaIds = ((goaRows as { id: string }[]) ?? []).map((r) => r.id).filter(Boolean);
-      if (!goaIds.length) return;
 
-      // Step 2: developer_project_brand_map for those projects
-      const { data: mapRows } = await supabase
-        .from("developer_project_brand_map")
-        .select("brand_id, project_id")
-        .in("project_id", goaIds);
+      const goaIds = ((goaRows ?? []) as { id: string }[]).map((r) => r.id).filter(Boolean);
+      if (!goaIds.length) { console.log("[Goa] No project IDs"); return; }
 
-      // Count projects per brand
-      const countByBrand: Record<string, number> = {};
-      for (const row of (mapRows as { brand_id: string; project_id: string }[]) ?? []) {
-        if (!row.brand_id) continue;
-        countByBrand[row.brand_id] = (countByBrand[row.brand_id] ?? 0) + 1;
+      // Step 2: rera_promoters for those projects → organization_name_normalized
+      // Chain: rera_projects → rera_promoters (rera_project_id) → developer_brand_entities (legal_entity_name_normalized = organization_name_normalized) → developer_brands (brand_id)
+      const { data: promoterRows, error: promoterErr } = await supabase
+        .from("rera_promoters")
+        .select("rera_project_id, organization_name_normalized")
+        .in("rera_project_id", goaIds);
+
+      console.log("[Goa] Step 2 - rera_promoters:", promoterRows?.length, "error:", promoterErr?.message);
+
+      // Build orgName → [projectIds] map
+      const orgToProjects = new Map<string, string[]>();
+      for (const row of (promoterRows ?? []) as { rera_project_id: string; organization_name_normalized: string | null }[]) {
+        if (!row.organization_name_normalized) continue;
+        if (!orgToProjects.has(row.organization_name_normalized)) orgToProjects.set(row.organization_name_normalized, []);
+        orgToProjects.get(row.organization_name_normalized)!.push(row.rera_project_id);
       }
-      const brandIds = Object.keys(countByBrand);
-      if (!brandIds.length) return;
+      const orgNames = [...orgToProjects.keys()];
+      console.log("[Goa] Step 2 - unique org names:", orgNames.length);
+      if (!orgNames.length) { console.log("[Goa] No org names from promoters"); return; }
 
-      // Step 3: developer_brands for name + slug
-      const { data: brandRows } = await supabase
+      // Step 3: developer_brand_entities where legal_entity_name_normalized IN orgNames
+      const { data: entityRows, error: entityErr } = await supabase
+        .from("developer_brand_entities")
+        .select("brand_id, legal_entity_name_normalized")
+        .in("legal_entity_name_normalized", orgNames);
+
+      console.log("[Goa] Step 3 - developer_brand_entities:", entityRows?.length, "error:", entityErr?.message);
+      if (!entityRows?.length) { console.log("[Goa] No entity rows matching org names"); return; }
+
+      // Count distinct goa projects per brand
+      const brandToProjects = new Map<string, Set<string>>();
+      for (const entity of entityRows as { brand_id: string | null; legal_entity_name_normalized: string | null }[]) {
+        if (!entity.brand_id || !entity.legal_entity_name_normalized) continue;
+        const projectIds = orgToProjects.get(entity.legal_entity_name_normalized) ?? [];
+        if (!brandToProjects.has(entity.brand_id)) brandToProjects.set(entity.brand_id, new Set());
+        for (const pid of projectIds) brandToProjects.get(entity.brand_id)!.add(pid);
+      }
+      const countByBrand: Record<string, number> = {};
+      for (const [brandId, projectSet] of brandToProjects.entries()) {
+        countByBrand[brandId] = projectSet.size;
+      }
+      console.log("[Goa] brands with goa projects:", Object.keys(countByBrand).length);
+
+      const brandIds = Object.keys(countByBrand);
+      if (!brandIds.length) { console.log("[Goa] No brands after mapping"); return; }
+
+      // Step 4: developer_brands for name + slug
+      const { data: brandRows, error: brandErr } = await supabase
         .from("developer_brands")
         .select("id, brand_name, url_slug, institutional_grade")
         .in("id", brandIds);
 
-      const devs: Developer[] = ((brandRows as (Developer & { id: string })[]) ?? [])
+      console.log("[Goa] Step 4 - developer_brands:", brandRows?.length, "error:", brandErr?.message);
+
+      const devs: Developer[] = ((brandRows ?? []) as (Developer & { id: string })[])
         .filter((b) => b.brand_name)
         .map((b) => ({
           brand_name: b.brand_name,
@@ -106,6 +141,7 @@ export default function DevelopersPage() {
         }))
         .sort((a, b) => (b.total_projects ?? 0) - (a.total_projects ?? 0));
 
+      console.log("[Goa] Final devs:", devs.length, devs.slice(0, 3).map((d) => d.brand_name));
       setGoaDevelopers(devs);
     } finally {
       setGoaLoading(false);
