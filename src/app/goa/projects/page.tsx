@@ -3,7 +3,6 @@
 import { useEffect, useState, useRef, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { createBrowserClient } from "@supabase/ssr";
 
 type ComputedStatus = "New Launch" | "Near Completion" | "Under Construction" | "Completed" | "Unknown";
 
@@ -13,7 +12,6 @@ type Project = {
   current_status: string | null;
   proposed_completion_date: string | null;
   actual_completion_date: string | null;
-  micro_market: string | null;
   computed_status: ComputedStatus;
 };
 
@@ -30,12 +28,9 @@ function computeStatus(
     return "Unknown";
   }
   const today = Date.now();
-  const completion = new Date(proposed_completion_date).getTime();
-  const monthsDiff = (completion - today) / (1000 * 60 * 60 * 24 * 30);
+  const monthsDiff = (new Date(proposed_completion_date).getTime() - today) / (1000 * 60 * 60 * 24 * 30);
   if (monthsDiff < 0) return "Completed";
-  if (s.includes("new") || s.includes("upcoming")) {
-    return monthsDiff <= 12 ? "Near Completion" : "New Launch";
-  }
+  if (s.includes("new") || s.includes("upcoming")) return monthsDiff <= 12 ? "Near Completion" : "New Launch";
   return monthsDiff <= 12 ? "Near Completion" : "Under Construction";
 }
 
@@ -60,12 +55,23 @@ const FILTERS = [
   { label: "Ready to Move",     param: "ready" },
 ];
 
-function matchesFilter(computed: ComputedStatus, param: string): boolean {
-  if (!param) return true;
-  if (param === "new") return computed === "New Launch";
-  if (param === "construction") return computed === "Under Construction" || computed === "Near Completion";
-  if (param === "ready") return computed === "Completed";
+function matchesFilter(s: ComputedStatus, p: string) {
+  if (!p) return true;
+  if (p === "new") return s === "New Launch";
+  if (p === "construction") return s === "Under Construction" || s === "Near Completion";
+  if (p === "ready") return s === "Completed";
   return true;
+}
+
+async function fetchProjects(search = ""): Promise<Project[]> {
+  const url = search.trim() ? `/api/projects/goa?search=${encodeURIComponent(search.trim())}` : "/api/projects/goa";
+  const res = await fetch(url);
+  if (!res.ok) return [];
+  const json = await res.json();
+  return (json.projects ?? []).map((p: any) => ({
+    ...p,
+    computed_status: computeStatus(p.current_status, p.proposed_completion_date, p.actual_completion_date),
+  }));
 }
 
 function GoaProjectsContent() {
@@ -76,33 +82,13 @@ function GoaProjectsContent() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [searchResults, setSearchResults] = useState<Project[] | null>(null);
   const [searchLoading, setSearchLoading] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-
+  // Load all projects on mount
   useEffect(() => {
-    (async () => {
-      setLoading(true);
-      const { data } = await supabase
-        .from("rera_projects")
-        .select("project_name, url_slug, current_status, proposed_completion_date, actual_completion_date, micro_market")
-        .eq("city_slug", "goa")
-        .order("project_name")
-        .limit(1000);
-
-      const all: Project[] = (data as any[] ?? []).map((p) => ({
-        ...p,
-        computed_status: computeStatus(p.current_status, p.proposed_completion_date, p.actual_completion_date),
-      }));
-      setProjects(all);
-      setLoading(false);
-    })();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    fetchProjects().then((all) => { setProjects(all); setLoading(false); });
   }, []);
 
   // Debounced search
@@ -112,21 +98,10 @@ function GoaProjectsContent() {
     if (!term) { setSearchResults(null); setSearchLoading(false); return; }
     setSearchLoading(true);
     debounceRef.current = setTimeout(async () => {
-      const { data } = await supabase
-        .from("rera_projects")
-        .select("project_name, url_slug, current_status, proposed_completion_date, actual_completion_date, micro_market")
-        .eq("city_slug", "goa")
-        .ilike("project_name", `%${term}%`)
-        .order("project_name")
-        .limit(100);
-      const results: Project[] = (data as any[] ?? []).map((p) => ({
-        ...p,
-        computed_status: computeStatus(p.current_status, p.proposed_completion_date, p.actual_completion_date),
-      }));
+      const results = await fetchProjects(term);
       setSearchResults(results);
       setSearchLoading(false);
     }, 300);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search]);
 
   const filtered = searchResults !== null
@@ -151,12 +126,12 @@ function GoaProjectsContent() {
           <h1 className="text-4xl sm:text-5xl font-bold text-white mb-4">
             Every project.<br />Every detail.
           </h1>
-          <p className="text-slate-400 text-lg mb-8 max-w-xl">
-            RERA-verified listings across Goa with pricing and possession details.
+          <p className="text-slate-400 text-lg mb-6 max-w-xl">
+            RERA-verified listings across Goa with possession dates and status.
           </p>
 
           {/* Nav links */}
-          <div className="flex flex-wrap gap-4 mb-2">
+          <div className="flex flex-wrap gap-4 mb-6">
             <Link href="/goa" className="text-sm text-slate-500 hover:text-slate-300 transition-colors">
               ← Goa Home
             </Link>
@@ -167,7 +142,7 @@ function GoaProjectsContent() {
           </div>
 
           {/* Search */}
-          <div className="relative max-w-lg mt-6">
+          <div className="relative max-w-lg">
             <input
               type="text"
               placeholder="Search Goa projects…"
@@ -190,7 +165,7 @@ function GoaProjectsContent() {
 
       {/* Filter pills */}
       <div className="border-b border-white/5 px-4">
-        <div className="container mx-auto max-w-5xl flex gap-2 overflow-x-auto scrollbar-hide pb-0">
+        <div className="container mx-auto max-w-5xl flex gap-2 overflow-x-auto scrollbar-hide">
           {FILTERS.map((f) => (
             <button
               key={f.param}
@@ -228,24 +203,19 @@ function GoaProjectsContent() {
               </p>
               <div className="rounded-xl overflow-hidden border border-white/8">
                 <div
-                  className="grid grid-cols-[2fr_1fr_1fr_1fr] gap-4 px-5 py-3 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500 border-b border-white/8"
+                  className="grid grid-cols-[2fr_1fr_1fr] sm:grid-cols-[3fr_1fr_1fr] gap-4 px-5 py-3 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500 border-b border-white/8"
                   style={{ background: "rgba(255,255,255,0.03)" }}
                 >
                   <span>Project</span>
-                  <span className="hidden sm:block">Location</span>
                   <span>Status</span>
                   <span className="hidden sm:block">Possession</span>
                 </div>
                 {filtered.slice(0, 200).map((p, i) => {
                   const badge = STATUS_BADGE[p.computed_status];
                   const href = p.url_slug ? `/goa/projects/${p.url_slug}` : null;
-                  const row = (
-                    <div
-                      key={p.url_slug ?? i}
-                      className="grid grid-cols-[2fr_1fr_1fr_1fr] gap-4 items-center px-5 py-4 border-b border-white/5 last:border-0 transition-colors hover:bg-white/4"
-                    >
+                  const rowContent = (
+                    <>
                       <span className="text-white text-sm font-medium leading-snug">{p.project_name}</span>
-                      <span className="hidden sm:block text-slate-400 text-xs truncate">{p.micro_market || "—"}</span>
                       <span>
                         <span
                           className="inline-block rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase"
@@ -259,14 +229,19 @@ function GoaProjectsContent() {
                           ? formatDate(p.actual_completion_date ?? p.proposed_completion_date)
                           : formatDate(p.proposed_completion_date)}
                       </span>
-                    </div>
+                    </>
                   );
+
+                  const rowClass = "grid grid-cols-[2fr_1fr_1fr] sm:grid-cols-[3fr_1fr_1fr] gap-4 items-center px-5 py-4 border-b border-white/5 last:border-0 transition-colors hover:bg-white/4";
+
                   return href ? (
-                    <Link key={p.url_slug ?? i} href={href} className="block">
-                      {row}
+                    <Link key={p.url_slug ?? i} href={href} className={`block ${rowClass}`}>
+                      {rowContent}
                     </Link>
                   ) : (
-                    <div key={i}>{row}</div>
+                    <div key={i} className={rowClass}>
+                      {rowContent}
+                    </div>
                   );
                 })}
               </div>
