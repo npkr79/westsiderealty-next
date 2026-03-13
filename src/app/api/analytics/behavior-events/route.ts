@@ -58,10 +58,11 @@ export async function POST(request: Request) {
       created_at: new Date().toISOString(),
     };
 
+    // Try full payload first; fall back to minimal payload (no optional columns that may not exist)
     const payloadCandidates = [
       insertPayload,
       {
-        event: insertPayload.event_name,
+        event_name: insertPayload.event_name,
         page_path: insertPayload.page_path,
         visitor_id: insertPayload.visitor_id,
         session_id: insertPayload.session_id,
@@ -70,17 +71,17 @@ export async function POST(request: Request) {
       },
     ];
 
-    let success = false;
+    let insertedOk = false;
+    let lastError: string | null = null;
     for (const candidate of payloadCandidates) {
       const { error } = await supabase.from("crm_behavior_events").insert(candidate);
-      if (!error) {
-        success = true;
-        break;
-      }
+      if (!error) { insertedOk = true; break; }
+      lastError = error.message;
     }
 
-    if (!success) {
-      return NextResponse.json({ error: "Failed to persist behavior event." }, { status: 500 });
+    // Behavior tracking is non-critical — always return 200 so the client doesn't surface errors
+    if (!insertedOk) {
+      console.warn("[behavior-events] failed to persist event:", lastError);
     }
 
     if (leadId && (event === "pricing_view" || event === "brochure_download" || (event === "page_view" && Boolean(body?.is_repeat_visit)))) {

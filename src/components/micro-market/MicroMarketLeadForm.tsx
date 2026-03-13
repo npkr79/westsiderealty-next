@@ -30,6 +30,7 @@ export default function MicroMarketLeadForm({
   const [budget, setBudget] = useState("");
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
+  const [serverError, setServerError] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const validate = () => {
@@ -49,6 +50,7 @@ export default function MicroMarketLeadForm({
       return;
     }
     setErrors({});
+    setServerError(null);
     setLoading(true);
     try {
       const sourcePage =
@@ -65,8 +67,16 @@ export default function MicroMarketLeadForm({
           budgetRange: budget,
         },
       });
-      setStatus(result.success ? "success" : "error");
-    } catch {
+      if (result.success) {
+        setStatus("success");
+      } else {
+        console.error("[MicroMarketLeadForm] submitLead failed:", result.error);
+        setServerError(result.error || "Submission failed. Please try again.");
+        setStatus("error");
+      }
+    } catch (err) {
+      console.error("[MicroMarketLeadForm] unexpected error:", err);
+      setServerError("Unexpected error. Please try again.");
       setStatus("error");
     } finally {
       setLoading(false);
@@ -226,7 +236,7 @@ export default function MicroMarketLeadForm({
 
                 {status === "error" && (
                   <p className="text-center text-xs text-red-400">
-                    Something went wrong. Please try again.
+                    {serverError || "Something went wrong. Please try again."}
                   </p>
                 )}
               </form>
