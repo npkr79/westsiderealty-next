@@ -75,7 +75,7 @@ export default async function DeveloperDetailPage({ params }: { params: Promise<
   // 1. Brand
   const { data: brandRow } = await supabase
     .from("developer_brands")
-    .select("id, brand_name, url_slug, is_premium, institutional_grade, asset_focus")
+    .select("id, brand_name, url_slug, is_premium, institutional_grade, asset_focus, about_developer")
     .eq("url_slug", slug)
     .maybeSingle();
 
@@ -375,6 +375,12 @@ export default async function DeveloperDetailPage({ params }: { params: Promise<
                     </div>
                   )}
                 </div>
+
+                {brand.about_developer && (
+                  <p className="mt-6 text-slate-400 text-sm leading-relaxed max-w-lg">
+                    {brand.about_developer}
+                  </p>
+                )}
               </div>
 
               {/* Right — CTA */}
