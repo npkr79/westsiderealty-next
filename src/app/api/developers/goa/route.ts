@@ -85,7 +85,7 @@ export async function GET() {
     }
 
     const developers = allBrandRows
-      .filter((b) => b.brand_name)
+      .filter((b) => b.brand_name && (countByBrand[b.id] ?? 0) >= 2)
       .map((b) => ({
         brand_name: b.brand_name,
         url_slug: b.url_slug ?? null,
