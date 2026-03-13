@@ -107,51 +107,52 @@ export default async function MicroMarketPage({ params }: PageProps) {
     .map((r) => r.project_id)
     .filter((id): id is string => id != null);
 
-  // Goa-only: fetch project cards using the projectIds already resolved above
-  type GoaRawRow = {
-    id: string; project_name: string; url_slug: string | null;
-    city_slug: string; proposed_completion_date: string | null;
-  };
-  type GoaEnrichRow = {
-    url_slug: string | null; property_types: unknown;
-    price_display_string: string | null; unit_size_range: string | null;
-    configurations: unknown;
-  };
+  // Goa-only: geo-proximity project fetch.
+  // rera_projects has no micro_market column, but every row has lat/lng in raw_payload.
+  // micro_markets.latitude/longitude gives the market center.
+  // Strategy: fetch all Goa rera_projects, filter by haversine distance ≤ 3 km from center,
+  // then join enrichment from the projects table (which has property_types, price, etc.).
   let goaProjects: GoaMarketProject[] = [];
-  if (citySlug === "goa" && projectIds.length > 0) {
-    const [reraRes, enrichRes] = await Promise.all([
-      supabase
-        .from("rera_projects")
-        .select("id, project_name, url_slug, city_slug, proposed_completion_date")
-        .in("id", projectIds)
-        .eq("city_slug", "goa")
-        .limit(12),
-      supabase
+  if (citySlug === "goa" && mapCenter) {
+    const { data: reraAll } = await supabase
+      .from("rera_projects")
+      .select("id, project_name, url_slug, proposed_completion_date, raw_payload->lat, raw_payload->lng")
+      .eq("city_slug", "goa")
+      .not("url_slug", "is", null);
+
+    const haversineKm = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
+      const R = 6371, toR = (d: number) => d * Math.PI / 180;
+      const dLat = toR(lat2 - lat1), dLng = toR(lng2 - lng1);
+      const a = Math.sin(dLat / 2) ** 2 + Math.cos(toR(lat1)) * Math.cos(toR(lat2)) * Math.sin(dLng / 2) ** 2;
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    };
+
+    const nearby = ((reraAll ?? []) as Array<Record<string, unknown>>)
+      .map((r) => {
+        const lat = parseFloat(String(r.lat ?? "")), lng = parseFloat(String(r.lng ?? ""));
+        return { ...r, _distKm: isNaN(lat) ? Infinity : haversineKm(mapCenter.lat, mapCenter.lng, lat, lng) };
+      })
+      .filter((r) => r._distKm <= 3)
+      .sort((a, b) => a._distKm - b._distKm)
+      .slice(0, 12);
+
+    if (nearby.length > 0) {
+      const nearbySlugs = nearby.map((r) => r.url_slug as string).filter(Boolean);
+      const { data: enrichData } = await supabase
         .from("projects")
         .select("url_slug, property_types, price_display_string, unit_size_range, configurations")
-        .in("url_slug", projectIds.slice(0, 50)), // fallback — narrowed below after rera fetch
-    ]);
+        .in("url_slug", nearbySlugs);
 
-    const reraRows = (reraRes.data ?? []) as GoaRawRow[];
-    const reraUrlSlugs = reraRows.map((r) => r.url_slug).filter((s): s is string => !!s);
-
-    // Re-fetch enrichment narrowed to the actual rera url_slugs (avoids false matches)
-    let enrichRows: GoaEnrichRow[] = [];
-    if (reraUrlSlugs.length > 0) {
-      const { data: narrowed } = await supabase
-        .from("projects")
-        .select("url_slug, property_types, price_display_string, unit_size_range, configurations")
-        .in("url_slug", reraUrlSlugs);
-      enrichRows = (narrowed ?? []) as GoaEnrichRow[];
-    } else {
-      enrichRows = (enrichRes.data ?? []) as GoaEnrichRow[];
+      const enrichMap = new Map(((enrichData ?? []) as Array<Record<string, unknown>>).map((e) => [e.url_slug, e]));
+      goaProjects = nearby.map((r) => ({
+        id: r.id as string,
+        project_name: r.project_name as string,
+        url_slug: r.url_slug as string,
+        city_slug: "goa",
+        proposed_completion_date: r.proposed_completion_date as string | null,
+        ...((enrichMap.get(r.url_slug as string) ?? {}) as object),
+      })) as GoaMarketProject[];
     }
-
-    const enrichMap = new Map(enrichRows.map((e) => [e.url_slug, e]));
-    goaProjects = reraRows.map((r) => {
-      const enrich = enrichMap.get(r.url_slug ?? "") ?? {};
-      return { ...r, ...enrich } as GoaMarketProject;
-    });
   }
 
   // Augment the cache row: fill null RERA metrics from data we have at runtime.
