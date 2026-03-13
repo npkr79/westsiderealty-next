@@ -43,6 +43,7 @@ export default function DevelopersPage() {
         supabase
           .from("v_developer_brand_profile")
           .select("brand_name, url_slug, total_projects")
+          .eq("city_slug", "hyderabad")
           .order("total_projects", { ascending: false }),
         supabase
           .from("rera_projects")
