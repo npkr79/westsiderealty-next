@@ -18,10 +18,6 @@ const SILENT_SOURCES = new Set([
 
 const PRAVEEN_ID = "9021aff0-6ba3-4f7b-852f-561862fbc1ac";
 
-// Module-level dedup cache — persists across requests within the same serverless instance.
-// Key: `${type}:${record.id}`, Value: timestamp of first seen.
-const dedupCache = new Map<string, number>();
-
 interface LeadRow {
   id: string;
   name?: string | null;
@@ -75,23 +71,22 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "No record in payload" }, { status: 400 });
   }
 
-  // Dedup guard — drop duplicate webhook deliveries within 60 seconds
-  const dedupKey = `${type}:${record.id}`;
-  const now = Date.now();
-  for (const [k, ts] of dedupCache.entries()) {
-    if (now - ts > 60_000) dedupCache.delete(k);
-  }
-  const dedupHit = dedupCache.has(dedupKey);
+  const supabase = createServiceClient();
 
-  // 2. Log dedup hit/miss
-  console.log("[PushDebug] Dedup", { key: dedupKey, hit: dedupHit, cacheSize: dedupCache.size });
+  // DB-level dedup — unique constraint on dedup_key means first insert wins;
+  // any subsequent delivery from another serverless instance gets a conflict error.
+  const dedupKey = `push:${type}:${record.id}`;
 
-  if (dedupHit) {
-    console.log(`[Push/new-lead] Skipped duplicate — key: ${dedupKey}`);
-    console.log("[PushDebug] Returning", { reason: "duplicate" });
+  const { error: dedupError } = await supabase
+    .from("crm_webhook_dedup")
+    .insert({ dedup_key: dedupKey });
+
+  if (dedupError) {
+    console.log("[PushDebug] DB dedup hit — skipping duplicate", { dedupKey });
     return NextResponse.json({ skipped: true, reason: "duplicate" });
   }
-  dedupCache.set(dedupKey, now);
+
+  console.log("[PushDebug] DB dedup passed", { dedupKey });
 
   // Skip bulk imports / simulations / test data
   const sourceType = record.source_type?.toLowerCase() ?? null;
@@ -203,6 +198,12 @@ export async function POST(request: NextRequest) {
     console.log("[PushDebug] Returning", { reason: "update_assigned_ok", leadId });
     return NextResponse.json({ ok: true, event: "update_assigned", leadId });
   }
+
+  // Non-blocking periodic cleanup of expired dedup keys
+  supabase
+    .rpc("cleanup_webhook_dedup")
+    .then(() => {})
+    .catch(() => {});
 
   console.log("[PushDebug] Returning", { reason: "unhandled_event_type" });
   return NextResponse.json({ skipped: true, reason: "unhandled_event_type" });
