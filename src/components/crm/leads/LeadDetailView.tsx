@@ -315,12 +315,23 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
       setLoadingLead(false);
       return;
     }
+    // crm_leads_view may not expose the priority column — fetch it via the API (service-client, bypasses RLS)
+    let resolvedPriority: string | null = (row as any)?.priority || (row as any)?.lead_priority || null;
+    if (!resolvedPriority && row?.id) {
+      try {
+        const res = await fetch(`/api/crm/leads/${leadId}`);
+        if (res.ok) {
+          const directData = await res.json();
+          if (directData?.priority) resolvedPriority = directData.priority;
+        }
+      } catch { /* ignore */ }
+    }
     setLead(
       row
         ? {
             ...row,
             source: row.source_channel || row.source_type || null,
-            priority: row.priority || row.lead_priority || null,
+            priority: resolvedPriority,
           }
         : null
     );
@@ -378,7 +389,6 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
       .from("crm_users")
       .select("id,full_name")
       .eq("is_active", true)
-      .eq("role", "agent")
       .order("full_name", { ascending: true });
     setAgents((data as AgentRecord[]) || []);
   }, [supabase]);
@@ -409,7 +419,7 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
   useEffect(() => {
     if (lead) {
       setEditStatus(lead.status || "new");
-      setEditPriority(lead.priority || "");
+      setEditPriority(lead.priority || "cold");
       setEditNotes(lead.notes || "");
       setEditName(lead.name || "");
       setEditPhone(lead.phone || "");
@@ -927,7 +937,7 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
                           headers: { "Content-Type": "application/json" },
                           body: JSON.stringify({ priority: newPriority }),
                         });
-                        console.log("Priority updated to:", newPriority);
+                        setLead((prev) => prev ? { ...prev, priority: newPriority } : prev);
                       }}
                       className="w-full h-8 text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                     >
