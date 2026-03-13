@@ -339,24 +339,24 @@ export async function processMetaLead(
       console.log("[Push Debug] Routing result:", JSON.stringify(routingResult));
 
       const assignedTo = routingResult.agentId;
-      if (assignedTo) {
+      const PRAVEEN_ID = "9021aff0-6ba3-4f7b-852f-561862fbc1ac";
+
+      if (assignedTo && assignedTo !== PRAVEEN_ID) {
         await sendPushToUser(
           assignedTo,
           "🔔 New Lead!",
           `${name} • ${phone}`,
           `/leads/${crmLeadId}`
         ).catch((err) => console.error("[Push] Failed:", err));
-
-        const PRAVEEN_ID = "9021aff0-6ba3-4f7b-852f-561862fbc1ac";
-        if (assignedTo !== PRAVEEN_ID) {
-          await sendPushToUser(
-            PRAVEEN_ID,
-            "New Lead Assigned",
-            `New lead assigned — ${name}`,
-            `/leads/${crmLeadId}`
-          ).catch((err) => console.error("[Push] Praveen alert failed:", err));
-        }
       }
+
+      // Always notify admin — even when no agent routing match
+      await sendPushToUser(
+        PRAVEEN_ID,
+        assignedTo && assignedTo !== PRAVEEN_ID ? "New Lead Assigned" : "🔔 New Lead (Unassigned)",
+        assignedTo && assignedTo !== PRAVEEN_ID ? `New lead assigned — ${name}` : `${name} • ${phone} — needs assignment`,
+        `/leads/${crmLeadId}`
+      ).catch((err) => console.error("[Push] Praveen alert failed:", err));
     }
 
     await assignDefaultStageAndAutomation(crmLeadId);
