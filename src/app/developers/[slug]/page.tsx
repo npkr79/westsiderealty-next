@@ -341,7 +341,7 @@ export default async function DeveloperDetailPage({ params }: { params: Promise<
               {/* Left */}
               <div className="flex-1">
                 <p className="text-xs font-bold uppercase tracking-[0.2em] mb-3" style={{ color: "#c8a96e" }}>
-                  Hyderabad · Developer Profile
+                  {developerCity === "goa" ? "Goa" : "Hyderabad"} · Developer Profile
                 </p>
                 <h1 className="text-4xl sm:text-5xl font-bold text-white mb-4">{brand.brand_name}</h1>
 
@@ -354,11 +354,11 @@ export default async function DeveloperDetailPage({ params }: { params: Promise<
                     <span className="inline-block rounded-full border px-3 py-1 text-xs font-bold uppercase" style={{ background: "rgba(200,169,110,0.12)", color: "#c8a96e", borderColor: "rgba(200,169,110,0.3)" }}>
                       Premium Builder
                     </span>
-                  ) : (
+                  ) : developerCity !== "goa" ? (
                     <span className="inline-block rounded-full border px-3 py-1 text-xs font-bold uppercase" style={{ background: "rgba(255,255,255,0.06)", color: "#94a3b8", borderColor: "rgba(255,255,255,0.12)" }}>
                       Growing Track Record
                     </span>
-                  )}
+                  ) : null}
                 </div>
 
                 <div className="flex flex-wrap gap-8">
@@ -402,41 +402,78 @@ export default async function DeveloperDetailPage({ params }: { params: Promise<
           </div>
         </section>
 
-        {/* ── Delivery Track Record ──────────────────────────── */}
+        {/* ── Delivery Track Record / Project Pipeline ───────── */}
         {total > 0 && (
           <section className="px-4 py-10 border-t border-white/5">
             <div className="container mx-auto max-w-5xl">
-              <p className="text-xs font-bold uppercase tracking-[0.18em] mb-2" style={{ color: "#c8a96e" }}>Track Record</p>
-              <h2 className="text-xl font-bold text-white mb-6">Delivery History</h2>
-              <div className="rounded-2xl border border-white/8 p-6" style={{ background: "rgba(255,255,255,0.03)" }}>
-                <div className="mb-5">
-                  <div className="flex justify-between text-xs text-slate-500 mb-2">
-                    <span>0</span>
-                    <span>{total} projects total</span>
-                  </div>
-                  <div className="h-3 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
-                    <div className="h-full rounded-full" style={{ width: `${deliveryRate ?? 0}%`, background: "linear-gradient(90deg, #22c55e, #4ade80)" }} />
-                  </div>
-                </div>
-                <div className="flex gap-8">
-                  <div className="flex items-center gap-2">
-                    <span className="w-3 h-3 rounded-full bg-emerald-400 flex-shrink-0" />
-                    <div>
-                      <p className="text-emerald-400 font-bold text-xl">{delivered}</p>
-                      <p className="text-xs text-slate-500">Delivered</p>
+              {developerCity === "goa" ? (
+                <>
+                  <p className="text-xs font-bold uppercase tracking-[0.18em] mb-2" style={{ color: "#c8a96e" }}>Project Pipeline</p>
+                  <h2 className="text-xl font-bold text-white mb-6">Active Projects</h2>
+                  <div className="rounded-2xl border border-white/8 p-6" style={{ background: "rgba(255,255,255,0.03)" }}>
+                    <div className="mb-5">
+                      <p className="text-3xl font-bold text-amber-400">{activeCount}</p>
+                      <p className="text-xs text-slate-500 uppercase tracking-wide mt-1">Active projects</p>
                     </div>
+                    {(() => {
+                      const now = new Date().getFullYear();
+                      const buckets: Record<string, number> = {};
+                      projects.filter(p => isActive(p.computed_status)).forEach(p => {
+                        const yr = p.proposed_completion_date ? new Date(p.proposed_completion_date).getFullYear() : null;
+                        if (!yr) return;
+                        const key = yr <= now + 1 ? String(yr) : `${now + 2}+`;
+                        buckets[key] = (buckets[key] ?? 0) + 1;
+                      });
+                      const entries = Object.entries(buckets).sort(([a], [b]) => a.localeCompare(b));
+                      if (!entries.length) return null;
+                      return (
+                        <div className="flex flex-wrap gap-6 mt-4 pt-4 border-t border-white/8">
+                          {entries.map(([yr, count]) => (
+                            <div key={yr}>
+                              <p className="text-white font-bold text-xl">{count}</p>
+                              <p className="text-xs text-slate-500 mt-0.5">Possession {yr}</p>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })()}
                   </div>
-                  {activeCount > 0 && (
-                    <div className="flex items-center gap-2">
-                      <span className="w-3 h-3 rounded-full bg-amber-400 flex-shrink-0" />
-                      <div>
-                        <p className="text-amber-400 font-bold text-xl">{activeCount}</p>
-                        <p className="text-xs text-slate-500">Active</p>
+                </>
+              ) : (
+                <>
+                  <p className="text-xs font-bold uppercase tracking-[0.18em] mb-2" style={{ color: "#c8a96e" }}>Track Record</p>
+                  <h2 className="text-xl font-bold text-white mb-6">Delivery History</h2>
+                  <div className="rounded-2xl border border-white/8 p-6" style={{ background: "rgba(255,255,255,0.03)" }}>
+                    <div className="mb-5">
+                      <div className="flex justify-between text-xs text-slate-500 mb-2">
+                        <span>0</span>
+                        <span>{total} projects total</span>
+                      </div>
+                      <div className="h-3 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+                        <div className="h-full rounded-full" style={{ width: `${deliveryRate ?? 0}%`, background: "linear-gradient(90deg, #22c55e, #4ade80)" }} />
                       </div>
                     </div>
-                  )}
-                </div>
-              </div>
+                    <div className="flex gap-8">
+                      <div className="flex items-center gap-2">
+                        <span className="w-3 h-3 rounded-full bg-emerald-400 flex-shrink-0" />
+                        <div>
+                          <p className="text-emerald-400 font-bold text-xl">{delivered}</p>
+                          <p className="text-xs text-slate-500">Delivered</p>
+                        </div>
+                      </div>
+                      {activeCount > 0 && (
+                        <div className="flex items-center gap-2">
+                          <span className="w-3 h-3 rounded-full bg-amber-400 flex-shrink-0" />
+                          <div>
+                            <p className="text-amber-400 font-bold text-xl">{activeCount}</p>
+                            <p className="text-xs text-slate-500">Active</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </section>
         )}
