@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/serviceClient";
 import { ProjectsTable } from "./ProjectsTable";
 import { FaqAccordion } from "./FaqAccordion";
 
@@ -168,14 +169,82 @@ export default async function DeveloperDetailPage({ params }: { params: Promise<
     return a.project_name.localeCompare(b.project_name);
   });
 
-  // 7. Other developers (smart links)
-  const { data: otherDevRows } = await supabase
-    .from("v_developer_brand_profile")
-    .select("brand_name, url_slug, total_projects")
-    .neq("url_slug", slug)
-    .order("total_projects", { ascending: false })
-    .limit(4);
-  const otherDevs = (otherDevRows as any[]) ?? [];
+  // 7. Detect developer's city via service client (bypasses RLS on rera_promoters)
+  const serviceSupabase = createServiceClient();
+
+  const { data: brandEntityRows } = await serviceSupabase
+    .from("developer_brand_entities")
+    .select("legal_entity_name_normalized")
+    .eq("brand_id", brand.id)
+    .limit(5);
+  const entityNames = ((brandEntityRows as any[]) ?? [])
+    .map((e: any) => e.legal_entity_name_normalized)
+    .filter(Boolean);
+
+  let developerCity = "hyderabad";
+  if (entityNames.length) {
+    const { data: promoterSample } = await serviceSupabase
+      .from("rera_promoters")
+      .select("rera_project_id")
+      .in("organization_name_normalized", entityNames)
+      .limit(1)
+      .maybeSingle();
+    if (promoterSample) {
+      const { data: projectSample } = await serviceSupabase
+        .from("rera_projects")
+        .select("city_slug")
+        .eq("id", (promoterSample as any).rera_project_id)
+        .maybeSingle();
+      developerCity = (projectSample as any)?.city_slug ?? "hyderabad";
+    }
+  }
+
+  // 8. Other developers — same city only
+  let otherDevs: any[] = [];
+  if (developerCity === "goa") {
+    // Sample 50 Goa projects → promoters → entity names → brands
+    const { data: goaProjs } = await serviceSupabase
+      .from("rera_projects")
+      .select("id")
+      .eq("city_slug", "goa")
+      .limit(50);
+    const sampleGoaIds = ((goaProjs as any[]) ?? []).map((r: any) => r.id);
+    if (sampleGoaIds.length) {
+      const { data: promRows } = await serviceSupabase
+        .from("rera_promoters")
+        .select("organization_name_normalized")
+        .in("rera_project_id", sampleGoaIds)
+        .not("promoter_type", "in", '("Individual","Individual Registration Certificate")')
+        .not("organization_name_normalized", "is", null);
+      const goaOrgNames = [...new Set(((promRows as any[]) ?? []).map((r: any) => r.organization_name_normalized))];
+      if (goaOrgNames.length) {
+        const { data: entityRows } = await serviceSupabase
+          .from("developer_brand_entities")
+          .select("brand_id")
+          .in("legal_entity_name_normalized", goaOrgNames);
+        const goaBrandIds = [...new Set(
+          ((entityRows as any[]) ?? []).map((r: any) => r.brand_id).filter((id: any) => id && id !== brand.id)
+        )];
+        if (goaBrandIds.length) {
+          const { data: brandRows } = await serviceSupabase
+            .from("developer_brands")
+            .select("brand_name, url_slug")
+            .in("id", goaBrandIds)
+            .neq("url_slug", slug)
+            .limit(4);
+          otherDevs = ((brandRows as any[]) ?? []).map((b: any) => ({ ...b, total_projects: null }));
+        }
+      }
+    }
+  } else {
+    const { data: otherDevRows } = await supabase
+      .from("v_developer_brand_profile")
+      .select("brand_name, url_slug, total_projects")
+      .neq("url_slug", slug)
+      .order("total_projects", { ascending: false })
+      .limit(4);
+    otherDevs = (otherDevRows as any[]) ?? [];
+  }
 
   // 8. Similar projects from same markets
   let similarProjects: any[] = [];
@@ -299,24 +368,10 @@ export default async function DeveloperDetailPage({ params }: { params: Promise<
                       <p className="text-xs text-slate-500 uppercase tracking-wide mt-1">Total Projects</p>
                     </div>
                   )}
-                  {delivered > 0 && (
-                    <div>
-                      <p className="text-2xl font-bold text-emerald-400">{delivered}</p>
-                      <p className="text-xs text-slate-500 uppercase tracking-wide mt-1">Delivered</p>
-                    </div>
-                  )}
                   {activeCount > 0 && (
                     <div>
                       <p className="text-2xl font-bold text-amber-400">{activeCount}</p>
                       <p className="text-xs text-slate-500 uppercase tracking-wide mt-1">Active</p>
-                    </div>
-                  )}
-                  {deliveryRate != null && total > 0 && (
-                    <div>
-                      <p className="text-2xl font-bold" style={{ color: deliveryRate >= 70 ? "#4ade80" : deliveryRate >= 40 ? "#fbbf24" : "#f87171" }}>
-                        {deliveryRate}%
-                      </p>
-                      <p className="text-xs text-slate-500 uppercase tracking-wide mt-1">Delivery Rate</p>
                     </div>
                   )}
                 </div>
