@@ -22,6 +22,30 @@ messaging.onBackgroundMessage((payload) => {
   });
 });
 
+self.addEventListener('push', (event) => {
+  if (!event.data) return;
+
+  let title = 'Westside CRM';
+  let body = 'New notification';
+  let url = '/dashboard';
+
+  try {
+    const payload = event.data.json();
+    title = payload.data?.title || payload.notification?.title || title;
+    body = payload.data?.body || payload.notification?.body || body;
+    url = payload.data?.url || '/dashboard';
+  } catch (_) {}
+
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body,
+      icon: '/android-chrome-192x192.png',
+      badge: '/android-chrome-192x192.png',
+      data: { url },
+    })
+  );
+});
+
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const url = event.notification.data?.url || '/crm';
