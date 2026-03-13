@@ -3,7 +3,6 @@ import { routeLeadByOwnership } from "@/services/crmLeadRoutingService";
 import { mapBehaviorToLead } from "@/services/behaviorLeadMappingService";
 import { runStageAutomation } from "@/services/stageAutomationService";
 import { sanitizeLeadPayload } from "@/lib/crm/sanitizeLeadPayload";
-import { sendPushToUser } from "@/services/pushNotificationService";
 
 const GRAPH_API_BASE = "https://graph.facebook.com";
 const GRAPH_VERSION = process.env.META_GRAPH_API_VERSION ?? "v21.0";
@@ -292,10 +291,10 @@ export async function processMetaLead(
         });
       } catch { /* non-critical */ }
 
-      // Send WhatsApp alert to agent
+      // Send WhatsApp alert to agent (push is now handled by DB webhook → /api/crm/push/new-lead)
       const { data: agentData } = await supabase
         .from("crm_users")
-        .select("whatsapp_number, full_name")
+        .select("whatsapp_number")
         .eq("id", formAgentId)
         .maybeSingle();
       if (agentData?.whatsapp_number) {
@@ -306,57 +305,14 @@ export async function processMetaLead(
           formName ?? null
         ).catch(() => {}); // non-critical, never block lead creation
       }
-
-      // Push notification to agent
-      console.log(`[Push Debug] Agent push → userId: ${formAgentId}`);
-      await sendPushToUser(
-        formAgentId,
-        "🔔 New Lead!",
-        `${name} • ${phone}`,
-        `/leads/${crmLeadId}`
-      ).catch((err) => console.error("[Push] Failed:", err));
-
-      // Push notification to Praveen (admin) for every new lead
-      const PRAVEEN_ID = "9021aff0-6ba3-4f7b-852f-561862fbc1ac";
-      if (formAgentId !== PRAVEEN_ID) {
-        const agentName = agentData?.full_name ?? "Unknown Agent";
-        console.log(`[Push Debug] Admin push → userId: ${PRAVEEN_ID}`);
-        await sendPushToUser(
-          PRAVEEN_ID,
-          "New Lead Assigned",
-          `New lead assigned to ${agentName} — ${name}`,
-          `/leads/${crmLeadId}`
-        ).catch((err) => console.error("[Push] Praveen alert failed:", err));
-      }
     } else {
-      const routingResult = await routeLeadByOwnership({
+      await routeLeadByOwnership({
         leadId: crmLeadId,
         sourceType: "meta",
         sourceName: "facebook_lead_ads",
         projectId: null,
       });
-
-      console.log("[Push Debug] Routing result:", JSON.stringify(routingResult));
-
-      const assignedTo = routingResult.agentId;
-      const PRAVEEN_ID = "9021aff0-6ba3-4f7b-852f-561862fbc1ac";
-
-      if (assignedTo && assignedTo !== PRAVEEN_ID) {
-        await sendPushToUser(
-          assignedTo,
-          "🔔 New Lead!",
-          `${name} • ${phone}`,
-          `/leads/${crmLeadId}`
-        ).catch((err) => console.error("[Push] Failed:", err));
-      }
-
-      // Always notify admin — even when no agent routing match
-      await sendPushToUser(
-        PRAVEEN_ID,
-        assignedTo && assignedTo !== PRAVEEN_ID ? "New Lead Assigned" : "🔔 New Lead (Unassigned)",
-        assignedTo && assignedTo !== PRAVEEN_ID ? `New lead assigned — ${name}` : `${name} • ${phone} — needs assignment`,
-        `/leads/${crmLeadId}`
-      ).catch((err) => console.error("[Push] Praveen alert failed:", err));
+      // Push notifications are handled by the DB webhook → /api/crm/push/new-lead
     }
 
     await assignDefaultStageAndAutomation(crmLeadId);
