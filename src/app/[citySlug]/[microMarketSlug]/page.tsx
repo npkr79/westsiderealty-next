@@ -107,51 +107,56 @@ export default async function MicroMarketPage({ params }: PageProps) {
     .map((r) => r.project_id)
     .filter((id): id is string => id != null);
 
-  // Goa-only: geo-proximity project fetch.
-  // rera_projects has no micro_market column, but every row has lat/lng in raw_payload.
-  // micro_markets.latitude/longitude gives the market center.
-  // Strategy: fetch all Goa rera_projects, filter by haversine distance ≤ 3 km from center,
-  // then join enrichment from the projects table (which has property_types, price, etc.).
+  // Goa-only: fetch projects classified to this micro-market via the classification table.
+  // SELECT rp.*, p.* FROM project_micro_market_classification pmc
+  //   JOIN rera_projects rp ON rp.id = pmc.project_id
+  //   LEFT JOIN projects p ON p.url_slug = rp.url_slug
+  //   WHERE pmc.micro_market_slug = microMarketSlug AND rp.city_slug = 'goa'
+  //   LIMIT 12
   let goaProjects: GoaMarketProject[] = [];
-  if (citySlug === "goa" && mapCenter) {
-    const { data: reraAll } = await supabase
-      .from("rera_projects")
-      .select("id, project_name, url_slug, proposed_completion_date, raw_payload->lat, raw_payload->lng")
-      .eq("city_slug", "goa")
-      .not("url_slug", "is", null);
+  if (citySlug === "goa") {
+    const { data: classRows } = await supabase
+      .from("project_micro_market_classification")
+      .select("project_id")
+      .eq("micro_market_slug", microMarketSlug)
+      .limit(12);
 
-    const haversineKm = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
-      const R = 6371, toR = (d: number) => d * Math.PI / 180;
-      const dLat = toR(lat2 - lat1), dLng = toR(lng2 - lng1);
-      const a = Math.sin(dLat / 2) ** 2 + Math.cos(toR(lat1)) * Math.cos(toR(lat2)) * Math.sin(dLng / 2) ** 2;
-      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    };
+    const goaProjectIds = ((classRows ?? []) as Array<{ project_id: string | null }>)
+      .map((r) => r.project_id)
+      .filter((id): id is string => id != null);
 
-    const nearby = ((reraAll ?? []) as Array<Record<string, unknown>>)
-      .map((r) => {
-        const lat = parseFloat(String(r.lat ?? "")), lng = parseFloat(String(r.lng ?? ""));
-        return { ...r, _distKm: isNaN(lat) ? Infinity : haversineKm(mapCenter.lat, mapCenter.lng, lat, lng) };
-      })
-      .filter((r) => r._distKm <= 3)
-      .sort((a, b) => a._distKm - b._distKm)
-      .slice(0, 12);
+    if (goaProjectIds.length > 0) {
+      const { data: reraRows } = await supabase
+        .from("rera_projects")
+        .select("id, project_name, url_slug, proposed_completion_date")
+        .in("id", goaProjectIds)
+        .eq("city_slug", "goa")
+        .not("url_slug", "is", null);
 
-    if (nearby.length > 0) {
-      const nearbySlugs = nearby.map((r) => r.url_slug as string).filter(Boolean);
-      const { data: enrichData } = await supabase
-        .from("projects")
-        .select("url_slug, property_types, price_display_string, unit_size_range, configurations")
-        .in("url_slug", nearbySlugs);
+      const reraData = (reraRows ?? []) as Array<{
+        id: string; project_name: string; url_slug: string; proposed_completion_date: string | null;
+      }>;
 
-      const enrichMap = new Map(((enrichData ?? []) as Array<Record<string, unknown>>).map((e) => [e.url_slug, e]));
-      goaProjects = nearby.map((r) => ({
-        id: r.id as string,
-        project_name: r.project_name as string,
-        url_slug: r.url_slug as string,
-        city_slug: "goa",
-        proposed_completion_date: r.proposed_completion_date as string | null,
-        ...((enrichMap.get(r.url_slug as string) ?? {}) as object),
-      })) as GoaMarketProject[];
+      if (reraData.length > 0) {
+        const reraSlugs = reraData.map((r) => r.url_slug).filter(Boolean);
+        const { data: enrichData } = await supabase
+          .from("projects")
+          .select("url_slug, property_types, price_display_string, unit_size_range, configurations")
+          .in("url_slug", reraSlugs);
+
+        const enrichMap = new Map(
+          ((enrichData ?? []) as Array<Record<string, unknown>>).map((e) => [e.url_slug, e])
+        );
+
+        goaProjects = reraData.map((r) => ({
+          id: r.id,
+          project_name: r.project_name,
+          url_slug: r.url_slug,
+          city_slug: "goa",
+          proposed_completion_date: r.proposed_completion_date,
+          ...((enrichMap.get(r.url_slug) ?? {}) as object),
+        })) as GoaMarketProject[];
+      }
     }
   }
 
