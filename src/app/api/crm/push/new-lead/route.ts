@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
 
   // Purge stale dedup entries before checking — ensures legitimate retries
   // after the TTL window are not incorrectly blocked.
-  await supabase.rpc("cleanup_webhook_dedup").catch(() => {});
+  try { await supabase.rpc("cleanup_webhook_dedup"); } catch (_) {}
 
   // DB-level dedup — unique constraint on dedup_key means first insert wins;
   // any subsequent delivery from another serverless instance gets a conflict error.
