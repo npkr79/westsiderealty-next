@@ -77,14 +77,20 @@ export default function DevelopersPage() {
       const goaIds = ((goaRows ?? []) as { id: string }[]).map((r) => r.id).filter(Boolean);
       if (!goaIds.length) { console.log("[Goa] No project IDs"); return; }
 
-      // Step 2: rera_promoters for those projects → organization_name_normalized
+      // Step 2: rera_promoters for those projects — chunked to avoid URL length limits
       // Chain: rera_projects → rera_promoters (rera_project_id) → developer_brand_entities (legal_entity_name_normalized = organization_name_normalized) → developer_brands (brand_id)
-      const { data: promoterRows, error: promoterErr } = await supabase
-        .from("rera_promoters")
-        .select("rera_project_id, organization_name_normalized")
-        .in("rera_project_id", goaIds);
-
-      console.log("[Goa] Step 2 - rera_promoters:", promoterRows?.length, "error:", promoterErr?.message);
+      const CHUNK = 100;
+      const allPromoterRows: { rera_project_id: string; organization_name_normalized: string | null }[] = [];
+      for (let i = 0; i < goaIds.length; i += CHUNK) {
+        const { data: chunk, error: chunkErr } = await supabase
+          .from("rera_promoters")
+          .select("rera_project_id, organization_name_normalized")
+          .in("rera_project_id", goaIds.slice(i, i + CHUNK));
+        if (chunkErr) console.warn("[Goa] rera_promoters chunk error:", chunkErr.message);
+        if (chunk) allPromoterRows.push(...(chunk as { rera_project_id: string; organization_name_normalized: string | null }[]));
+      }
+      const promoterRows = allPromoterRows;
+      console.log("[Goa] Step 2 - rera_promoters total:", promoterRows.length);
 
       // Build orgName → [projectIds] map
       const orgToProjects = new Map<string, string[]>();
@@ -97,14 +103,19 @@ export default function DevelopersPage() {
       console.log("[Goa] Step 2 - unique org names:", orgNames.length);
       if (!orgNames.length) { console.log("[Goa] No org names from promoters"); return; }
 
-      // Step 3: developer_brand_entities where legal_entity_name_normalized IN orgNames
-      const { data: entityRows, error: entityErr } = await supabase
-        .from("developer_brand_entities")
-        .select("brand_id, legal_entity_name_normalized")
-        .in("legal_entity_name_normalized", orgNames);
-
-      console.log("[Goa] Step 3 - developer_brand_entities:", entityRows?.length, "error:", entityErr?.message);
-      if (!entityRows?.length) { console.log("[Goa] No entity rows matching org names"); return; }
+      // Step 3: developer_brand_entities where legal_entity_name_normalized IN orgNames — chunked
+      const allEntityRows: { brand_id: string | null; legal_entity_name_normalized: string | null }[] = [];
+      for (let i = 0; i < orgNames.length; i += CHUNK) {
+        const { data: chunk, error: chunkErr } = await supabase
+          .from("developer_brand_entities")
+          .select("brand_id, legal_entity_name_normalized")
+          .in("legal_entity_name_normalized", orgNames.slice(i, i + CHUNK));
+        if (chunkErr) console.warn("[Goa] developer_brand_entities chunk error:", chunkErr.message);
+        if (chunk) allEntityRows.push(...(chunk as { brand_id: string | null; legal_entity_name_normalized: string | null }[]));
+      }
+      const entityRows = allEntityRows;
+      console.log("[Goa] Step 3 - developer_brand_entities:", entityRows.length);
+      if (!entityRows.length) { console.log("[Goa] No entity rows matching org names"); return; }
 
       // Count distinct goa projects per brand
       const brandToProjects = new Map<string, Set<string>>();
