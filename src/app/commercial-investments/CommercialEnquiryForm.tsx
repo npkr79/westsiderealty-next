@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { submitLead } from "@/app/actions/submit-lead";
 
 const inputStyle: React.CSSProperties = {
   border: "1px solid rgba(201,169,110,0.2)",
@@ -18,6 +19,7 @@ const inputStyle: React.CSSProperties = {
 export default function CommercialEnquiryForm() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     phone: "",
@@ -32,33 +34,34 @@ export default function CommercialEnquiryForm() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setErrorMessage(null);
     setSubmitting(true);
     try {
-      const response = await fetch('/api/crm/leads/website', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: formData.name,
-          phone: formData.phone,
-          source_type: 'website',
-          source_channel: 'organic_landing',
-          status: 'new',
-          priority: 'high',
-          assigned_to: '95061b18-bd2c-4ce9-9d0b-f7a8fd796f07',
+      const sourcePage = typeof window !== "undefined" ? window.location.href : "/commercial-investments";
+      const result = await submitLead({
+        name: formData.name,
+        phone: formData.phone,
+        type: "GENERAL_CONTACT",
+        source_page: sourcePage,
+        details: {
+          segment: "commercial-investments",
+          source: "commercial-investments-page",
+          budgetRange: formData.budget || null,
+          timeline: formData.timeline || null,
+          investment_stage: formData.stage || null,
           notes: `Commercial Investment Enquiry | Budget: ${formData.budget} | Stage: ${formData.stage} | Timeline: ${formData.timeline} | Message: ${formData.message}`,
-        }),
+        },
       });
-      const result = await response.json();
-      if (!response.ok) {
-        console.error('[Commercial Form] error:', result.error);
-        alert('Something went wrong. Please try again.');
-        setSubmitting(false);
+
+      if (!result.success) {
+        setErrorMessage(result.error || "Something went wrong. Please try again.");
         return;
       }
+
       setSubmitted(true);
     } catch (err) {
-      console.error('[Commercial Form] Unexpected error:', err);
-      alert('Something went wrong. Please try again.');
+      console.error("[Commercial Form] Unexpected error:", err);
+      setErrorMessage("Something went wrong. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -133,6 +136,10 @@ export default function CommercialEnquiryForm() {
         onChange={set("message")}
         style={{ ...inputStyle, resize: "vertical" }}
       />
+
+      {errorMessage && (
+        <p style={{ color: "#f87171", fontSize: "13px", marginBottom: "12px", textAlign: "center" }}>{errorMessage}</p>
+      )}
 
       <button
         type="submit"

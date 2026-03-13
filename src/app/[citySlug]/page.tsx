@@ -497,7 +497,6 @@ export default async function CityPage({ params }: PageProps) {
           marketName="Goa"
           citySlug="goa"
           notes="Goa city page inquiry"
-          sourceId="c3b72f38-171b-4ce6-a060-f40beed8bdb4"
         />
       )}
 

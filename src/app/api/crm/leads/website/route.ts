@@ -10,7 +10,10 @@ export async function POST(req: NextRequest) {
 
     const { data, error } = await supabase
       .from('crm_leads')
-      .insert({ name, phone, source_type, source_channel, status, priority, assigned_to, notes })
+      .insert({
+        name, phone, source_type, source_channel, status, priority, assigned_to, notes,
+        source_id: "c3b72f38-171b-4ce6-a060-f40beed8bdb4",
+      })
       .select();
 
     if (error) {

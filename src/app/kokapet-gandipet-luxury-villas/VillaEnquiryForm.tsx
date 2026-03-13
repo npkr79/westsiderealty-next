@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { submitLead } from "@/app/actions/submit-lead";
 
 export default function VillaEnquiryForm() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     phone: "",
@@ -16,33 +18,34 @@ export default function VillaEnquiryForm() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setErrorMessage(null);
     setSubmitting(true);
     try {
-      const response = await fetch('/api/crm/leads/website', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: formData.name,
-          phone: formData.phone,
-          source_type: 'website',
-          source_channel: 'organic_landing',
-          status: 'new',
-          priority: 'high',
-          assigned_to: '8a0946ec-a736-4d8c-9255-84dbad921fb6',
-          notes: `Project: Kokapet/Gandipet Luxury Villa | Budget: ${formData.budget} | Location: ${formData.location} | Requirements: ${formData.requirements}`,
-        }),
+      const sourcePage = typeof window !== "undefined" ? window.location.href : "/kokapet-gandipet-luxury-villas";
+      const result = await submitLead({
+        name: formData.name,
+        phone: formData.phone,
+        email: formData.email || null,
+        type: "GENERAL_CONTACT",
+        source_page: sourcePage,
+        details: {
+          segment: "luxury-villas",
+          source: "kokapet-gandipet-luxury-villas-page",
+          budgetRange: formData.budget || null,
+          location_preference: formData.location || null,
+          notes: `Luxury Villa Enquiry | Budget: ${formData.budget} | Location: ${formData.location} | Requirements: ${formData.requirements}`,
+        },
       });
-      const result = await response.json();
-      if (!response.ok) {
-        console.error('[Villa Form] error:', result.error);
-        alert('Something went wrong. Please try again.');
-        setSubmitting(false);
+
+      if (!result.success) {
+        setErrorMessage(result.error || "Something went wrong. Please try again.");
         return;
       }
+
       setSubmitted(true);
     } catch (err) {
-      console.error('[Villa Form] Unexpected error:', err);
-      alert('Something went wrong. Please try again.');
+      console.error("[Villa Form] Unexpected error:", err);
+      setErrorMessage("Something went wrong. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -104,6 +107,9 @@ export default function VillaEnquiryForm() {
         <label>Requirements</label>
         <textarea rows={3} placeholder="Minimum size, BHK, specific needs..." style={{ resize: "vertical" }} value={formData.requirements} onChange={(e) => setFormData((p) => ({ ...p, requirements: e.target.value }))} />
       </div>
+      {errorMessage && (
+        <p style={{ color: "#ef4444", fontSize: "13px", marginBottom: "12px" }}>{errorMessage}</p>
+      )}
       <button
         type="submit"
         className="form-submit"

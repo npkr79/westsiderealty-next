@@ -366,25 +366,33 @@ function ExpertModal({ projectName, projectId, developerName, onClose }: {
   projectName: string; projectId: string; developerName?: string; onClose: () => void;
 }) {
   const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [goal, setGoal] = useState("buy");
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMsg("");
     setSubmitting(true);
     try {
-      await submitLead({
+      const result = await submitLead({
         name,
-        phone: "",
+        phone,
+        email: email || null,
         type: "PROJECT_INTEREST",
-        source_page: "project_page_v2_expert",
-        details: { project_name: projectName, project_id: projectId, developer_name: developerName, email, goal },
+        source_page: typeof window !== "undefined" ? window.location.href : "project_page_v2_expert",
+        details: { project_name: projectName, project_id: projectId, developer_name: developerName, goal },
       });
+      if (!result.success) {
+        setErrorMsg(result.error || "Something went wrong. Please try again.");
+        return;
+      }
       setSubmitted(true);
     } catch {
-      setSubmitted(true);
+      setErrorMsg("Something went wrong. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -406,7 +414,7 @@ function ExpertModal({ projectName, projectId, developerName, onClose }: {
               <Check className="w-7 h-7 text-green-600" />
             </div>
             <h3 className="text-xl font-bold text-gray-900 mb-2">Analysis on its way</h3>
-            <p className="text-gray-500 text-sm">Our advisor will follow up on {email} within 24 hours.</p>
+            <p className="text-gray-500 text-sm">Our advisor will call you on {phone} within 24 hours.</p>
             <button onClick={onClose} className="mt-6 w-full py-3 rounded-xl bg-gray-900 text-white font-medium text-sm">Close</button>
           </div>
         ) : (
@@ -416,7 +424,9 @@ function ExpertModal({ projectName, projectId, developerName, onClose }: {
             <form onSubmit={handleSubmit} className="space-y-4">
               <input required value={name} onChange={e => setName(e.target.value)} placeholder="Your name"
                 className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-              <input required type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Email address"
+              <input required type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="Phone number"
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+              <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Email (optional)"
                 className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
               <div>
                 <p className="text-xs text-gray-500 mb-2.5 font-medium uppercase tracking-wide">What are you looking to do?</p>
@@ -430,6 +440,7 @@ function ExpertModal({ projectName, projectId, developerName, onClose }: {
                   ))}
                 </div>
               </div>
+              {errorMsg && <p className="text-xs text-red-500">{errorMsg}</p>}
               <button type="submit" disabled={submitting}
                 className="w-full py-3.5 rounded-xl bg-indigo-600 text-white font-semibold text-sm disabled:opacity-60 hover:bg-indigo-700 transition-colors">
                 {submitting ? "Submitting…" : "Get Expert Analysis"}

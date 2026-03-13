@@ -29,11 +29,14 @@ export interface SubmitLeadResponse {
   error?: string;
 }
 
+// Hardcoded Website source UUID — canonical FK to crm_lead_sources
+const WEBSITE_SOURCE_ID = "c3b72f38-171b-4ce6-a060-f40beed8bdb4";
+
 // Module-level cache for the Website source_id (persists across warm invocations)
 let _websiteSourceId: string | null | undefined = undefined;
 
-async function getWebsiteSourceId(): Promise<string | null> {
-  if (_websiteSourceId !== undefined) return _websiteSourceId;
+async function getWebsiteSourceId(): Promise<string> {
+  if (_websiteSourceId !== undefined) return _websiteSourceId ?? WEBSITE_SOURCE_ID;
 
   const supabase = createServiceClient();
   const { data } = await supabase
@@ -48,14 +51,8 @@ async function getWebsiteSourceId(): Promise<string | null> {
     return _websiteSourceId;
   }
 
-  // Create "Website" source if it doesn't exist
-  const { data: created } = await supabase
-    .from("crm_lead_sources")
-    .insert({ name: "Website" })
-    .select("id")
-    .single();
-
-  _websiteSourceId = created?.id ? String(created.id) : null;
+  // Fall back to the canonical hardcoded UUID — never return null
+  _websiteSourceId = WEBSITE_SOURCE_ID;
   return _websiteSourceId;
 }
 
@@ -102,8 +99,8 @@ export async function submitLead(formData: SubmitLeadData): Promise<SubmitLeadRe
     const details = formData.details || {};
     const attribution = extractLeadAttribution({ sourcePage: formData.source_page, details });
 
-    // Look up website source_id (UUID FK to crm_lead_sources)
-    const websiteSourceId = await getWebsiteSourceId().catch(() => null);
+    // Look up website source_id — always resolves to the canonical UUID
+    const websiteSourceId = await getWebsiteSourceId().catch(() => WEBSITE_SOURCE_ID);
 
     // Build notes with context from all detail fields
     const notesValue = buildNotes(details);
