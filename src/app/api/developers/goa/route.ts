@@ -25,7 +25,8 @@ export async function GET() {
       const { data: chunk } = await supabase
         .from("rera_promoters")
         .select("rera_project_id, organization_name, organization_name_normalized")
-        .in("rera_project_id", goaIds.slice(i, i + CHUNK));
+        .in("rera_project_id", goaIds.slice(i, i + CHUNK))
+        .not("promoter_type", "in", '("Individual","Individual Registration Certificate")');
       if (chunk) allPromoterRows.push(...(chunk as typeof allPromoterRows));
     }
 
