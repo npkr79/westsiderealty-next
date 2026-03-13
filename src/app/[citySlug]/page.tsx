@@ -292,6 +292,16 @@ export default async function CityPage({ params }: PageProps) {
                       </Link>
                     )}
                   </Button>
+                  {city.city_name.toLowerCase() === "goa" && (
+                    <>
+                      <Button size="lg" variant="secondary" className="text-base px-8 shadow-lg hover:shadow-xl transition-shadow" asChild>
+                        <Link href="/goa/projects">Browse Projects</Link>
+                      </Button>
+                      <Button size="lg" variant="secondary" className="text-base px-8 shadow-lg hover:shadow-xl transition-shadow" asChild>
+                        <Link href="/developers?city=goa">Goa Developers</Link>
+                      </Button>
+                    </>
+                  )}
                   {city.city_name.toLowerCase() !== "goa" && (
                     <Button
                       size="lg"

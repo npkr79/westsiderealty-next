@@ -333,7 +333,7 @@ export default async function DeveloperDetailPage({ params }: { params: Promise<
         {/* ── Hero ────────────────────────────────────────────── */}
         <section className="pb-16 px-4" style={{ paddingTop: 88, background: "linear-gradient(to bottom, #0d0d0d, #080808)" }}>
           <div className="container mx-auto max-w-5xl">
-            <Link href="/developers" className="text-xs text-slate-500 hover:text-slate-300 transition-colors mb-6 inline-block">
+            <Link href={developerCity === "goa" ? "/developers?city=goa" : "/developers"} className="text-xs text-slate-500 hover:text-slate-300 transition-colors mb-6 inline-block">
               ← All Developers
             </Link>
 
@@ -484,7 +484,7 @@ export default async function DeveloperDetailPage({ params }: { params: Promise<
             <div className="container mx-auto max-w-5xl">
               <p className="text-xs font-bold uppercase tracking-[0.18em] mb-2" style={{ color: "#c8a96e" }}>Portfolio</p>
               <h2 className="text-xl font-bold text-white mb-5">Projects by {brand.brand_name}</h2>
-              <ProjectsTable projects={projects} />
+              <ProjectsTable projects={projects} citySlug={developerCity} />
             </div>
           </section>
         )}
@@ -499,7 +499,7 @@ export default async function DeveloperDetailPage({ params }: { params: Promise<
                 {Array.from(marketSet.entries()).map(([mSlug, mName]) => (
                   <Link
                     key={mSlug}
-                    href={`/hyderabad/${mSlug}`}
+                    href={`/${developerCity}/${mSlug}`}
                     className="rounded-full border px-4 py-2 text-sm font-medium transition-all hover:border-white/30 hover:bg-white/8"
                     style={{ background: "rgba(255,255,255,0.04)", borderColor: "rgba(255,255,255,0.12)", color: "#cbd5e1" }}
                   >
@@ -549,7 +549,7 @@ export default async function DeveloperDetailPage({ params }: { params: Promise<
                     <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-3">Markets Active In</p>
                     <div className="space-y-2">
                       {Array.from(marketSet.entries()).slice(0, 4).map(([mSlug, mName]) => (
-                        <Link key={mSlug} href={`/hyderabad/${mSlug}`}
+                        <Link key={mSlug} href={`/${developerCity}/${mSlug}`}
                           className="flex items-center justify-between rounded-xl border border-white/8 px-4 py-3 transition-all hover:border-white/20 hover:bg-white/4"
                           style={{ background: "rgba(255,255,255,0.03)" }}>
                           <span className="text-white text-sm font-medium">{mName}</span>

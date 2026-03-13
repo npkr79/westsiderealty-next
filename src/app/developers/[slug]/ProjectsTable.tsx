@@ -43,7 +43,7 @@ function priceLabel(min: number | null, max: number | null) {
   return `${f((min ?? max)!)}/sqft`;
 }
 
-export function ProjectsTable({ projects }: { projects: Project[] }) {
+export function ProjectsTable({ projects, citySlug = "hyderabad" }: { projects: Project[]; citySlug?: string }) {
   const [activeTab, setActiveTab] = useState<"all" | "active" | "completed">("all");
 
   const activeProjects = projects.filter((p) => isActive(p.computed_status));
@@ -83,7 +83,7 @@ export function ProjectsTable({ projects }: { projects: Project[] }) {
             const style = STATUS_STYLE[p.computed_status];
             const price = priceLabel(p.developer_price_min, p.developer_price_max);
             const possession = formatDate(p.proposed_completion_date);
-            const href = p.url_slug ? `/hyderabad/projects/${p.url_slug}` : null;
+            const href = p.url_slug ? `/${citySlug}/projects/${p.url_slug}` : null;
             const cardContent = (
               <>
                 {/* Top: AI badge */}

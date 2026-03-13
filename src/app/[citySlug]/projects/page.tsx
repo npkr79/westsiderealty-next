@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { buildMetadata } from "@/components/common/SEO";
 import { JsonLd } from "@/components/common/SEO";
@@ -175,6 +176,17 @@ export default async function CityProjectsPage({ params, searchParams }: PagePro
 
       <main className="min-h-screen bg-background">
         <section className="container mx-auto px-4 py-12">
+          {/* City nav links */}
+          <div className="flex flex-wrap gap-3 mb-8">
+            <Link href={`/${citySlug}`} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+              ← {city.city_name} Home
+            </Link>
+            <span className="text-muted-foreground/40">·</span>
+            <Link href={`/${citySlug}/micro-markets`} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+              Explore Markets
+            </Link>
+          </div>
+
           {projectsList.length === 0 ? (
             <div className="text-center py-12">
               <Building2 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />

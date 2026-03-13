@@ -667,10 +667,16 @@ export default function ProjectPageV2({ project, insights, context, citySlug, pr
                 <Link href="/" className="hover:text-white/80 flex items-center gap-1"><Home className="w-3 h-3" /> Home</Link>
                 <ChevronRight className="w-3 h-3" />
                 <Link href={`/${citySlug}`} className="hover:text-white/80 capitalize">{citySlug}</Link>
+                <ChevronRight className="w-3 h-3" />
+                <Link href={`/${citySlug}/projects`} className="hover:text-white/80">Projects</Link>
                 {microMarket?.micro_market_name && (
                   <>
                     <ChevronRight className="w-3 h-3" />
-                    <span className="text-white/60">{microMarket.micro_market_name}</span>
+                    {(microMarket as any).url_slug ? (
+                      <Link href={`/${citySlug}/${(microMarket as any).url_slug}`} className="hover:text-white/80">{microMarket.micro_market_name}</Link>
+                    ) : (
+                      <span className="text-white/60">{microMarket.micro_market_name}</span>
+                    )}
                   </>
                 )}
                 <ChevronRight className="w-3 h-3" />

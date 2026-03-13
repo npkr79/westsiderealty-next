@@ -35,6 +35,14 @@ export default function DevelopersPage() {
   // ── Shared ──
   const [query, setQuery] = useState("");
 
+  // ── Initialize city from ?city= URL param ──
+  useEffect(() => {
+    if (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("city") === "goa") {
+      setActiveCity("goa");
+      loadGoaDevelopers();
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── Load Hyderabad on mount ──
   useEffect(() => {
     const supabase = createBrowserClient(
