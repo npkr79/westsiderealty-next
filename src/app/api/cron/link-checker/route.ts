@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/serviceClient";
 
-const CONCURRENCY = 10;
-const TIMEOUT_MS = 10_000;
+const CONCURRENCY = 3;
+const TIMEOUT_MS = 5_000;
+const DEFAULT_LIMIT = 50;
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.westsiderealty.in";
 
 const isAuthorized = (request: NextRequest): boolean => {
@@ -118,11 +119,15 @@ async function handler(request: NextRequest) {
   try {
     const supabase = createServiceClient();
     const run_id = new Date().toISOString();
-    const baseUrl = request.nextUrl.searchParams.get("base_url") ?? SITE_URL;
+    const { searchParams } = request.nextUrl;
+    const baseUrl = searchParams.get("base_url") ?? SITE_URL;
+    const limit = Math.min(parseInt(searchParams.get("limit") ?? String(DEFAULT_LIMIT), 10), 200);
+    const offset = parseInt(searchParams.get("offset") ?? "0", 10);
 
     console.log("[link-checker] fetching slugs...");
-    const entries = await fetchAllSlugs(supabase, baseUrl);
-    console.log(`[link-checker] fetched ${entries.length} URLs — starting checks against ${baseUrl}`);
+    const allEntries = await fetchAllSlugs(supabase, baseUrl);
+    const entries = allEntries.slice(offset, offset + limit);
+    console.log(`[link-checker] total=${allEntries.length} limit=${limit} offset=${offset} — checking ${entries.length} URLs against ${baseUrl}`);
     const results = await checkInBatches(entries);
     console.log(`[link-checker] checks complete — ${results.filter(r => r.is_broken).length} broken`);
 
@@ -147,7 +152,12 @@ async function handler(request: NextRequest) {
 
     return NextResponse.json({
       run_id,
-      total: results.length,
+      offset,
+      limit,
+      checked: results.length,
+      total_available: allEntries.length,
+      has_more: offset + limit < allEntries.length,
+      next_offset: offset + limit < allEntries.length ? offset + limit : null,
       broken_count: broken.length,
       broken: broken.map((r) => ({ type: r.type, slug: r.slug, status: r.http_status, url: r.url })),
     });
