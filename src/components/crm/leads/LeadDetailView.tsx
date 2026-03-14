@@ -949,80 +949,75 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
         {/* ── Overview ── */}
         <TabsContent value="overview">
           <div className="space-y-3">
+
+            {/* Contact */}
             <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Lead profile</CardTitle>
+              <CardHeader className="pb-2 pt-4 px-4">
+                <CardTitle className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wide">Contact</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-5 text-sm">
+              <CardContent className="px-4 pb-4">
+                <div className="grid gap-3 md:grid-cols-3">
+                  <InlineEditField
+                    fieldKey="name" label="Full Name"
+                    displayValue={lead.name} editValue={editName} setEditValue={setEditName}
+                    isEditing={editingField === "name"} isSaved={savedField === "name"}
+                    onStartEdit={() => { setEditName(lead.name); setEditingField("name"); }}
+                    onSave={(v) => void patchField("name", v)}
+                  />
+                  <InlineEditField
+                    fieldKey="phone" label="Mobile" inputType="tel"
+                    displayValue={lead.phone} editValue={editPhone} setEditValue={setEditPhone}
+                    isEditing={editingField === "phone"} isSaved={savedField === "phone"}
+                    onStartEdit={() => { setEditPhone(lead.phone); setEditingField("phone"); }}
+                    onSave={(v) => void patchField("phone", v)}
+                  />
+                  <InlineEditField
+                    fieldKey="email" label="Email" inputType="email"
+                    displayValue={lead.email || ""} editValue={editEmail} setEditValue={setEditEmail}
+                    isEditing={editingField === "email"} isSaved={savedField === "email"}
+                    onStartEdit={() => { setEditEmail(lead.email || ""); setEditingField("email"); }}
+                    onSave={(v) => void patchField("email", v)}
+                  />
+                </div>
+              </CardContent>
+            </Card>
 
-                {/* Contact Details */}
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500 mb-2">Contact Details</p>
-                  <div className="grid gap-3 md:grid-cols-3">
-                    <InlineEditField
-                      fieldKey="name" label="Full Name"
-                      displayValue={lead.name} editValue={editName} setEditValue={setEditName}
-                      isEditing={editingField === "name"} isSaved={savedField === "name"}
-                      onStartEdit={() => { setEditName(lead.name); setEditingField("name"); }}
-                      onSave={(v) => void patchField("name", v)}
+            {/* Requirement */}
+            <Card>
+              <CardHeader className="pb-2 pt-4 px-4">
+                <CardTitle className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wide">Requirement</CardTitle>
+              </CardHeader>
+              <CardContent className="px-4 pb-4 space-y-3 text-sm">
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div>
+                    <p className="text-slate-500 dark:text-slate-400 text-xs mb-1">Min Budget (₹)</p>
+                    <Input
+                      type="number"
+                      value={editBudgetMin}
+                      onChange={(e) => setEditBudgetMin(e.target.value)}
+                      placeholder="e.g. 5000000"
+                      className="h-8 text-sm"
                     />
-                    <InlineEditField
-                      fieldKey="phone" label="Mobile" inputType="tel"
-                      displayValue={lead.phone} editValue={editPhone} setEditValue={setEditPhone}
-                      isEditing={editingField === "phone"} isSaved={savedField === "phone"}
-                      onStartEdit={() => { setEditPhone(lead.phone); setEditingField("phone"); }}
-                      onSave={(v) => void patchField("phone", v)}
-                    />
-                    <InlineEditField
-                      fieldKey="email" label="Email" inputType="email"
-                      displayValue={lead.email || ""} editValue={editEmail} setEditValue={setEditEmail}
-                      isEditing={editingField === "email"} isSaved={savedField === "email"}
-                      onStartEdit={() => { setEditEmail(lead.email || ""); setEditingField("email"); }}
-                      onSave={(v) => void patchField("email", v)}
+                  </div>
+                  <div>
+                    <p className="text-slate-500 dark:text-slate-400 text-xs mb-1">Max Budget (₹)</p>
+                    <Input
+                      type="number"
+                      value={editBudgetMax}
+                      onChange={(e) => setEditBudgetMax(e.target.value)}
+                      placeholder="e.g. 20000000"
+                      className="h-8 text-sm"
                     />
                   </div>
                 </div>
-
-                <hr className="border-slate-100 dark:border-slate-800" />
-
-                {/* Budget */}
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500 mb-2">Budget</p>
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <div>
-                      <p className="text-slate-500 dark:text-slate-400 text-xs mb-1">Min Budget (₹)</p>
-                      <Input
-                        type="number"
-                        value={editBudgetMin}
-                        onChange={(e) => setEditBudgetMin(e.target.value)}
-                        placeholder="e.g. 5000000"
-                        className="h-8 text-sm"
-                      />
-                    </div>
-                    <div>
-                      <p className="text-slate-500 dark:text-slate-400 text-xs mb-1">Max Budget (₹)</p>
-                      <Input
-                        type="number"
-                        value={editBudgetMax}
-                        onChange={(e) => setEditBudgetMax(e.target.value)}
-                        placeholder="e.g. 20000000"
-                        className="h-8 text-sm"
-                      />
-                    </div>
-                  </div>
-                  {(editBudgetMin || editBudgetMax) && (
-                    <p className="mt-1 text-xs text-slate-400">
-                      {formatBudgetRange(
-                        editBudgetMin !== "" ? Number(editBudgetMin) : null,
-                        editBudgetMax !== "" ? Number(editBudgetMax) : null
-                      )}
-                    </p>
-                  )}
-                </div>
-
-                <hr className="border-slate-100 dark:border-slate-800" />
-
-                {/* Location + Buyer Type + Timeline */}
+                {(editBudgetMin || editBudgetMax) && (
+                  <p className="text-xs text-slate-400">
+                    {formatBudgetRange(
+                      editBudgetMin !== "" ? Number(editBudgetMin) : null,
+                      editBudgetMax !== "" ? Number(editBudgetMax) : null
+                    )}
+                  </p>
+                )}
                 <div className="grid gap-3 md:grid-cols-3">
                   <div>
                     <p className="text-slate-500 dark:text-slate-400 text-xs mb-1">Location Preference</p>
@@ -1049,11 +1044,11 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
                     </select>
                   </div>
                   <div>
-                    <label style={{ fontSize: "12px", color: "var(--color-text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: "4px" }}>Purchase Timeline</label>
+                    <p className="text-slate-500 dark:text-slate-400 text-xs mb-1">Purchase Timeline</p>
                     <select
                       value={editTimeline}
                       onChange={(e) => setEditTimeline(e.target.value)}
-                      style={{ width: "100%", border: "1px solid var(--color-border-secondary, #e2e8f0)", borderRadius: "var(--border-radius-md, 6px)", padding: "6px 8px", fontSize: "14px", color: "var(--color-text-primary, inherit)", background: "var(--color-background-primary, transparent)" }}
+                      className="w-full h-8 text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                     >
                       <option value="">— Select —</option>
                       <option value="immediate">Immediate (within 1 month)</option>
@@ -1065,10 +1060,15 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
                     </select>
                   </div>
                 </div>
+              </CardContent>
+            </Card>
 
-                <hr className="border-slate-100 dark:border-slate-800" />
-
-                {/* Status + Lead Status + Source + Buyer Profile */}
+            {/* Status */}
+            <Card>
+              <CardHeader className="pb-2 pt-4 px-4">
+                <CardTitle className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wide">Status</CardTitle>
+              </CardHeader>
+              <CardContent className="px-4 pb-4 space-y-3 text-sm">
                 <div className="grid gap-3 md:grid-cols-2">
                   <div>
                     <p className="text-slate-500 dark:text-slate-400 text-xs mb-1">Source</p>
@@ -1099,46 +1099,34 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
                   </div>
                 </div>
                 <div className="grid gap-3 md:grid-cols-2">
-                  {/* Lead Status — manual agent input */}
-                  {(() => {
-                    const leadStatusConfig = {
-                      cold: { label: "❄ Cold", bg: "var(--color-background-secondary, #1e293b)", color: "var(--color-text-secondary, #94a3b8)" },
-                      warm: { label: "🔥 Warm", bg: "var(--color-background-warning, #431407)", color: "var(--color-text-warning, #fb923c)" },
-                      hot:  { label: "⚡ Hot",  bg: "var(--color-background-danger, #450a0a)",  color: "var(--color-text-danger, #f87171)" },
-                    };
-                    return (
-                      <div>
-                        <label style={{ fontSize: "12px", color: "var(--color-text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: "6px" }}>Lead Status</label>
-                        <select
-                          value={editLeadStatus}
-                          onChange={async (e) => {
-                            const val = e.target.value;
-                            setEditLeadStatus(val);
+                  {/* Lead Status — segmented buttons */}
+                  <div>
+                    <p className="text-slate-500 dark:text-slate-400 text-xs mb-2">Lead Status</p>
+                    <div className="inline-flex rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+                      {([
+                        { value: "cold", label: "❄ Cold",  activeClass: "bg-slate-600 text-slate-100 dark:bg-slate-700" },
+                        { value: "warm", label: "🔥 Warm", activeClass: "bg-orange-100 text-orange-700 dark:bg-orange-900/70 dark:text-orange-300" },
+                        { value: "hot",  label: "⚡ Hot",  activeClass: "bg-rose-100 text-rose-700 dark:bg-rose-900/70 dark:text-rose-300" },
+                      ] as const).map(({ value, label, activeClass }) => (
+                        <button
+                          key={value}
+                          type="button"
+                          onClick={async () => {
+                            setEditLeadStatus(value);
                             const res = await fetch(`/api/crm/leads/${lead.id}`, {
                               method: "PATCH",
                               headers: { "Content-Type": "application/json" },
-                              body: JSON.stringify({ lead_status: val }),
+                              body: JSON.stringify({ lead_status: value }),
                             });
-                            if (res.ok) setLead((prev) => prev ? { ...prev, lead_status: val } : prev);
+                            if (res.ok) setLead((prev) => prev ? { ...prev, lead_status: value } : prev);
                           }}
-                          style={{
-                            border: "1px solid var(--color-border-secondary, #334155)",
-                            borderRadius: "var(--border-radius-md, 6px)",
-                            padding: "6px 10px",
-                            fontSize: "14px",
-                            fontWeight: 500,
-                            cursor: "pointer",
-                            background: leadStatusConfig[editLeadStatus as keyof typeof leadStatusConfig]?.bg ?? "var(--color-background-secondary)",
-                            color: leadStatusConfig[editLeadStatus as keyof typeof leadStatusConfig]?.color ?? "var(--color-text-secondary)",
-                          }}
+                          className={`px-3 py-1.5 text-sm font-medium transition-colors ${editLeadStatus === value ? activeClass : "text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"}`}
                         >
-                          <option value="cold">❄ Cold</option>
-                          <option value="warm">🔥 Warm</option>
-                          <option value="hot">⚡ Hot</option>
-                        </select>
-                      </div>
-                    );
-                  })()}
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                   {/* Buyer Profile — auto-calculated, read-only */}
                   {(() => {
                     const priorityConfig: Record<string, { label: string; bg: string; color: string }> = {
@@ -1153,26 +1141,27 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
                     const cfg = priorityConfig[mapped] ?? priorityConfig.early_stage;
                     return (
                       <div>
-                        <label style={{ fontSize: "12px", color: "var(--color-text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: "6px" }}>Buyer Profile</label>
-                        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                          <span style={{ padding: "4px 12px", borderRadius: "20px", fontSize: "13px", fontWeight: 500, background: cfg.bg, color: cfg.color }}>
+                        <p className="text-slate-500 dark:text-slate-400 text-xs mb-2">Buyer Profile</p>
+                        <div className="flex items-center gap-2.5">
+                          <span style={{ padding: "3px 10px", borderRadius: "20px", fontSize: "12px", fontWeight: 500, background: cfg.bg, color: cfg.color }}>
                             {cfg.label}
                           </span>
-                          <span style={{ fontSize: "12px", color: "var(--color-text-tertiary, #64748b)" }}>
-                            Score {lead.lead_score ?? 0} / 100
-                          </span>
+                          <span className="text-xs text-slate-500">{lead.lead_score ?? 0}/100</span>
                         </div>
-                        <p style={{ fontSize: "11px", color: "var(--color-text-tertiary, #64748b)", marginTop: "4px" }}>
-                          Auto-calculated · improves with budget, timeline &amp; stage
-                        </p>
+                        <p className="text-xs text-slate-500 mt-1">Auto-calculated</p>
                       </div>
                     );
                   })()}
                 </div>
+              </CardContent>
+            </Card>
 
-                <hr className="border-slate-100 dark:border-slate-800" />
-
-                {/* Assigned Agent */}
+            {/* Assignment */}
+            <Card>
+              <CardHeader className="pb-2 pt-4 px-4">
+                <CardTitle className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wide">Assignment</CardTitle>
+              </CardHeader>
+              <CardContent className="px-4 pb-4 space-y-3 text-sm">
                 <div className="grid gap-3 md:grid-cols-2">
                   <div>
                     <p className="text-slate-500 dark:text-slate-400 text-xs mb-1">Assigned Agent</p>
@@ -1188,79 +1177,70 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
                     </select>
                   </div>
                   <div>
-                    <p className="text-slate-500 dark:text-slate-400 text-xs mb-1">Last activity</p>
-                    <p className="font-medium">{toIST(lead.last_activity_at)}</p>
+                    <p className="text-slate-500 dark:text-slate-400 text-xs mb-1">Last Activity</p>
+                    <p className="font-medium text-sm">{toIST(lead.last_activity_at)}</p>
                   </div>
                 </div>
-
-                {/* Save Changes */}
                 <div className="flex items-center gap-3 pt-1">
-                  <Button
-                    type="button"
-                    onClick={saveProfileChanges}
-                    disabled={savingProfile}
-                  >
+                  <Button type="button" onClick={saveProfileChanges} disabled={savingProfile}>
                     {savingProfile ? "Saving..." : "Save Changes"}
                   </Button>
-                  {profileSaved && (
-                    <span className="text-sm text-emerald-600 dark:text-emerald-400 font-medium">Saved ✓</span>
-                  )}
-                  {profileError && (
-                    <span className="text-sm text-rose-600 dark:text-rose-400">{profileError}</span>
-                  )}
+                  {profileSaved && <span className="text-sm text-emerald-600 dark:text-emerald-400 font-medium">Saved ✓</span>}
+                  {profileError && <span className="text-sm text-rose-600 dark:text-rose-400">{profileError}</span>}
                 </div>
-
-                <hr className="border-slate-100 dark:border-slate-800" />
-
-                {/* Notes */}
-                <div>
-                  <p className="text-slate-500 dark:text-slate-400 text-xs mb-1">Notes</p>
-                  <textarea
-                    value={editNotes}
-                    onChange={(e) => setEditNotes(e.target.value)}
-                    onBlur={async () => {
-                      await fetch(`/api/crm/leads/${lead.id}`, {
-                        method: "PATCH",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ notes: editNotes }),
-                      });
-                    }}
-                    placeholder="Add notes..."
-                    rows={4}
-                    className="w-full text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white resize-none focus:outline-none focus:ring-2 focus:ring-gray-900 dark:focus:ring-white"
-                  />
-                </div>
-
               </CardContent>
-
-              {/* Lead Form Answers */}
-              {(() => {
-                const items = normalizeFormQuestions(
-                  lead.attribution_metadata?.form_questions ?? lead.attribution_metadata?.field_data
-                );
-                return (
-                  <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800 px-6 pb-6">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-3">Lead Form Answers</p>
-                    {items.length === 0 ? (
-                      <p className="text-xs text-gray-400 italic">No form data available.</p>
-                    ) : (
-                      <div className="space-y-2">
-                        {items.map(({ q, a }) => (
-                          <div key={q} className="rounded-lg bg-gray-50 dark:bg-gray-800 px-3 py-2">
-                            <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-0.5">
-                              {q.replace(/_/g, " ")}
-                            </p>
-                            <p className="text-sm font-medium text-gray-900 dark:text-white">
-                              {a.replace(/_/g, " ") || "—"}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              })()}
             </Card>
+
+            {/* Notes */}
+            <Card>
+              <CardHeader className="pb-2 pt-4 px-4">
+                <CardTitle className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wide">Notes</CardTitle>
+              </CardHeader>
+              <CardContent className="px-4 pb-4">
+                <textarea
+                  value={editNotes}
+                  onChange={(e) => setEditNotes(e.target.value)}
+                  onBlur={async () => {
+                    await fetch(`/api/crm/leads/${lead.id}`, {
+                      method: "PATCH",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ notes: editNotes }),
+                    });
+                  }}
+                  placeholder="Add notes..."
+                  rows={4}
+                  className="w-full text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white resize-none focus:outline-none focus:ring-2 focus:ring-gray-900 dark:focus:ring-white"
+                />
+              </CardContent>
+            </Card>
+
+            {/* Lead Form Answers */}
+            {(() => {
+              const items = normalizeFormQuestions(
+                lead.attribution_metadata?.form_questions ?? lead.attribution_metadata?.field_data
+              );
+              if (items.length === 0) return null;
+              return (
+                <Card>
+                  <CardHeader className="pb-2 pt-4 px-4">
+                    <CardTitle className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wide">Lead Form Answers</CardTitle>
+                  </CardHeader>
+                  <CardContent className="px-4 pb-4">
+                    <table className="w-full text-xs">
+                      <tbody>
+                        {items.map(({ q, a }, i) => (
+                          <tr key={q} className={i % 2 === 0 ? "bg-slate-50 dark:bg-slate-800/40" : ""}>
+                            <td className="py-1.5 px-2 text-slate-500 uppercase tracking-wide w-1/2">{q.replace(/_/g, " ")}</td>
+                            <td className="py-1.5 px-2 font-medium text-slate-800 dark:text-slate-200">{a.replace(/_/g, " ") || "—"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </CardContent>
+                </Card>
+              );
+            })()}
+
             <LeadBehaviorIntelligencePanel leadId={leadId} />
           </div>
         </TabsContent>

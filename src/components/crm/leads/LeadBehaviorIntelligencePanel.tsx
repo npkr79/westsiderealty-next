@@ -1,11 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { AlertTriangle, Flame, Radar } from "lucide-react";
+import { Flame, Radar } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type { CrmBehaviorEvent } from "@/lib/crm/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 
 interface LeadBehaviorIntelligencePanelProps {
   leadId: string;
@@ -140,15 +139,6 @@ export default function LeadBehaviorIntelligencePanel({ leadId }: LeadBehaviorIn
     return Array.from(counts.entries()).sort((a, b) => b[1] - a[1])[0]?.[0] || "N/A";
   }, [events]);
 
-  const topDevice = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const event of events) {
-      if (!event.device) continue;
-      counts.set(event.device, (counts.get(event.device) || 0) + 1);
-    }
-    return Array.from(counts.entries()).sort((a, b) => b[1] - a[1])[0]?.[0] || "N/A";
-  }, [events]);
-
   const highInterestProjects = useMemo(() => {
     const map = new Map<string, number>();
     for (const event of events) {
@@ -183,113 +173,74 @@ export default function LeadBehaviorIntelligencePanel({ leadId }: LeadBehaviorIn
 
   return (
     <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-lg">Behavior intelligence</CardTitle>
+      <CardHeader className="pb-2 pt-4 px-4">
+        <CardTitle className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wide">Behavior intelligence</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
-        {loading ? <p className="text-sm">Loading behavior intelligence...</p> : null}
+      <CardContent className="px-4 pb-4 space-y-4">
+        {loading ? <p className="text-sm text-slate-400">Loading...</p> : null}
         {error ? <p className="text-sm text-rose-600 dark:text-rose-300">{error}</p> : null}
 
-        <div className="grid gap-3 md:grid-cols-3">
-          <div className="rounded-md border p-3">
-            <p className="text-xs uppercase text-slate-500 dark:text-slate-400">Intent score</p>
-            <p className="mt-1 text-2xl font-semibold">{intentScore}</p>
-            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Weighted from recent behavior timeline.</p>
+        {/* 2×2 compact stats */}
+        <div className="grid grid-cols-2 gap-2">
+          <div className="rounded-lg bg-slate-100 dark:bg-slate-800/50 px-3 py-2">
+            <p className="text-xs text-slate-500 uppercase tracking-wide">Intent Score</p>
+            <p className="text-xl font-bold mt-0.5">{intentScore}</p>
           </div>
-          <div className="rounded-md border p-3">
-            <p className="text-xs uppercase text-slate-500 dark:text-slate-400">Sessions tracked</p>
-            <p className="mt-1 text-2xl font-semibold">{new Set(events.map((e) => e.session_id).filter(Boolean)).size}</p>
-            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Across repeat and fresh visits.</p>
+          <div className="rounded-lg bg-slate-100 dark:bg-slate-800/50 px-3 py-2">
+            <p className="text-xs text-slate-500 uppercase tracking-wide">Sessions</p>
+            <p className="text-xl font-bold mt-0.5">{new Set(events.map((e) => e.session_id).filter(Boolean)).size}</p>
           </div>
-          <div className="rounded-md border p-3">
-            <p className="text-xs uppercase text-slate-500 dark:text-slate-400">Recent events</p>
-            <p className="mt-1 text-2xl font-semibold">{events.length}</p>
-            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Behavior signals linked to this lead.</p>
+          <div className="rounded-lg bg-slate-100 dark:bg-slate-800/50 px-3 py-2">
+            <p className="text-xs text-slate-500 uppercase tracking-wide">Events</p>
+            <p className="text-xl font-bold mt-0.5">{events.length}</p>
           </div>
-        </div>
-
-        <div className="grid gap-3 md:grid-cols-2">
-          <div className="rounded-md border p-3">
-            <p className="text-xs uppercase text-slate-500 dark:text-slate-400">Top source</p>
-            <p className="mt-1 text-lg font-semibold">{topSource}</p>
-            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Auto-derived from available event source values.</p>
-          </div>
-          <div className="rounded-md border p-3">
-            <p className="text-xs uppercase text-slate-500 dark:text-slate-400">Top device</p>
-            <p className="mt-1 text-lg font-semibold">{topDevice}</p>
-            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Falls back to N/A when device data is absent.</p>
+          <div className="rounded-lg bg-slate-100 dark:bg-slate-800/50 px-3 py-2">
+            <p className="text-xs text-slate-500 uppercase tracking-wide">Top Source</p>
+            <p className="text-sm font-semibold mt-0.5 truncate">{topSource}</p>
           </div>
         </div>
 
-        <div className="grid gap-3 lg:grid-cols-2">
-          <div className="rounded-md border p-3">
-            <p className="mb-2 flex items-center gap-1 text-sm font-semibold">
-              <Radar className="h-4 w-4" />
-              Behavior timeline
-            </p>
-            <div className="space-y-2">
-              {events.length === 0 ? (
-                <p className="text-sm text-slate-500 dark:text-slate-400">No behavior events mapped yet.</p>
-              ) : (
-                events.slice(0, 8).map((event) => (
-                  <div key={event.id} className="flex items-center justify-between rounded border px-2 py-1.5 text-xs">
-                    <span>{event.event_name}</span>
-                    <span className="text-slate-500 dark:text-slate-400">{formatTimeAgo(event.created_at)}</span>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          <div className="rounded-md border p-3">
-            <p className="mb-2 flex items-center gap-1 text-sm font-semibold">
-              <Flame className="h-4 w-4" />
-              High-interest projects
-            </p>
-            <div className="space-y-2">
-              {highInterestProjects.length === 0 ? (
-                <p className="text-sm text-slate-500 dark:text-slate-400">No project-level behavior yet.</p>
-              ) : (
-                highInterestProjects.map((item) => (
-                  <div key={item.projectId} className="flex items-center justify-between rounded border px-2 py-1.5 text-xs">
-                    <span>{item.projectId}</span>
-                    <Badge variant="secondary">{item.points} pts</Badge>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-md border p-3">
-          <p className="mb-2 flex items-center gap-1 text-sm font-semibold">
-            <AlertTriangle className="h-4 w-4" />
-            Intent alerts
-          </p>
-          {alerts.length === 0 ? (
-            <p className="text-sm text-slate-500 dark:text-slate-400">No high-intent alerts at the moment.</p>
-          ) : (
-            <div className="space-y-1">
-              {alerts.map((alert) => (
-                <p key={alert} className="text-sm text-amber-700 dark:text-amber-300">• {alert}</p>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="rounded-md border p-3">
-          <p className="mb-2 text-sm font-semibold">Recent activity</p>
-          {recentActivity.length === 0 ? (
-            <p className="text-sm text-slate-500 dark:text-slate-400">No recent activity yet.</p>
-          ) : (
-            recentActivity.map((event) => (
-              <div key={event.id} className="mb-1 flex items-center justify-between text-sm">
-                <span>{event.event_name}</span>
-                <span className="text-xs text-slate-500 dark:text-slate-400">{formatTimeAgo(event.created_at)}</span>
+        {!loading && events.length === 0 ? (
+          <p className="text-sm text-slate-400 dark:text-slate-500 text-center py-2">No behavior data yet.</p>
+        ) : (
+          <>
+            {alerts.length > 0 && (
+              <div className="space-y-1">
+                {alerts.map((alert) => (
+                  <p key={alert} className="text-xs text-amber-700 dark:text-amber-300">• {alert}</p>
+                ))}
               </div>
-            ))
-          )}
-        </div>
+            )}
+
+            {highInterestProjects.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wide mb-1.5 flex items-center gap-1">
+                  <Flame className="h-3 w-3" /> Projects
+                </p>
+                {highInterestProjects.map((item) => (
+                  <div key={item.projectId} className="flex items-center justify-between text-xs py-1 border-b border-slate-100 dark:border-slate-800 last:border-0">
+                    <span className="truncate text-slate-700 dark:text-slate-300">{item.projectId}</span>
+                    <span className="text-slate-400 ml-2 shrink-0">{item.points} pts</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {recentActivity.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wide mb-1.5 flex items-center gap-1">
+                  <Radar className="h-3 w-3" /> Recent
+                </p>
+                {recentActivity.map((event) => (
+                  <div key={event.id} className="flex items-center justify-between text-xs py-1 border-b border-slate-100 dark:border-slate-800 last:border-0">
+                    <span className="text-slate-700 dark:text-slate-300">{event.event_name}</span>
+                    <span className="text-slate-400">{formatTimeAgo(event.created_at)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
       </CardContent>
     </Card>
   );
