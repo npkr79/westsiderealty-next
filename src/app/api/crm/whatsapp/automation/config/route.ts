@@ -5,6 +5,7 @@ import { createServiceClient } from "@/lib/supabase/serviceClient";
 const allowedRoles = new Set(["admin", "sales_head", "team_lead"]);
 
 const DEFAULTS = [
+  { key: "instant_greeting", enabled: true, template_name: "westside_greeting_v2", language_code: "en" },
   { key: "new_lead_greeting", enabled: true, template_name: "lead_greeting_v1", language_code: "en" },
   { key: "post_assignment_intro", enabled: true, template_name: "agent_introduction_v1", language_code: "en" },
   { key: "site_visit_reminder", enabled: true, template_name: "site_visit_reminder_v1", language_code: "en" },
