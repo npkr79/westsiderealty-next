@@ -11,7 +11,7 @@ import { getBrowserClient } from "@/lib/supabase/browserClient";
 type LeadRow = {
   id: string;
   created_at: string | null;
-  first_contact_at: string | null; // ⚠️ See flag at bottom of file
+  first_contact_at: string | null; // ⚠️ Verify this column exists on crm_leads
   stage_id: string | null;
   assigned_to: string | null;
   name: string | null;
@@ -86,9 +86,9 @@ function formatOverdue(dueDateIso: string | null): string {
 
 function responseColor(avgMins: number | null): string {
   if (avgMins === null) return "inherit";
-  if (avgMins < 15) return "#22c55e";
-  if (avgMins <= 30) return "#f59e0b";
-  return "#ef4444";
+  if (avgMins < 15) return "var(--color-text-success)";
+  if (avgMins <= 30) return "var(--color-text-warning)";
+  return "var(--color-text-danger)";
 }
 
 // ---------------------------------------------------------------------------
@@ -96,7 +96,7 @@ function responseColor(avgMins: number | null): string {
 // ---------------------------------------------------------------------------
 
 const skeletonStyle: React.CSSProperties = {
-  background: "rgba(255,255,255,0.06)",
+  background: "var(--color-background-tertiary)",
   borderRadius: "10px",
   animation: "pulse 1.5s ease-in-out infinite",
 };
@@ -113,7 +113,7 @@ interface MetricCardProps {
   label: string;
   value: number | string;
   onClick: () => void;
-  accentColor?: string; // left border colour
+  accentColor?: string;
 }
 
 function MetricCard({ label, value, onClick, accentColor }: MetricCardProps) {
@@ -121,10 +121,10 @@ function MetricCard({ label, value, onClick, accentColor }: MetricCardProps) {
 
   const cardStyle: React.CSSProperties = {
     background: hovered
-      ? "var(--color-background-primary, #0d0d0d)"
-      : "var(--color-background-secondary, #131313)",
+      ? "var(--color-background-primary)"
+      : "var(--color-background-secondary)",
     border: hovered
-      ? "0.5px solid var(--color-border-secondary, rgba(255,255,255,0.15))"
+      ? "0.5px solid var(--color-border-secondary)"
       : "0.5px solid transparent",
     borderLeft: accentColor ? `3px solid ${accentColor}` : undefined,
     borderRadius: "var(--border-radius-md, 10px)",
@@ -144,7 +144,7 @@ function MetricCard({ label, value, onClick, accentColor }: MetricCardProps) {
       <p
         style={{
           fontSize: 12,
-          color: "var(--color-text-secondary, #94a3b8)",
+          color: "var(--color-text-secondary)",
           marginBottom: 6,
           marginTop: 0,
         }}
@@ -159,7 +159,7 @@ function MetricCard({ label, value, onClick, accentColor }: MetricCardProps) {
             top: 12,
             right: 14,
             fontSize: 14,
-            color: "var(--color-text-secondary, #94a3b8)",
+            color: "var(--color-text-secondary)",
           }}
         >
           →
@@ -191,74 +191,80 @@ export default function DashboardMetricCards({
   useEffect(() => {
     async function fetchAll() {
       setLoading(true);
+      try {
+        // -----------------------------------------------------------------------
+        // Query B — stages first (needed to find site visit stage id)
+        // -----------------------------------------------------------------------
+        const { data: stagesData, error: stagesError } = await supabase
+          .from("crm_lead_stages")
+          .select("id, name, position")
+          .order("position");
+        console.log("[DMC] Query B stages:", stagesData?.length, stagesError);
+        const stagesResult: StageRow[] = (stagesData as StageRow[]) ?? [];
+        setStages(stagesResult);
 
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-
-      // -----------------------------------------------------------------------
-      // Query B — stages first (needed to find site visit stage id)
-      // -----------------------------------------------------------------------
-      const { data: stagesData } = await supabase
-        .from("crm_lead_stages")
-        .select("id, name, position")
-        .order("position");
-      const stagesResult: StageRow[] = (stagesData as StageRow[]) ?? [];
-      setStages(stagesResult);
-
-      // -----------------------------------------------------------------------
-      // Query A — leads summary
-      // -----------------------------------------------------------------------
-      let leadsQuery = supabase
-        .from("crm_leads")
-        .select("id, created_at, first_contact_at, stage_id, assigned_to, name");
-      if (scope === "assigned") leadsQuery = leadsQuery.eq("assigned_to", userId);
-      const { data: leadsData } = await leadsQuery;
-      setLeads((leadsData as LeadRow[]) ?? []);
-
-      // -----------------------------------------------------------------------
-      // Query C — overdue tasks
-      // -----------------------------------------------------------------------
-      let taskQuery = supabase
-        .from("crm_tasks")
-        .select("id, title, due_date, lead_id, assigned_to")
-        .lt("due_date", new Date().toISOString())
-        .neq("status", "completed");
-      if (scope === "assigned") taskQuery = taskQuery.eq("assigned_to", userId);
-      const { data: taskData } = await taskQuery;
-      setOverdueTasks((taskData as TaskRow[]) ?? []);
-
-      // -----------------------------------------------------------------------
-      // Query D — upcoming site visits (leads in site-visit-scheduled stage)
-      // -----------------------------------------------------------------------
-      const siteVisitStage = stagesResult.find(
-        (s) =>
-          /visit.*scheduled/i.test(s.name) ||
-          /site.*visit/i.test(s.name)
-      );
-      if (siteVisitStage) {
-        const next7Days = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
-        let visitQuery = supabase
+        // -----------------------------------------------------------------------
+        // Query A — leads summary
+        // -----------------------------------------------------------------------
+        let leadsQuery = supabase
           .from("crm_leads")
-          .select("id, name, phone, assigned_to, stage_id, created_at")
-          .eq("stage_id", siteVisitStage.id)
-          .lte("created_at", next7Days);
-        if (scope === "assigned") visitQuery = visitQuery.eq("assigned_to", userId);
-        const { data: visitData } = await visitQuery;
-        setUpcomingVisits((visitData as VisitRow[]) ?? []);
-      }
+          .select("id, created_at, first_contact_at, stage_id, assigned_to, name");
+        if (scope === "assigned") leadsQuery = leadsQuery.eq("assigned_to", userId);
+        const { data: leadsData, error: leadsError } = await leadsQuery;
+        console.log("[DMC] Query A leads:", leadsData?.length, leadsError);
+        setLeads((leadsData as LeadRow[]) ?? []);
 
-      // -----------------------------------------------------------------------
-      // Query E — agents (admin / scope=all only)
-      // -----------------------------------------------------------------------
-      if (scope === "all") {
-        const { data: agentData } = await supabase
-          .from("crm_users")
-          .select("id, full_name")
-          .eq("is_active", true);
-        setAgents((agentData as AgentRow[]) ?? []);
-      }
+        // -----------------------------------------------------------------------
+        // Query C — overdue tasks
+        // -----------------------------------------------------------------------
+        let taskQuery = supabase
+          .from("crm_tasks")
+          .select("id, title, due_date, lead_id, assigned_to")
+          .lt("due_date", new Date().toISOString())
+          .neq("status", "completed");
+        if (scope === "assigned") taskQuery = taskQuery.eq("assigned_to", userId);
+        const { data: taskData, error: tasksError } = await taskQuery;
+        console.log("[DMC] Query C tasks:", taskData?.length, tasksError);
+        setOverdueTasks((taskData as TaskRow[]) ?? []);
 
-      setLoading(false);
+        // -----------------------------------------------------------------------
+        // Query D — upcoming site visits (leads in site-visit-scheduled stage)
+        // -----------------------------------------------------------------------
+        const siteVisitStage = stagesResult.find(
+          (s) =>
+            /visit.*scheduled/i.test(s.name) ||
+            /site.*visit/i.test(s.name)
+        );
+        if (siteVisitStage) {
+          const next7Days = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+          let visitQuery = supabase
+            .from("crm_leads")
+            .select("id, name, phone, assigned_to, stage_id, created_at")
+            .eq("stage_id", siteVisitStage.id)
+            .lte("created_at", next7Days);
+          if (scope === "assigned") visitQuery = visitQuery.eq("assigned_to", userId);
+          const { data: visitData, error: visitsError } = await visitQuery;
+          console.log("[DMC] Query D visits:", visitData?.length, visitsError);
+          setUpcomingVisits((visitData as VisitRow[]) ?? []);
+        } else {
+          console.log("[DMC] Query D visits: no site-visit stage found in stages list");
+        }
+
+        // -----------------------------------------------------------------------
+        // Query E — agents (admin / scope=all only)
+        // -----------------------------------------------------------------------
+        if (scope === "all") {
+          const { data: agentData } = await supabase
+            .from("crm_users")
+            .select("id, full_name")
+            .eq("is_active", true);
+          setAgents((agentData as AgentRow[]) ?? []);
+        }
+      } catch (err) {
+        console.error("[DMC] fetchData error:", err);
+      } finally {
+        setLoading(false);
+      }
     }
 
     void fetchAll();
@@ -291,6 +297,8 @@ export default function DashboardMetricCards({
     (l) => l.stage_id === bookingStageId && l.created_at && l.created_at >= firstDayOfMonth
   ).length;
 
+  console.log("[DMC] Metrics:", { leadsToday, contactedToday, pendingContact, bookingsThisMonth });
+
   const stageCounts: StageWithCount[] = stages.map((stage) => ({
     ...stage,
     count: leads.filter((l) => l.stage_id === stage.id).length,
@@ -317,7 +325,6 @@ export default function DashboardMetricCards({
           (l) => l.first_contact_at && l.first_contact_at >= todayIso
         );
 
-        // Avg response time in minutes for leads contacted today
         const responseTimes = agentLeads
           .filter(
             (l) =>
@@ -387,14 +394,14 @@ export default function DashboardMetricCards({
     fontWeight: 700,
     textTransform: "uppercase",
     letterSpacing: "0.14em",
-    color: "var(--color-text-secondary, #64748b)",
+    color: "var(--color-text-secondary)",
     marginBottom: 8,
     marginTop: 0,
   };
 
   const panel: React.CSSProperties = {
-    background: "var(--color-background-secondary, #131313)",
-    border: "0.5px solid rgba(255,255,255,0.08)",
+    background: "var(--color-background-secondary)",
+    border: "0.5px solid var(--color-border-tertiary)",
     borderRadius: "var(--border-radius-md, 10px)",
     padding: 16,
   };
@@ -406,10 +413,10 @@ export default function DashboardMetricCards({
     marginBottom: 12,
   };
 
-  const badge = (color: string): React.CSSProperties => ({
+  const badge = (bgVar: string): React.CSSProperties => ({
     display: "inline-block",
-    background: color,
-    color: "#fff",
+    background: bgVar,
+    color: "white",
     borderRadius: 99,
     fontSize: 11,
     fontWeight: 600,
@@ -422,7 +429,7 @@ export default function DashboardMetricCards({
     alignItems: "center",
     gap: 10,
     padding: "8px 0",
-    borderBottom: "0.5px solid rgba(255,255,255,0.06)",
+    borderBottom: "0.5px solid var(--color-border-tertiary)",
     cursor: "pointer",
   };
 
@@ -452,13 +459,13 @@ export default function DashboardMetricCards({
               label="Contacted today"
               value={contactedToday}
               onClick={() => router.push("/leads?filter=contacted_today")}
-              accentColor={contactedToday > 0 ? "#22c55e" : undefined}
+              accentColor={contactedToday > 0 ? "var(--color-text-success)" : undefined}
             />
             <MetricCard
               label="Pending contact"
               value={pendingContact}
               onClick={() => router.push("/leads?filter=pending_contact")}
-              accentColor={pendingContact > 0 ? "#ef4444" : undefined}
+              accentColor={pendingContact > 0 ? "var(--color-text-danger)" : undefined}
             />
             <MetricCard
               label="Bookings this month"
@@ -481,8 +488,8 @@ export default function DashboardMetricCards({
                   onClick={() => router.push(`/leads?filter=stage_${stage.id}`)}
                   style={{
                     flexShrink: 0,
-                    background: "var(--color-background-secondary, #131313)",
-                    border: "0.5px solid rgba(255,255,255,0.1)",
+                    background: "var(--color-background-secondary)",
+                    border: "0.5px solid var(--color-border-tertiary)",
                     borderRadius: 8,
                     padding: "10px 14px",
                     textAlign: "center",
@@ -491,7 +498,7 @@ export default function DashboardMetricCards({
                   }}
                 >
                   <p style={{ fontSize: 20, fontWeight: 500, margin: "0 0 4px" }}>{stage.count}</p>
-                  <p style={{ fontSize: 11, color: "var(--color-text-secondary, #94a3b8)", margin: 0 }}>
+                  <p style={{ fontSize: 11, color: "var(--color-text-secondary)", margin: 0 }}>
                     {stage.name}
                   </p>
                 </div>
@@ -517,14 +524,14 @@ export default function DashboardMetricCards({
                 Site visits — next 7 days
               </p>
               <span
-                style={badge("#2563eb")}
+                style={badge("var(--color-background-info)")}
                 onClick={() => router.push("/leads?filter=visits_upcoming")}
               >
                 {upcomingVisits.length}
               </span>
             </div>
             {upcomingVisits.length === 0 ? (
-              <p style={{ fontSize: 12, color: "var(--color-text-secondary, #64748b)", margin: 0 }}>
+              <p style={{ fontSize: 12, color: "var(--color-text-secondary)", margin: 0 }}>
                 No upcoming visits.
               </p>
             ) : (
@@ -540,13 +547,13 @@ export default function DashboardMetricCards({
                       width: 32,
                       height: 32,
                       borderRadius: "50%",
-                      background: "rgba(37,99,235,0.2)",
+                      background: "var(--color-background-info)",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
                       fontSize: 11,
                       fontWeight: 700,
-                      color: "#60a5fa",
+                      color: "var(--color-text-info)",
                     }}
                   >
                     {getInitials(visit.name)}
@@ -555,11 +562,11 @@ export default function DashboardMetricCards({
                     <p style={{ fontSize: 13, fontWeight: 600, margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                       {visit.name || "—"}
                     </p>
-                    <p style={{ fontSize: 11, color: "var(--color-text-secondary, #64748b)", margin: "2px 0 0" }}>
+                    <p style={{ fontSize: 11, color: "var(--color-text-secondary)", margin: "2px 0 0" }}>
                       {stages.find((s) => s.id === visit.stage_id)?.name ?? "—"}
                     </p>
                   </div>
-                  <p style={{ fontSize: 11, color: "var(--color-text-secondary, #64748b)", marginLeft: "auto", whiteSpace: "nowrap" }}>
+                  <p style={{ fontSize: 11, color: "var(--color-text-secondary)", marginLeft: "auto", whiteSpace: "nowrap" }}>
                     {visit.created_at
                       ? new Date(visit.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short" })
                       : "—"}
@@ -574,14 +581,18 @@ export default function DashboardMetricCards({
             <div style={panelHeader}>
               <p style={{ fontSize: 13, fontWeight: 600, margin: 0 }}>Overdue tasks</p>
               <span
-                style={badge(overdueTasks.length > 0 ? "#ef4444" : "#64748b")}
+                style={badge(
+                  overdueTasks.length > 0
+                    ? "var(--color-background-danger)"
+                    : "var(--color-background-tertiary)"
+                )}
                 onClick={() => router.push("/tasks?filter=overdue")}
               >
                 {overdueTasks.length}
               </span>
             </div>
             {overdueTasks.length === 0 ? (
-              <p style={{ fontSize: 12, color: "var(--color-text-secondary, #64748b)", margin: 0 }}>
+              <p style={{ fontSize: 12, color: "var(--color-text-secondary)", margin: 0 }}>
                 No overdue tasks.
               </p>
             ) : (
@@ -596,7 +607,7 @@ export default function DashboardMetricCards({
                       {task.title || "Untitled task"}
                     </p>
                   </div>
-                  <p style={{ fontSize: 11, color: "#f87171", marginLeft: "auto", whiteSpace: "nowrap", flexShrink: 0 }}>
+                  <p style={{ fontSize: 11, color: "var(--color-text-danger)", marginLeft: "auto", whiteSpace: "nowrap", flexShrink: 0 }}>
                     {formatOverdue(task.due_date)}
                   </p>
                 </div>
@@ -620,7 +631,7 @@ export default function DashboardMetricCards({
             >
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                 <thead>
-                  <tr style={{ background: "rgba(255,255,255,0.03)" }}>
+                  <tr style={{ background: "var(--color-background-tertiary)" }}>
                     {["Agent", "Leads today", "Contacted", "Avg response", "Overdue tasks"].map((h) => (
                       <th
                         key={h}
@@ -631,8 +642,8 @@ export default function DashboardMetricCards({
                           fontWeight: 700,
                           textTransform: "uppercase",
                           letterSpacing: "0.12em",
-                          color: "var(--color-text-secondary, #64748b)",
-                          borderBottom: "0.5px solid rgba(255,255,255,0.08)",
+                          color: "var(--color-text-secondary)",
+                          borderBottom: "0.5px solid var(--color-border-tertiary)",
                         }}
                       >
                         {h}
@@ -647,26 +658,26 @@ export default function DashboardMetricCards({
                       onClick={() => router.push(`/leads?filter=agent_${row.agentId}`)}
                       style={{ cursor: "pointer" }}
                       onMouseEnter={(e) =>
-                        (e.currentTarget.style.background = "rgba(255,255,255,0.03)")
+                        (e.currentTarget.style.background = "var(--color-background-tertiary)")
                       }
                       onMouseLeave={(e) =>
                         (e.currentTarget.style.background = "transparent")
                       }
                     >
-                      <td style={{ padding: "10px 14px", fontWeight: 500, borderBottom: "0.5px solid rgba(255,255,255,0.06)" }}>
+                      <td style={{ padding: "10px 14px", fontWeight: 500, borderBottom: "0.5px solid var(--color-border-tertiary)" }}>
                         {row.agentName}
                       </td>
-                      <td style={{ padding: "10px 14px", borderBottom: "0.5px solid rgba(255,255,255,0.06)" }}>
+                      <td style={{ padding: "10px 14px", borderBottom: "0.5px solid var(--color-border-tertiary)" }}>
                         {row.leadsToday}
                       </td>
-                      <td style={{ padding: "10px 14px", borderBottom: "0.5px solid rgba(255,255,255,0.06)" }}>
+                      <td style={{ padding: "10px 14px", borderBottom: "0.5px solid var(--color-border-tertiary)" }}>
                         {row.contactedToday}
                       </td>
                       <td
                         style={{
                           padding: "10px 14px",
                           color: responseColor(row.avgResponseMins),
-                          borderBottom: "0.5px solid rgba(255,255,255,0.06)",
+                          borderBottom: "0.5px solid var(--color-border-tertiary)",
                         }}
                       >
                         {row.avgResponseMins !== null ? `${row.avgResponseMins}m` : "—"}
@@ -674,8 +685,8 @@ export default function DashboardMetricCards({
                       <td
                         style={{
                           padding: "10px 14px",
-                          color: row.overdueTaskCount > 0 ? "#f87171" : "inherit",
-                          borderBottom: "0.5px solid rgba(255,255,255,0.06)",
+                          color: row.overdueTaskCount > 0 ? "var(--color-text-danger)" : "inherit",
+                          borderBottom: "0.5px solid var(--color-border-tertiary)",
                         }}
                       >
                         {row.overdueTaskCount}
