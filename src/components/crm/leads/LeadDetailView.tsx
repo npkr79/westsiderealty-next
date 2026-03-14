@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowLeft, ArrowRight, FileText, MapPin, Pencil, Phone } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useActivities } from "@/hooks/useActivities";
@@ -103,6 +104,8 @@ interface LeadRecord {
   notes?: string | null;
   attribution_metadata?: Record<string, unknown> | null;
   assigned_to: string | null;
+  stage_id?: string | null;
+  first_contact_at?: string | null;
   created_at?: string;
   updated_at?: string;
   last_activity_at?: string | null;
@@ -201,7 +204,7 @@ function InlineEditField({
           <button
             type="button"
             onClick={onStartEdit}
-            className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+            className="transition-opacity text-slate-400 hover:text-slate-700 dark:hover:text-slate-200" style={{ opacity: 0.4 }}
           >
             <Pencil className="h-3 w-3" />
           </button>
@@ -287,15 +290,23 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
   const [profileSaved, setProfileSaved] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
 
+  // Mobile enhancements
+  const [stages, setStages] = useState<{ id: string; name: string; position: number }[]>([]);
+  const [showNoteInput, setShowNoteInput] = useState(false);
+  const [quickNoteText, setQuickNoteText] = useState("");
+  const [savingQuickNote, setSavingQuickNote] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
   const agentName = currentUser.full_name || "your advisor";
+  const router = useRouter();
 
   const loadLead = useCallback(async () => {
     setLoadingLead(true);
     setLeadError(null);
     const selectVariants = [
-      "id,name,phone,email,source_channel,source_type,budget_min,budget_max,location,buyer_type,status,priority,notes,attribution_metadata,assigned_to,created_at,updated_at,last_activity_at",
-      "id,name,phone,source_channel,source_type,budget_min,budget_max,location,buyer_type,status,lead_priority,notes,attribution_metadata,assigned_to,created_at,updated_at,last_activity_at",
-      "id,name,phone,source_channel,source_type,budget_min,budget_max,location,buyer_type,status,assigned_to,created_at,updated_at,last_activity_at",
+      "id,name,phone,email,source_channel,source_type,budget_min,budget_max,location,buyer_type,status,priority,notes,attribution_metadata,assigned_to,stage_id,first_contact_at,created_at,updated_at,last_activity_at",
+      "id,name,phone,source_channel,source_type,budget_min,budget_max,location,buyer_type,status,lead_priority,notes,attribution_metadata,assigned_to,stage_id,first_contact_at,created_at,updated_at,last_activity_at",
+      "id,name,phone,source_channel,source_type,budget_min,budget_max,location,buyer_type,status,assigned_to,stage_id,first_contact_at,created_at,updated_at,last_activity_at",
     ];
     let row: (LeadRecord & { lead_priority?: string | null }) | null = null;
     let found = false;
@@ -403,6 +414,15 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
     setCallLogs((data as CallActivity[]) || []);
   }, [leadId, supabase]);
 
+  const loadStages = useCallback(async () => {
+    const { data } = await supabase
+      .from("crm_lead_stages")
+      .select("id,name,position")
+      .eq("is_active", true)
+      .order("position");
+    if (data) setStages(data as { id: string; name: string; position: number }[]);
+  }, [supabase]);
+
   useEffect(() => {
     const timer = window.setTimeout(() => {
       void loadLead();
@@ -411,9 +431,10 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
       void loadSiteVisits();
       void loadAgents();
       void loadCallLogs();
+      void loadStages();
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [loadDeals, loadLead, loadLeadTasks, loadSiteVisits, loadAgents, loadCallLogs]);
+  }, [loadDeals, loadLead, loadLeadTasks, loadSiteVisits, loadAgents, loadCallLogs, loadStages]);
 
   // Sync edit states when lead data loads
   useEffect(() => {
@@ -448,6 +469,15 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
       supabase.removeChannel(channel);
     };
   }, [leadId, loadLead, loadLeadTasks, loadSiteVisits, loadCallLogs, supabase]);
+
+  // ── mobile detection ─────────────────────────────────────────────────────────
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
 
   // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -674,6 +704,51 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
     lead?.assigned_to, leadId, currentUser.id, supabase, loadLead,
   ]);
 
+  const handleStageChange = useCallback(async (stageId: string) => {
+    setLead((prev) => prev ? { ...prev, stage_id: stageId } : prev);
+    await fetch("/api/crm/pipeline/update-stage", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ leadId, stageId, userId: currentUser.id }),
+    });
+  }, [leadId, currentUser.id]);
+
+  const handleMarkContacted = useCallback(async () => {
+    if (!lead) return;
+    const now = new Date().toISOString();
+    setLead((prev) => prev ? { ...prev, first_contact_at: now, status: "contacted" } : prev);
+    await fetch(`/api/crm/leads/${lead.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ first_contact_at: now, status: "contacted" }),
+    });
+    await supabase.from("crm_lead_activities").insert({
+      lead_id: leadId,
+      activity_type: "note",
+      description: "Marked as Contacted",
+      created_by: currentUser.id,
+    });
+  }, [lead, leadId, currentUser.id, supabase]);
+
+  const saveQuickNote = useCallback(async () => {
+    if (!quickNoteText.trim()) return;
+    setSavingQuickNote(true);
+    await supabase.from("crm_lead_activities").insert({
+      lead_id: leadId,
+      activity_type: "note",
+      description: quickNoteText.trim(),
+      created_by: currentUser.id,
+    });
+    await fetch(`/api/crm/leads/${leadId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ last_activity_at: new Date().toISOString() }),
+    });
+    setSavingQuickNote(false);
+    setQuickNoteText("");
+    setShowNoteInput(false);
+  }, [quickNoteText, leadId, currentUser.id, supabase]);
+
   // ── render ───────────────────────────────────────────────────────────────────
 
   if (loadingLead) {
@@ -694,6 +769,35 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
 
   return (
     <div className="space-y-4">
+      {/* ── Sticky mobile header ── */}
+      {isMobile && (
+        <div className="sticky top-0 z-20 -mx-4 px-4 py-3 bg-slate-950 border-b border-slate-800 flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => router.back()}
+            className="p-1 rounded-md text-slate-400 hover:text-white active:scale-95"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold text-white text-sm truncate">{lead.name}</p>
+            <p className="text-xs text-slate-400">{lead.phone}</p>
+          </div>
+          {stages.length > 0 && (
+            <select
+              value={lead.stage_id || ""}
+              onChange={(e) => void handleStageChange(e.target.value)}
+              className="text-xs border border-slate-700 rounded-lg px-2 py-1.5 bg-slate-800 text-slate-200 max-w-[120px]"
+            >
+              <option value="">— Stage —</option>
+              {stages.map((s) => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
+          )}
+        </div>
+      )}
+
       <div className="space-y-1">
         <Link href="/leads" className="inline-flex items-center gap-1 text-sm text-slate-600 hover:underline dark:text-slate-300">
           <ArrowLeft className="h-4 w-4" />
@@ -708,22 +812,45 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
         </div>
       </div>
 
-      <div className="flex gap-2 mb-2">
+      {/* ── Quick actions bar ── */}
+      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
         <button
           type="button"
           onClick={() => setShowCallForm((v) => !v)}
-          className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold"
+          className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-full bg-blue-600 hover:bg-blue-700 active:scale-95 text-white text-sm font-medium"
         >
-          <Phone className="h-4 w-4" /> Log Call
+          <Phone className="h-3.5 w-3.5" /> Call
         </button>
         <a
           href={getWhatsAppLink(lead.phone, lead.name, agentName)}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-green-500 hover:bg-green-600 text-white text-sm font-semibold"
+          className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-full bg-green-500 hover:bg-green-600 active:scale-95 text-white text-sm font-medium"
         >
           💬 WhatsApp
         </a>
+        <button
+          type="button"
+          onClick={() => void handleMarkContacted()}
+          disabled={!!lead.first_contact_at}
+          className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-full bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          ✓ Contacted
+        </button>
+        <button
+          type="button"
+          onClick={() => { setActiveTab("site-visits"); setShowSiteVisitForm(true); }}
+          className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-full bg-slate-700 hover:bg-slate-600 active:scale-95 text-white text-sm font-medium"
+        >
+          📍 Site Visit
+        </button>
+        <button
+          type="button"
+          onClick={() => setShowNoteInput((v) => !v)}
+          className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-full bg-slate-700 hover:bg-slate-600 active:scale-95 text-white text-sm font-medium"
+        >
+          📝 Add Note
+        </button>
       </div>
 
       {/* ── Inline Log Call form ── */}
@@ -776,19 +903,56 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
         </div>
       )}
 
+      {/* ── Quick note input ── */}
+      {showNoteInput && (
+        <div className="rounded-xl border border-slate-700 bg-slate-800/50 p-3 space-y-2">
+          <p className="text-xs font-semibold text-slate-300">Quick Note</p>
+          <Textarea
+            placeholder="Type your note here..."
+            value={quickNoteText}
+            onChange={(e) => setQuickNoteText(e.target.value)}
+            rows={3}
+            className="text-sm"
+            autoFocus
+          />
+          <div className="flex gap-2">
+            <Button type="button" size="sm" onClick={() => void saveQuickNote()} disabled={savingQuickNote || !quickNoteText.trim()}>
+              {savingQuickNote ? "Saving..." : "Save Note"}
+            </Button>
+            <Button type="button" size="sm" variant="ghost" onClick={() => { setShowNoteInput(false); setQuickNoteText(""); }}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
+
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="flex w-full overflow-x-auto whitespace-nowrap scrollbar-hide">
-          <TabsTrigger value="overview" className="flex-shrink-0">Overview</TabsTrigger>
-          <TabsTrigger value="activities" className="flex-shrink-0">Activities</TabsTrigger>
-          <TabsTrigger value="project-activity" className="flex-shrink-0">Website Activity</TabsTrigger>
-          <TabsTrigger value="smart-shortlist" className="flex-shrink-0">Smart Shortlist</TabsTrigger>
-          <TabsTrigger value="tasks" className="flex-shrink-0">Tasks</TabsTrigger>
-          <TabsTrigger value="site-visits" className="flex-shrink-0">Site Visits</TabsTrigger>
-          <TabsTrigger value="calls" className="flex-shrink-0">Calls</TabsTrigger>
-          <TabsTrigger value="whatsapp" className="flex-shrink-0">WhatsApp</TabsTrigger>
-          <TabsTrigger value="whatsapp-logs" className="flex-shrink-0">WhatsApp Logs</TabsTrigger>
-          <TabsTrigger value="deals" className="flex-shrink-0">Deals</TabsTrigger>
-        </TabsList>
+        {(() => {
+          const mobileTabs = ["overview", "activities", "tasks", "whatsapp", "calls"];
+          const allTabs = [
+            { value: "overview", label: "Overview" },
+            { value: "activities", label: "Activities" },
+            { value: "project-activity", label: "Website Activity" },
+            { value: "smart-shortlist", label: "Smart Shortlist" },
+            { value: "tasks", label: "Tasks" },
+            { value: "site-visits", label: "Site Visits" },
+            { value: "calls", label: "Calls" },
+            { value: "whatsapp", label: "WhatsApp" },
+            { value: "whatsapp-logs", label: "WhatsApp Logs" },
+            { value: "deals", label: "Deals" },
+          ];
+          return (
+            <TabsList className="flex w-full overflow-x-auto whitespace-nowrap scrollbar-hide">
+              {allTabs
+                .filter((tab) => !isMobile || mobileTabs.includes(tab.value))
+                .map((tab) => (
+                  <TabsTrigger key={tab.value} value={tab.value} className="flex-shrink-0">
+                    {tab.label}
+                  </TabsTrigger>
+                ))}
+            </TabsList>
+          );
+        })()}
 
         {/* ── Overview ── */}
         <TabsContent value="overview">
