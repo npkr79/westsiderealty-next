@@ -53,6 +53,25 @@ function toISTDate(dateStr: string | null | undefined): string {
   }
 }
 
+function formatSourceName(source: string | null | undefined): string {
+  if (!source) return "-";
+  const map: Record<string, string> = {
+    facebook_lead_ads: "Facebook Lead Ads",
+    meta_ads: "Meta Ads",
+    meta: "Meta",
+    website_form: "Website Form",
+    website: "Website",
+    organic_landing: "Organic",
+    google_ads: "Google Ads",
+    referral: "Referral",
+    channel: "Channel Partner",
+    manual: "Manual Entry",
+    landing_page: "Landing Page",
+    whatsapp: "WhatsApp",
+  };
+  return map[source] ?? source.split("_").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+}
+
 function normalizeFormQuestions(fq: unknown): Array<{ q: string; a: string }> {
   if (!fq) return [];
   if (Array.isArray(fq)) {
@@ -226,6 +245,7 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
   const [tasks, setTasks] = useState<CrmTask[]>([]);
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [newTaskDueDate, setNewTaskDueDate] = useState("");
+  const [newTaskTime, setNewTaskTime] = useState("09:00");
   const [savingTask, setSavingTask] = useState(false);
 
   const [deals, setDeals] = useState<DealRecord[]>([]);
@@ -507,9 +527,14 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
   const addTask = useCallback(async () => {
     if (!newTaskTitle.trim()) return;
     setSavingTask(true);
+    const due = newTaskDueDate && newTaskTime
+      ? new Date(`${newTaskDueDate}T${newTaskTime}`).toISOString()
+      : newTaskDueDate
+        ? new Date(newTaskDueDate).toISOString()
+        : null;
     const { error } = await supabase.from("crm_tasks").insert({
       title: newTaskTitle.trim(),
-      due_date: newTaskDueDate || null,
+      due_date: due,
       status: "pending",
       lead_id: leadId,
       assigned_to: lead?.assigned_to || null,
@@ -518,9 +543,10 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
     if (!error) {
       setNewTaskTitle("");
       setNewTaskDueDate("");
+      setNewTaskTime("09:00");
       loadLeadTasks();
     }
-  }, [lead?.assigned_to, leadId, loadLeadTasks, newTaskDueDate, newTaskTitle, supabase]);
+  }, [lead?.assigned_to, leadId, loadLeadTasks, newTaskDueDate, newTaskTime, newTaskTitle, supabase]);
 
   const toggleTask = useCallback(
     async (task: CrmTask, checked: boolean) => {
@@ -771,7 +797,7 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
     <div className="space-y-4">
       {/* ── Sticky mobile header ── */}
       {isMobile && (
-        <div className="sticky top-0 z-20 -mx-4 px-4 py-3 bg-slate-950 border-b border-slate-800 flex items-center gap-3">
+        <div className="sticky top-0 z-50 -mx-4 px-4 py-3 bg-slate-950 border-b border-slate-800 flex items-center gap-3">
           <button
             type="button"
             onClick={() => router.back()}
@@ -1064,7 +1090,7 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
                 <div className="grid gap-3 md:grid-cols-3">
                   <div>
                     <p className="text-slate-500 dark:text-slate-400 text-xs mb-1">Source</p>
-                    <p className="font-medium">{lead.source || "-"}</p>
+                    <p className="font-medium">{formatSourceName(lead.source_type || lead.source_channel || lead.source)}</p>
                   </div>
                   <div>
                     <p className="text-slate-500 dark:text-slate-400 text-xs mb-1">Status</p>
@@ -1218,12 +1244,7 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
               {activityError ? <p className="text-sm text-rose-600 dark:text-rose-300">{activityError}</p> : null}
               {(() => {
                 const HIDDEN_TYPES = new Set(["stage_automation", "system", "automation"]);
-                const visible = activities.filter((a) => {
-                  if (HIDDEN_TYPES.has(a.activity_type)) return false;
-                  const text = a.description || a.notes || "";
-                  if (text.trimStart().startsWith("{")) return false;
-                  return true;
-                });
+                const visible = activities.filter((a) => !HIDDEN_TYPES.has(a.activity_type));
                 if (!loadingActivities && visible.length === 0) {
                   return <p className="text-sm text-slate-500 dark:text-slate-400">No activity recorded yet.</p>;
                 }
@@ -1250,8 +1271,20 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
                     icon = <ArrowRight className="h-3.5 w-3.5 flex-shrink-0 text-amber-500" />;
                     label = text || "Stage changed";
                     badgeClass = "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300";
+                  } else if (type === "contacted") {
+                    icon = <Phone className="h-3.5 w-3.5 flex-shrink-0 text-emerald-500" />;
+                    label = text || "Marked as Contacted";
+                    badgeClass = "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300";
+                  } else if (type === "task_completed") {
+                    icon = <ArrowRight className="h-3.5 w-3.5 flex-shrink-0 text-violet-500" />;
+                    label = text || "Task completed";
+                    badgeClass = "bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300";
+                  } else if (type === "assignment") {
+                    icon = <ArrowRight className="h-3.5 w-3.5 flex-shrink-0 text-sky-500" />;
+                    label = text || "Lead assigned";
+                    badgeClass = "bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300";
                   } else {
-                    label = text || type;
+                    label = text || type.replace(/_/g, " ");
                   }
 
                   return (
@@ -1300,7 +1333,22 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
                   placeholder="Task title"
                   className="md:col-span-2"
                 />
-                <Input type="date" value={newTaskDueDate} onChange={(e) => setNewTaskDueDate(e.target.value)} />
+                <div className="flex gap-1">
+                  <Input type="date" value={newTaskDueDate} onChange={(e) => setNewTaskDueDate(e.target.value)} className="flex-1" />
+                  <input
+                    type="time"
+                    value={newTaskTime}
+                    onChange={(e) => setNewTaskTime(e.target.value)}
+                    style={{
+                      border: "1px solid var(--color-border-secondary, #e2e8f0)",
+                      borderRadius: "var(--border-radius-md, 6px)",
+                      padding: "6px 10px",
+                      fontSize: "14px",
+                      color: "var(--color-text-primary, inherit)",
+                      background: "var(--color-background-primary, transparent)",
+                    }}
+                  />
+                </div>
               </div>
               <Button type="button" onClick={addTask} disabled={savingTask}>
                 {savingTask ? "Adding..." : "Create task"}
