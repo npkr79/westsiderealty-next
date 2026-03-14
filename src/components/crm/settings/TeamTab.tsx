@@ -80,12 +80,12 @@ export default function TeamTab() {
 
   useEffect(() => { void load(); }, [load]);
 
-  const handleChangeRole = async (userId: string) => {
-    if (!selectedRoleId) return;
+  const handleChangeRole = async (userId: string, roleId: string) => {
+    if (!roleId) return;
     setSavingId(userId);
     const { error } = await supabase
       .from("crm_users")
-      .update({ role_id: selectedRoleId })
+      .update({ role_id: roleId })
       .eq("id", userId);
     setSavingId(null);
     setChangingRoleId(null);
@@ -194,13 +194,19 @@ export default function TeamTab() {
                             <>
                               <select
                                 value={selectedRoleId}
-                                onChange={e => setSelectedRoleId(e.target.value)}
+                                disabled={savingId === user.id}
+                                onChange={e => {
+                                  const newRoleId = e.target.value;
+                                  setSelectedRoleId(newRoleId);
+                                  void handleChangeRole(user.id, newRoleId);
+                                }}
                                 style={{
                                   fontSize: "12px", padding: "4px 8px",
                                   border: "0.5px solid var(--color-border-secondary)",
                                   borderRadius: "var(--border-radius-md)",
                                   background: "var(--color-background-secondary)",
                                   color: "var(--color-text-primary)", cursor: "pointer",
+                                  opacity: savingId === user.id ? 0.5 : 1,
                                 }}
                               >
                                 <option value="">Select role...</option>
@@ -208,18 +214,11 @@ export default function TeamTab() {
                                   <option key={r.id} value={r.id}>{r.name}</option>
                                 ))}
                               </select>
-                              <button
-                                onClick={() => void handleChangeRole(user.id)}
-                                disabled={!selectedRoleId || savingId === user.id}
-                                style={{
-                                  fontSize: "12px", padding: "4px 10px",
-                                  border: "none", borderRadius: "var(--border-radius-md)",
-                                  background: "var(--color-background-info)",
-                                  color: "var(--color-text-info)", cursor: "pointer", fontWeight: 500,
-                                }}
-                              >
-                                {savingId === user.id ? "Saving..." : "Save"}
-                              </button>
+                              {savingId === user.id && (
+                                <span style={{ fontSize: "11px", color: "var(--color-text-tertiary)" }}>
+                                  Saving...
+                                </span>
+                              )}
                               <button
                                 onClick={() => setChangingRoleId(null)}
                                 style={{
