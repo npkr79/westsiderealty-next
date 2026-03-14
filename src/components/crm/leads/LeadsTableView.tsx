@@ -344,51 +344,84 @@ export default function LeadsTableView({ currentUserRole, currentUserId }: Leads
                     padding: "14px 16px",
                     marginBottom: "8px",
                     cursor: "pointer",
-                    transition: "border-color 0.15s",
                   }}
                 >
-                  {/* Row 1: Name + Status */}
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
-                    <span style={{ fontSize: "15px", fontWeight: 600, color: "var(--color-text-primary, #f1f5f9)" }}>
+                  {/* Header: Name + Status pill */}
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "10px" }}>
+                    <div style={{ fontSize: "16px", fontWeight: 600, color: "var(--color-text-primary, #f1f5f9)" }}>
                       {lead.name}
-                    </span>
+                    </div>
                     <span style={{
-                      fontSize: "11px", fontWeight: 500, padding: "2px 8px", borderRadius: "20px",
+                      padding: "3px 10px", borderRadius: "20px", fontSize: "12px",
+                      fontWeight: 500, flexShrink: 0, marginLeft: "8px",
                       background: sCfg.bg, color: sCfg.color,
                     }}>
                       {sCfg.label}
                     </span>
                   </div>
 
-                  {/* Row 2: Phone (tappable) + Priority */}
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                  {/* Phone row */}
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "10px" }}>
+                    <span style={{ fontSize: "11px", color: "var(--color-text-tertiary, #64748b)" }}>Phone</span>
                     <a
                       href={`tel:${lead.phone}`}
                       onClick={(e) => e.stopPropagation()}
-                      style={{ fontSize: "13px", color: "var(--color-text-info, #38bdf8)", textDecoration: "none" }}
+                      style={{ fontSize: "14px", color: "var(--color-text-info, #38bdf8)", textDecoration: "none", fontWeight: 500 }}
                     >
                       {lead.phone}
                     </a>
-                    <span style={{
-                      fontSize: "11px", fontWeight: 500, padding: "2px 8px", borderRadius: "20px",
-                      background: pCfg.bg, color: pCfg.color,
-                    }}>
-                      {pCfg.label}
-                    </span>
                   </div>
 
-                  {/* Row 3: Source · Budget · Agent */}
-                  <div style={{ display: "flex", gap: "8px", fontSize: "12px", color: "var(--color-text-secondary, #94a3b8)", flexWrap: "wrap" }}>
-                    <span>{formatSourceName(lead.source_channel || lead.source_type)}</span>
-                    {(lead.budget_min || lead.budget_max) && (
-                      <span>· {fmtBudget(lead.budget_min, lead.budget_max)}</span>
-                    )}
-                    {lead.assigned_agent_name && (
-                      <span style={{ marginLeft: "auto", color: "var(--color-text-tertiary, #64748b)" }}>
-                        {lead.assigned_agent_name}
+                  {/* Divider */}
+                  <div style={{ height: "0.5px", background: "var(--color-border-tertiary, #334155)", marginBottom: "10px" }} />
+
+                  {/* 2-col data grid */}
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                    <div>
+                      <div style={{ fontSize: "10px", color: "var(--color-text-tertiary, #64748b)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "2px" }}>Agent</div>
+                      <div style={{ fontSize: "13px", color: "var(--color-text-primary, #f1f5f9)", fontWeight: 500 }}>
+                        {lead.assigned_agent_name || "—"}
+                      </div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: "10px", color: "var(--color-text-tertiary, #64748b)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "2px" }}>Source</div>
+                      <div style={{ fontSize: "13px", color: "var(--color-text-primary, #f1f5f9)" }}>
+                        {formatSourceName(lead.source_type || lead.source_channel)}
+                      </div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: "10px", color: "var(--color-text-tertiary, #64748b)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "2px" }}>Budget</div>
+                      <div style={{ fontSize: "13px", color: "var(--color-text-primary, #f1f5f9)" }}>
+                        {(lead.budget_min || lead.budget_max)
+                          ? `${fmt(lead.budget_min) ?? "?"} – ${fmt(lead.budget_max) ?? "?"}`
+                          : "—"}
+                      </div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: "10px", color: "var(--color-text-tertiary, #64748b)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "2px" }}>Buyer profile</div>
+                      <span style={{
+                        padding: "2px 8px", borderRadius: "20px", fontSize: "11px", fontWeight: 500,
+                        background: pCfg.bg, color: pCfg.color,
+                      }}>
+                        {pCfg.label}
                       </span>
-                    )}
+                    </div>
                   </div>
+
+                  {/* Last activity footer */}
+                  {lead.last_activity_at && (
+                    <div style={{
+                      marginTop: "10px",
+                      paddingTop: "8px",
+                      borderTop: "0.5px solid var(--color-border-tertiary, #334155)",
+                      fontSize: "11px",
+                      color: "var(--color-text-tertiary, #64748b)",
+                    }}>
+                      Last activity · {new Date(lead.last_activity_at).toLocaleDateString("en-IN", {
+                        day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit",
+                      })}
+                    </div>
+                  )}
                 </div>
               );
             })
