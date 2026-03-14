@@ -116,14 +116,6 @@ export default function LeadsTableView({ currentUserRole, currentUserId }: Leads
   const [hotOnly, setHotOnly] = useState(false);
   const [agents, setAgents] = useState<AgentOption[]>([]);
   const [showFilters, setShowFilters] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
-
-  useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 768);
-    check();
-    window.addEventListener("resize", check);
-    return () => window.removeEventListener("resize", check);
-  }, []);
 
   // Apply filter from ?filter= URL param
   useEffect(() => {
@@ -321,237 +313,205 @@ export default function LeadsTableView({ currentUserRole, currentUserId }: Leads
         <p className="text-sm text-rose-600 dark:text-rose-300">Unable to load leads: {error}</p>
       ) : null}
 
-      {/* ── Mobile card list ────────────────────────────────────────────────── */}
-      {isMobile ? (
-        <div>
-          {loading ? (
-            <p className="text-sm text-slate-500 dark:text-slate-400 py-4 text-center">Loading leads...</p>
-          ) : visibleLeads.length === 0 ? (
-            <p className="text-sm text-slate-500 dark:text-slate-400 py-4 text-center">No leads found.</p>
-          ) : (
-            visibleLeads.map((lead) => {
-              const priorityKey = (lead.priority ?? "early_stage").toLowerCase().replace(/[\s-]+/g, "_");
-              const pCfg = priorityConfig[priorityKey] ?? priorityConfig.early_stage;
-              const sCfg = statusConfig[lead.status ?? "new"] ?? statusConfig.new;
-              return (
-                <div
-                  key={lead.id}
-                  onClick={() => router.push(`/leads/${lead.id}`)}
-                  style={{
-                    background: "var(--color-background-secondary)",
-                    border: "0.5px solid var(--color-border-secondary)",
-                    borderRadius: "var(--border-radius-lg, 12px)",
-                    padding: "14px 16px",
-                    marginBottom: "8px",
-                    cursor: "pointer",
-                  }}
-                >
-                  {/* Header: Name + Status pill */}
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "10px" }}>
-                    <div style={{
-                      fontSize: "16px", fontWeight: 600,
-                      color: "var(--color-text-primary)",
-                      flex: 1, minWidth: 0,
-                      overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                    }}>
-                      {lead.name || "Unknown"}
+      {/* ── Mobile cards — visible only on small screens ─────────────────────── */}
+      <div className="md:hidden">
+        {loading ? (
+          <p className="text-sm text-slate-500 dark:text-slate-400 py-4 text-center">Loading leads...</p>
+        ) : visibleLeads.length === 0 ? (
+          <p className="text-sm text-slate-500 dark:text-slate-400 py-4 text-center">No leads found.</p>
+        ) : (
+          visibleLeads.map((lead) => {
+            const priorityKey = (lead.priority ?? "early_stage").toLowerCase().replace(/[\s-]+/g, "_");
+            const pCfg = priorityConfig[priorityKey] ?? priorityConfig.early_stage;
+            const sCfg = statusConfig[lead.status ?? "new"] ?? statusConfig.new;
+            return (
+              <div
+                key={lead.id}
+                onClick={() => router.push(`/leads/${lead.id}`)}
+                style={{
+                  background: "var(--color-background-secondary)",
+                  border: "0.5px solid var(--color-border-secondary)",
+                  borderRadius: "var(--border-radius-lg, 12px)",
+                  padding: "14px 16px",
+                  marginBottom: "8px",
+                  cursor: "pointer",
+                }}
+              >
+                {/* Header: Name + Status pill */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "10px" }}>
+                  <div style={{
+                    fontSize: "16px", fontWeight: 600,
+                    color: "var(--color-text-primary)",
+                    flex: 1, minWidth: 0,
+                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                  }}>
+                    {lead.name || "Unknown"}
+                  </div>
+                  <span style={{
+                    padding: "3px 10px", borderRadius: "20px", fontSize: "12px",
+                    fontWeight: 500, flexShrink: 0, marginLeft: "8px",
+                    background: sCfg.bg, color: sCfg.color,
+                  }}>
+                    {sCfg.label}
+                  </span>
+                </div>
+
+                {/* Phone row */}
+                <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "10px" }}>
+                  <span style={{ fontSize: "11px", color: "var(--color-text-tertiary)" }}>Phone</span>
+                  <a
+                    href={`tel:${lead.phone}`}
+                    onClick={(e) => e.stopPropagation()}
+                    style={{ fontSize: "14px", color: "var(--color-text-info)", textDecoration: "none", fontWeight: 500 }}
+                  >
+                    {lead.phone}
+                  </a>
+                </div>
+
+                {/* Divider */}
+                <div style={{ height: "0.5px", background: "var(--color-border-secondary)", marginBottom: "10px" }} />
+
+                {/* 2-col data grid */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                  <div>
+                    <div style={{ fontSize: "10px", color: "var(--color-text-tertiary)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "2px" }}>Agent</div>
+                    <div style={{ fontSize: "13px", color: "var(--color-text-primary)", fontWeight: 500 }}>
+                      {lead.assigned_agent_name || "—"}
                     </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: "10px", color: "var(--color-text-tertiary)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "2px" }}>Source</div>
+                    <div style={{ fontSize: "13px", color: "var(--color-text-primary)", fontWeight: 500 }}>
+                      {formatSourceName(lead.source_type || lead.source_channel)}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: "10px", color: "var(--color-text-tertiary)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "2px" }}>Budget</div>
+                    <div style={{ fontSize: "13px", color: "var(--color-text-primary)", fontWeight: 500 }}>
+                      {(lead.budget_min || lead.budget_max)
+                        ? `${fmt(lead.budget_min) ?? "?"} – ${fmt(lead.budget_max) ?? "?"}`
+                        : "—"}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: "10px", color: "var(--color-text-tertiary)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "2px" }}>Buyer profile</div>
                     <span style={{
-                      padding: "3px 10px", borderRadius: "20px", fontSize: "12px",
-                      fontWeight: 500, flexShrink: 0, marginLeft: "8px",
-                      background: sCfg.bg, color: sCfg.color,
+                      padding: "2px 8px", borderRadius: "20px", fontSize: "11px", fontWeight: 500,
+                      background: pCfg.bg, color: pCfg.color,
                     }}>
-                      {sCfg.label}
+                      {pCfg.label}
                     </span>
                   </div>
-
-                  {/* Phone row */}
-                  <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "10px" }}>
-                    <span style={{ fontSize: "11px", color: "var(--color-text-tertiary)" }}>Phone</span>
-                    <a
-                      href={`tel:${lead.phone}`}
-                      onClick={(e) => e.stopPropagation()}
-                      style={{ fontSize: "14px", color: "var(--color-text-info)", textDecoration: "none", fontWeight: 500 }}
-                    >
-                      {lead.phone}
-                    </a>
-                  </div>
-
-                  {/* Divider */}
-                  <div style={{ height: "0.5px", background: "var(--color-border-secondary)", marginBottom: "10px" }} />
-
-                  {/* 2-col data grid */}
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
-                    <div>
-                      <div style={{ fontSize: "10px", color: "var(--color-text-tertiary)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "2px" }}>Agent</div>
-                      <div style={{ fontSize: "13px", color: "var(--color-text-primary)", fontWeight: 500 }}>
-                        {lead.assigned_agent_name || "—"}
-                      </div>
-                    </div>
-                    <div>
-                      <div style={{ fontSize: "10px", color: "var(--color-text-tertiary)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "2px" }}>Source</div>
-                      <div style={{ fontSize: "13px", color: "var(--color-text-primary)", fontWeight: 500 }}>
-                        {formatSourceName(lead.source_type || lead.source_channel)}
-                      </div>
-                    </div>
-                    <div>
-                      <div style={{ fontSize: "10px", color: "var(--color-text-tertiary)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "2px" }}>Budget</div>
-                      <div style={{ fontSize: "13px", color: "var(--color-text-primary)", fontWeight: 500 }}>
-                        {(lead.budget_min || lead.budget_max)
-                          ? `${fmt(lead.budget_min) ?? "?"} – ${fmt(lead.budget_max) ?? "?"}`
-                          : "—"}
-                      </div>
-                    </div>
-                    <div>
-                      <div style={{ fontSize: "10px", color: "var(--color-text-tertiary)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "2px" }}>Buyer profile</div>
-                      <span style={{
-                        padding: "2px 8px", borderRadius: "20px", fontSize: "11px", fontWeight: 500,
-                        background: pCfg.bg, color: pCfg.color,
-                      }}>
-                        {pCfg.label}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Last activity footer */}
-                  {lead.last_activity_at && (
-                    <div style={{
-                      marginTop: "10px",
-                      paddingTop: "8px",
-                      borderTop: "0.5px solid var(--color-border-secondary)",
-                      fontSize: "11px",
-                      color: "var(--color-text-tertiary)",
-                    }}>
-                      Last activity · {new Date(lead.last_activity_at).toLocaleDateString("en-IN", {
-                        day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit",
-                      })}
-                    </div>
-                  )}
                 </div>
-              );
-            })
-          )}
-          {paginationFooter}
-        </div>
-      ) : (
-        /* ── Desktop table ───────────────────────────────────────────────────── */
-        <>
-          <div className="rounded-xl border bg-white dark:bg-slate-950" style={{ backgroundColor: "#0f172a" }}>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  {[
-                    { key: "name",           label: "Name",           className: "min-w-[140px] whitespace-nowrap" },
-                    { key: "phone",          label: "Phone",          className: "min-w-[120px] whitespace-nowrap" },
-                    { key: "priority",       label: "Priority" },
-                    { key: "source",         label: "Source" },
-                    { key: "budget_range",   label: "Budget" },
-                    { key: "location",       label: "Location" },
-                    { key: "buyer_type",     label: "Buyer Type" },
-                    { key: "status",         label: "Status" },
-                    ...(!isAgent ? [{ key: "assigned_agent", label: "Agent" }] : []),
-                    { key: "last_activity_at", label: "Last Activity" },
-                  ].map((col) => (
-                    <TableHead key={col.key} className={"className" in col ? col.className : undefined}>
-                      {col.key === "name" || col.key === "status" || col.key === "last_activity_at" ? (
-                        <button
-                          type="button"
-                          className="inline-flex items-center gap-1"
-                          onClick={() => {
-                            const nextAscending = sort.key === col.key ? !sort.ascending : true;
-                            setSort({ key: col.key as LeadsSort["key"], ascending: nextAscending });
-                          }}
-                        >
-                          {col.label}
-                          <ArrowUpDown className="h-3 w-3" />
-                        </button>
-                      ) : (
-                        col.label
-                      )}
-                    </TableHead>
-                  ))}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading ? (
-                  <TableRow>
-                    <TableCell colSpan={isAgent ? 9 : 10}>Loading leads...</TableCell>
-                  </TableRow>
-                ) : visibleLeads.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={isAgent ? 9 : 10}>No leads found.</TableCell>
-                  </TableRow>
-                ) : (
-                  visibleLeads.map((lead) => {
-                    const priorityKey = (lead.priority ?? "early_stage").toLowerCase().replace(/[\s-]+/g, "_");
-                    const pCfg = priorityConfig[priorityKey] ?? priorityConfig.early_stage;
-                    const sCfg = statusConfig[lead.status ?? "new"] ?? statusConfig.new;
-                    return (
-                      <TableRow key={lead.id} style={{ WebkitTransform: "translateZ(0)", backgroundColor: "#0f172a" } as React.CSSProperties}>
-                        {/* Name */}
-                        <TableCell className="font-medium min-w-[140px] whitespace-nowrap">
-                          <Link
-                            href={`/leads/${lead.id}`}
-                            className="hover:underline"
-                            style={{ display: "block", color: "#ffffff", fontSize: "14px", fontWeight: 500 }}
-                          >
-                            {lead.name}
-                          </Link>
-                        </TableCell>
-                        {/* Phone */}
-                        <TableCell className="min-w-[120px] whitespace-nowrap">
-                          <span style={{ color: "#94a3b8", fontSize: "13px" }}>{lead.phone}</span>
-                        </TableCell>
-                        {/* Priority — inline pill */}
-                        <TableCell>
-                          <span style={{
-                            padding: "2px 8px", borderRadius: "20px", fontSize: "11px", fontWeight: 500,
-                            background: pCfg.bg, color: pCfg.color,
-                          }}>
-                            {pCfg.label}
-                          </span>
-                        </TableCell>
-                        {/* Source */}
-                        <TableCell style={{ color: "#94a3b8", fontSize: "13px" }}>
-                          {formatSourceName(lead.source_channel || lead.source_type)}
-                        </TableCell>
-                        {/* Budget */}
-                        <TableCell style={{ color: "#94a3b8", fontSize: "13px" }}>
-                          {fmtBudget(lead.budget_min, lead.budget_max)}
-                        </TableCell>
-                        {/* Location */}
-                        <TableCell style={{ color: "#94a3b8", fontSize: "13px" }}>{lead.location || "—"}</TableCell>
-                        {/* Buyer Type */}
-                        <TableCell style={{ color: "#94a3b8", fontSize: "13px" }}>{lead.buyer_type || "—"}</TableCell>
-                        {/* Status — inline pill */}
-                        <TableCell>
-                          <span style={{
-                            padding: "2px 10px", borderRadius: "20px", fontSize: "12px", fontWeight: 500,
-                            background: sCfg.bg, color: sCfg.color,
-                          }}>
-                            {sCfg.label}
-                          </span>
-                        </TableCell>
-                        {/* Assigned Agent */}
-                        {!isAgent && (
-                          <TableCell style={{ color: "#94a3b8", fontSize: "13px" }}>
-                            {lead.assigned_agent_name || "—"}
-                          </TableCell>
-                        )}
-                        {/* Last Activity */}
-                        <TableCell style={{ color: "#94a3b8", fontSize: "13px" }}>
-                          {toIST(lead.last_activity_at)}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })
+
+                {/* Last activity footer */}
+                {lead.last_activity_at && (
+                  <div style={{
+                    marginTop: "10px",
+                    paddingTop: "8px",
+                    borderTop: "0.5px solid var(--color-border-secondary)",
+                    fontSize: "11px",
+                    color: "var(--color-text-tertiary)",
+                  }}>
+                    Last activity · {new Date(lead.last_activity_at).toLocaleDateString("en-IN", {
+                      day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit",
+                    })}
+                  </div>
                 )}
-              </TableBody>
-            </Table>
-          </div>
-          {paginationFooter}
-        </>
-      )}
+              </div>
+            );
+          })
+        )}
+        {paginationFooter}
+      </div>
+
+      {/* ── Desktop table — visible only on md+ screens ───────────────────────── */}
+      <div className="hidden md:block">
+        <div className="rounded-xl border bg-white dark:bg-slate-950" style={{ backgroundColor: "#0f172a" }}>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                {[
+                  { key: "name",             label: "Name",         className: "min-w-[140px] whitespace-nowrap" },
+                  { key: "phone",            label: "Phone",        className: "min-w-[120px] whitespace-nowrap" },
+                  { key: "priority",         label: "Priority" },
+                  { key: "source",           label: "Source" },
+                  { key: "budget_range",     label: "Budget" },
+                  { key: "location",         label: "Location" },
+                  { key: "buyer_type",       label: "Buyer Type" },
+                  { key: "status",           label: "Status" },
+                  ...(!isAgent ? [{ key: "assigned_agent", label: "Agent" }] : []),
+                  { key: "last_activity_at", label: "Last Activity" },
+                ].map((col) => (
+                  <TableHead key={col.key} className={"className" in col ? col.className : undefined}>
+                    {col.key === "name" || col.key === "status" || col.key === "last_activity_at" ? (
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-1"
+                        onClick={() => {
+                          const nextAscending = sort.key === col.key ? !sort.ascending : true;
+                          setSort({ key: col.key as LeadsSort["key"], ascending: nextAscending });
+                        }}
+                      >
+                        {col.label}
+                        <ArrowUpDown className="h-3 w-3" />
+                      </button>
+                    ) : (
+                      col.label
+                    )}
+                  </TableHead>
+                ))}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={isAgent ? 9 : 10}>Loading leads...</TableCell>
+                </TableRow>
+              ) : visibleLeads.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={isAgent ? 9 : 10}>No leads found.</TableCell>
+                </TableRow>
+              ) : (
+                visibleLeads.map((lead) => {
+                  const priorityKey = (lead.priority ?? "early_stage").toLowerCase().replace(/[\s-]+/g, "_");
+                  const pCfg = priorityConfig[priorityKey] ?? priorityConfig.early_stage;
+                  const sCfg = statusConfig[lead.status ?? "new"] ?? statusConfig.new;
+                  return (
+                    <TableRow key={lead.id} style={{ WebkitTransform: "translateZ(0)", backgroundColor: "#0f172a" } as React.CSSProperties}>
+                      <TableCell className="font-medium min-w-[140px] whitespace-nowrap">
+                        <Link href={`/leads/${lead.id}`} className="hover:underline" style={{ display: "block", color: "#ffffff", fontSize: "14px", fontWeight: 500 }}>
+                          {lead.name}
+                        </Link>
+                      </TableCell>
+                      <TableCell className="min-w-[120px] whitespace-nowrap">
+                        <span style={{ color: "#94a3b8", fontSize: "13px" }}>{lead.phone}</span>
+                      </TableCell>
+                      <TableCell>
+                        <span style={{ padding: "2px 8px", borderRadius: "20px", fontSize: "11px", fontWeight: 500, background: pCfg.bg, color: pCfg.color }}>
+                          {pCfg.label}
+                        </span>
+                      </TableCell>
+                      <TableCell style={{ color: "#94a3b8", fontSize: "13px" }}>{formatSourceName(lead.source_channel || lead.source_type)}</TableCell>
+                      <TableCell style={{ color: "#94a3b8", fontSize: "13px" }}>{fmtBudget(lead.budget_min, lead.budget_max)}</TableCell>
+                      <TableCell style={{ color: "#94a3b8", fontSize: "13px" }}>{lead.location || "—"}</TableCell>
+                      <TableCell style={{ color: "#94a3b8", fontSize: "13px" }}>{lead.buyer_type || "—"}</TableCell>
+                      <TableCell>
+                        <span style={{ padding: "2px 10px", borderRadius: "20px", fontSize: "12px", fontWeight: 500, background: sCfg.bg, color: sCfg.color }}>
+                          {sCfg.label}
+                        </span>
+                      </TableCell>
+                      {!isAgent && <TableCell style={{ color: "#94a3b8", fontSize: "13px" }}>{lead.assigned_agent_name || "—"}</TableCell>}
+                      <TableCell style={{ color: "#94a3b8", fontSize: "13px" }}>{toIST(lead.last_activity_at)}</TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
+            </TableBody>
+          </Table>
+        </div>
+        {paginationFooter}
+      </div>
     </div>
   );
 }
