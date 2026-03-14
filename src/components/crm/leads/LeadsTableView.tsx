@@ -8,24 +8,65 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { createClient } from "@/lib/supabase/client";
 import { useLeads, type LeadsFilters, type LeadsSort } from "@/hooks/useLeads";
-import { getPriorityBadgeClassName, getPriorityLabel } from "@/lib/crm/leadPriority";
+import { getPriorityLabel } from "@/lib/crm/leadPriority";
 import type { CrmRole } from "@/lib/crm/types";
 import InvestorLeadIntakeModal from "@/components/crm/leads/InvestorLeadIntakeModal";
-import { formatBudgetRange } from "@/lib/crm/budget";
 
-const SOURCE_LABELS: Record<string, string> = {
-  facebook_lead_ads: "Facebook Ads",
-  meta: "Meta",
-  website: "Website",
-  referral: "Referral",
-  channel: "Channel Partner",
+// ── Display helpers ──────────────────────────────────────────────────────────
+
+function formatSourceName(s: string | null | undefined): string {
+  if (!s) return "—";
+  const map: Record<string, string> = {
+    facebook_lead_ads: "Facebook Ads",
+    meta_ads: "Meta Ads",
+    meta: "Meta",
+    website_form: "Website",
+    website: "Website",
+    organic_landing: "Organic",
+    google_ads: "Google Ads",
+    referral: "Referral",
+    channel: "Channel Partner",
+    manual: "Manual",
+    landing_page: "Landing Page",
+  };
+  return map[s] ?? s.split("_").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+}
+
+const statusConfig: Record<string, { label: string; bg: string; color: string }> = {
+  new:         { label: "New",         bg: "var(--color-background-secondary)", color: "var(--color-text-secondary)" },
+  contacted:   { label: "Contacted",   bg: "var(--color-background-info)",      color: "var(--color-text-info)" },
+  qualified:   { label: "Qualified",   bg: "var(--color-background-success)",   color: "var(--color-text-success)" },
+  site_visit:  { label: "Site Visit",  bg: "var(--color-background-warning)",   color: "var(--color-text-warning)" },
+  negotiation: { label: "Negotiation", bg: "var(--color-background-warning)",   color: "var(--color-text-warning)" },
+  converted:   { label: "Converted",   bg: "var(--color-background-success)",   color: "var(--color-text-success)" },
+  lost:        { label: "Lost",        bg: "var(--color-background-danger)",    color: "var(--color-text-danger)" },
 };
-function formatSource(val: string | null | undefined): string {
-  if (!val) return "-";
-  return SOURCE_LABELS[val] ?? val;
+
+const priorityConfig: Record<string, { label: string; bg: string; color: string }> = {
+  serious_buyer: { label: "Serious",    bg: "var(--color-background-danger)",    color: "var(--color-text-danger)" },
+  evaluating:    { label: "Evaluating", bg: "var(--color-background-warning)",   color: "var(--color-text-warning)" },
+  early_stage:   { label: "Early Stage",bg: "var(--color-background-secondary)", color: "var(--color-text-secondary)" },
+  hot:           { label: "Serious",    bg: "var(--color-background-danger)",    color: "var(--color-text-danger)" },
+  warm:          { label: "Evaluating", bg: "var(--color-background-warning)",   color: "var(--color-text-warning)" },
+  cold:          { label: "Early Stage",bg: "var(--color-background-secondary)", color: "var(--color-text-secondary)" },
+};
+
+function fmt(v: number | null | undefined): string | null {
+  if (!v) return null;
+  if (v >= 10000000) return `₹${(v / 10000000).toFixed(0)}Cr`;
+  if (v >= 100000) return `₹${(v / 100000).toFixed(0)}L`;
+  return `₹${v.toLocaleString("en-IN")}`;
+}
+
+function fmtBudget(min: number | null | undefined, max: number | null | undefined): string {
+  const a = fmt(min);
+  const b = fmt(max);
+  if (a && b) return `${a} – ${b}`;
+  if (a) return `≥ ${a}`;
+  if (b) return `≤ ${b}`;
+  return "—";
 }
 
 function toIST(dateStr: string | null | undefined): string {
@@ -45,6 +86,8 @@ function toIST(dateStr: string | null | undefined): string {
   }
 }
 
+// ── Types ────────────────────────────────────────────────────────────────────
+
 const pageSize = 20;
 
 interface AgentOption {
@@ -56,6 +99,8 @@ interface LeadsTableViewProps {
   currentUserRole?: CrmRole;
   currentUserId?: string;
 }
+
+// ── Component ────────────────────────────────────────────────────────────────
 
 export default function LeadsTableView({ currentUserRole, currentUserId }: LeadsTableViewProps) {
   const supabase = useMemo(() => createClient(), []);
@@ -71,19 +116,25 @@ export default function LeadsTableView({ currentUserRole, currentUserId }: Leads
   const [hotOnly, setHotOnly] = useState(false);
   const [agents, setAgents] = useState<AgentOption[]>([]);
   const [showFilters, setShowFilters] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
-  // Apply filter from ?filter= URL param. Re-runs whenever searchParams changes.
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+
+  // Apply filter from ?filter= URL param
   useEffect(() => {
     const filter = searchParams.get("filter");
     if (!filter) return;
 
-    // today 00:00 IST expressed as UTC ISO (IST = UTC+5:30)
     const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
     const nowIST = new Date(Date.now() + IST_OFFSET_MS);
     nowIST.setUTCHours(0, 0, 0, 0);
     const todayMidnightUTC = new Date(nowIST.getTime() - IST_OFFSET_MS).toISOString();
 
-    // first day of current month, 00:00 IST as UTC
     const firstOfMonthIST = new Date(Date.UTC(nowIST.getUTCFullYear(), nowIST.getUTCMonth(), 1));
     const firstOfMonthUTC = new Date(firstOfMonthIST.getTime() - IST_OFFSET_MS).toISOString();
 
@@ -94,10 +145,8 @@ export default function LeadsTableView({ currentUserRole, currentUserId }: Leads
     } else if (filter === "contacted_today") {
       setFilters((prev) => ({ ...prev, contactedFrom: todayMidnightUTC }));
     } else if (filter === "bookings_month") {
-      // Match any stage whose name contains "book" and leads created this month
       setFilters((prev) => ({ ...prev, stageName: "book", createdFrom: firstOfMonthUTC }));
     } else if (filter === "visits_upcoming") {
-      // Match any stage whose name contains "visit"
       setFilters((prev) => ({ ...prev, stageName: "visit" }));
     } else if (filter.startsWith("stage_")) {
       const stageId = filter.slice("stage_".length);
@@ -142,12 +191,31 @@ export default function LeadsTableView({ currentUserRole, currentUserId }: Leads
     loadAgents();
   }, [supabase]);
 
+  // ── Pagination footer (shared) ─────────────────────────────────────────────
+
+  const paginationFooter = (
+    <div className="flex items-center justify-between">
+      <p className="text-sm text-slate-600 dark:text-slate-300">
+        Page {page} of {pageCount} · {total} leads
+      </p>
+      <div className="flex items-center gap-2">
+        <Button variant="outline" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1}>
+          Previous
+        </Button>
+        <Button variant="outline" onClick={() => setPage((p) => Math.min(pageCount, p + 1))} disabled={page >= pageCount}>
+          Next
+        </Button>
+      </div>
+    </div>
+  );
+
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
         <InvestorLeadIntakeModal disabled={!canCreateLead} onCreated={() => refetch()} />
       </div>
-      {/* Search row — always visible. Filter toggle only shows on mobile */}
+
+      {/* Search + filter toggle */}
       <div className="flex gap-2">
         <div className="relative flex-1 md:max-w-xs">
           <Search className="pointer-events-none absolute left-2 top-2.5 h-4 w-4 text-slate-400" />
@@ -167,7 +235,7 @@ export default function LeadsTableView({ currentUserRole, currentUserId }: Leads
         </button>
       </div>
 
-      {/* Collapsible filters — hidden on mobile until toggled, always shown md+ */}
+      {/* Collapsible filters */}
       <div className={`grid gap-2 grid-cols-1 md:grid-cols-8 ${showFilters ? "grid" : "hidden md:grid"}`}>
         <Select
           value={filters.source || "all"}
@@ -249,100 +317,203 @@ export default function LeadsTableView({ currentUserRole, currentUserId }: Leads
         </Select>
       </div>
 
-      <div className="rounded-xl border bg-white dark:bg-slate-950" style={{ backgroundColor: '#0f172a' }}>
-        {error ? (
-          <div className="border-b px-4 py-2 text-sm text-rose-600 dark:text-rose-300">
-            Unable to load leads: {error}
-          </div>
-        ) : null}
-        <Table>
-          <TableHeader>
-            <TableRow>
-              {[
-                { key: "name", label: "Name", className: "min-w-[140px] whitespace-nowrap" },
-                { key: "phone", label: "Phone", className: "min-w-[120px] whitespace-nowrap" },
-                { key: "priority", label: "Priority" },
-                { key: "source", label: "Source" },
-                { key: "budget_range", label: "Budget" },
-                { key: "location", label: "Location" },
-                { key: "buyer_type", label: "Buyer Type" },
-                { key: "status", label: "Status" },
-                ...(!isAgent ? [{ key: "assigned_agent", label: "Assigned Agent" }] : []),
-                { key: "last_activity_at", label: "Last Activity" },
-              ].map((col) => (
-                <TableHead key={col.key} className={"className" in col ? col.className : undefined}>
-                  {col.key === "name" || col.key === "status" || col.key === "last_activity_at" ? (
-                    <button
-                      type="button"
-                      className="inline-flex items-center gap-1"
-                      onClick={() => {
-                        const nextAscending = sort.key === col.key ? !sort.ascending : true;
-                        setSort({ key: col.key as LeadsSort["key"], ascending: nextAscending });
-                      }}
-                    >
-                      {col.label}
-                      <ArrowUpDown className="h-3 w-3" />
-                    </button>
-                  ) : (
-                    col.label
-                  )}
-                </TableHead>
-              ))}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-              <TableRow>
-                <TableCell colSpan={isAgent ? 9 : 10}>Loading leads...</TableCell>
-              </TableRow>
-            ) : visibleLeads.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={isAgent ? 9 : 10}>No leads found.</TableCell>
-              </TableRow>
-            ) : (
-              visibleLeads.map((lead) => (
-                <TableRow key={lead.id} style={{ WebkitTransform: "translateZ(0)", backgroundColor: "#0f172a" } as React.CSSProperties}>
-                  <TableCell className="font-medium min-w-[140px] whitespace-nowrap">
-                    <Link href={`/leads/${lead.id}`} className="hover:underline" style={{ display: "block", minWidth: 0, color: "#ffffff", fontSize: "14px", fontWeight: 500 }}>
-                      {lead.name}
-                    </Link>
-                  </TableCell>
-                  <TableCell className="min-w-[120px] whitespace-nowrap">
-                    <span style={{ display: "block", minWidth: 0, color: "#94a3b8", fontSize: "13px" }}>{lead.phone}</span>
-                  </TableCell>
-                  <TableCell>
-                    <Badge className={getPriorityBadgeClassName(lead.priority)}>{getPriorityLabel(lead.priority)}</Badge>
-                  </TableCell>
-                  <TableCell style={{ color: "#94a3b8" }}>{formatSource(lead.source_channel || lead.source_type)}</TableCell>
-                  <TableCell style={{ color: "#94a3b8" }}>{formatBudgetRange(lead.budget_min, lead.budget_max)}</TableCell>
-                  <TableCell style={{ color: "#94a3b8" }}>{lead.location || "-"}</TableCell>
-                  <TableCell style={{ color: "#94a3b8" }}>{lead.buyer_type || "-"}</TableCell>
-                  <TableCell>
-                    <Badge variant="outline">{lead.status || "new"}</Badge>
-                  </TableCell>
-                  {!isAgent && <TableCell style={{ color: "#94a3b8" }}>{lead.assigned_agent_name || "-"}</TableCell>}
-                  <TableCell style={{ color: "#94a3b8" }}>{toIST(lead.last_activity_at)}</TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+      {error ? (
+        <p className="text-sm text-rose-600 dark:text-rose-300">Unable to load leads: {error}</p>
+      ) : null}
 
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-slate-600 dark:text-slate-300">
-          Page {page} of {pageCount} · {total} leads
-        </p>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1}>
-            Previous
-          </Button>
-          <Button variant="outline" onClick={() => setPage((p) => Math.min(pageCount, p + 1))} disabled={page >= pageCount}>
-            Next
-          </Button>
+      {/* ── Mobile card list ────────────────────────────────────────────────── */}
+      {isMobile ? (
+        <div>
+          {loading ? (
+            <p className="text-sm text-slate-500 dark:text-slate-400 py-4 text-center">Loading leads...</p>
+          ) : visibleLeads.length === 0 ? (
+            <p className="text-sm text-slate-500 dark:text-slate-400 py-4 text-center">No leads found.</p>
+          ) : (
+            visibleLeads.map((lead) => {
+              const priorityKey = (lead.priority ?? "early_stage").toLowerCase().replace(/[\s-]+/g, "_");
+              const pCfg = priorityConfig[priorityKey] ?? priorityConfig.early_stage;
+              const sCfg = statusConfig[lead.status ?? "new"] ?? statusConfig.new;
+              return (
+                <div
+                  key={lead.id}
+                  onClick={() => router.push(`/leads/${lead.id}`)}
+                  style={{
+                    background: "var(--color-background-primary)",
+                    border: "0.5px solid var(--color-border-tertiary, #334155)",
+                    borderRadius: "var(--border-radius-lg, 12px)",
+                    padding: "14px 16px",
+                    marginBottom: "8px",
+                    cursor: "pointer",
+                    transition: "border-color 0.15s",
+                  }}
+                >
+                  {/* Row 1: Name + Status */}
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+                    <span style={{ fontSize: "15px", fontWeight: 600, color: "var(--color-text-primary, #f1f5f9)" }}>
+                      {lead.name}
+                    </span>
+                    <span style={{
+                      fontSize: "11px", fontWeight: 500, padding: "2px 8px", borderRadius: "20px",
+                      background: sCfg.bg, color: sCfg.color,
+                    }}>
+                      {sCfg.label}
+                    </span>
+                  </div>
+
+                  {/* Row 2: Phone (tappable) + Priority */}
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                    <a
+                      href={`tel:${lead.phone}`}
+                      onClick={(e) => e.stopPropagation()}
+                      style={{ fontSize: "13px", color: "var(--color-text-info, #38bdf8)", textDecoration: "none" }}
+                    >
+                      {lead.phone}
+                    </a>
+                    <span style={{
+                      fontSize: "11px", fontWeight: 500, padding: "2px 8px", borderRadius: "20px",
+                      background: pCfg.bg, color: pCfg.color,
+                    }}>
+                      {pCfg.label}
+                    </span>
+                  </div>
+
+                  {/* Row 3: Source · Budget · Agent */}
+                  <div style={{ display: "flex", gap: "8px", fontSize: "12px", color: "var(--color-text-secondary, #94a3b8)", flexWrap: "wrap" }}>
+                    <span>{formatSourceName(lead.source_channel || lead.source_type)}</span>
+                    {(lead.budget_min || lead.budget_max) && (
+                      <span>· {fmtBudget(lead.budget_min, lead.budget_max)}</span>
+                    )}
+                    {lead.assigned_agent_name && (
+                      <span style={{ marginLeft: "auto", color: "var(--color-text-tertiary, #64748b)" }}>
+                        {lead.assigned_agent_name}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })
+          )}
+          {paginationFooter}
         </div>
-      </div>
+      ) : (
+        /* ── Desktop table ───────────────────────────────────────────────────── */
+        <>
+          <div className="rounded-xl border bg-white dark:bg-slate-950" style={{ backgroundColor: "#0f172a" }}>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  {[
+                    { key: "name",           label: "Name",           className: "min-w-[140px] whitespace-nowrap" },
+                    { key: "phone",          label: "Phone",          className: "min-w-[120px] whitespace-nowrap" },
+                    { key: "priority",       label: "Priority" },
+                    { key: "source",         label: "Source" },
+                    { key: "budget_range",   label: "Budget" },
+                    { key: "location",       label: "Location" },
+                    { key: "buyer_type",     label: "Buyer Type" },
+                    { key: "status",         label: "Status" },
+                    ...(!isAgent ? [{ key: "assigned_agent", label: "Agent" }] : []),
+                    { key: "last_activity_at", label: "Last Activity" },
+                  ].map((col) => (
+                    <TableHead key={col.key} className={"className" in col ? col.className : undefined}>
+                      {col.key === "name" || col.key === "status" || col.key === "last_activity_at" ? (
+                        <button
+                          type="button"
+                          className="inline-flex items-center gap-1"
+                          onClick={() => {
+                            const nextAscending = sort.key === col.key ? !sort.ascending : true;
+                            setSort({ key: col.key as LeadsSort["key"], ascending: nextAscending });
+                          }}
+                        >
+                          {col.label}
+                          <ArrowUpDown className="h-3 w-3" />
+                        </button>
+                      ) : (
+                        col.label
+                      )}
+                    </TableHead>
+                  ))}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={isAgent ? 9 : 10}>Loading leads...</TableCell>
+                  </TableRow>
+                ) : visibleLeads.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={isAgent ? 9 : 10}>No leads found.</TableCell>
+                  </TableRow>
+                ) : (
+                  visibleLeads.map((lead) => {
+                    const priorityKey = (lead.priority ?? "early_stage").toLowerCase().replace(/[\s-]+/g, "_");
+                    const pCfg = priorityConfig[priorityKey] ?? priorityConfig.early_stage;
+                    const sCfg = statusConfig[lead.status ?? "new"] ?? statusConfig.new;
+                    return (
+                      <TableRow key={lead.id} style={{ WebkitTransform: "translateZ(0)", backgroundColor: "#0f172a" } as React.CSSProperties}>
+                        {/* Name */}
+                        <TableCell className="font-medium min-w-[140px] whitespace-nowrap">
+                          <Link
+                            href={`/leads/${lead.id}`}
+                            className="hover:underline"
+                            style={{ display: "block", color: "#ffffff", fontSize: "14px", fontWeight: 500 }}
+                          >
+                            {lead.name}
+                          </Link>
+                        </TableCell>
+                        {/* Phone */}
+                        <TableCell className="min-w-[120px] whitespace-nowrap">
+                          <span style={{ color: "#94a3b8", fontSize: "13px" }}>{lead.phone}</span>
+                        </TableCell>
+                        {/* Priority — inline pill */}
+                        <TableCell>
+                          <span style={{
+                            padding: "2px 8px", borderRadius: "20px", fontSize: "11px", fontWeight: 500,
+                            background: pCfg.bg, color: pCfg.color,
+                          }}>
+                            {pCfg.label}
+                          </span>
+                        </TableCell>
+                        {/* Source */}
+                        <TableCell style={{ color: "#94a3b8", fontSize: "13px" }}>
+                          {formatSourceName(lead.source_channel || lead.source_type)}
+                        </TableCell>
+                        {/* Budget */}
+                        <TableCell style={{ color: "#94a3b8", fontSize: "13px" }}>
+                          {fmtBudget(lead.budget_min, lead.budget_max)}
+                        </TableCell>
+                        {/* Location */}
+                        <TableCell style={{ color: "#94a3b8", fontSize: "13px" }}>{lead.location || "—"}</TableCell>
+                        {/* Buyer Type */}
+                        <TableCell style={{ color: "#94a3b8", fontSize: "13px" }}>{lead.buyer_type || "—"}</TableCell>
+                        {/* Status — inline pill */}
+                        <TableCell>
+                          <span style={{
+                            padding: "2px 10px", borderRadius: "20px", fontSize: "12px", fontWeight: 500,
+                            background: sCfg.bg, color: sCfg.color,
+                          }}>
+                            {sCfg.label}
+                          </span>
+                        </TableCell>
+                        {/* Assigned Agent */}
+                        {!isAgent && (
+                          <TableCell style={{ color: "#94a3b8", fontSize: "13px" }}>
+                            {lead.assigned_agent_name || "—"}
+                          </TableCell>
+                        )}
+                        {/* Last Activity */}
+                        <TableCell style={{ color: "#94a3b8", fontSize: "13px" }}>
+                          {toIST(lead.last_activity_at)}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
+              </TableBody>
+            </Table>
+          </div>
+          {paginationFooter}
+        </>
+      )}
     </div>
   );
 }
-
