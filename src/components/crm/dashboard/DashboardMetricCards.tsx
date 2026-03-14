@@ -119,7 +119,7 @@ const SHIMMER_STYLE = `
     background-size: 200% 100%;
     animation: shimmer 1.5s infinite;
     border-radius: var(--border-radius-lg, 12px);
-    border: 1px solid var(--color-border-tertiary);
+    border: 0.5px solid var(--color-border-secondary);
   }
 `;
 
@@ -133,9 +133,9 @@ function SkeletonCard({ h = 88 }: { h?: number }) {
 
 const CARD_BASE: React.CSSProperties = {
   background: "var(--color-background-primary)",
-  border: "1px solid var(--color-border-tertiary)",
+  border: "0.5px solid var(--color-border-secondary)",
   borderRadius: "var(--border-radius-lg, 12px)",
-  padding: "1.25rem 1.5rem",
+  padding: "1.5rem",
   transition: "border-color 0.15s",
   cursor: "pointer",
 };
@@ -151,12 +151,19 @@ interface MetricCardProps {
 function MetricCard({ label, value, subtext, onClick, accentLeft }: MetricCardProps) {
   const [hovered, setHovered] = useState(false);
 
+  const accentColor =
+    accentLeft === "danger"
+      ? "var(--color-border-danger, var(--color-text-danger))"
+      : accentLeft === "success"
+      ? "var(--color-border-success, var(--color-text-success))"
+      : null;
+
   const style: React.CSSProperties = {
     ...CARD_BASE,
-    borderColor: hovered ? "var(--color-border-secondary)" : "var(--color-border-tertiary)",
-    borderLeft: accentLeft
-      ? `3px solid var(--color-border-${accentLeft})`
-      : `1px solid ${hovered ? "var(--color-border-secondary)" : "var(--color-border-tertiary)"}`,
+    borderColor: hovered ? "var(--color-border-primary)" : "var(--color-border-secondary)",
+    ...(accentColor
+      ? { borderLeft: `3px solid ${accentColor}` }
+      : {}),
   };
 
   const valueColor =
@@ -216,7 +223,7 @@ function StageCard({
         ...CARD_BASE,
         padding: "1rem 1.25rem",
         textAlign: "center",
-        borderColor: hovered ? "var(--color-border-secondary)" : "var(--color-border-tertiary)",
+        borderColor: hovered ? "var(--color-border-primary)" : "var(--color-border-secondary)",
       }}
     >
       <p
@@ -440,7 +447,8 @@ export default function DashboardMetricCards({
             style={{
               display: "grid",
               gridTemplateColumns: "repeat(4, 1fr)",
-              gap: 12,
+              gap: 16,
+              marginBottom: "1.5rem",
             }}
             className="dmc-snapshot-grid"
           >
@@ -452,7 +460,7 @@ export default function DashboardMetricCards({
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fill, minmax(100px, 1fr))",
+              gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))",
               gap: 10,
             }}
           >
@@ -465,7 +473,8 @@ export default function DashboardMetricCards({
             style={{
               display: "grid",
               gridTemplateColumns: "repeat(2, 1fr)",
-              gap: 12,
+              gap: 16,
+              marginBottom: "1.5rem",
             }}
             className="dmc-panel-grid"
           >
@@ -551,7 +560,8 @@ export default function DashboardMetricCards({
           style={{
             display: "grid",
             gridTemplateColumns: "repeat(4, 1fr)",
-            gap: 12,
+            gap: 16,
+            marginBottom: "1.5rem",
           }}
         >
           <MetricCard
@@ -588,8 +598,10 @@ export default function DashboardMetricCards({
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(100px, 1fr))",
+                gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))",
                 gap: 10,
+                overflowX: "auto",
+                marginBottom: "1.5rem",
               }}
             >
               {pipelineStages.map((stage) => (
@@ -612,7 +624,8 @@ export default function DashboardMetricCards({
           style={{
             display: "grid",
             gridTemplateColumns: "repeat(2, 1fr)",
-            gap: 12,
+            gap: 16,
+            marginBottom: "1.5rem",
           }}
         >
           {/* Site visits */}
