@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Search, ArrowUpDown, SlidersHorizontal } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -60,6 +60,7 @@ interface LeadsTableViewProps {
 export default function LeadsTableView({ currentUserRole, currentUserId }: LeadsTableViewProps) {
   const supabase = useMemo(() => createClient(), []);
   const searchParams = useSearchParams();
+  const router = useRouter();
   const isAgent = currentUserRole === "agent";
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
@@ -71,18 +72,43 @@ export default function LeadsTableView({ currentUserRole, currentUserId }: Leads
   const [agents, setAgents] = useState<AgentOption[]>([]);
   const [showFilters, setShowFilters] = useState(false);
 
-  // Apply filter from URL param (e.g. ?filter=agent_<id> or ?filter=stage_<id>)
+  // Apply filter from ?filter= URL param. Re-runs whenever searchParams changes.
   useEffect(() => {
     const filter = searchParams.get("filter");
     if (!filter) return;
-    if (filter.startsWith("agent_")) {
-      const agentId = filter.slice("agent_".length);
-      setFilters((prev) => ({ ...prev, assignedAgentId: agentId }));
+
+    // today 00:00 IST expressed as UTC ISO (IST = UTC+5:30)
+    const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+    const nowIST = new Date(Date.now() + IST_OFFSET_MS);
+    nowIST.setUTCHours(0, 0, 0, 0);
+    const todayMidnightUTC = new Date(nowIST.getTime() - IST_OFFSET_MS).toISOString();
+
+    // first day of current month, 00:00 IST as UTC
+    const firstOfMonthIST = new Date(Date.UTC(nowIST.getUTCFullYear(), nowIST.getUTCMonth(), 1));
+    const firstOfMonthUTC = new Date(firstOfMonthIST.getTime() - IST_OFFSET_MS).toISOString();
+
+    if (filter === "today") {
+      setFilters((prev) => ({ ...prev, createdFrom: todayMidnightUTC }));
+    } else if (filter === "pending_contact") {
+      setFilters((prev) => ({ ...prev, createdFrom: todayMidnightUTC, pendingContact: true }));
+    } else if (filter === "contacted_today") {
+      setFilters((prev) => ({ ...prev, contactedFrom: todayMidnightUTC }));
+    } else if (filter === "bookings_month") {
+      // Match any stage whose name contains "book" and leads created this month
+      setFilters((prev) => ({ ...prev, stageName: "book", createdFrom: firstOfMonthUTC }));
+    } else if (filter === "visits_upcoming") {
+      // Match any stage whose name contains "visit"
+      setFilters((prev) => ({ ...prev, stageName: "visit" }));
     } else if (filter.startsWith("stage_")) {
       const stageId = filter.slice("stage_".length);
       setFilters((prev) => ({ ...prev, stageId }));
+    } else if (filter.startsWith("agent_")) {
+      const agentId = filter.slice("agent_".length);
+      setFilters((prev) => ({ ...prev, assignedAgentId: agentId }));
+    } else if (filter === "overdue") {
+      router.push("/tasks?filter=overdue");
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const activeFilterCount = useMemo(() => {
     return [

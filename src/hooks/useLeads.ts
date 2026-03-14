@@ -17,6 +17,10 @@ export interface LeadsFilters {
   assignedAgentId?: string;
   unassignedOnly?: boolean;
   stageId?: string;
+  stageName?: string;        // ilike match on stage_name column
+  createdFrom?: string;      // ISO string — gte created_at
+  pendingContact?: boolean;  // is(first_contact_at, null)
+  contactedFrom?: string;    // ISO string — gte first_contact_at
 }
 
 export interface LeadsSort {
@@ -123,6 +127,10 @@ export function useLeads({
           query = useAssignedToColumn ? query.is("assigned_to", null) : query.is("assigned_agent_id", null);
         }
         if (filters.stageId) query = query.eq("stage_id", filters.stageId);
+        if (filters.stageName) query = query.ilike("stage_name", `%${filters.stageName}%`);
+        if (filters.createdFrom) query = query.gte("created_at", filters.createdFrom);
+        if (filters.pendingContact) query = query.is("first_contact_at", null);
+        if (filters.contactedFrom) query = query.gte("first_contact_at", filters.contactedFrom);
 
         const from = (page - 1) * pageSize;
         const to = from + pageSize - 1;
@@ -161,9 +169,13 @@ export function useLeads({
     filters.budgetMax,
     filters.budgetMin,
     filters.buyerType,
+    filters.contactedFrom,
+    filters.createdFrom,
     filters.location,
+    filters.pendingContact,
     filters.source,
     filters.stageId,
+    filters.stageName,
     filters.status,
     filters.unassignedOnly,
     page,
