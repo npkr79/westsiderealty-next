@@ -16,6 +16,7 @@ export interface LeadsFilters {
   assignmentStatus?: string;
   assignedAgentId?: string;
   unassignedOnly?: boolean;
+  stageId?: string;
 }
 
 export interface LeadsSort {
@@ -121,6 +122,7 @@ export function useLeads({
         if (filters.unassignedOnly) {
           query = useAssignedToColumn ? query.is("assigned_to", null) : query.is("assigned_agent_id", null);
         }
+        if (filters.stageId) query = query.eq("stage_id", filters.stageId);
 
         const from = (page - 1) * pageSize;
         const to = from + pageSize - 1;
@@ -161,6 +163,7 @@ export function useLeads({
     filters.buyerType,
     filters.location,
     filters.source,
+    filters.stageId,
     filters.status,
     filters.unassignedOnly,
     page,

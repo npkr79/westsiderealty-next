@@ -192,49 +192,44 @@ export default function DashboardMetricCards({
     async function fetchAll() {
       setLoading(true);
       try {
-        // -----------------------------------------------------------------------
-        // Query B — stages first (needed to find site visit stage id)
-        // -----------------------------------------------------------------------
-        const { data: stagesData, error: stagesError } = await supabase
-          .from("crm_lead_stages")
-          .select("id, name, position")
-          .order("position");
-        console.log("[DMC] Query B stages:", stagesData?.length, stagesError);
-        const stagesResult: StageRow[] = (stagesData as StageRow[]) ?? [];
-        setStages(stagesResult);
-
-        // -----------------------------------------------------------------------
-        // Query A — leads summary
-        // -----------------------------------------------------------------------
+        // Build queries
         let leadsQuery = supabase
           .from("crm_leads")
           .select("id, created_at, first_contact_at, stage_id, assigned_to, name");
         if (scope === "assigned") leadsQuery = leadsQuery.eq("assigned_to", userId);
-        const { data: leadsData, error: leadsError } = await leadsQuery;
-        console.log("[DMC] Query A leads:", leadsData?.length, leadsError);
-        setLeads((leadsData as LeadRow[]) ?? []);
 
-        // -----------------------------------------------------------------------
-        // Query C — overdue tasks
-        // -----------------------------------------------------------------------
         let taskQuery = supabase
           .from("crm_tasks")
           .select("id, title, due_date, lead_id, assigned_to")
           .lt("due_date", new Date().toISOString())
           .neq("status", "completed");
         if (scope === "assigned") taskQuery = taskQuery.eq("assigned_to", userId);
-        const { data: taskData, error: tasksError } = await taskQuery;
-        console.log("[DMC] Query C tasks:", taskData?.length, tasksError);
-        setOverdueTasks((taskData as TaskRow[]) ?? []);
 
-        // -----------------------------------------------------------------------
-        // Query D — upcoming site visits (leads in site-visit-scheduled stage)
-        // -----------------------------------------------------------------------
+        const stagesQuery = supabase
+          .from("crm_lead_stages")
+          .select("id, name, position")
+          .order("position");
+
+        const agentsQuery =
+          scope === "all"
+            ? supabase.from("crm_users").select("id, full_name").eq("is_active", true)
+            : Promise.resolve({ data: [] as AgentRow[], error: null });
+
+        // Run all independent queries in parallel
+        const [stagesRes, leadsRes, taskRes, agentsRes] = await Promise.all([
+          stagesQuery,
+          leadsQuery,
+          taskQuery,
+          agentsQuery,
+        ]);
+
+        const stagesResult: StageRow[] = (stagesRes.data as StageRow[]) ?? [];
+
+        // Site visits query depends on stages result
         const siteVisitStage = stagesResult.find(
-          (s) =>
-            /visit.*scheduled/i.test(s.name) ||
-            /site.*visit/i.test(s.name)
+          (s) => /visit.*scheduled/i.test(s.name) || /site.*visit/i.test(s.name)
         );
+        let visitsResult: VisitRow[] = [];
         if (siteVisitStage) {
           const next7Days = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
           let visitQuery = supabase
@@ -243,25 +238,18 @@ export default function DashboardMetricCards({
             .eq("stage_id", siteVisitStage.id)
             .lte("created_at", next7Days);
           if (scope === "assigned") visitQuery = visitQuery.eq("assigned_to", userId);
-          const { data: visitData, error: visitsError } = await visitQuery;
-          console.log("[DMC] Query D visits:", visitData?.length, visitsError);
-          setUpcomingVisits((visitData as VisitRow[]) ?? []);
-        } else {
-          console.log("[DMC] Query D visits: no site-visit stage found in stages list");
+          const { data: visitData } = await visitQuery;
+          visitsResult = (visitData as VisitRow[]) ?? [];
         }
 
-        // -----------------------------------------------------------------------
-        // Query E — agents (admin / scope=all only)
-        // -----------------------------------------------------------------------
-        if (scope === "all") {
-          const { data: agentData } = await supabase
-            .from("crm_users")
-            .select("id, full_name")
-            .eq("is_active", true);
-          setAgents((agentData as AgentRow[]) ?? []);
-        }
+        // Commit all state at once
+        setStages(stagesResult);
+        setLeads((leadsRes.data as LeadRow[]) ?? []);
+        setOverdueTasks((taskRes.data as TaskRow[]) ?? []);
+        setUpcomingVisits(visitsResult);
+        setAgents((agentsRes.data as AgentRow[]) ?? []);
       } catch (err) {
-        console.error("[DMC] fetchData error:", err);
+        console.error("DashboardMetricCards fetch error:", err);
       } finally {
         setLoading(false);
       }
@@ -296,8 +284,6 @@ export default function DashboardMetricCards({
   const bookingsThisMonth = leads.filter(
     (l) => l.stage_id === bookingStageId && l.created_at && l.created_at >= firstDayOfMonth
   ).length;
-
-  console.log("[DMC] Metrics:", { leadsToday, contactedToday, pendingContact, bookingsThisMonth });
 
   const stageCounts: StageWithCount[] = stages.map((stage) => ({
     ...stage,

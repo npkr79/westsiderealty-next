@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Search, ArrowUpDown, SlidersHorizontal } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -58,6 +59,7 @@ interface LeadsTableViewProps {
 
 export default function LeadsTableView({ currentUserRole, currentUserId }: LeadsTableViewProps) {
   const supabase = useMemo(() => createClient(), []);
+  const searchParams = useSearchParams();
   const isAgent = currentUserRole === "agent";
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
@@ -68,6 +70,19 @@ export default function LeadsTableView({ currentUserRole, currentUserId }: Leads
   const [hotOnly, setHotOnly] = useState(false);
   const [agents, setAgents] = useState<AgentOption[]>([]);
   const [showFilters, setShowFilters] = useState(false);
+
+  // Apply filter from URL param (e.g. ?filter=agent_<id> or ?filter=stage_<id>)
+  useEffect(() => {
+    const filter = searchParams.get("filter");
+    if (!filter) return;
+    if (filter.startsWith("agent_")) {
+      const agentId = filter.slice("agent_".length);
+      setFilters((prev) => ({ ...prev, assignedAgentId: agentId }));
+    } else if (filter.startsWith("stage_")) {
+      const stageId = filter.slice("stage_".length);
+      setFilters((prev) => ({ ...prev, stageId }));
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const activeFilterCount = useMemo(() => {
     return [
