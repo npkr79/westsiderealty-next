@@ -329,12 +329,14 @@ export default function LeadsTableView({ currentUserRole, currentUserId }: Leads
                 key={lead.id}
                 onClick={() => router.push(`/leads/${lead.id}`)}
                 style={{
-                  background: "var(--color-background-secondary)",
-                  border: "1px solid var(--color-border-secondary)",
-                  borderRadius: "var(--border-radius-lg, 12px)",
-                  padding: "16px",
+                  borderRadius: "12px",
                   marginBottom: "12px",
+                  padding: "16px",
                   cursor: "pointer",
+                  borderWidth: "1px",
+                  borderStyle: "solid",
+                  borderColor: "rgba(255,255,255,0.15)",
+                  backgroundColor: "rgba(255,255,255,0.05)",
                 }}
               >
                 {/* Header: Name + Status pill */}
