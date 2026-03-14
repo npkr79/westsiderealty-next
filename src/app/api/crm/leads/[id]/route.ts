@@ -17,6 +17,7 @@ const FIELD_MAP: Record<string, string> = {
   assigned_to:          "assigned_to",
   assignment_status:    "assignment_status",
   status:               "status",
+  lead_status:          "lead_status",
   priority:             "priority",
   notes:                "notes",
   timeline:             "timeline",

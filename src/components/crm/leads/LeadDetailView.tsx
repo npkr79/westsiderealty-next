@@ -120,6 +120,8 @@ interface LeadRecord {
   buyer_type: string | null;
   status: string | null;
   priority?: string | null;
+  lead_score?: number | null;
+  lead_status?: string | null;
   notes?: string | null;
   attribution_metadata?: Record<string, unknown> | null;
   assigned_to: string | null;
@@ -252,9 +254,9 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
   const [dealsError, setDealsError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("overview");
 
-  // Existing editable fields (status/priority/notes)
+  // Existing editable fields (status/notes)
   const [editStatus, setEditStatus] = useState("new");
-  const [editPriority, setEditPriority] = useState("");
+  const [editLeadStatus, setEditLeadStatus] = useState("cold");
   const [editNotes, setEditNotes] = useState("");
 
   // Contact detail inline edits
@@ -322,8 +324,8 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
     setLoadingLead(true);
     setLeadError(null);
     const selectVariants = [
-      "id,name,phone,email,source_channel,source_type,budget_min,budget_max,location,buyer_type,status,priority,notes,attribution_metadata,assigned_to,stage_id,first_contact_at,created_at,updated_at,last_activity_at",
-      "id,name,phone,source_channel,source_type,budget_min,budget_max,location,buyer_type,status,lead_priority,notes,attribution_metadata,assigned_to,stage_id,first_contact_at,created_at,updated_at,last_activity_at",
+      "id,name,phone,email,source_channel,source_type,budget_min,budget_max,location,buyer_type,status,lead_status,priority,lead_score,notes,attribution_metadata,assigned_to,stage_id,first_contact_at,created_at,updated_at,last_activity_at",
+      "id,name,phone,source_channel,source_type,budget_min,budget_max,location,buyer_type,status,lead_status,priority,lead_score,notes,attribution_metadata,assigned_to,stage_id,first_contact_at,created_at,updated_at,last_activity_at",
       "id,name,phone,source_channel,source_type,budget_min,budget_max,location,buyer_type,status,assigned_to,stage_id,first_contact_at,created_at,updated_at,last_activity_at",
     ];
     let row: (LeadRecord & { lead_priority?: string | null }) | null = null;
@@ -458,9 +460,7 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
   useEffect(() => {
     if (lead) {
       setEditStatus(lead.status || "new");
-      if (!editPriority) {
-        setEditPriority(lead.priority || "cold");
-      }
+      setEditLeadStatus(lead.lead_status || "cold");
       setEditNotes(lead.notes || "");
       setEditName(lead.name || "");
       setEditPhone(lead.phone || "");
@@ -1068,14 +1068,14 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
 
                 <hr className="border-slate-100 dark:border-slate-800" />
 
-                {/* Status + Priority + Source */}
-                <div className="grid gap-3 md:grid-cols-3">
+                {/* Status + Lead Status + Source + Buyer Profile */}
+                <div className="grid gap-3 md:grid-cols-2">
                   <div>
                     <p className="text-slate-500 dark:text-slate-400 text-xs mb-1">Source</p>
                     <p className="font-medium">{formatSourceName(lead.source_type || lead.source_channel || lead.source)}</p>
                   </div>
                   <div>
-                    <p className="text-slate-500 dark:text-slate-400 text-xs mb-1">Status</p>
+                    <p className="text-slate-500 dark:text-slate-400 text-xs mb-1">Pipeline Status</p>
                     <select
                       value={editStatus}
                       onChange={async (e) => {
@@ -1097,31 +1097,77 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
                       <option value="lost">Lost</option>
                     </select>
                   </div>
-                  <div>
-                    <p className="text-slate-500 dark:text-slate-400 text-xs mb-1">Priority</p>
-                    <select
-                      value={editPriority}
-                      onChange={async (e) => {
-                        const newPriority = e.target.value;
-                        setEditPriority(newPriority);
-                        const res = await fetch(`/api/crm/leads/${lead.id}`, {
-                          method: "PATCH",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({ priority: newPriority }),
-                        });
-                        if (!res.ok) {
-                          console.error("[Priority] PATCH failed:", res.status);
-                          return;
-                        }
-                        setLead((prev) => prev ? { ...prev, priority: newPriority } : prev);
-                      }}
-                      className="w-full h-8 text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                    >
-                      <option value="cold">Cold</option>
-                      <option value="warm">Warm</option>
-                      <option value="hot">Hot</option>
-                    </select>
-                  </div>
+                </div>
+                <div className="grid gap-3 md:grid-cols-2">
+                  {/* Lead Status — manual agent input */}
+                  {(() => {
+                    const leadStatusConfig = {
+                      cold: { label: "❄ Cold", bg: "var(--color-background-secondary, #1e293b)", color: "var(--color-text-secondary, #94a3b8)" },
+                      warm: { label: "🔥 Warm", bg: "var(--color-background-warning, #431407)", color: "var(--color-text-warning, #fb923c)" },
+                      hot:  { label: "⚡ Hot",  bg: "var(--color-background-danger, #450a0a)",  color: "var(--color-text-danger, #f87171)" },
+                    };
+                    return (
+                      <div>
+                        <label style={{ fontSize: "12px", color: "var(--color-text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: "6px" }}>Lead Status</label>
+                        <select
+                          value={editLeadStatus}
+                          onChange={async (e) => {
+                            const val = e.target.value;
+                            setEditLeadStatus(val);
+                            const res = await fetch(`/api/crm/leads/${lead.id}`, {
+                              method: "PATCH",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ lead_status: val }),
+                            });
+                            if (res.ok) setLead((prev) => prev ? { ...prev, lead_status: val } : prev);
+                          }}
+                          style={{
+                            border: "1px solid var(--color-border-secondary, #334155)",
+                            borderRadius: "var(--border-radius-md, 6px)",
+                            padding: "6px 10px",
+                            fontSize: "14px",
+                            fontWeight: 500,
+                            cursor: "pointer",
+                            background: leadStatusConfig[editLeadStatus as keyof typeof leadStatusConfig]?.bg ?? "var(--color-background-secondary)",
+                            color: leadStatusConfig[editLeadStatus as keyof typeof leadStatusConfig]?.color ?? "var(--color-text-secondary)",
+                          }}
+                        >
+                          <option value="cold">❄ Cold</option>
+                          <option value="warm">🔥 Warm</option>
+                          <option value="hot">⚡ Hot</option>
+                        </select>
+                      </div>
+                    );
+                  })()}
+                  {/* Buyer Profile — auto-calculated, read-only */}
+                  {(() => {
+                    const priorityConfig: Record<string, { label: string; bg: string; color: string }> = {
+                      serious_buyer: { label: "Serious Buyer", bg: "var(--color-background-danger, #450a0a)",    color: "var(--color-text-danger, #f87171)" },
+                      evaluating:    { label: "Evaluating",    bg: "var(--color-background-warning, #431407)",  color: "var(--color-text-warning, #fb923c)" },
+                      early_stage:   { label: "Early Stage",   bg: "var(--color-background-secondary, #1e293b)", color: "var(--color-text-secondary, #94a3b8)" },
+                    };
+                    const key = (lead.priority ?? "early_stage").toLowerCase().replace(/[\s-]+/g, "_");
+                    const mapped = key === "hot" || key === "high" ? "serious_buyer"
+                      : key === "warm" || key === "medium" ? "evaluating"
+                      : key;
+                    const cfg = priorityConfig[mapped] ?? priorityConfig.early_stage;
+                    return (
+                      <div>
+                        <label style={{ fontSize: "12px", color: "var(--color-text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: "6px" }}>Buyer Profile</label>
+                        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                          <span style={{ padding: "4px 12px", borderRadius: "20px", fontSize: "13px", fontWeight: 500, background: cfg.bg, color: cfg.color }}>
+                            {cfg.label}
+                          </span>
+                          <span style={{ fontSize: "12px", color: "var(--color-text-tertiary, #64748b)" }}>
+                            Score {lead.lead_score ?? 0} / 100
+                          </span>
+                        </div>
+                        <p style={{ fontSize: "11px", color: "var(--color-text-tertiary, #64748b)", marginTop: "4px" }}>
+                          Auto-calculated · improves with budget, timeline &amp; stage
+                        </p>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 <hr className="border-slate-100 dark:border-slate-800" />

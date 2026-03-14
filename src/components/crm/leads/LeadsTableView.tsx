@@ -125,7 +125,7 @@ export default function LeadsTableView({ currentUserRole, currentUserId }: Leads
 
   const { leads, loading, total, error, refetch } = useLeads({ page, pageSize, search, filters, sort });
   const canCreateLead = currentUserRole ? ["admin", "sales_head", "team_lead", "agent"].includes(currentUserRole) : false;
-  const visibleLeads = useMemo(() => (hotOnly ? leads.filter((lead) => getPriorityLabel(lead.priority) === "HOT") : leads), [hotOnly, leads]);
+  const visibleLeads = useMemo(() => (hotOnly ? leads.filter((lead) => getPriorityLabel(lead.priority) === "Serious Buyer") : leads), [hotOnly, leads]);
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
 
   const statuses = useMemo(() => ["new", "contacted", "qualified", "proposal", "won", "lost"], []);

@@ -24,6 +24,7 @@ const CRM_LEADS_ALLOWED_COLUMNS = new Set([
   "assigned_to",
   "assignment_status",
   "status",
+  "lead_status",
   "priority",
   "lead_score",
   "campaign_id",
