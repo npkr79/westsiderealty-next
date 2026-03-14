@@ -227,6 +227,7 @@ export async function submitLead(formData: SubmitLeadData): Promise<SubmitLeadRe
         console.warn("[submitLead] routeLeadByOwnership failed (non-critical):", e instanceof Error ? e.message : e);
       }
 
+      console.log("[WA Debug] Attempting instant greeting for lead:", inserted?.id, normalizedPhone);
       onNewLeadAutomation({
         leadId: String(inserted.id),
         leadPhone: normalizedPhone,
