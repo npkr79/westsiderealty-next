@@ -312,9 +312,6 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
 
   // Mobile enhancements
   const [stages, setStages] = useState<{ id: string; name: string; position: number }[]>([]);
-  const [showNoteInput, setShowNoteInput] = useState(false);
-  const [quickNoteText, setQuickNoteText] = useState("");
-  const [savingQuickNote, setSavingQuickNote] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
   const agentName = currentUser.full_name || "your advisor";
@@ -756,25 +753,6 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
     });
   }, [lead, leadId, currentUser.id, supabase]);
 
-  const saveQuickNote = useCallback(async () => {
-    if (!quickNoteText.trim()) return;
-    setSavingQuickNote(true);
-    await supabase.from("crm_lead_activities").insert({
-      lead_id: leadId,
-      activity_type: "note",
-      description: quickNoteText.trim(),
-      created_by: currentUser.id,
-    });
-    await fetch(`/api/crm/leads/${leadId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ last_activity_at: new Date().toISOString() }),
-    });
-    setSavingQuickNote(false);
-    setQuickNoteText("");
-    setShowNoteInput(false);
-  }, [quickNoteText, leadId, currentUser.id, supabase]);
-
   // ── render ───────────────────────────────────────────────────────────────────
 
   if (loadingLead) {
@@ -865,14 +843,14 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
         </button>
         <button
           type="button"
-          onClick={() => { setActiveTab("site-visits"); setShowSiteVisitForm(true); }}
+          onClick={() => setActiveTab("site-visits")}
           className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-full bg-slate-700 hover:bg-slate-600 active:scale-95 text-white text-sm font-medium"
         >
           📍 Site Visit
         </button>
         <button
           type="button"
-          onClick={() => setShowNoteInput((v) => !v)}
+          onClick={() => { setActiveTab("activities"); setTimeout(() => document.getElementById("quick-note-input")?.focus(), 50); }}
           className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-full bg-slate-700 hover:bg-slate-600 active:scale-95 text-white text-sm font-medium"
         >
           📝 Add Note
@@ -923,29 +901,6 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
               {savingCall ? "Saving..." : "Save Call Log"}
             </Button>
             <Button type="button" variant="ghost" onClick={() => setShowCallForm(false)}>
-              Cancel
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {/* ── Quick note input ── */}
-      {showNoteInput && (
-        <div className="rounded-xl border border-slate-700 bg-slate-800/50 p-3 space-y-2">
-          <p className="text-xs font-semibold text-slate-300">Quick Note</p>
-          <Textarea
-            placeholder="Type your note here..."
-            value={quickNoteText}
-            onChange={(e) => setQuickNoteText(e.target.value)}
-            rows={3}
-            className="text-sm"
-            autoFocus
-          />
-          <div className="flex gap-2">
-            <Button type="button" size="sm" onClick={() => void saveQuickNote()} disabled={savingQuickNote || !quickNoteText.trim()}>
-              {savingQuickNote ? "Saving..." : "Save Note"}
-            </Button>
-            <Button type="button" size="sm" variant="ghost" onClick={() => { setShowNoteInput(false); setQuickNoteText(""); }}>
               Cancel
             </Button>
           </div>
@@ -1240,6 +1195,27 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
               <CardTitle className="text-lg">Activity timeline</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
+              {/* Inline quick note input */}
+              <div style={{ display: "flex", gap: "8px", marginBottom: "16px", padding: "10px", background: "var(--color-background-secondary, rgba(148,163,184,0.08))", borderRadius: "var(--border-radius-md, 8px)" }}>
+                <input
+                  id="quick-note-input"
+                  placeholder="Log a note..."
+                  style={{ flex: 1, border: "none", background: "transparent", fontSize: "14px", color: "var(--color-text-primary, inherit)", outline: "none" }}
+                  onKeyDown={async (e) => {
+                    if (e.key === "Enter" && e.currentTarget.value.trim()) {
+                      const note = e.currentTarget.value.trim();
+                      e.currentTarget.value = "";
+                      await supabase.from("crm_lead_activities").insert({
+                        lead_id: lead?.id,
+                        activity_type: "note",
+                        notes: note,
+                        created_by: currentUser.id,
+                      });
+                    }
+                  }}
+                />
+                <span style={{ fontSize: "12px", color: "var(--color-text-tertiary, #94a3b8)", alignSelf: "center" }}>↵ to save</span>
+              </div>
               {loadingActivities ? <p className="text-sm">Loading activities...</p> : null}
               {activityError ? <p className="text-sm text-rose-600 dark:text-rose-300">{activityError}</p> : null}
               {(() => {
