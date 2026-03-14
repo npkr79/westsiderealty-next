@@ -1091,8 +1091,11 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
                         if (!res.ok) {
                           const err = await res.text();
                           console.error("[Priority] PATCH failed:", res.status, err, "value sent:", newPriority);
+                          return;
                         }
-                        setLead((prev) => prev ? { ...prev, priority: newPriority } : prev);
+                        // Re-fetch lead so priority is resolved via fallback GET
+                        // which reads directly from crm_leads (not the view)
+                        await loadLead();
                       }}
                       className="w-full h-8 text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                     >
