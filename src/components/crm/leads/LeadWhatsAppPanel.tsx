@@ -55,8 +55,8 @@ export default function LeadWhatsAppPanel({ leadId, leadPhone }: LeadWhatsAppPan
 
     const { data: msgData, error: msgError } = await supabase
       .from("crm_messages")
-      .select("id,lead_id,direction,content,template_name,status,provider_message_id,error_message,created_at,updated_at")
-      .eq("conversation_id", convId)
+      .select("id,lead_id,phone,message,direction,status,provider_response,created_at")
+      .eq("lead_id", leadId)
       .order("created_at", { ascending: true })
       .limit(500);
     setLoading(false);
@@ -151,11 +151,10 @@ export default function LeadWhatsAppPanel({ leadId, leadPhone }: LeadWhatsAppPan
                 }`}
               >
                 <div className="mb-1 flex items-center justify-between gap-2">
-                  <span className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">{msg.template_name != null ? "template" : "text"}</span>
+                  <span className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">text</span>
                   <Badge variant={msg.status === "failed" ? "destructive" : "outline"}>{msg.status || "queued"}</Badge>
                 </div>
-                <p>{msg.content || (msg.template_name ? `Template: ${msg.template_name}` : "(empty)")}</p>
-                {msg.error_message ? <p className="mt-1 text-xs text-rose-600 dark:text-rose-300">{msg.error_message}</p> : null}
+                <p>{(msg as Record<string, unknown>).message as string || "(empty)"}</p>
               </div>
             ))
           )}

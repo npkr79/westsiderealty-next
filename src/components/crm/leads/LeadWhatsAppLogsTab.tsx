@@ -82,43 +82,28 @@ export default function LeadWhatsAppLogsTab({ leadId, leadPhone }: LeadWhatsAppL
     setLoading(true);
     setError(null);
 
-    const messageVariants = [
-      "id,lead_id,message_type,content,template_name,status,provider_message_id,error_message,created_at",
-      "id,lead_id,message_type,body,template_name,status,provider_message_id,error_message,created_at",
-      "*",
-    ];
-
     let messageRows: RawRow[] = [];
-    let messageError: string | null = null;
-    for (const selectClause of messageVariants) {
-      const { data, error: queryError } = await supabase
-        .from("crm_whatsapp_messages")
-        .select(selectClause)
-        .eq("lead_id", leadId)
-        .order("created_at", { ascending: false })
-        .limit(500);
-      if (!queryError) {
-        messageRows = (data as RawRow[]) || [];
-        messageError = null;
-        break;
-      }
-      messageError = queryError.message || "Unable to load WhatsApp messages.";
-      if (!/column .* does not exist/i.test(messageError)) break;
-    }
-    if (messageError) {
-      setError(messageError);
+    const { data: msgData, error: msgQueryError } = await supabase
+      .from("crm_whatsapp_messages")
+      .select("id,lead_id,phone,message,direction,status,provider_response,created_at,template_name,content,body")
+      .eq("lead_id", leadId)
+      .order("created_at", { ascending: false })
+      .limit(500);
+    if (msgQueryError) {
+      setError(msgQueryError.message || "Unable to load WhatsApp messages.");
       setLoading(false);
       return;
     }
+    messageRows = (msgData as RawRow[]) || [];
 
     const mappedMessages: MessageRow[] = messageRows.map((row) => ({
       id: asText(row.id) || crypto.randomUUID(),
-      providerMessageId: asText(row.provider_message_id),
-      messageType: asText(row.message_type) || "text",
-      content: asText(row.content) || asText(row.body),
+      providerMessageId: null,
+      messageType: asText(row.template_name) ? "template" : "text",
+      content: asText(row.content) || asText(row.body) || asText(row.message),
       templateName: asText(row.template_name),
       status: asText(row.status) || "sent",
-      errorMessage: asText(row.error_message),
+      errorMessage: null,
       createdAt: asDate(row.created_at),
     }));
     setMessages(mappedMessages);
