@@ -452,42 +452,12 @@ export default function SalesCockpitRealtime({ user, scope = "all" }: SalesCockp
       {error ? <p className="text-sm text-rose-600 dark:text-rose-300">{error}</p> : null}
       {loading ? <p className="text-sm">Loading cockpit metrics...</p> : null}
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        <Card><CardHeader className="pb-2"><CardTitle className="text-base">New leads today</CardTitle></CardHeader><CardContent><p className="text-3xl font-semibold">{metrics.newLeadsToday}</p></CardContent></Card>
-        <Card><CardHeader className="pb-2"><CardTitle className="text-base">Tasks due today</CardTitle></CardHeader><CardContent><p className="text-3xl font-semibold">{metrics.tasksDueToday}</p></CardContent></Card>
-        <Card><CardHeader className="pb-2"><CardTitle className="text-base">Site visits upcoming</CardTitle></CardHeader><CardContent><p className="text-3xl font-semibold">{metrics.siteVisitsUpcoming}</p></CardContent></Card>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Card><CardHeader className="pb-2"><CardTitle className="text-base">Active pipeline value</CardTitle></CardHeader><CardContent><p className="text-3xl font-semibold">{formatInrCompact(metrics.activePipelineValue)}</p></CardContent></Card>
         <Card><CardHeader className="pb-2"><CardTitle className="text-base">Qualified leads</CardTitle></CardHeader><CardContent><p className="text-3xl font-semibold">{metrics.qualifiedLeads}</p></CardContent></Card>
         <Card><CardHeader className="pb-2"><CardTitle className="text-base">Conversion rate</CardTitle></CardHeader><CardContent><p className="text-3xl font-semibold">{metrics.conversionRate.toFixed(1)}%</p></CardContent></Card>
         <Card><CardHeader className="pb-2"><CardTitle className="text-base">Forecast pipeline value</CardTitle></CardHeader><CardContent><p className="text-3xl font-semibold">{formatInrCompact(metrics.forecastPipelineValue)}</p></CardContent></Card>
-        <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-base">Hot leads today</CardTitle></CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2">
-              <p className="text-3xl font-semibold">{metrics.hotLeadsToday}</p>
-              <Badge className={getPriorityBadgeClassName("HOT")}>HOT</Badge>
-            </div>
-          </CardContent>
-        </Card>
       </div>
-
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">Hot leads by agent</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          {hotLeadsByAgent.length === 0 ? (
-            <p className="text-sm text-slate-500 dark:text-slate-400">No hot leads assigned yet.</p>
-          ) : (
-            hotLeadsByAgent.map((row) => (
-              <div key={row.agentId} className="flex items-center justify-between rounded border p-2 text-sm">
-                <p className="font-medium">{row.agentName}</p>
-                <Badge className={getPriorityBadgeClassName("HOT")}>{row.hotCount} HOT</Badge>
-              </div>
-            ))
-          )}
-        </CardContent>
-      </Card>
 
       <div className="grid gap-4 xl:grid-cols-2">
         <Card>

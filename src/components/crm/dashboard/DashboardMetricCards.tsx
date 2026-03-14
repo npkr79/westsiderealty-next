@@ -115,10 +115,10 @@ export default function DashboardMetricCards({
           .select("id, name, position")
           .order("position");
 
-        const agentsQuery =
-          scope === "all"
-            ? supabase.from("crm_users").select("id, full_name").eq("is_active", true)
-            : Promise.resolve({ data: [] as AgentRow[], error: null });
+        const agentsQuery = supabase
+          .from("crm_users")
+          .select("id, full_name")
+          .eq("is_active", true);
 
         const [stagesRes, leadsRes, taskRes, agentsRes] = await Promise.all([
           stagesQuery,
@@ -193,6 +193,8 @@ export default function DashboardMetricCards({
   const pipelineStages = stageCounts.filter(
     (s) => s.position > 1 && !s.name.toLowerCase().includes("lost")
   );
+
+  const agentMap = new Map(agents.map((a) => [a.id, a.full_name?.trim() || "Unknown"]));
 
   // ---------------------------------------------------------------------------
   // Agent performance (scope=all only)
@@ -396,7 +398,12 @@ export default function DashboardMetricCards({
                   className="flex items-center justify-between rounded border p-2 text-sm cursor-pointer"
                   onClick={() => task.lead_id && router.push(`/leads/${task.lead_id}`)}
                 >
-                  <p className="font-medium">{task.title || "Untitled task"}</p>
+                  <div>
+                    <p className="font-medium">{task.title || "Untitled task"}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      {task.assigned_to ? (agentMap.get(task.assigned_to) ?? "Unknown") : "Unassigned"}
+                    </p>
+                  </div>
                   <Badge variant="outline" className="border-rose-400 text-rose-500">
                     {formatOverdue(task.due_date)}
                   </Badge>
