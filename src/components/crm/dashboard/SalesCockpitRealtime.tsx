@@ -447,6 +447,21 @@ export default function SalesCockpitRealtime({ user, scope = "all" }: SalesCockp
       .slice(0, 8);
   }, [leads]);
 
+  function formatSourceName(source: string): string {
+    const map: Record<string, string> = {
+      facebook_lead_ads: "Facebook Lead Ads",
+      meta_ads: "Meta Ads",
+      website_form: "Website Form",
+      website: "Website",
+      organic_landing: "Organic",
+      google_ads: "Google Ads",
+      referral: "Referral",
+      manual: "Manual Entry",
+      landing_page: "Landing Page",
+    };
+    return map[source] ?? source.split("_").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+  }
+
   return (
     <div className="space-y-4">
       {error ? <p className="text-sm text-rose-600 dark:text-rose-300">{error}</p> : null}
@@ -503,7 +518,7 @@ export default function SalesCockpitRealtime({ user, scope = "all" }: SalesCockp
             sourcePerformance.map((source) => (
               <div key={source.source} className="flex items-center justify-between rounded border p-2 text-sm">
                 <div>
-                  <p className="font-medium">{source.source}</p>
+                  <p className="font-medium">{formatSourceName(source.source)}</p>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
                     {source.total} leads · {source.qualified} qualified
                   </p>
@@ -525,7 +540,12 @@ export default function SalesCockpitRealtime({ user, scope = "all" }: SalesCockp
               <LineChart data={monthlyRevenueForecast}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="label" />
-                <YAxis />
+                <YAxis tickFormatter={(value: number) => {
+                  if (value >= 10000000) return `₹${(value / 10000000).toFixed(1)}Cr`;
+                  if (value >= 100000) return `₹${(value / 100000).toFixed(1)}L`;
+                  if (value >= 1000) return `₹${(value / 1000).toFixed(0)}K`;
+                  return `₹${value}`;
+                }} />
                 <Tooltip />
                 <Line type="monotone" dataKey="forecast" stroke="#0f766e" strokeWidth={2} dot={false} />
                 <Line type="monotone" dataKey="won" stroke="#16a34a" strokeWidth={2} dot={false} />
