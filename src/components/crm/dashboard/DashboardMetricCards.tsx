@@ -11,7 +11,7 @@ import { getBrowserClient } from "@/lib/supabase/browserClient";
 type LeadRow = {
   id: string;
   created_at: string | null;
-  first_contact_at: string | null; // ⚠️ Verify this column exists on crm_leads
+  first_contact_at: string | null;
   stage_id: string | null;
   assigned_to: string | null;
   name: string | null;
@@ -84,90 +84,180 @@ function formatOverdue(dueDateIso: string | null): string {
   return `${Math.floor(diffHours / 24)}d overdue`;
 }
 
-function responseColor(avgMins: number | null): string {
-  if (avgMins === null) return "inherit";
-  if (avgMins < 15) return "var(--color-text-success)";
-  if (avgMins <= 30) return "var(--color-text-warning)";
-  return "var(--color-text-danger)";
+function responseBadgeStyle(avgMins: number | null): React.CSSProperties {
+  const base: React.CSSProperties = {
+    display: "inline-block",
+    padding: "2px 8px",
+    borderRadius: 20,
+    fontSize: 11,
+    fontWeight: 500,
+  };
+  if (avgMins === null) return { ...base, background: "transparent", color: "var(--color-text-secondary)" };
+  if (avgMins < 15)
+    return { ...base, background: "var(--color-background-success)", color: "var(--color-text-success)" };
+  if (avgMins <= 30)
+    return { ...base, background: "var(--color-background-warning)", color: "var(--color-text-warning)" };
+  return { ...base, background: "var(--color-background-danger)", color: "var(--color-text-danger)" };
 }
 
 // ---------------------------------------------------------------------------
-// Skeleton
+// Shimmer skeleton
 // ---------------------------------------------------------------------------
 
-const skeletonStyle: React.CSSProperties = {
-  background: "var(--color-background-tertiary)",
-  borderRadius: "10px",
-  animation: "pulse 1.5s ease-in-out infinite",
+const SHIMMER_STYLE = `
+  @keyframes shimmer {
+    0%   { background-position: 200% 0 }
+    100% { background-position: -200% 0 }
+  }
+  .dmc-shimmer {
+    background: linear-gradient(
+      90deg,
+      var(--color-background-secondary) 25%,
+      var(--color-background-tertiary) 50%,
+      var(--color-background-secondary) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: var(--border-radius-lg, 12px);
+    border: 1px solid var(--color-border-tertiary);
+  }
+`;
+
+function SkeletonCard({ h = 88 }: { h?: number }) {
+  return <div className="dmc-shimmer" style={{ height: h }} />;
+}
+
+// ---------------------------------------------------------------------------
+// Card primitives
+// ---------------------------------------------------------------------------
+
+const CARD_BASE: React.CSSProperties = {
+  background: "var(--color-background-primary)",
+  border: "1px solid var(--color-border-tertiary)",
+  borderRadius: "var(--border-radius-lg, 12px)",
+  padding: "1.25rem 1.5rem",
+  transition: "border-color 0.15s",
+  cursor: "pointer",
 };
-
-function SkeletonBlock({ h = 80, w = "100%" }: { h?: number; w?: string }) {
-  return <div style={{ ...skeletonStyle, height: h, width: w }} />;
-}
-
-// ---------------------------------------------------------------------------
-// Metric card
-// ---------------------------------------------------------------------------
 
 interface MetricCardProps {
   label: string;
   value: number | string;
+  subtext?: string;
   onClick: () => void;
-  accentColor?: string;
+  accentLeft?: "danger" | "success";
 }
 
-function MetricCard({ label, value, onClick, accentColor }: MetricCardProps) {
+function MetricCard({ label, value, subtext, onClick, accentLeft }: MetricCardProps) {
   const [hovered, setHovered] = useState(false);
 
-  const cardStyle: React.CSSProperties = {
-    background: hovered
-      ? "var(--color-background-primary)"
-      : "var(--color-background-secondary)",
-    border: hovered
-      ? "0.5px solid var(--color-border-secondary)"
-      : "0.5px solid transparent",
-    borderLeft: accentColor ? `3px solid ${accentColor}` : undefined,
-    borderRadius: "var(--border-radius-md, 10px)",
-    padding: "14px 16px",
-    cursor: "pointer",
-    position: "relative",
-    transition: "background 0.15s, border 0.15s",
+  const style: React.CSSProperties = {
+    ...CARD_BASE,
+    borderColor: hovered ? "var(--color-border-secondary)" : "var(--color-border-tertiary)",
+    borderLeft: accentLeft
+      ? `3px solid var(--color-border-${accentLeft})`
+      : `1px solid ${hovered ? "var(--color-border-secondary)" : "var(--color-border-tertiary)"}`,
   };
+
+  const valueColor =
+    accentLeft === "danger"
+      ? "var(--color-text-danger)"
+      : accentLeft === "success"
+      ? "var(--color-text-success)"
+      : "var(--color-text-primary)";
 
   return (
     <div
-      style={cardStyle}
+      style={style}
       onClick={onClick}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
       <p
         style={{
-          fontSize: 12,
+          fontSize: 13,
+          fontWeight: 400,
           color: "var(--color-text-secondary)",
-          marginBottom: 6,
-          marginTop: 0,
+          margin: "0 0 8px",
         }}
       >
         {label}
       </p>
-      <p style={{ fontSize: 26, fontWeight: 500, margin: 0 }}>{value}</p>
-      {hovered && (
-        <span
-          style={{
-            position: "absolute",
-            top: 12,
-            right: 14,
-            fontSize: 14,
-            color: "var(--color-text-secondary)",
-          }}
-        >
-          →
-        </span>
+      <p style={{ fontSize: 28, fontWeight: 600, color: valueColor, lineHeight: 1, margin: 0 }}>
+        {value}
+      </p>
+      {subtext && (
+        <p style={{ fontSize: 11, color: "var(--color-text-tertiary)", margin: "6px 0 0" }}>
+          {subtext}
+        </p>
       )}
     </div>
   );
 }
+
+// ---------------------------------------------------------------------------
+// Pipeline stage card (needs its own hover state)
+// ---------------------------------------------------------------------------
+
+function StageCard({
+  stage,
+  onClick,
+}: {
+  stage: StageWithCount;
+  onClick: () => void;
+}) {
+  const [hovered, setHovered] = useState(false);
+  return (
+    <div
+      onClick={onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        ...CARD_BASE,
+        padding: "1rem 1.25rem",
+        textAlign: "center",
+        borderColor: hovered ? "var(--color-border-secondary)" : "var(--color-border-tertiary)",
+      }}
+    >
+      <p
+        style={{
+          fontSize: 22,
+          fontWeight: 600,
+          color: "var(--color-text-primary)",
+          margin: "0 0 4px",
+          lineHeight: 1,
+        }}
+      >
+        {stage.count}
+      </p>
+      <p
+        style={{
+          fontSize: 12,
+          color: "var(--color-text-secondary)",
+          margin: 0,
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+        }}
+      >
+        {stage.name}
+      </p>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Section label
+// ---------------------------------------------------------------------------
+
+const SECTION_LABEL: React.CSSProperties = {
+  fontSize: 11,
+  fontWeight: 500,
+  color: "var(--color-text-tertiary)",
+  textTransform: "uppercase",
+  letterSpacing: "0.05em",
+  margin: "24px 0 10px",
+};
 
 // ---------------------------------------------------------------------------
 // Main component
@@ -192,7 +282,6 @@ export default function DashboardMetricCards({
     async function fetchAll() {
       setLoading(true);
       try {
-        // Build queries
         let leadsQuery = supabase
           .from("crm_leads")
           .select("id, created_at, first_contact_at, stage_id, assigned_to, name");
@@ -215,7 +304,6 @@ export default function DashboardMetricCards({
             ? supabase.from("crm_users").select("id, full_name").eq("is_active", true)
             : Promise.resolve({ data: [] as AgentRow[], error: null });
 
-        // Run all independent queries in parallel
         const [stagesRes, leadsRes, taskRes, agentsRes] = await Promise.all([
           stagesQuery,
           leadsQuery,
@@ -225,7 +313,6 @@ export default function DashboardMetricCards({
 
         const stagesResult: StageRow[] = (stagesRes.data as StageRow[]) ?? [];
 
-        // Site visits query depends on stages result
         const siteVisitStage = stagesResult.find(
           (s) => /visit.*scheduled/i.test(s.name) || /site.*visit/i.test(s.name)
         );
@@ -242,7 +329,6 @@ export default function DashboardMetricCards({
           visitsResult = (visitData as VisitRow[]) ?? [];
         }
 
-        // Commit all state at once
         setStages(stagesResult);
         setLeads((leadsRes.data as LeadRow[]) ?? []);
         setOverdueTasks((taskRes.data as TaskRow[]) ?? []);
@@ -277,9 +363,7 @@ export default function DashboardMetricCards({
     (l) => !l.first_contact_at && l.created_at && l.created_at >= todayIso
   ).length;
 
-  const bookingStageId = stages.find((s) =>
-    s.name.toLowerCase().includes("book")
-  )?.id;
+  const bookingStageId = stages.find((s) => s.name.toLowerCase().includes("book"))?.id;
 
   const bookingsThisMonth = leads.filter(
     (l) => l.stage_id === bookingStageId && l.created_at && l.created_at >= firstDayOfMonth
@@ -313,10 +397,7 @@ export default function DashboardMetricCards({
 
         const responseTimes = agentLeads
           .filter(
-            (l) =>
-              l.first_contact_at &&
-              l.created_at &&
-              l.first_contact_at >= todayIso
+            (l) => l.first_contact_at && l.created_at && l.first_contact_at >= todayIso
           )
           .map((l) => {
             const created = new Date(l.created_at!).getTime();
@@ -330,9 +411,7 @@ export default function DashboardMetricCards({
             ? Math.round(responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length)
             : null;
 
-        const overdueTaskCount = overdueTasks.filter(
-          (t) => t.assigned_to === agent.id
-        ).length;
+        const overdueTaskCount = overdueTasks.filter((t) => t.assigned_to === agent.id).length;
 
         return {
           agentId: agent.id,
@@ -348,23 +427,50 @@ export default function DashboardMetricCards({
   })();
 
   // ---------------------------------------------------------------------------
-  // Render — loading skeleton
+  // Render — skeleton
   // ---------------------------------------------------------------------------
 
   if (loading) {
     return (
       <>
-        <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}`}</style>
-        <div style={{ display: "flex", flexDirection: "column", gap: 16, marginBottom: "2rem" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 12 }}>
-            {Array.from({ length: 4 }).map((_, i) => <SkeletonBlock key={i} h={78} />)}
+        <style>{SHIMMER_STYLE}</style>
+        <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+          <div style={{ height: 34 }} /> {/* section label placeholder */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(4, 1fr)",
+              gap: 12,
+            }}
+            className="dmc-snapshot-grid"
+          >
+            {Array.from({ length: 4 }).map((_, i) => (
+              <SkeletonCard key={i} h={96} />
+            ))}
           </div>
-          <div style={{ display: "flex", gap: 10, overflowX: "auto" }}>
-            {Array.from({ length: 5 }).map((_, i) => <SkeletonBlock key={i} h={60} w="120px" />)}
+          <div style={{ height: 34 }} />
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(100px, 1fr))",
+              gap: 10,
+            }}
+          >
+            {Array.from({ length: 5 }).map((_, i) => (
+              <SkeletonCard key={i} h={72} />
+            ))}
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <SkeletonBlock h={180} />
-            <SkeletonBlock h={180} />
+          <div style={{ height: 34 }} />
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(2, 1fr)",
+              gap: 12,
+            }}
+            className="dmc-panel-grid"
+          >
+            <SkeletonCard h={200} />
+            <SkeletonCard h={200} />
           </div>
         </div>
       </>
@@ -375,163 +481,183 @@ export default function DashboardMetricCards({
   // Render — full UI
   // ---------------------------------------------------------------------------
 
-  const sectionLabel: React.CSSProperties = {
-    fontSize: 10,
-    fontWeight: 700,
-    textTransform: "uppercase",
-    letterSpacing: "0.14em",
-    color: "var(--color-text-secondary)",
-    marginBottom: 8,
-    marginTop: 0,
-  };
-
   const panel: React.CSSProperties = {
-    background: "var(--color-background-secondary)",
-    border: "0.5px solid var(--color-border-tertiary)",
-    borderRadius: "var(--border-radius-md, 10px)",
-    padding: 16,
+    ...CARD_BASE,
+    cursor: "default",
   };
 
-  const panelHeader: React.CSSProperties = {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 12,
-  };
-
-  const badge = (bgVar: string): React.CSSProperties => ({
+  const countBadge = (variant: "danger" | "info" | "neutral"): React.CSSProperties => ({
     display: "inline-block",
-    background: bgVar,
-    color: "white",
-    borderRadius: 99,
-    fontSize: 11,
-    fontWeight: 600,
-    padding: "2px 8px",
+    background:
+      variant === "danger"
+        ? "var(--color-background-danger)"
+        : variant === "info"
+        ? "var(--color-background-info)"
+        : "var(--color-background-tertiary)",
+    color:
+      variant === "danger"
+        ? "var(--color-text-danger)"
+        : variant === "info"
+        ? "var(--color-text-info)"
+        : "var(--color-text-secondary)",
+    padding: "2px 10px",
+    borderRadius: 20,
+    fontSize: 12,
+    fontWeight: 500,
     cursor: "pointer",
   });
 
-  const rowStyle: React.CSSProperties = {
+  const rowBase: React.CSSProperties = {
     display: "flex",
     alignItems: "center",
     gap: 10,
-    padding: "8px 0",
+    padding: "10px 0",
     borderBottom: "0.5px solid var(--color-border-tertiary)",
     cursor: "pointer",
+    borderRadius: 0,
+    transition: "background 0.1s, border-radius 0.1s, padding 0.1s",
   };
 
   return (
     <>
-      <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}`}</style>
-      <div style={{ display: "flex", flexDirection: "column", gap: 20, marginBottom: "2rem" }}>
+      <style>{`
+        ${SHIMMER_STYLE}
+        @media (max-width: 768px) {
+          .dmc-snapshot-grid { grid-template-columns: repeat(2, 1fr) !important; }
+          .dmc-panel-grid { grid-template-columns: 1fr !important; }
+        }
+        @media (max-width: 480px) {
+          .dmc-snapshot-grid { grid-template-columns: 1fr !important; }
+        }
+        .dmc-row:hover {
+          background: var(--color-background-secondary) !important;
+          border-radius: 6px !important;
+          padding: 10px 8px !important;
+          border-bottom-color: transparent !important;
+        }
+        .dmc-table-row:hover td {
+          background: var(--color-background-secondary);
+        }
+      `}</style>
+
+      <div style={{ display: "flex", flexDirection: "column" }}>
 
         {/* ------------------------------------------------------------------ */}
         {/* Section 1 — Today's snapshot                                        */}
         {/* ------------------------------------------------------------------ */}
-        <div>
-          <p style={sectionLabel}>Today&rsquo;s snapshot</p>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))",
-              gap: 12,
-            }}
-          >
-            <MetricCard
-              label="Leads today"
-              value={leadsToday}
-              onClick={() => router.push("/leads?filter=today")}
-            />
-            <MetricCard
-              label="Contacted today"
-              value={contactedToday}
-              onClick={() => router.push("/leads?filter=contacted_today")}
-              accentColor={contactedToday > 0 ? "var(--color-text-success)" : undefined}
-            />
-            <MetricCard
-              label="Pending contact"
-              value={pendingContact}
-              onClick={() => router.push("/leads?filter=pending_contact")}
-              accentColor={pendingContact > 0 ? "var(--color-text-danger)" : undefined}
-            />
-            <MetricCard
-              label="Bookings this month"
-              value={bookingsThisMonth}
-              onClick={() => router.push("/leads?filter=bookings_month")}
-            />
-          </div>
+        <p style={SECTION_LABEL}>Today&rsquo;s snapshot</p>
+        <div
+          className="dmc-snapshot-grid"
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(4, 1fr)",
+            gap: 12,
+          }}
+        >
+          <MetricCard
+            label="Leads today"
+            value={leadsToday}
+            onClick={() => router.push("/leads?filter=today")}
+          />
+          <MetricCard
+            label="Contacted today"
+            value={contactedToday}
+            accentLeft={contactedToday > 0 ? "success" : undefined}
+            onClick={() => router.push("/leads?filter=contacted_today")}
+          />
+          <MetricCard
+            label="Pending contact"
+            value={pendingContact}
+            accentLeft={pendingContact > 0 ? "danger" : undefined}
+            subtext={pendingContact > 0 ? "Needs follow-up" : undefined}
+            onClick={() => router.push("/leads?filter=pending_contact")}
+          />
+          <MetricCard
+            label="Bookings this month"
+            value={bookingsThisMonth}
+            onClick={() => router.push("/leads?filter=bookings_month")}
+          />
         </div>
 
         {/* ------------------------------------------------------------------ */}
         {/* Section 2 — Pipeline by stage                                       */}
         {/* ------------------------------------------------------------------ */}
         {pipelineStages.length > 0 && (
-          <div>
-            <p style={sectionLabel}>Pipeline by stage</p>
-            <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 4 }}>
+          <>
+            <p style={SECTION_LABEL}>Pipeline by stage</p>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(100px, 1fr))",
+                gap: 10,
+              }}
+            >
               {pipelineStages.map((stage) => (
-                <div
+                <StageCard
                   key={stage.id}
+                  stage={stage}
                   onClick={() => router.push(`/leads?filter=stage_${stage.id}`)}
-                  style={{
-                    flexShrink: 0,
-                    background: "var(--color-background-secondary)",
-                    border: "0.5px solid var(--color-border-tertiary)",
-                    borderRadius: 8,
-                    padding: "10px 14px",
-                    textAlign: "center",
-                    cursor: "pointer",
-                    minWidth: 100,
-                  }}
-                >
-                  <p style={{ fontSize: 20, fontWeight: 500, margin: "0 0 4px" }}>{stage.count}</p>
-                  <p style={{ fontSize: 11, color: "var(--color-text-secondary)", margin: 0 }}>
-                    {stage.name}
-                  </p>
-                </div>
+                />
               ))}
             </div>
-          </div>
+          </>
         )}
 
         {/* ------------------------------------------------------------------ */}
         {/* Section 3 — Site visits + Overdue tasks                             */}
         {/* ------------------------------------------------------------------ */}
+        <p style={SECTION_LABEL}>Activity</p>
         <div
+          className="dmc-panel-grid"
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+            gridTemplateColumns: "repeat(2, 1fr)",
             gap: 12,
           }}
         >
-          {/* Left — Site visits */}
+          {/* Site visits */}
           <div style={panel}>
-            <div style={panelHeader}>
-              <p style={{ fontSize: 13, fontWeight: 600, margin: 0 }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: 12,
+              }}
+            >
+              <p style={{ fontSize: 14, fontWeight: 500, margin: 0 }}>
                 Site visits — next 7 days
               </p>
               <span
-                style={badge("var(--color-background-info)")}
+                style={countBadge("info")}
                 onClick={() => router.push("/leads?filter=visits_upcoming")}
               >
                 {upcomingVisits.length}
               </span>
             </div>
             {upcomingVisits.length === 0 ? (
-              <p style={{ fontSize: 12, color: "var(--color-text-secondary)", margin: 0 }}>
+              <p style={{ fontSize: 13, color: "var(--color-text-secondary)", margin: 0 }}>
                 No upcoming visits.
               </p>
             ) : (
-              upcomingVisits.slice(0, 3).map((visit) => (
+              upcomingVisits.slice(0, 4).map((visit, idx) => (
                 <div
                   key={visit.id}
-                  style={rowStyle}
+                  className="dmc-row"
+                  style={{
+                    ...rowBase,
+                    borderBottom:
+                      idx === Math.min(upcomingVisits.length, 4) - 1
+                        ? "none"
+                        : "0.5px solid var(--color-border-tertiary)",
+                  }}
                   onClick={() => router.push(`/leads/${visit.id}`)}
                 >
                   <div
                     style={{
                       flexShrink: 0,
-                      width: 32,
-                      height: 32,
+                      width: 30,
+                      height: 30,
                       borderRadius: "50%",
                       background: "var(--color-background-info)",
                       display: "flex",
@@ -544,17 +670,44 @@ export default function DashboardMetricCards({
                   >
                     {getInitials(visit.name)}
                   </div>
-                  <div style={{ minWidth: 0 }}>
-                    <p style={{ fontSize: 13, fontWeight: 600, margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <p
+                      style={{
+                        fontSize: 13,
+                        fontWeight: 500,
+                        margin: 0,
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        color: "var(--color-text-primary)",
+                      }}
+                    >
                       {visit.name || "—"}
                     </p>
-                    <p style={{ fontSize: 11, color: "var(--color-text-secondary)", margin: "2px 0 0" }}>
+                    <p
+                      style={{
+                        fontSize: 11,
+                        color: "var(--color-text-secondary)",
+                        margin: "2px 0 0",
+                      }}
+                    >
                       {stages.find((s) => s.id === visit.stage_id)?.name ?? "—"}
                     </p>
                   </div>
-                  <p style={{ fontSize: 11, color: "var(--color-text-secondary)", marginLeft: "auto", whiteSpace: "nowrap" }}>
+                  <p
+                    style={{
+                      fontSize: 11,
+                      color: "var(--color-text-tertiary)",
+                      marginLeft: "auto",
+                      whiteSpace: "nowrap",
+                      flexShrink: 0,
+                    }}
+                  >
                     {visit.created_at
-                      ? new Date(visit.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short" })
+                      ? new Date(visit.created_at).toLocaleDateString("en-IN", {
+                          day: "numeric",
+                          month: "short",
+                        })
                       : "—"}
                   </p>
                 </div>
@@ -562,38 +715,66 @@ export default function DashboardMetricCards({
             )}
           </div>
 
-          {/* Right — Overdue tasks */}
+          {/* Overdue tasks */}
           <div style={panel}>
-            <div style={panelHeader}>
-              <p style={{ fontSize: 13, fontWeight: 600, margin: 0 }}>Overdue tasks</p>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: 12,
+              }}
+            >
+              <p style={{ fontSize: 14, fontWeight: 500, margin: 0 }}>Overdue tasks</p>
               <span
-                style={badge(
-                  overdueTasks.length > 0
-                    ? "var(--color-background-danger)"
-                    : "var(--color-background-tertiary)"
-                )}
+                style={countBadge(overdueTasks.length > 0 ? "danger" : "neutral")}
                 onClick={() => router.push("/tasks?filter=overdue")}
               >
                 {overdueTasks.length}
               </span>
             </div>
             {overdueTasks.length === 0 ? (
-              <p style={{ fontSize: 12, color: "var(--color-text-secondary)", margin: 0 }}>
+              <p style={{ fontSize: 13, color: "var(--color-text-secondary)", margin: 0 }}>
                 No overdue tasks.
               </p>
             ) : (
-              overdueTasks.slice(0, 3).map((task) => (
+              overdueTasks.slice(0, 4).map((task, idx) => (
                 <div
                   key={task.id}
-                  style={rowStyle}
+                  className="dmc-row"
+                  style={{
+                    ...rowBase,
+                    borderBottom:
+                      idx === Math.min(overdueTasks.length, 4) - 1
+                        ? "none"
+                        : "0.5px solid var(--color-border-tertiary)",
+                  }}
                   onClick={() => task.lead_id && router.push(`/leads/${task.lead_id}`)}
                 >
                   <div style={{ minWidth: 0, flex: 1 }}>
-                    <p style={{ fontSize: 13, fontWeight: 500, margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    <p
+                      style={{
+                        fontSize: 13,
+                        fontWeight: 500,
+                        margin: 0,
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        color: "var(--color-text-primary)",
+                      }}
+                    >
                       {task.title || "Untitled task"}
                     </p>
                   </div>
-                  <p style={{ fontSize: 11, color: "var(--color-text-danger)", marginLeft: "auto", whiteSpace: "nowrap", flexShrink: 0 }}>
+                  <p
+                    style={{
+                      fontSize: 11,
+                      color: "var(--color-text-danger)",
+                      marginLeft: "auto",
+                      whiteSpace: "nowrap",
+                      flexShrink: 0,
+                    }}
+                  >
                     {formatOverdue(task.due_date)}
                   </p>
                 </div>
@@ -603,33 +784,39 @@ export default function DashboardMetricCards({
         </div>
 
         {/* ------------------------------------------------------------------ */}
-        {/* Section 4 — Agent performance table (scope=all only)                */}
+        {/* Section 4 — Agent performance (scope=all only)                      */}
         {/* ------------------------------------------------------------------ */}
         {scope === "all" && agentPerf.length > 0 && (
-          <div>
-            <p style={sectionLabel}>Agent performance — today</p>
+          <>
+            <p style={SECTION_LABEL}>Agent performance — today</p>
             <div
               style={{
-                ...panel,
+                ...CARD_BASE,
+                cursor: "default",
                 padding: 0,
                 overflow: "hidden",
               }}
             >
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                 <thead>
-                  <tr style={{ background: "var(--color-background-tertiary)" }}>
-                    {["Agent", "Leads today", "Contacted", "Avg response", "Overdue tasks"].map((h) => (
+                  <tr
+                    style={{
+                      borderBottom: "1px solid var(--color-border-tertiary)",
+                    }}
+                  >
+                    {["Agent", "Leads today", "Contacted", "Avg response", "Overdue"].map((h) => (
                       <th
                         key={h}
                         style={{
-                          padding: "10px 14px",
+                          padding: "8px 12px",
                           textAlign: "left",
-                          fontSize: 10,
-                          fontWeight: 700,
+                          fontSize: 11,
+                          fontWeight: 500,
                           textTransform: "uppercase",
-                          letterSpacing: "0.12em",
-                          color: "var(--color-text-secondary)",
-                          borderBottom: "0.5px solid var(--color-border-tertiary)",
+                          letterSpacing: "0.05em",
+                          color: "var(--color-text-tertiary)",
+                          borderBottom: "1px solid var(--color-border-tertiary)",
+                          background: "var(--color-background-primary)",
                         }}
                       >
                         {h}
@@ -638,51 +825,52 @@ export default function DashboardMetricCards({
                   </tr>
                 </thead>
                 <tbody>
-                  {agentPerf.map((row) => (
+                  {agentPerf.map((row, idx) => (
                     <tr
                       key={row.agentId}
+                      className="dmc-table-row"
                       onClick={() => router.push(`/leads?filter=agent_${row.agentId}`)}
-                      style={{ cursor: "pointer" }}
-                      onMouseEnter={(e) =>
-                        (e.currentTarget.style.background = "var(--color-background-tertiary)")
-                      }
-                      onMouseLeave={(e) =>
-                        (e.currentTarget.style.background = "transparent")
-                      }
+                      style={{
+                        cursor: "pointer",
+                        borderBottom:
+                          idx < agentPerf.length - 1
+                            ? "0.5px solid var(--color-border-tertiary)"
+                            : "none",
+                      }}
                     >
-                      <td style={{ padding: "10px 14px", fontWeight: 500, borderBottom: "0.5px solid var(--color-border-tertiary)" }}>
+                      <td style={{ padding: "12px", fontWeight: 500, color: "var(--color-text-primary)" }}>
                         {row.agentName}
                       </td>
-                      <td style={{ padding: "10px 14px", borderBottom: "0.5px solid var(--color-border-tertiary)" }}>
+                      <td style={{ padding: "12px", color: "var(--color-text-primary)" }}>
                         {row.leadsToday}
                       </td>
-                      <td style={{ padding: "10px 14px", borderBottom: "0.5px solid var(--color-border-tertiary)" }}>
+                      <td style={{ padding: "12px", color: "var(--color-text-primary)" }}>
                         {row.contactedToday}
                       </td>
-                      <td
-                        style={{
-                          padding: "10px 14px",
-                          color: responseColor(row.avgResponseMins),
-                          borderBottom: "0.5px solid var(--color-border-tertiary)",
-                        }}
-                      >
-                        {row.avgResponseMins !== null ? `${row.avgResponseMins}m` : "—"}
+                      <td style={{ padding: "12px" }}>
+                        {row.avgResponseMins !== null ? (
+                          <span style={responseBadgeStyle(row.avgResponseMins)}>
+                            {row.avgResponseMins}m
+                          </span>
+                        ) : (
+                          <span style={{ color: "var(--color-text-tertiary)" }}>—</span>
+                        )}
                       </td>
-                      <td
-                        style={{
-                          padding: "10px 14px",
-                          color: row.overdueTaskCount > 0 ? "var(--color-text-danger)" : "inherit",
-                          borderBottom: "0.5px solid var(--color-border-tertiary)",
-                        }}
-                      >
-                        {row.overdueTaskCount}
+                      <td style={{ padding: "12px" }}>
+                        {row.overdueTaskCount > 0 ? (
+                          <span style={responseBadgeStyle(999)}>
+                            {row.overdueTaskCount}
+                          </span>
+                        ) : (
+                          <span style={{ color: "var(--color-text-tertiary)" }}>0</span>
+                        )}
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-          </div>
+          </>
         )}
 
       </div>
