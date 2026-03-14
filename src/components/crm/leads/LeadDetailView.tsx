@@ -729,11 +729,17 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
 
   const handleStageChange = useCallback(async (stageId: string) => {
     setLead((prev) => prev ? { ...prev, stage_id: stageId } : prev);
-    await fetch("/api/crm/pipeline/update-stage", {
+    const res = await fetch("/api/crm/pipeline/update-stage", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ leadId, stageId, userId: currentUser.id }),
+      body: JSON.stringify({ leadId, toStageId: stageId, userId: currentUser.id }),
     });
+    if (!res.ok) {
+      const err = await res.text();
+      console.error("[StageChange] Failed:", res.status, err);
+      // Revert optimistic update
+      setLead((prev) => prev ? { ...prev, stage_id: prev.stage_id } : prev);
+    }
   }, [leadId, currentUser.id]);
 
   const handleMarkContacted = useCallback(async () => {
@@ -1077,11 +1083,15 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
                       onChange={async (e) => {
                         const newPriority = e.target.value;
                         setEditPriority(newPriority);
-                        await fetch(`/api/crm/leads/${lead.id}`, {
+                        const res = await fetch(`/api/crm/leads/${lead.id}`, {
                           method: "PATCH",
                           headers: { "Content-Type": "application/json" },
                           body: JSON.stringify({ priority: newPriority }),
                         });
+                        if (!res.ok) {
+                          const err = await res.text();
+                          console.error("[Priority] PATCH failed:", res.status, err, "value sent:", newPriority);
+                        }
                         setLead((prev) => prev ? { ...prev, priority: newPriority } : prev);
                       }}
                       className="w-full h-8 text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
