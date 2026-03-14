@@ -5,6 +5,7 @@ import { routeLeadByOwnership } from "@/services/crmLeadRoutingService";
 import { extractLeadAttribution } from "@/lib/crm/leadAttribution";
 import { mapBehaviorToLead } from "@/services/behaviorLeadMappingService";
 import { toBudgetNumber } from "@/lib/crm/budget";
+import { onNewLeadAutomation } from "@/services/whatsappAutomationService";
 
 export type LeadType =
   | "PROJECT_INTEREST"
@@ -225,6 +226,12 @@ export async function submitLead(formData: SubmitLeadData): Promise<SubmitLeadRe
       } catch (e) {
         console.warn("[submitLead] routeLeadByOwnership failed (non-critical):", e instanceof Error ? e.message : e);
       }
+
+      onNewLeadAutomation({
+        leadId: String(inserted.id),
+        leadPhone: normalizedPhone,
+        sentBy: "9021aff0-6ba3-4f7b-852f-561862fbc1ac",
+      }).catch(e => console.warn("[WA Greeting] submit-lead failed:", e));
     }
 
     return { success: true };
