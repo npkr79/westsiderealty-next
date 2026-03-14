@@ -19,6 +19,7 @@ const FIELD_MAP: Record<string, string> = {
   status:               "status",
   priority:             "priority",
   notes:                "notes",
+  timeline:             "timeline",
 };
 
 // Numeric fields — coerce string → number, null stays null

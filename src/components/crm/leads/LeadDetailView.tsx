@@ -269,9 +269,10 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
   const [editBudgetMin, setEditBudgetMin] = useState("");
   const [editBudgetMax, setEditBudgetMax] = useState("");
 
-  // Location / Buyer type
+  // Location / Buyer type / Timeline
   const [editLocation, setEditLocation] = useState("");
   const [editBuyerType, setEditBuyerType] = useState("");
+  const [editTimeline, setEditTimeline] = useState("");
 
   // Assigned agent
   const [agents, setAgents] = useState<AgentRecord[]>([]);
@@ -468,6 +469,7 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
       setEditBudgetMax(lead.budget_max != null ? String(lead.budget_max) : "");
       setEditLocation(lead.location || "");
       setEditBuyerType(lead.buyer_type || "");
+      setEditTimeline((lead as any).timeline || "");
       setEditAssignedTo(lead.assigned_to || "");
     }
   }, [lead?.id]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -704,6 +706,7 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
           budget_max: editBudgetMax !== "" ? Number(editBudgetMax) : null,
           location_preference: editLocation || null,
           buyer_type: editBuyerType || null,
+          timeline: editTimeline || null,
           assigned_to: editAssignedTo || null,
         }),
       });
@@ -725,7 +728,7 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
     }
     setSavingProfile(false);
   }, [
-    editBudgetMin, editBudgetMax, editLocation, editBuyerType, editAssignedTo,
+    editBudgetMin, editBudgetMax, editLocation, editBuyerType, editTimeline, editAssignedTo,
     lead?.assigned_to, leadId, currentUser.id, supabase, loadLead,
   ]);
 
@@ -1019,8 +1022,8 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
 
                 <hr className="border-slate-100 dark:border-slate-800" />
 
-                {/* Location + Buyer Type */}
-                <div className="grid gap-3 md:grid-cols-2">
+                {/* Location + Buyer Type + Timeline */}
+                <div className="grid gap-3 md:grid-cols-3">
                   <div>
                     <p className="text-slate-500 dark:text-slate-400 text-xs mb-1">Location Preference</p>
                     <Input
@@ -1043,6 +1046,22 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
                       <option value="Investor">Investor</option>
                       <option value="NRI">NRI</option>
                       <option value="Corporate">Corporate</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ fontSize: "12px", color: "var(--color-text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: "4px" }}>Purchase Timeline</label>
+                    <select
+                      value={editTimeline}
+                      onChange={(e) => setEditTimeline(e.target.value)}
+                      style={{ width: "100%", border: "1px solid var(--color-border-secondary, #e2e8f0)", borderRadius: "var(--border-radius-md, 6px)", padding: "6px 8px", fontSize: "14px", color: "var(--color-text-primary, inherit)", background: "var(--color-background-primary, transparent)" }}
+                    >
+                      <option value="">— Select —</option>
+                      <option value="immediate">Immediate (within 1 month)</option>
+                      <option value="1-3 months">1–3 months</option>
+                      <option value="3-6 months">3–6 months</option>
+                      <option value="6-12 months">6–12 months</option>
+                      <option value="over 1 year">Over 1 year</option>
+                      <option value="just exploring">Just exploring</option>
                     </select>
                   </div>
                 </div>
