@@ -348,7 +348,7 @@ export default function LeadsTableView({ currentUserRole, currentUserId }: Leads
                 >
                   {/* Header: Name + Status pill */}
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "10px" }}>
-                    <div style={{ fontSize: "16px", fontWeight: 600, color: "var(--color-text-primary, #f1f5f9)" }}>
+                    <div style={{ fontSize: "16px", fontWeight: 600, color: "var(--color-text-primary)", opacity: 1 }}>
                       {lead.name}
                     </div>
                     <span style={{
@@ -379,19 +379,19 @@ export default function LeadsTableView({ currentUserRole, currentUserId }: Leads
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
                     <div>
                       <div style={{ fontSize: "10px", color: "var(--color-text-tertiary, #64748b)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "2px" }}>Agent</div>
-                      <div style={{ fontSize: "13px", color: "var(--color-text-primary, #f1f5f9)", fontWeight: 500 }}>
+                      <div style={{ fontSize: "13px", color: "var(--color-text-primary)", fontWeight: 500 }}>
                         {lead.assigned_agent_name || "—"}
                       </div>
                     </div>
                     <div>
                       <div style={{ fontSize: "10px", color: "var(--color-text-tertiary, #64748b)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "2px" }}>Source</div>
-                      <div style={{ fontSize: "13px", color: "var(--color-text-primary, #f1f5f9)" }}>
+                      <div style={{ fontSize: "13px", color: "var(--color-text-primary)", fontWeight: 500 }}>
                         {formatSourceName(lead.source_type || lead.source_channel)}
                       </div>
                     </div>
                     <div>
                       <div style={{ fontSize: "10px", color: "var(--color-text-tertiary, #64748b)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "2px" }}>Budget</div>
-                      <div style={{ fontSize: "13px", color: "var(--color-text-primary, #f1f5f9)" }}>
+                      <div style={{ fontSize: "13px", color: "var(--color-text-primary)", fontWeight: 500 }}>
                         {(lead.budget_min || lead.budget_max)
                           ? `${fmt(lead.budget_min) ?? "?"} – ${fmt(lead.budget_max) ?? "?"}`
                           : "—"}
