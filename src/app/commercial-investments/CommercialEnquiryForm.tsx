@@ -3,6 +3,17 @@
 import { useState } from "react";
 import { submitLead } from "@/app/actions/submit-lead";
 
+function parseBudgetRange(label: string): { min: number | null; max: number | null } {
+  const map: Record<string, { min: number; max: number | null }> = {
+    "₹50L – ₹1 Cr":   { min: 5000000,   max: 10000000 },
+    "₹1 Cr – ₹3 Cr":  { min: 10000000,  max: 30000000 },
+    "₹3 Cr – ₹5 Cr":  { min: 30000000,  max: 50000000 },
+    "₹5 Cr – ₹10 Cr": { min: 50000000,  max: 100000000 },
+    "₹10 Cr+":         { min: 100000000, max: null },
+  };
+  return map[label] ?? { min: null, max: null };
+}
+
 const inputStyle: React.CSSProperties = {
   border: "1px solid rgba(201,169,110,0.2)",
   background: "rgba(255,255,255,0.04)",
@@ -47,6 +58,8 @@ export default function CommercialEnquiryForm() {
           segment: "commercial-investments",
           source: "commercial-investments-page",
           budgetRange: formData.budget || null,
+          budget_min: parseBudgetRange(formData.budget).min,
+          budget_max: parseBudgetRange(formData.budget).max,
           timeline: formData.timeline || null,
           investment_stage: formData.stage || null,
           notes: `Commercial Investment Enquiry | Budget: ${formData.budget} | Stage: ${formData.stage} | Timeline: ${formData.timeline} | Message: ${formData.message}`,
