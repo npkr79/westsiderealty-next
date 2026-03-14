@@ -338,8 +338,8 @@ export default function LeadsTableView({ currentUserRole, currentUserId }: Leads
                   key={lead.id}
                   onClick={() => router.push(`/leads/${lead.id}`)}
                   style={{
-                    background: "var(--color-background-primary)",
-                    border: "0.5px solid var(--color-border-tertiary, #334155)",
+                    background: "var(--color-background-secondary)",
+                    border: "0.5px solid var(--color-border-secondary)",
                     borderRadius: "var(--border-radius-lg, 12px)",
                     padding: "14px 16px",
                     marginBottom: "8px",
@@ -348,8 +348,13 @@ export default function LeadsTableView({ currentUserRole, currentUserId }: Leads
                 >
                   {/* Header: Name + Status pill */}
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "10px" }}>
-                    <div style={{ fontSize: "16px", fontWeight: 600, color: "var(--color-text-primary)", opacity: 1 }}>
-                      {lead.name}
+                    <div style={{
+                      fontSize: "16px", fontWeight: 600,
+                      color: "var(--color-text-primary)",
+                      flex: 1, minWidth: 0,
+                      overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                    }}>
+                      {lead.name || "Unknown"}
                     </div>
                     <span style={{
                       padding: "3px 10px", borderRadius: "20px", fontSize: "12px",
@@ -362,35 +367,35 @@ export default function LeadsTableView({ currentUserRole, currentUserId }: Leads
 
                   {/* Phone row */}
                   <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "10px" }}>
-                    <span style={{ fontSize: "11px", color: "var(--color-text-tertiary, #64748b)" }}>Phone</span>
+                    <span style={{ fontSize: "11px", color: "var(--color-text-tertiary)" }}>Phone</span>
                     <a
                       href={`tel:${lead.phone}`}
                       onClick={(e) => e.stopPropagation()}
-                      style={{ fontSize: "14px", color: "var(--color-text-info, #38bdf8)", textDecoration: "none", fontWeight: 500 }}
+                      style={{ fontSize: "14px", color: "var(--color-text-info)", textDecoration: "none", fontWeight: 500 }}
                     >
                       {lead.phone}
                     </a>
                   </div>
 
                   {/* Divider */}
-                  <div style={{ height: "0.5px", background: "var(--color-border-tertiary, #334155)", marginBottom: "10px" }} />
+                  <div style={{ height: "0.5px", background: "var(--color-border-secondary)", marginBottom: "10px" }} />
 
                   {/* 2-col data grid */}
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
                     <div>
-                      <div style={{ fontSize: "10px", color: "var(--color-text-tertiary, #64748b)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "2px" }}>Agent</div>
+                      <div style={{ fontSize: "10px", color: "var(--color-text-tertiary)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "2px" }}>Agent</div>
                       <div style={{ fontSize: "13px", color: "var(--color-text-primary)", fontWeight: 500 }}>
                         {lead.assigned_agent_name || "—"}
                       </div>
                     </div>
                     <div>
-                      <div style={{ fontSize: "10px", color: "var(--color-text-tertiary, #64748b)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "2px" }}>Source</div>
+                      <div style={{ fontSize: "10px", color: "var(--color-text-tertiary)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "2px" }}>Source</div>
                       <div style={{ fontSize: "13px", color: "var(--color-text-primary)", fontWeight: 500 }}>
                         {formatSourceName(lead.source_type || lead.source_channel)}
                       </div>
                     </div>
                     <div>
-                      <div style={{ fontSize: "10px", color: "var(--color-text-tertiary, #64748b)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "2px" }}>Budget</div>
+                      <div style={{ fontSize: "10px", color: "var(--color-text-tertiary)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "2px" }}>Budget</div>
                       <div style={{ fontSize: "13px", color: "var(--color-text-primary)", fontWeight: 500 }}>
                         {(lead.budget_min || lead.budget_max)
                           ? `${fmt(lead.budget_min) ?? "?"} – ${fmt(lead.budget_max) ?? "?"}`
@@ -398,7 +403,7 @@ export default function LeadsTableView({ currentUserRole, currentUserId }: Leads
                       </div>
                     </div>
                     <div>
-                      <div style={{ fontSize: "10px", color: "var(--color-text-tertiary, #64748b)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "2px" }}>Buyer profile</div>
+                      <div style={{ fontSize: "10px", color: "var(--color-text-tertiary)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "2px" }}>Buyer profile</div>
                       <span style={{
                         padding: "2px 8px", borderRadius: "20px", fontSize: "11px", fontWeight: 500,
                         background: pCfg.bg, color: pCfg.color,
@@ -413,9 +418,9 @@ export default function LeadsTableView({ currentUserRole, currentUserId }: Leads
                     <div style={{
                       marginTop: "10px",
                       paddingTop: "8px",
-                      borderTop: "0.5px solid var(--color-border-tertiary, #334155)",
+                      borderTop: "0.5px solid var(--color-border-secondary)",
                       fontSize: "11px",
-                      color: "var(--color-text-tertiary, #64748b)",
+                      color: "var(--color-text-tertiary)",
                     }}>
                       Last activity · {new Date(lead.last_activity_at).toLocaleDateString("en-IN", {
                         day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit",
