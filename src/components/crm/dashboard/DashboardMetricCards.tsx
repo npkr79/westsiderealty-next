@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getBrowserClient } from "@/lib/supabase/browserClient";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -66,16 +68,6 @@ interface DashboardMetricCardsProps {
 // Helpers
 // ---------------------------------------------------------------------------
 
-function getInitials(name: string | null): string {
-  if (!name) return "?";
-  return name
-    .split(" ")
-    .map((w) => w[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
-}
-
 function formatOverdue(dueDateIso: string | null): string {
   if (!dueDateIso) return "overdue";
   const diffMs = Date.now() - new Date(dueDateIso).getTime();
@@ -84,188 +76,6 @@ function formatOverdue(dueDateIso: string | null): string {
   return `${Math.floor(diffHours / 24)}d overdue`;
 }
 
-function responseBadgeStyle(avgMins: number | null): React.CSSProperties {
-  const base: React.CSSProperties = {
-    display: "inline-block",
-    padding: "2px 8px",
-    borderRadius: 20,
-    fontSize: 11,
-    fontWeight: 500,
-  };
-  if (avgMins === null) return { ...base, background: "transparent", color: "var(--color-text-secondary)" };
-  if (avgMins < 15)
-    return { ...base, background: "var(--color-background-success)", color: "var(--color-text-success)" };
-  if (avgMins <= 30)
-    return { ...base, background: "var(--color-background-warning)", color: "var(--color-text-warning)" };
-  return { ...base, background: "var(--color-background-danger)", color: "var(--color-text-danger)" };
-}
-
-// ---------------------------------------------------------------------------
-// Shimmer skeleton
-// ---------------------------------------------------------------------------
-
-const SHIMMER_STYLE = `
-  @keyframes shimmer {
-    0%   { background-position: 200% 0 }
-    100% { background-position: -200% 0 }
-  }
-  .dmc-shimmer {
-    background: linear-gradient(
-      90deg,
-      var(--color-background-secondary) 25%,
-      var(--color-background-tertiary) 50%,
-      var(--color-background-secondary) 75%
-    );
-    background-size: 200% 100%;
-    animation: shimmer 1.5s infinite;
-    border-radius: var(--border-radius-lg, 12px);
-    border: 0.5px solid var(--color-border-secondary);
-  }
-`;
-
-function SkeletonCard({ h = 88 }: { h?: number }) {
-  return <div className="dmc-shimmer" style={{ height: h }} />;
-}
-
-// ---------------------------------------------------------------------------
-// Card primitives
-// ---------------------------------------------------------------------------
-
-const CARD_BASE: React.CSSProperties = {
-  background: "var(--color-background-primary)",
-  border: "0.5px solid var(--color-border-secondary)",
-  borderRadius: "var(--border-radius-lg, 12px)",
-  padding: "1.5rem",
-  transition: "border-color 0.15s",
-  cursor: "pointer",
-};
-
-interface MetricCardProps {
-  label: string;
-  value: number | string;
-  subtext?: string;
-  onClick: () => void;
-  accentLeft?: "danger" | "success";
-}
-
-function MetricCard({ label, value, subtext, onClick, accentLeft }: MetricCardProps) {
-  const [hovered, setHovered] = useState(false);
-
-  const accentColor =
-    accentLeft === "danger"
-      ? "var(--color-border-danger, var(--color-text-danger))"
-      : accentLeft === "success"
-      ? "var(--color-border-success, var(--color-text-success))"
-      : null;
-
-  const style: React.CSSProperties = {
-    ...CARD_BASE,
-    borderColor: hovered ? "var(--color-border-primary)" : "var(--color-border-secondary)",
-    ...(accentColor
-      ? { borderLeft: `3px solid ${accentColor}` }
-      : {}),
-  };
-
-  const valueColor =
-    accentLeft === "danger"
-      ? "var(--color-text-danger)"
-      : accentLeft === "success"
-      ? "var(--color-text-success)"
-      : "var(--color-text-primary)";
-
-  return (
-    <div
-      style={style}
-      onClick={onClick}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-    >
-      <p
-        style={{
-          fontSize: 13,
-          fontWeight: 400,
-          color: "var(--color-text-secondary)",
-          margin: "0 0 8px",
-        }}
-      >
-        {label}
-      </p>
-      <p style={{ fontSize: 28, fontWeight: 600, color: valueColor, lineHeight: 1, margin: 0 }}>
-        {value}
-      </p>
-      {subtext && (
-        <p style={{ fontSize: 11, color: "var(--color-text-tertiary)", margin: "6px 0 0" }}>
-          {subtext}
-        </p>
-      )}
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Pipeline stage card (needs its own hover state)
-// ---------------------------------------------------------------------------
-
-function StageCard({
-  stage,
-  onClick,
-}: {
-  stage: StageWithCount;
-  onClick: () => void;
-}) {
-  const [hovered, setHovered] = useState(false);
-  return (
-    <div
-      onClick={onClick}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      style={{
-        ...CARD_BASE,
-        padding: "1rem 1.25rem",
-        textAlign: "center",
-        borderColor: hovered ? "var(--color-border-primary)" : "var(--color-border-secondary)",
-      }}
-    >
-      <p
-        style={{
-          fontSize: 22,
-          fontWeight: 600,
-          color: "var(--color-text-primary)",
-          margin: "0 0 4px",
-          lineHeight: 1,
-        }}
-      >
-        {stage.count}
-      </p>
-      <p
-        style={{
-          fontSize: 12,
-          color: "var(--color-text-secondary)",
-          margin: 0,
-          whiteSpace: "nowrap",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-        }}
-      >
-        {stage.name}
-      </p>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Section label
-// ---------------------------------------------------------------------------
-
-const SECTION_LABEL: React.CSSProperties = {
-  fontSize: 11,
-  fontWeight: 500,
-  color: "var(--color-text-tertiary)",
-  textTransform: "uppercase",
-  letterSpacing: "0.05em",
-  margin: "24px 0 10px",
-};
-
 // ---------------------------------------------------------------------------
 // Main component
 // ---------------------------------------------------------------------------
@@ -273,7 +83,6 @@ const SECTION_LABEL: React.CSSProperties = {
 export default function DashboardMetricCards({
   scope,
   userId,
-  userRole,
 }: DashboardMetricCardsProps) {
   const router = useRouter();
   const supabase = getBrowserClient();
@@ -401,11 +210,8 @@ export default function DashboardMetricCards({
         const agentContactedToday = agentLeads.filter(
           (l) => l.first_contact_at && l.first_contact_at >= todayIso
         );
-
         const responseTimes = agentLeads
-          .filter(
-            (l) => l.first_contact_at && l.created_at && l.first_contact_at >= todayIso
-          )
+          .filter((l) => l.first_contact_at && l.created_at && l.first_contact_at >= todayIso)
           .map((l) => {
             const created = new Date(l.created_at!).getTime();
             const contacted = new Date(l.first_contact_at!).getTime();
@@ -434,459 +240,203 @@ export default function DashboardMetricCards({
   })();
 
   // ---------------------------------------------------------------------------
-  // Render — skeleton
+  // Render
   // ---------------------------------------------------------------------------
 
-  if (loading) {
-    return (
-      <>
-        <style>{SHIMMER_STYLE}</style>
-        <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-          <div style={{ height: 34 }} /> {/* section label placeholder */}
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(4, 1fr)",
-              gap: 16,
-              marginBottom: "1.5rem",
-            }}
-            className="dmc-snapshot-grid"
-          >
-            {Array.from({ length: 4 }).map((_, i) => (
-              <SkeletonCard key={i} h={96} />
-            ))}
-          </div>
-          <div style={{ height: 34 }} />
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))",
-              gap: 10,
-            }}
-          >
-            {Array.from({ length: 5 }).map((_, i) => (
-              <SkeletonCard key={i} h={72} />
-            ))}
-          </div>
-          <div style={{ height: 34 }} />
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(2, 1fr)",
-              gap: 16,
-              marginBottom: "1.5rem",
-            }}
-            className="dmc-panel-grid"
-          >
-            <SkeletonCard h={200} />
-            <SkeletonCard h={200} />
-          </div>
-        </div>
-      </>
-    );
-  }
-
-  // ---------------------------------------------------------------------------
-  // Render — full UI
-  // ---------------------------------------------------------------------------
-
-  const panel: React.CSSProperties = {
-    ...CARD_BASE,
-    cursor: "default",
-  };
-
-  const countBadge = (variant: "danger" | "info" | "neutral"): React.CSSProperties => ({
-    display: "inline-block",
-    background:
-      variant === "danger"
-        ? "var(--color-background-danger)"
-        : variant === "info"
-        ? "var(--color-background-info)"
-        : "var(--color-background-tertiary)",
-    color:
-      variant === "danger"
-        ? "var(--color-text-danger)"
-        : variant === "info"
-        ? "var(--color-text-info)"
-        : "var(--color-text-secondary)",
-    padding: "2px 10px",
-    borderRadius: 20,
-    fontSize: 12,
-    fontWeight: 500,
-    cursor: "pointer",
-  });
-
-  const rowBase: React.CSSProperties = {
-    display: "flex",
-    alignItems: "center",
-    gap: 10,
-    padding: "10px 0",
-    borderBottom: "0.5px solid var(--color-border-tertiary)",
-    cursor: "pointer",
-    borderRadius: 0,
-    transition: "background 0.1s, border-radius 0.1s, padding 0.1s",
-  };
+  if (loading) return <p className="text-sm">Loading dashboard metrics...</p>;
 
   return (
-    <>
-      <style>{`
-        ${SHIMMER_STYLE}
-        @media (max-width: 768px) {
-          .dmc-snapshot-grid { grid-template-columns: repeat(2, 1fr) !important; }
-          .dmc-panel-grid { grid-template-columns: 1fr !important; }
-        }
-        @media (max-width: 480px) {
-          .dmc-snapshot-grid { grid-template-columns: 1fr !important; }
-        }
-        .dmc-row:hover {
-          background: var(--color-background-secondary) !important;
-          border-radius: 6px !important;
-          padding: 10px 8px !important;
-          border-bottom-color: transparent !important;
-        }
-        .dmc-table-row:hover td {
-          background: var(--color-background-secondary);
-        }
-      `}</style>
+    <div className="space-y-4">
 
-      <div style={{ display: "flex", flexDirection: "column" }}>
+      {/* -------------------------------------------------------------------- */}
+      {/* Today's snapshot — 4 metric cards                                     */}
+      {/* -------------------------------------------------------------------- */}
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <Card className="cursor-pointer" onClick={() => router.push("/leads?filter=today")}>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Leads today</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-3xl font-semibold">{leadsToday}</p>
+          </CardContent>
+        </Card>
 
-        {/* ------------------------------------------------------------------ */}
-        {/* Section 1 — Today's snapshot                                        */}
-        {/* ------------------------------------------------------------------ */}
-        <p style={SECTION_LABEL}>Today&rsquo;s snapshot</p>
-        <div
-          className="dmc-snapshot-grid"
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(4, 1fr)",
-            gap: 16,
-            marginBottom: "1.5rem",
-          }}
-        >
-          <MetricCard
-            label="Leads today"
-            value={leadsToday}
-            onClick={() => router.push("/leads?filter=today")}
-          />
-          <MetricCard
-            label="Contacted today"
-            value={contactedToday}
-            accentLeft={contactedToday > 0 ? "success" : undefined}
-            onClick={() => router.push("/leads?filter=contacted_today")}
-          />
-          <MetricCard
-            label="Pending contact"
-            value={pendingContact}
-            accentLeft={pendingContact > 0 ? "danger" : undefined}
-            subtext={pendingContact > 0 ? "Needs follow-up" : undefined}
-            onClick={() => router.push("/leads?filter=pending_contact")}
-          />
-          <MetricCard
-            label="Bookings this month"
-            value={bookingsThisMonth}
-            onClick={() => router.push("/leads?filter=bookings_month")}
-          />
-        </div>
+        <Card className="cursor-pointer" onClick={() => router.push("/leads?filter=contacted_today")}>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Contacted today</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-3xl font-semibold">{contactedToday}</p>
+          </CardContent>
+        </Card>
 
-        {/* ------------------------------------------------------------------ */}
-        {/* Section 2 — Pipeline by stage                                       */}
-        {/* ------------------------------------------------------------------ */}
-        {pipelineStages.length > 0 && (
-          <>
-            <p style={SECTION_LABEL}>Pipeline by stage</p>
+        <Card className="cursor-pointer" onClick={() => router.push("/leads?filter=pending_contact")}>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Pending contact</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-2">
+              <p className="text-3xl font-semibold">{pendingContact}</p>
+              {pendingContact > 0 && (
+                <Badge variant="outline" className="border-rose-400 text-rose-500">
+                  Urgent
+                </Badge>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="cursor-pointer" onClick={() => router.push("/leads?filter=bookings_month")}>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Bookings this month</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-3xl font-semibold">{bookingsThisMonth}</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* -------------------------------------------------------------------- */}
+      {/* Pipeline by stage                                                      */}
+      {/* -------------------------------------------------------------------- */}
+      {pipelineStages.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Pipeline by stage</CardTitle>
+          </CardHeader>
+          <CardContent>
             <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))",
-                gap: 10,
-                overflowX: "auto",
-                marginBottom: "1.5rem",
-              }}
+              className="grid gap-2"
+              style={{ gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))" }}
             >
               {pipelineStages.map((stage) => (
-                <StageCard
+                <div
                   key={stage.id}
-                  stage={stage}
+                  className="rounded border p-2 text-sm cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800"
                   onClick={() => router.push(`/leads?filter=stage_${stage.id}`)}
-                />
+                >
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-tight mb-1">
+                    {stage.name}
+                  </p>
+                  <p className="text-lg font-semibold">{stage.count}</p>
+                </div>
               ))}
             </div>
-          </>
-        )}
+          </CardContent>
+        </Card>
+      )}
 
-        {/* ------------------------------------------------------------------ */}
-        {/* Section 3 — Site visits + Overdue tasks                             */}
-        {/* ------------------------------------------------------------------ */}
-        <p style={SECTION_LABEL}>Activity</p>
-        <div
-          className="dmc-panel-grid"
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(2, 1fr)",
-            gap: 16,
-            marginBottom: "1.5rem",
-          }}
-        >
-          {/* Site visits */}
-          <div style={panel}>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                marginBottom: 12,
-              }}
-            >
-              <p style={{ fontSize: 14, fontWeight: 500, margin: 0 }}>
-                Site visits — next 7 days
-              </p>
-              <span
-                style={countBadge("info")}
+      {/* -------------------------------------------------------------------- */}
+      {/* Site visits + Overdue tasks                                            */}
+      {/* -------------------------------------------------------------------- */}
+      <div className="grid gap-4 xl:grid-cols-2">
+        <Card>
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base">Site visits — next 7 days</CardTitle>
+              <Badge
+                variant="secondary"
+                className="cursor-pointer"
                 onClick={() => router.push("/leads?filter=visits_upcoming")}
               >
                 {upcomingVisits.length}
-              </span>
+              </Badge>
             </div>
+          </CardHeader>
+          <CardContent className="space-y-2">
             {upcomingVisits.length === 0 ? (
-              <p style={{ fontSize: 13, color: "var(--color-text-secondary)", margin: 0 }}>
-                No upcoming visits.
-              </p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">No upcoming visits.</p>
             ) : (
-              upcomingVisits.slice(0, 4).map((visit, idx) => (
+              upcomingVisits.slice(0, 4).map((visit) => (
                 <div
                   key={visit.id}
-                  className="dmc-row"
-                  style={{
-                    ...rowBase,
-                    borderBottom:
-                      idx === Math.min(upcomingVisits.length, 4) - 1
-                        ? "none"
-                        : "0.5px solid var(--color-border-tertiary)",
-                  }}
+                  className="flex items-center justify-between rounded border p-2 text-sm cursor-pointer"
                   onClick={() => router.push(`/leads/${visit.id}`)}
                 >
-                  <div
-                    style={{
-                      flexShrink: 0,
-                      width: 30,
-                      height: 30,
-                      borderRadius: "50%",
-                      background: "var(--color-background-info)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontSize: 11,
-                      fontWeight: 700,
-                      color: "var(--color-text-info)",
-                    }}
-                  >
-                    {getInitials(visit.name)}
-                  </div>
-                  <div style={{ minWidth: 0, flex: 1 }}>
-                    <p
-                      style={{
-                        fontSize: 13,
-                        fontWeight: 500,
-                        margin: 0,
-                        whiteSpace: "nowrap",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        color: "var(--color-text-primary)",
-                      }}
-                    >
-                      {visit.name || "—"}
-                    </p>
-                    <p
-                      style={{
-                        fontSize: 11,
-                        color: "var(--color-text-secondary)",
-                        margin: "2px 0 0",
-                      }}
-                    >
+                  <div>
+                    <p className="font-medium">{visit.name || "—"}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
                       {stages.find((s) => s.id === visit.stage_id)?.name ?? "—"}
                     </p>
                   </div>
-                  <p
-                    style={{
-                      fontSize: 11,
-                      color: "var(--color-text-tertiary)",
-                      marginLeft: "auto",
-                      whiteSpace: "nowrap",
-                      flexShrink: 0,
-                    }}
-                  >
-                    {visit.created_at
-                      ? new Date(visit.created_at).toLocaleDateString("en-IN", {
-                          day: "numeric",
-                          month: "short",
-                        })
-                      : "—"}
-                  </p>
+                  {visit.created_at && (
+                    <Badge variant="outline">
+                      {new Date(visit.created_at).toLocaleDateString("en-IN", {
+                        day: "numeric",
+                        month: "short",
+                      })}
+                    </Badge>
+                  )}
                 </div>
               ))
             )}
-          </div>
+          </CardContent>
+        </Card>
 
-          {/* Overdue tasks */}
-          <div style={panel}>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                marginBottom: 12,
-              }}
-            >
-              <p style={{ fontSize: 14, fontWeight: 500, margin: 0 }}>Overdue tasks</p>
-              <span
-                style={countBadge(overdueTasks.length > 0 ? "danger" : "neutral")}
+        <Card>
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base">Overdue tasks</CardTitle>
+              <Badge
+                variant={overdueTasks.length > 0 ? "destructive" : "secondary"}
+                className="cursor-pointer"
                 onClick={() => router.push("/tasks?filter=overdue")}
               >
                 {overdueTasks.length}
-              </span>
+              </Badge>
             </div>
+          </CardHeader>
+          <CardContent className="space-y-2">
             {overdueTasks.length === 0 ? (
-              <p style={{ fontSize: 13, color: "var(--color-text-secondary)", margin: 0 }}>
-                No overdue tasks.
-              </p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">No overdue tasks.</p>
             ) : (
-              overdueTasks.slice(0, 4).map((task, idx) => (
+              overdueTasks.slice(0, 4).map((task) => (
                 <div
                   key={task.id}
-                  className="dmc-row"
-                  style={{
-                    ...rowBase,
-                    borderBottom:
-                      idx === Math.min(overdueTasks.length, 4) - 1
-                        ? "none"
-                        : "0.5px solid var(--color-border-tertiary)",
-                  }}
+                  className="flex items-center justify-between rounded border p-2 text-sm cursor-pointer"
                   onClick={() => task.lead_id && router.push(`/leads/${task.lead_id}`)}
                 >
-                  <div style={{ minWidth: 0, flex: 1 }}>
-                    <p
-                      style={{
-                        fontSize: 13,
-                        fontWeight: 500,
-                        margin: 0,
-                        whiteSpace: "nowrap",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        color: "var(--color-text-primary)",
-                      }}
-                    >
-                      {task.title || "Untitled task"}
-                    </p>
-                  </div>
-                  <p
-                    style={{
-                      fontSize: 11,
-                      color: "var(--color-text-danger)",
-                      marginLeft: "auto",
-                      whiteSpace: "nowrap",
-                      flexShrink: 0,
-                    }}
-                  >
+                  <p className="font-medium">{task.title || "Untitled task"}</p>
+                  <Badge variant="outline" className="border-rose-400 text-rose-500">
                     {formatOverdue(task.due_date)}
-                  </p>
+                  </Badge>
                 </div>
               ))
             )}
-          </div>
-        </div>
-
-        {/* ------------------------------------------------------------------ */}
-        {/* Section 4 — Agent performance (scope=all only)                      */}
-        {/* ------------------------------------------------------------------ */}
-        {scope === "all" && agentPerf.length > 0 && (
-          <>
-            <p style={SECTION_LABEL}>Agent performance — today</p>
-            <div
-              style={{
-                ...CARD_BASE,
-                cursor: "default",
-                padding: 0,
-                overflow: "hidden",
-              }}
-            >
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-                <thead>
-                  <tr
-                    style={{
-                      borderBottom: "1px solid var(--color-border-tertiary)",
-                    }}
-                  >
-                    {["Agent", "Leads today", "Contacted", "Avg response", "Overdue"].map((h) => (
-                      <th
-                        key={h}
-                        style={{
-                          padding: "8px 12px",
-                          textAlign: "left",
-                          fontSize: 11,
-                          fontWeight: 500,
-                          textTransform: "uppercase",
-                          letterSpacing: "0.05em",
-                          color: "var(--color-text-tertiary)",
-                          borderBottom: "1px solid var(--color-border-tertiary)",
-                          background: "var(--color-background-primary)",
-                        }}
-                      >
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {agentPerf.map((row, idx) => (
-                    <tr
-                      key={row.agentId}
-                      className="dmc-table-row"
-                      onClick={() => router.push(`/leads?filter=agent_${row.agentId}`)}
-                      style={{
-                        cursor: "pointer",
-                        borderBottom:
-                          idx < agentPerf.length - 1
-                            ? "0.5px solid var(--color-border-tertiary)"
-                            : "none",
-                      }}
-                    >
-                      <td style={{ padding: "12px", fontWeight: 500, color: "var(--color-text-primary)" }}>
-                        {row.agentName}
-                      </td>
-                      <td style={{ padding: "12px", color: "var(--color-text-primary)" }}>
-                        {row.leadsToday}
-                      </td>
-                      <td style={{ padding: "12px", color: "var(--color-text-primary)" }}>
-                        {row.contactedToday}
-                      </td>
-                      <td style={{ padding: "12px" }}>
-                        {row.avgResponseMins !== null ? (
-                          <span style={responseBadgeStyle(row.avgResponseMins)}>
-                            {row.avgResponseMins}m
-                          </span>
-                        ) : (
-                          <span style={{ color: "var(--color-text-tertiary)" }}>—</span>
-                        )}
-                      </td>
-                      <td style={{ padding: "12px" }}>
-                        {row.overdueTaskCount > 0 ? (
-                          <span style={responseBadgeStyle(999)}>
-                            {row.overdueTaskCount}
-                          </span>
-                        ) : (
-                          <span style={{ color: "var(--color-text-tertiary)" }}>0</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </>
-        )}
-
+          </CardContent>
+        </Card>
       </div>
-    </>
+
+      {/* -------------------------------------------------------------------- */}
+      {/* Agent performance — today (scope=all only)                             */}
+      {/* -------------------------------------------------------------------- */}
+      {scope === "all" && agentPerf.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Agent performance — today</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {agentPerf.map((row) => (
+              <div
+                key={row.agentId}
+                className="rounded border p-2 text-sm cursor-pointer"
+                onClick={() => router.push(`/leads?filter=agent_${row.agentId}`)}
+              >
+                <div className="flex items-center justify-between">
+                  <p className="font-medium">{row.agentName}</p>
+                  <Badge variant="secondary">{row.leadsToday} leads today</Badge>
+                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Contacted: {row.contactedToday} · Avg response:{" "}
+                  {row.avgResponseMins !== null ? `${row.avgResponseMins}m` : "—"} · Overdue tasks:{" "}
+                  {row.overdueTaskCount}
+                </p>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+    </div>
   );
 }
