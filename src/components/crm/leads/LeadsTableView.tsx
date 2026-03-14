@@ -330,10 +330,10 @@ export default function LeadsTableView({ currentUserRole, currentUserId }: Leads
                 onClick={() => router.push(`/leads/${lead.id}`)}
                 style={{
                   background: "var(--color-background-secondary)",
-                  border: "0.5px solid var(--color-border-secondary)",
+                  border: "1px solid var(--color-border-secondary)",
                   borderRadius: "var(--border-radius-lg, 12px)",
-                  padding: "14px 16px",
-                  marginBottom: "8px",
+                  padding: "16px",
+                  marginBottom: "12px",
                   cursor: "pointer",
                 }}
               >
