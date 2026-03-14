@@ -72,6 +72,13 @@ function formatSourceName(source: string | null | undefined): string {
   return map[source] ?? source.split("_").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
 }
 
+function formatBudget(val: number | null): string | null {
+  if (!val) return null;
+  if (val >= 10000000) return `₹${(val / 10000000).toFixed(1)}Cr`;
+  if (val >= 100000) return `₹${(val / 100000).toFixed(1)}L`;
+  return `₹${val.toLocaleString("en-IN")}`;
+}
+
 function normalizeFormQuestions(fq: unknown): Array<{ q: string; a: string }> {
   if (!fq) return [];
   if (Array.isArray(fq)) {
@@ -813,7 +820,7 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
         </div>
       )}
 
-      <div className="space-y-1">
+      <div className="hidden md:block space-y-1">
         <Link href="/leads" className="inline-flex items-center gap-1 text-sm text-slate-600 hover:underline dark:text-slate-300">
           <ArrowLeft className="h-4 w-4" />
           Back to leads
@@ -991,6 +998,11 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
                 <div className="grid gap-3 md:grid-cols-2">
                   <div>
                     <p className="text-slate-500 dark:text-slate-400 text-xs mb-1">Min Budget (₹)</p>
+                    {editBudgetMin && (
+                      <div style={{ fontSize: "12px", color: "var(--color-text-info, #38bdf8)", marginBottom: "4px" }}>
+                        {formatBudget(Number(editBudgetMin))}
+                      </div>
+                    )}
                     <Input
                       type="number"
                       value={editBudgetMin}
@@ -1001,6 +1013,11 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
                   </div>
                   <div>
                     <p className="text-slate-500 dark:text-slate-400 text-xs mb-1">Max Budget (₹)</p>
+                    {editBudgetMax && (
+                      <div style={{ fontSize: "12px", color: "var(--color-text-info, #38bdf8)", marginBottom: "4px" }}>
+                        {formatBudget(Number(editBudgetMax))}
+                      </div>
+                    )}
                     <Input
                       type="number"
                       value={editBudgetMax}
@@ -1059,6 +1076,13 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
                       <option value="just exploring">Just exploring</option>
                     </select>
                   </div>
+                </div>
+                <div className="flex items-center gap-3 pt-1">
+                  <Button type="button" onClick={saveProfileChanges} disabled={savingProfile}>
+                    {savingProfile ? "Saving..." : "Save Changes"}
+                  </Button>
+                  {profileSaved && <span className="text-sm text-emerald-600 dark:text-emerald-400 font-medium">Saved ✓</span>}
+                  {profileError && <span className="text-sm text-rose-600 dark:text-rose-400">{profileError}</span>}
                 </div>
               </CardContent>
             </Card>
@@ -1180,13 +1204,6 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
                     <p className="text-slate-500 dark:text-slate-400 text-xs mb-1">Last Activity</p>
                     <p className="font-medium text-sm">{toIST(lead.last_activity_at)}</p>
                   </div>
-                </div>
-                <div className="flex items-center gap-3 pt-1">
-                  <Button type="button" onClick={saveProfileChanges} disabled={savingProfile}>
-                    {savingProfile ? "Saving..." : "Save Changes"}
-                  </Button>
-                  {profileSaved && <span className="text-sm text-emerald-600 dark:text-emerald-400 font-medium">Saved ✓</span>}
-                  {profileError && <span className="text-sm text-rose-600 dark:text-rose-400">{profileError}</span>}
                 </div>
               </CardContent>
             </Card>

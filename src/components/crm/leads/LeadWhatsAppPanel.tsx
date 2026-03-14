@@ -55,7 +55,7 @@ export default function LeadWhatsAppPanel({ leadId, leadPhone }: LeadWhatsAppPan
 
     const { data: msgData, error: msgError } = await supabase
       .from("crm_messages")
-      .select("id,conversation_id,lead_id,direction,message_type,content,template_name,status,provider_message_id,error_message,created_at,updated_at")
+      .select("id,lead_id,direction,message_type,content,template_name,status,provider_message_id,error_message,created_at,updated_at")
       .eq("conversation_id", convId)
       .order("created_at", { ascending: true })
       .limit(500);
