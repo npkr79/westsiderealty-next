@@ -136,13 +136,10 @@ export async function submitLead(formData: SubmitLeadData): Promise<SubmitLeadRe
       // Notes
       notes: notesValue,
 
-      // Budget
+      // Budget — crm_leads.budget is numeric; never pass raw range strings to it
       budget_min: toBudgetNumber(details.budget_min ?? details.budget),
       budget_max: toBudgetNumber(details.budget_max ?? details.budget),
-      budget:
-        typeof details.budgetRange === "string" ? details.budgetRange :
-        typeof details.budgetBand === "string" ? details.budgetBand :
-        null,
+      budget: toBudgetNumber(details.budget_min) ?? toBudgetNumber(details.budget_max) ?? null,
 
       // Buyer profile
       location_preference:
