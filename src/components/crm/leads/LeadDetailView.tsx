@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ArrowRight, FileText, MapPin, Pencil, Phone } from "lucide-react";
@@ -1872,20 +1873,20 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
         </TabsContent>
       </Tabs>
 
-      {/* ── Quick-call bottom sheet — must be last child of root div to escape overflow containers ── */}
-      {showCallSheet && (
+      {/* ── Quick-call bottom sheet — rendered via portal to escape CRM shell transforms/overflow ── */}
+      {showCallSheet && typeof document !== "undefined" && createPortal(
         <>
           <div
             onClick={() => setShowCallSheet(false)}
-            style={{ position: "fixed", inset: 0, zIndex: 99, background: "rgba(0,0,0,0.4)" }}
+            style={{ position: "fixed", inset: 0, zIndex: 9998, background: "rgba(0,0,0,0.5)" }}
           />
           <div style={{
             position: "fixed", bottom: 0, left: 0, right: 0,
-            zIndex: 100,
+            zIndex: 9999,
             background: "var(--color-background-primary)",
             borderTop: "0.5px solid var(--color-border-secondary)",
             borderRadius: "16px 16px 0 0",
-            padding: "20px 16px 32px",
+            padding: "20px 16px 40px",
             boxShadow: "0 -4px 24px rgba(0,0,0,0.1)",
           }}>
             <div style={{ fontSize: "14px", fontWeight: 500, color: "var(--color-text-primary)", marginBottom: "16px", textAlign: "center" }}>
@@ -1930,7 +1931,8 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
               Cancel
             </button>
           </div>
-        </>
+        </>,
+        document.body
       )}
     </div>
   );
