@@ -916,6 +916,13 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
         </a>
         <button
           type="button"
+          onClick={() => setShowBriefPanel(true)}
+          className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-full bg-amber-500 hover:bg-amber-600 active:scale-95 text-white text-sm font-medium"
+        >
+          📋 Brief
+        </button>
+        <button
+          type="button"
           onClick={() => void handleMarkContacted()}
           disabled={!!lead.first_contact_at}
           className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-full bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
@@ -935,22 +942,6 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
           className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-full bg-slate-700 hover:bg-slate-600 active:scale-95 text-white text-sm font-medium"
         >
           📝 Add Note
-        </button>
-        <button
-          type="button"
-          onClick={() => setShowBriefPanel(true)}
-          style={{
-            display: 'flex', alignItems: 'center', gap: '6px',
-            padding: '8px 16px',
-            background: 'var(--color-background-info)',
-            color: 'var(--color-text-info)',
-            border: 'none', borderRadius: '20px',
-            fontSize: '13px', fontWeight: 500,
-            cursor: 'pointer', whiteSpace: 'nowrap',
-            flexShrink: 0,
-          }}
-        >
-          📋 Brief
         </button>
       </div>
 
