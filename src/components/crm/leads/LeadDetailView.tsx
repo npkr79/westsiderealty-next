@@ -1620,7 +1620,7 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
                           : "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300";
                     const visitDateStr = sv.metadata?.visit_date
                       ? toIST(sv.metadata.visit_date)
-                      : toIST(sv.created_at);
+                      : sv.created_at ? formatActivityTime(sv.created_at) : "";
                     return (
                       <div key={sv.id} className="rounded-md border p-3 space-y-1.5">
                         <div className="flex items-center justify-between gap-2">
@@ -1680,7 +1680,7 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
                             </span>
                           )}
                         </div>
-                        <p className="text-xs text-slate-400 whitespace-nowrap">{toIST(call.created_at)}</p>
+                        <p className="text-xs text-slate-400 whitespace-nowrap">{call.created_at ? formatActivityTime(call.created_at) : ""}</p>
                       </div>
                       {call.metadata?.notes && (
                         <p className="text-sm text-slate-600 dark:text-slate-300 pl-5">{call.metadata.notes}</p>
