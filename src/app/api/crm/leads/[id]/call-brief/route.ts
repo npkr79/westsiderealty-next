@@ -69,8 +69,8 @@ export async function POST(
       .limit(10),
     supabase
       .from('crm_meta_raw_leads')
-      .select('field_data, created_time, ad_name, campaign_name')
-      .eq('phone', lead.phone ?? '')
+      .select('payload, created_at, ad_id, campaign_id')
+      .eq('crm_lead_id', leadId)
       .limit(1)
       .maybeSingle(),
     supabase
@@ -122,9 +122,9 @@ export async function POST(
     submitted_at: lead.created_at,
     first_contacted_at: lead.first_contact_at,
     last_activity_at: lead.last_activity_at,
-    meta_form_answers: (metaRaw as Record<string, unknown> | null)?.field_data ?? null,
-    meta_ad_name: (metaRaw as Record<string, unknown> | null)?.ad_name ?? null,
-    meta_campaign: (metaRaw as Record<string, unknown> | null)?.campaign_name ?? null,
+    meta_raw_payload: (metaRaw as Record<string, unknown> | null)?.payload ?? null,
+    meta_ad_id: (metaRaw as Record<string, unknown> | null)?.ad_id ?? null,
+    meta_campaign_id: (metaRaw as Record<string, unknown> | null)?.campaign_id ?? null,
     recent_activities: (activities || []).map((a) => ({
       type: a.activity_type,
       description: a.description,
@@ -221,7 +221,7 @@ If nothing relevant found, return {"found": false}`;
   }
 
   // Cache the result
-  const { data: brief } = await supabase
+  const { data: brief, error: insertError } = await supabase
     .from('crm_call_briefs')
     .insert({
       lead_id: leadId,
@@ -232,6 +232,11 @@ If nothing relevant found, return {"found": false}`;
     })
     .select()
     .single();
+
+  if (insertError) {
+    console.error('[CallBrief] Insert error:', insertError);
+    return NextResponse.json({ error: insertError.message }, { status: 500 });
+  }
 
   return NextResponse.json({
     success: true,
