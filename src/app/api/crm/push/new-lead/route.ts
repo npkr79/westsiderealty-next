@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { sendWhatsAppText } from "@/services/whatsappCloudService";
 import { createServiceClient } from "@/lib/supabase/serviceClient";
 
 // Source types that must NEVER trigger alerts (bulk imports, migrations, simulations).
@@ -148,12 +147,48 @@ export async function POST(request: NextRequest) {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.westsiderealty.in";
   const leadUrl = `${siteUrl}/leads/${leadId}`;
 
-  // Direct service call — /api/crm/whatsapp/send-text requires cookie-based CRM session
-  // auth and cannot be called from a webhook context. Call sendWhatsAppText directly.
+  // Direct Meta Cloud API call — no conversation record needed for internal alerts.
   async function sendWA(waPhone: string, message: string) {
     if (!waPhone) return;
-    await sendWhatsAppText({ leadId, phone: waPhone, message, sentBy: PRAVEEN_ID })
-      .catch((err: unknown) => console.error("[WA Alert] send failed:", err));
+
+    const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+    const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
+
+    if (!phoneNumberId || !accessToken) {
+      console.error("[WA Alert] Missing WhatsApp credentials");
+      return;
+    }
+
+    // Normalize phone — ensure it has country code
+    const normalizedPhone = waPhone.replace(/\D/g, "");
+    const phoneWithCode = normalizedPhone.startsWith("91")
+      ? normalizedPhone
+      : `91${normalizedPhone}`;
+
+    const response = await fetch(
+      `https://graph.facebook.com/v18.0/${phoneNumberId}/messages`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          messaging_product: "whatsapp",
+          to: phoneWithCode,
+          type: "text",
+          text: { body: message },
+        }),
+      }
+    );
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      console.error("[WA Alert] Meta API error:", result);
+    } else {
+      console.log("[WA Alert] Sent successfully to:", phoneWithCode);
+    }
   }
 
   if (type === "INSERT") {
