@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sendPushToUser } from "@/services/pushNotificationService";
+import { sendWhatsAppText } from "@/services/whatsappCloudService";
 import { createServiceClient } from "@/lib/supabase/serviceClient";
 
 // Source types that must NEVER trigger alerts (bulk imports, migrations, simulations).
@@ -17,6 +18,7 @@ const SILENT_SOURCES = new Set([
 ]);
 
 const PRAVEEN_ID = "9021aff0-6ba3-4f7b-852f-561862fbc1ac";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.westsiderealty.in";
 
 interface LeadRow {
   id: string;
@@ -131,8 +133,10 @@ export async function POST(request: NextRequest) {
     // Push to assigned agent (if already set — e.g. form routing sets it at insert time)
     const agentId = record.assigned_to ?? null;
     if (agentId && agentId !== PRAVEEN_ID) {
-      // Already assigned at insert time — notify agent only, not admin
-      console.log(`[Push/new-lead] INSERT → agent push: ${agentId}`);
+      const agentName = await resolveFullName(agentId);
+
+      // Already assigned at insert time — push + WA to agent
+      console.log(`[Push/new-lead] INSERT → agent push+WA: ${agentId}`);
       console.log("[PushDebug] Sending push to", { userId: agentId, title: "🔔 New Lead!", body: `${name} • ${phone}` });
       await sendPushToUser(
         agentId,
@@ -140,8 +144,16 @@ export async function POST(request: NextRequest) {
         `${name} • ${phone}`,
         `/leads/${leadId}`
       ).catch((err) => console.error("[Push/new-lead] Agent push failed:", err));
+
+      sendWhatsAppAlert(agentId, leadId, `🔔 New Lead Assigned!\n\nName: ${name}\nPhone: ${phone}\n\nOpen CRM: ${SITE_URL}/leads`)
+        .catch((err) => console.error("[WA Alert] Agent WA failed:", err));
+
+      // Notify admin via WA about the assignment
+      sendWhatsAppAlert(PRAVEEN_ID, leadId, `🔔 New Lead!\n\nName: ${name}\nPhone: ${phone}\nAssigned to: ${agentName}\n\nOpen CRM: ${SITE_URL}/leads`)
+        .catch((err) => console.error("[WA Alert] Admin WA failed:", err));
+
     } else {
-      // Not yet assigned — notify admin so it doesn't fall through the cracks
+      // Not yet assigned — push + WA to admin
       const label = agentId === PRAVEEN_ID ? `${name} • ${phone}` : `${name} • ${phone} — needs assignment`;
 
       console.log("[PushDebug] Sending push to", { userId: PRAVEEN_ID, title: "🔔 New Lead (Unassigned)", body: label });
@@ -151,6 +163,9 @@ export async function POST(request: NextRequest) {
         label,
         `/leads/${leadId}`
       ).catch((err) => console.error("[Push/new-lead] Admin (unassigned) push failed:", err));
+
+      sendWhatsAppAlert(PRAVEEN_ID, leadId, `🔔 New Lead (Unassigned)!\n\nName: ${name}\nPhone: ${phone}\n\nNeeds assignment: ${SITE_URL}/leads`)
+        .catch((err) => console.error("[WA Alert] Admin unassigned WA failed:", err));
     }
 
     console.log("[PushDebug] Returning", { reason: "insert_ok", leadId });
@@ -173,7 +188,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: true, event: "update_self_assign", leadId });
     }
 
-    console.log(`[Push/new-lead] UPDATE assigned_to → agent push: ${agentId}`);
+    console.log(`[Push/new-lead] UPDATE assigned_to → agent push+WA: ${agentId}`);
 
     console.log("[PushDebug] Sending push to", { userId: agentId, title: "🔔 Lead Assigned to You", body: `${name} • ${phone}` });
     await sendPushToUser(
@@ -182,6 +197,9 @@ export async function POST(request: NextRequest) {
       `${name} • ${phone}`,
       `/leads/${leadId}`
     ).catch((err) => console.error("[Push/new-lead] Agent (re-assigned) push failed:", err));
+
+    sendWhatsAppAlert(agentId, leadId, `🔔 Lead Assigned to You!\n\nName: ${name}\nPhone: ${phone}\n\nOpen CRM: ${SITE_URL}/leads`)
+      .catch((err) => console.error("[WA Alert] Agent WA (update) failed:", err));
 
     // Update admin's earlier "unassigned" alert by sending a follow-up
     const agentName = await resolveFullName(agentId);
@@ -193,6 +211,9 @@ export async function POST(request: NextRequest) {
       `${name} → ${agentName}`,
       `/leads/${leadId}`
     ).catch((err) => console.error("[Push/new-lead] Admin (assigned) push failed:", err));
+
+    sendWhatsAppAlert(PRAVEEN_ID, leadId, `🔔 Lead Assigned!\n\nName: ${name}\nPhone: ${phone}\nAssigned to: ${agentName}\n\nOpen CRM: ${SITE_URL}/leads`)
+      .catch((err) => console.error("[WA Alert] Admin WA (update) failed:", err));
 
     console.log("[PushDebug] Returning", { reason: "update_assigned_ok", leadId });
     return NextResponse.json({ ok: true, event: "update_assigned", leadId });
@@ -214,4 +235,26 @@ async function resolveFullName(userId: string): Promise<string> {
   } catch {
     return "Agent";
   }
+}
+
+async function sendWhatsAppAlert(recipientUserId: string, leadId: string, message: string): Promise<void> {
+  const supabase = createServiceClient();
+  const { data } = await supabase
+    .from("crm_users")
+    .select("whatsapp_number")
+    .eq("id", recipientUserId)
+    .maybeSingle();
+
+  const whatsappNumber = (data as { whatsapp_number?: string | null } | null)?.whatsapp_number?.trim();
+  if (!whatsappNumber) {
+    console.log(`[WA Alert] No whatsapp_number for user ${recipientUserId} — skipping`);
+    return;
+  }
+
+  await sendWhatsAppText({
+    leadId,
+    phone: whatsappNumber,
+    message,
+    sentBy: PRAVEEN_ID,
+  });
 }
