@@ -17,6 +17,7 @@ interface PhoneIntelligence {
   confidence?: string;
   summary?: string | null;
   source?: string | null;
+  all_results?: { title: string; url: string; snippet: string }[];
 }
 
 interface Brief {
@@ -202,58 +203,93 @@ export default function CallBriefPanel({ leadId, onClose }: CallBriefPanelProps)
                     No public profile found for this number.
                   </div>
                 ) : (
-                  <>
-                    {brief.phone_intelligence.summary && (
+                  <div>
+                    {/* Best result highlight */}
+                    {brief.phone_intelligence.name && (
                       <div style={{
-                        fontSize: '14px', fontWeight: 500,
+                        fontSize: '14px', fontWeight: 600,
                         color: 'var(--color-text-primary)',
-                        marginBottom: '8px',
+                        marginBottom: '4px',
                       }}>
-                        {brief.phone_intelligence.summary}
+                        👤 {brief.phone_intelligence.name}
                       </div>
                     )}
+
+                    {brief.phone_intelligence.source && (
+                      <div style={{
+                        fontSize: '11px',
+                        color: 'var(--color-text-tertiary)',
+                        marginBottom: '10px',
+                      }}>
+                        Found on {brief.phone_intelligence.source} · Confidence: {brief.phone_intelligence.confidence}
+                      </div>
+                    )}
+
+                    {/* Search results */}
                     <div style={{
-                      display: 'grid', gap: '6px',
-                      fontSize: '13px',
-                      color: 'var(--color-text-secondary)',
+                      fontSize: '11px', fontWeight: 500,
+                      color: 'var(--color-text-tertiary)',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em',
+                      marginBottom: '8px',
                     }}>
-                      {brief.phone_intelligence.name && (
-                        <div>👤 {brief.phone_intelligence.name}</div>
-                      )}
-                      {brief.phone_intelligence.designation && (
-                        <div>
-                          💼 {brief.phone_intelligence.designation}
-                          {brief.phone_intelligence.company && ` · ${brief.phone_intelligence.company}`}
-                        </div>
-                      )}
-                      {brief.phone_intelligence.location && (
-                        <div>📍 {brief.phone_intelligence.location}</div>
-                      )}
-                      {brief.phone_intelligence.profile_url && (
-                        <a
-                          href={brief.phone_intelligence.profile_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          style={{
-                            color: 'var(--color-text-info)',
-                            textDecoration: 'none',
-                            fontSize: '12px',
-                          }}
-                        >
-                          🔗 View profile
-                        </a>
-                      )}
+                      Google Results
                     </div>
+
+                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                    {brief.phone_intelligence.all_results?.slice(0, 3).map((r: any, i: number) => (
+                      <a
+                        key={i}
+                        href={r.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          display: 'block',
+                          padding: '10px 0',
+                          borderBottom: i < 2 ? '0.5px solid var(--color-border-tertiary)' : 'none',
+                          textDecoration: 'none',
+                        }}
+                      >
+                        <div style={{
+                          fontSize: '13px', fontWeight: 500,
+                          color: 'var(--color-text-info)',
+                          marginBottom: '3px',
+                          lineHeight: 1.3,
+                        }}>
+                          {r.title}
+                        </div>
+                        <div style={{
+                          fontSize: '11px',
+                          color: 'var(--color-text-tertiary)',
+                          lineHeight: 1.5,
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical',
+                          overflow: 'hidden',
+                        }}>
+                          {r.snippet}
+                        </div>
+                        <div style={{
+                          fontSize: '10px',
+                          color: 'var(--color-text-tertiary)',
+                          marginTop: '2px',
+                          opacity: 0.6,
+                        }}>
+                          {r.url?.slice(0, 50)}...
+                        </div>
+                      </a>
+                    ))}
+
                     <div style={{
-                      marginTop: '10px', paddingTop: '10px',
+                      marginTop: '12px', paddingTop: '8px',
                       borderTop: '0.5px solid var(--color-border-tertiary)',
                       fontSize: '11px',
                       color: 'var(--color-text-tertiary)',
                       fontStyle: 'italic',
                     }}>
-                      ⚠ Verify before using — confidence: {brief.phone_intelligence.confidence}
+                      ⚠ Public data only · verify before using
                     </div>
-                  </>
+                  </div>
                 )}
               </div>
             </div>
