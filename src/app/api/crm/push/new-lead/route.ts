@@ -131,10 +131,8 @@ export async function POST(request: NextRequest) {
     // Push to assigned agent (if already set — e.g. form routing sets it at insert time)
     const agentId = record.assigned_to ?? null;
     if (agentId && agentId !== PRAVEEN_ID) {
-      const agentName = await resolveFullName(agentId);
+      // Already assigned at insert time — notify agent only, not admin
       console.log(`[Push/new-lead] INSERT → agent push: ${agentId}`);
-
-      // 5. Log before each sendPushToUser call
       console.log("[PushDebug] Sending push to", { userId: agentId, title: "🔔 New Lead!", body: `${name} • ${phone}` });
       await sendPushToUser(
         agentId,
@@ -142,14 +140,6 @@ export async function POST(request: NextRequest) {
         `${name} • ${phone}`,
         `/leads/${leadId}`
       ).catch((err) => console.error("[Push/new-lead] Agent push failed:", err));
-
-      console.log("[PushDebug] Sending push to", { userId: PRAVEEN_ID, title: "New Lead Assigned", body: `Assigned to ${agentName} — ${name}` });
-      await sendPushToUser(
-        PRAVEEN_ID,
-        "New Lead Assigned",
-        `Assigned to ${agentName} — ${name}`,
-        `/leads/${leadId}`
-      ).catch((err) => console.error("[Push/new-lead] Admin push failed:", err));
     } else {
       // Not yet assigned — notify admin so it doesn't fall through the cracks
       const label = agentId === PRAVEEN_ID ? `${name} • ${phone}` : `${name} • ${phone} — needs assignment`;

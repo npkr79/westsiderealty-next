@@ -22,6 +22,10 @@ export async function sendPushToUser(
 
   const messages = tokens.map(({ token }: { token: string }) => ({
     token,
+    notification: {
+      title,
+      body,
+    },
     data: {
       title,
       body,
@@ -29,6 +33,12 @@ export async function sendPushToUser(
     },
     webpush: {
       fcmOptions: { link: url ?? "/dashboard" },
+      notification: {
+        title,
+        body,
+        icon: "/android-chrome-192x192.png",
+        badge: "/android-chrome-192x192.png",
+      },
     },
   }));
 
