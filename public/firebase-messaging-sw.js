@@ -12,40 +12,9 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-messaging.onBackgroundMessage((payload) => {
-  // FCM auto-displays when notification key exists — only manually show if absent
-  if (payload.notification) return;
-
-  const { title, body, url } = payload.data || {};
-  self.registration.showNotification(title || 'Westside CRM', {
-    body: body || '',
-    icon: '/android-chrome-192x192.png',
-    badge: '/android-chrome-192x192.png',
-    data: { url },
-  });
-});
-
-self.addEventListener('push', (event) => {
-  if (!event.data) return;
-
-  let payload;
-  try { payload = event.data.json(); } catch (_) { return; }
-
-  // If notification key is present FCM auto-displays — skip to avoid double notification
-  if (payload.notification) return;
-
-  const title = payload.data?.title || 'Westside CRM';
-  const body = payload.data?.body || '';
-  const url = payload.data?.url || '/dashboard';
-
-  event.waitUntil(
-    self.registration.showNotification(title, {
-      body,
-      icon: '/android-chrome-192x192.png',
-      badge: '/android-chrome-192x192.png',
-      data: { url },
-    })
-  );
+messaging.onBackgroundMessage((_payload) => {
+  // FCM auto-displays notification key — nothing to do
+  return;
 });
 
 self.addEventListener('notificationclick', (event) => {
