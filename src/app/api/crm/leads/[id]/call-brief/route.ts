@@ -5,62 +5,6 @@ import Anthropic from '@anthropic-ai/sdk';
 
 const anthropic = new Anthropic();
 
-// ---------------------------------------------------------------------------
-// Build a structured summary from lead data — no AI call needed
-// ---------------------------------------------------------------------------
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function buildSummary(lead: any): string {
-  const parts: string[] = [];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const attrMeta = lead.attribution_metadata as any;
-  const fieldData = attrMeta?.field_data || {};
-  const skipKeys = ['email', 'phone', 'full_name', 'phone_number', 'name'];
-
-  // Meta form answers — most valuable, show first
-  const metaAnswers = Object.entries(fieldData)
-    .filter(([key]) => !skipKeys.includes(key.toLowerCase()))
-    .map(([key, val]) => {
-      const cleanVal = String(val).replace(/_/g, ' ');
-      const cleanKey = key
-        .replace(/_/g, ' ')
-        .replace(/\?/g, '')
-        .trim()
-        .replace(/^what /i, '')
-        .trim();
-      return `${cleanKey}: ${cleanVal}`;
-    });
-
-  if (metaAnswers.length > 0) parts.push(...metaAnswers);
-
-  // Budget
-  const fmt = (v: number | null) => {
-    if (!v) return null;
-    if (v >= 10000000) return `₹${(v / 10000000).toFixed(0)}Cr`;
-    if (v >= 100000) return `₹${(v / 100000).toFixed(0)}L`;
-    return `₹${v}`;
-  };
-  if (lead.budget_min || lead.budget_max) {
-    parts.push(`Budget: ${fmt(lead.budget_min) ?? '?'} – ${fmt(lead.budget_max) ?? '?'}`);
-  }
-
-  if (lead.location_preference) parts.push(`Location: ${lead.location_preference}`);
-  if (lead.buyer_type) parts.push(`Type: ${lead.buyer_type}`);
-  if (lead.timeline) parts.push(`Timeline: ${lead.timeline}`);
-  if (lead.notes) parts.push(lead.notes);
-
-  const source = attrMeta?.fb_form_name || lead.source_channel || lead.source_type || '';
-  if (source) parts.push(`Via: ${source}`);
-
-  if (lead.landing_page) {
-    const match = lead.landing_page.match(/projects\/([^/?]+)/);
-    if (match) parts.push(`Project: ${match[1].replace(/-/g, ' ')}`);
-  }
-
-  const full = parts.join(' · ');
-  const words = full.split(' ');
-  return words.length > 60 ? words.slice(0, 60).join(' ') + '...' : full;
-}
 
 // ---------------------------------------------------------------------------
 // Serper search helper
@@ -127,9 +71,9 @@ export async function POST(
     return NextResponse.json({ success: true, brief: existing, cached: true });
   }
 
-  // Phone intelligence — reuse permanently if exists
-  const cachedIntelligence = existing?.phone_intelligence || null;
-  const hasIntelligence = cachedIntelligence !== null && cachedIntelligence !== undefined;
+  // Phone intelligence — reuse permanently if ai_profile already exists
+  const cachedIntelligence = existing?.phone_intelligence;
+  const hasIntelligence = cachedIntelligence?.ai_profile != null;
 
   console.log('[CallBrief] Cache state:', {
     hasExisting: !!existing,
@@ -191,29 +135,58 @@ export async function POST(
       : Promise.resolve({ data: null }),
   ]);
 
-  // Build summary from lead data — no AI call
-  const aiSummary = buildSummary(lead);
-
-  // Build raw snapshot for storage
+  // Build structured data for AI summary prompt
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const rawData = {
-    stage: (stage as Record<string, unknown> | null)?.name,
-    recent_activities: (activities || []).map((a) => ({
-      type: a.activity_type,
-      description: a.description,
-      outcome: (a.metadata as Record<string, unknown> | null)?.outcome,
-      at: a.created_at,
-    })),
-    pages_visited: (behaviors || [])
-      .filter((b) => b.event_type === 'page_view')
-      .map((b) => (b as Record<string, unknown>).page_url)
-      .filter(Boolean)
-      .slice(0, 5),
-    whatsapp_history: (messages || []).map((m) => ({
-      direction: m.direction,
-      message: m.message,
-      at: m.created_at,
-    })),
+    name: lead.name,
+    source: (lead.attribution_metadata as Record<string, unknown> | null)?.fb_form_name as string
+      || lead.source_channel || lead.source_type,
+    meta_answers: Object.entries(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ((lead.attribution_metadata as any)?.field_data || {}) as Record<string, unknown>
+    )
+      .filter(([k]) => !['email', 'phone', 'full_name', 'phone_number', 'name'].includes(k.toLowerCase()))
+      .map(([k, v]) => `${k.replace(/_/g, ' ').replace(/\?/g, '')}: ${String(v).replace(/_/g, ' ')}`),
+    budget: lead.budget_min || lead.budget_max
+      ? `${lead.budget_min ? '₹' + (lead.budget_min / 10000000).toFixed(0) + 'Cr' : '?'} – ${lead.budget_max ? '₹' + (lead.budget_max / 10000000).toFixed(0) + 'Cr' : '?'}`
+      : null,
+    location: lead.location_preference,
+    buyer_type: lead.buyer_type,
+    timeline: lead.timeline,
+    notes: lead.notes,
+    landing_page: lead.landing_page,
+    status: lead.status,
+    last_activity: lead.last_activity_at,
+    first_contact: lead.first_contact_at,
+    recent_calls: (activities || [])
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .filter((a: any) => a.activity_type === 'call')
+      .slice(0, 3)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .map((a: any) => a.metadata?.outcome || a.description),
   };
+
+  // Claude Haiku: 1-2 sentence call brief
+  const summaryRes = await anthropic.messages.create({
+    model: 'claude-haiku-4-5',
+    max_tokens: 100,
+    messages: [{
+      role: 'user',
+      content: `Write a 1-2 sentence call brief for a real estate agent about to call this lead.
+Be conversational and specific. Use the lead's name.
+Focus on what they want and current status.
+Max 40 words. No bullet points.
+
+Data: ${JSON.stringify(rawData)}`,
+    }],
+  });
+
+  const aiSummary = summaryRes.content
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .filter((b: any) => b.type === 'text')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .map((b: any) => b.text)
+    .join('').trim();
 
   // ---------------------------------------------------------------------------
   // Phone intelligence — Serper search + direct result parsing
