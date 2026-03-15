@@ -63,6 +63,37 @@ function buildSummary(lead: any): string {
 }
 
 // ---------------------------------------------------------------------------
+// Serper search helper
+// ---------------------------------------------------------------------------
+
+interface SerperResult {
+  title: string;
+  link: string;
+  snippet: string;
+}
+
+async function serperSearch(query: string, apiKey: string): Promise<SerperResult[]> {
+  try {
+    const res = await fetch('https://google.serper.dev/search', {
+      method: 'POST',
+      headers: { 'X-API-KEY': apiKey, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ q: query, num: 5, gl: 'in', hl: 'en' }),
+    });
+    if (!res.ok) return [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const data: any = await res.json();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (data.organic || []).map((r: any) => ({
+      title: r.title ?? '',
+      link: r.link ?? '',
+      snippet: r.snippet ?? '',
+    }));
+  } catch {
+    return [];
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Route handler
 // ---------------------------------------------------------------------------
 
@@ -78,9 +109,10 @@ export async function POST(
   }
 
   const supabase = createServiceClient();
+  const serperKey = process.env.SERPER_API_KEY ?? '';
 
-  // Check cache first — return if generated within last 6 hours
-  const { data: cached } = await supabase
+  // Check for existing brief
+  const { data: existing } = await supabase
     .from('crm_call_briefs')
     .select('*')
     .eq('lead_id', leadId)
@@ -89,9 +121,21 @@ export async function POST(
     .maybeSingle();
 
   const sixHoursAgo = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString();
-  if (cached && cached.generated_at > sixHoursAgo) {
-    return NextResponse.json({ success: true, brief: cached, cached: true });
+
+  // If fully cached and summary is fresh — return as is
+  if (existing && existing.generated_at > sixHoursAgo) {
+    return NextResponse.json({ success: true, brief: existing, cached: true });
   }
+
+  // Phone intelligence — reuse permanently if exists
+  const cachedIntelligence = existing?.phone_intelligence || null;
+  const hasIntelligence = cachedIntelligence !== null && cachedIntelligence !== undefined;
+
+  console.log('[CallBrief] Cache state:', {
+    hasExisting: !!existing,
+    summaryFresh: !!(existing && existing.generated_at > sixHoursAgo),
+    hasIntelligence,
+  });
 
   // Fetch lead first
   const { data: lead, error: leadError } = await supabase
@@ -117,7 +161,7 @@ export async function POST(
     return NextResponse.json({ error: 'Lead not found' }, { status: 404 });
   }
 
-  // Fetch supporting data in parallel (no meta raw — read from attribution_metadata)
+  // Fetch supporting data in parallel
   const [
     { data: activities },
     { data: behaviors },
@@ -171,19 +215,41 @@ export async function POST(
     })),
   };
 
-  // Phone intelligence — Claude with web search
-  const phone10 = (lead.phone ?? '').replace(/\D/g, '').slice(-10);
+  // ---------------------------------------------------------------------------
+  // Phone intelligence — Serper search + Claude extraction
+  // Cached permanently: skip entirely if already stored
+  // ---------------------------------------------------------------------------
 
-  const intelligencePrompt = `Task: Create a comprehensive profile for the individual or entity associated with the Indian mobile number: ${phone10}
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let phoneIntelligence: any = cachedIntelligence || { found: false };
 
-Objective: Use this number to identify the owner's name, profession, location, and digital presence.
+  // Only call Serper if no cached intelligence exists
+  if (!hasIntelligence && serperKey) {
+    try {
+      const phone10 = (lead.phone ?? '').replace(/\D/g, '').slice(-10);
 
-Search Instructions:
-1. Strict String Search: Search for the number using exact match quotes: "${phone10}" and "+91 ${phone10}".
-2. Professional & Social Discovery: Look for profiles on LinkedIn, Facebook, Instagram, and Twitter/X where this number may be linked to a bio or contact button.
-3. Public Directories: Check Truecaller (Web), WhitePages, and JustDial to verify the name associated with the SIM registration or business listing.
-4. Operational Presence: Identify if this number is mentioned on any "Contact Us" pages, PDF documents, government registrations (like GST or MSME), or news articles.
-5. WhatsApp/UPI Check: Check if the number has a linked WhatsApp Business catalog or a UPI ID (e.g., on Google Pay/PhonePe) to confirm the legal name.
+      // Run 3 targeted searches in parallel
+      const [r1, r2, r3] = await Promise.all([
+        serperSearch(`"${phone10}"`, serperKey),
+        serperSearch(`"+91${phone10}" linkedin OR justdial OR truecaller`, serperKey),
+        serperSearch(`"${phone10}" real estate OR property OR director OR founder`, serperKey),
+      ]);
+
+      const allResults = [...r1, ...r2, ...r3].slice(0, 10);
+
+      if (allResults.length > 0) {
+        const snippets = allResults
+          .map((r, i) => `[${i + 1}] ${r.title}\n${r.snippet}\n${r.link}`)
+          .join('\n\n');
+
+        const extractionPrompt = `You are extracting structured profile data from Google search results for an Indian mobile number.
+
+Phone: ${phone10}
+
+Search results:
+${snippets}
+
+Based ONLY on the above search results, extract what you can verify about the person or business associated with this number.
 
 Return ONLY this JSON with no other text:
 {
@@ -198,46 +264,57 @@ Return ONLY this JSON with no other text:
   "source": "where found: LinkedIn/JustDial/Truecaller/99acres/etc or null"
 }
 
-If nothing found after exhaustive search, return: {"found": false}`;
+If the results don't clearly identify this number's owner, return: {"found": false}`;
 
-  const intelligenceResponse = await anthropic.messages.create({
-    model: 'claude-sonnet-4-20250514',
-    max_tokens: 1000,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    tools: [{ type: 'web_search_20250305' as any, name: 'web_search' }],
-    messages: [{ role: 'user', content: intelligencePrompt }],
-  });
+        const extractionResponse = await anthropic.messages.create({
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 400,
+          messages: [{ role: 'user', content: extractionPrompt }],
+        });
 
-  // Extract intelligence JSON
-  let phoneIntelligence: Record<string, unknown> = { found: false };
-  try {
-    const intelligenceText = intelligenceResponse.content
-      .filter((b) => b.type === 'text')
-      .map((b) => (b as { type: 'text'; text: string }).text)
-      .join('');
-    const jsonMatch = intelligenceText.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      phoneIntelligence = JSON.parse(jsonMatch[0]);
+        try {
+          const text = extractionResponse.content
+            .filter((b) => b.type === 'text')
+            .map((b) => (b as { type: 'text'; text: string }).text)
+            .join('');
+          const jsonMatch = text.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            phoneIntelligence = JSON.parse(jsonMatch[0]);
+          }
+        } catch (e) {
+          console.warn('[CallBrief] Intelligence parse error:', e);
+        }
+      }
+    } catch (e) {
+      console.error('[CallBrief] Serper error:', e);
     }
-  } catch (e) {
-    console.warn('[CallBrief] Intelligence parse error:', e);
+  } else if (hasIntelligence) {
+    console.log('[CallBrief] Using cached phone intelligence');
   }
 
-  // Cache the result
+  // ---------------------------------------------------------------------------
+  // Upsert — update summary + raw_data; keep intelligence if already stored
+  // ---------------------------------------------------------------------------
+
   const { data: brief, error: insertError } = await supabase
     .from('crm_call_briefs')
-    .insert({
-      lead_id: leadId,
-      ai_summary: aiSummary,
-      phone_intelligence: phoneIntelligence,
-      raw_data: rawData,
-      generated_by: session.user.id,
-    })
+    .upsert(
+      {
+        id: existing?.id ?? undefined,
+        lead_id: leadId,
+        ai_summary: aiSummary,
+        phone_intelligence: phoneIntelligence,
+        raw_data: rawData,
+        generated_at: new Date().toISOString(),
+        generated_by: session.user.id,
+      },
+      { onConflict: 'id', ignoreDuplicates: false }
+    )
     .select()
     .single();
 
   if (insertError) {
-    console.error('[CallBrief] Insert error:', insertError);
+    console.error('[CallBrief] Upsert error:', insertError);
     return NextResponse.json({ error: insertError.message }, { status: 500 });
   }
 
