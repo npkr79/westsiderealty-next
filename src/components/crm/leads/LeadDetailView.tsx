@@ -724,11 +724,30 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
       created_by: currentUser.id,
     });
 
+    const STAGE_CONTACTED = "f0825f0e-0fba-44f7-8973-1c34c9ced33c";
+    const STAGE_NEW = "c11c69eb-c76f-460a-9114-e616411d57a6";
+
     const updates: Record<string, unknown> = { last_activity_at: new Date().toISOString() };
-    if (outcome === "Connected" && /^new$/i.test(lead?.status ?? "")) {
-      updates.status = "contacted";
-      updates.first_contact_at = new Date().toISOString();
+
+    if (outcome === "Connected") {
+      // Update status + first_contact_at if not yet contacted
+      if (/^new$/i.test(lead?.status ?? "")) {
+        updates.status = "contacted";
+        updates.first_contact_at = new Date().toISOString();
+      }
+
+      // Advance stage to Contacted if currently on New or null
+      const currentStageId = lead?.stage_id ?? null;
+      if (!currentStageId || currentStageId === STAGE_NEW) {
+        await fetch("/api/crm/pipeline/update-stage", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ leadId, toStageId: STAGE_CONTACTED }),
+        });
+      }
     }
+
+    // Always patch last_activity_at (and status/first_contact if set)
     await fetch(`/api/crm/leads/${leadId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
