@@ -40,6 +40,17 @@ function toIST(dateStr: string | null | undefined): string {
   }
 }
 
+function formatActivityTime(ts: string): string {
+  return new Date(ts).toLocaleString("en-IN", {
+    timeZone: "Asia/Kolkata",
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
+
 function toISTDate(dateStr: string | null | undefined): string {
   if (!dateStr) return "Not set";
   try {
@@ -1450,7 +1461,7 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
                           </div>
                         </div>
                         <p className="text-xs text-slate-400 whitespace-nowrap flex-shrink-0">
-                          {toIST(activity.created_at)}
+                          {activity.created_at ? formatActivityTime(activity.created_at) : ""}
                         </p>
                       </div>
                     </div>
