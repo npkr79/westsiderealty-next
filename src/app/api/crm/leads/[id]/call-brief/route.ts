@@ -7,14 +7,14 @@ const anthropic = new Anthropic();
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id: leadId } = await params;
+
   const session = await getCrmSessionResult();
   if (!session.user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-
-  const leadId = params.id;
   const supabase = createServiceClient();
 
   // Check cache first — return if generated within last 6 hours
