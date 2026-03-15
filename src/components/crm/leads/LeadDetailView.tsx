@@ -36,7 +36,7 @@ function toIST(dateStr: string | null | undefined): string {
     const min = ist.getUTCMinutes().toString().padStart(2,"0");
     const ampm = h >= 12 ? "PM" : "AM";
     h = h % 12 || 12;
-    return `${d} ${m} ${y}, ${h}:${min} ${ampm}`;
+    return `IST:${d} ${m} ${y}, ${h}:${min} ${ampm}`;
   } catch {
     return "—";
   }
