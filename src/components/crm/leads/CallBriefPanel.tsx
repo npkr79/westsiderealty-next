@@ -9,12 +9,14 @@ interface CallBriefPanelProps {
 
 interface PhoneIntelligence {
   found: boolean;
+  name?: string | null;
   designation?: string | null;
   company?: string | null;
   location?: string | null;
   profile_url?: string | null;
   confidence?: string;
   summary?: string | null;
+  source?: string | null;
 }
 
 interface Brief {
@@ -215,6 +217,9 @@ export default function CallBriefPanel({ leadId, onClose }: CallBriefPanelProps)
                       fontSize: '13px',
                       color: 'var(--color-text-secondary)',
                     }}>
+                      {brief.phone_intelligence.name && (
+                        <div>👤 {brief.phone_intelligence.name}</div>
+                      )}
                       {brief.phone_intelligence.designation && (
                         <div>
                           💼 {brief.phone_intelligence.designation}
