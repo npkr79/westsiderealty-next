@@ -146,6 +146,13 @@ export default function LeadsTableView({ currentUserRole, currentUserId }: Leads
     } else if (filter.startsWith("agent_")) {
       const agentId = filter.slice("agent_".length);
       setFilters((prev) => ({ ...prev, assignedAgentId: agentId }));
+    } else if (filter === "cold_leads") {
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+      setFilters((prev) => ({
+        ...prev,
+        lastActivityBefore: sevenDaysAgo,
+        excludeStatuses: ["lost", "won", "converted"],
+      }));
     } else if (filter === "overdue") {
       router.push("/tasks?filter=overdue");
     }
@@ -164,6 +171,7 @@ export default function LeadsTableView({ currentUserRole, currentUserId }: Leads
     ].filter(Boolean).length;
   }, [filters, hotOnly]);
 
+  const coldLeadsActive = searchParams.get("filter") === "cold_leads";
   const { leads, loading, total, error, refetch } = useLeads({ page, pageSize, search, filters, sort });
   const canCreateLead = currentUserRole ? ["admin", "sales_head", "team_lead", "agent"].includes(currentUserRole) : false;
   const visibleLeads = useMemo(() => (hotOnly ? leads.filter((lead) => getPriorityLabel(lead.priority) === "Serious Buyer") : leads), [hotOnly, leads]);
@@ -206,6 +214,18 @@ export default function LeadsTableView({ currentUserRole, currentUserId }: Leads
       <div className="flex justify-end">
         <InvestorLeadIntakeModal disabled={!canCreateLead} onCreated={() => refetch()} />
       </div>
+
+      {coldLeadsActive && (
+        <div className="flex items-center gap-2.5 rounded-lg border border-amber-800/50 bg-amber-950/30 px-4 py-2.5 text-sm text-amber-300">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="flex-none opacity-80">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+            <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+          <span>
+            <span className="font-semibold">Gone Cold</span> — leads with no activity in 7+ days, excluding Lost / Won / Converted. Call or message them to re-engage.
+          </span>
+        </div>
+      )}
 
       {/* Search + filter toggle */}
       <div className="flex gap-2">

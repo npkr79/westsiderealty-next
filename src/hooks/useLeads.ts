@@ -17,10 +17,12 @@ export interface LeadsFilters {
   assignedAgentId?: string;
   unassignedOnly?: boolean;
   stageId?: string;
-  stageName?: string;        // ilike match on stage_name column
-  createdFrom?: string;      // ISO string — gte created_at
-  pendingContact?: boolean;  // is(first_contact_at, null)
-  contactedFrom?: string;    // ISO string — gte first_contact_at
+  stageName?: string;            // ilike match on stage_name column
+  createdFrom?: string;          // ISO string — gte created_at
+  pendingContact?: boolean;      // is(first_contact_at, null)
+  contactedFrom?: string;        // ISO string — gte first_contact_at
+  lastActivityBefore?: string;   // ISO string — lt last_activity_at
+  excludeStatuses?: string[];    // not in these statuses
 }
 
 export interface LeadsSort {
@@ -131,6 +133,10 @@ export function useLeads({
         if (filters.createdFrom) query = query.gte("created_at", filters.createdFrom);
         if (filters.pendingContact) query = query.is("first_contact_at", null);
         if (filters.contactedFrom) query = query.gte("first_contact_at", filters.contactedFrom);
+        if (filters.lastActivityBefore) query = query.lt("last_activity_at", filters.lastActivityBefore);
+        if (filters.excludeStatuses?.length) {
+          query = query.not("status", "in", `(${filters.excludeStatuses.join(",")})`);
+        }
 
         const from = (page - 1) * pageSize;
         const to = from + pageSize - 1;
@@ -178,6 +184,8 @@ export function useLeads({
     filters.stageName,
     filters.status,
     filters.unassignedOnly,
+    filters.lastActivityBefore,
+    (filters.excludeStatuses ?? []).join(","),
     page,
     pageSize,
     search,

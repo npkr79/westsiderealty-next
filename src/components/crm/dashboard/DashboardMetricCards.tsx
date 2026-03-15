@@ -29,6 +29,8 @@ type LeadRow = {
   stage_id: string | null;
   assigned_to: string | null;
   name: string | null;
+  status: string | null;
+  last_activity_at: string | null;
 };
 
 type StageRow = {
@@ -134,6 +136,13 @@ const IcoTrophy = () => (
   </svg>
 );
 
+const IcoSnowflake = () => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <line x1="12" y1="2" x2="12" y2="22"/><path d="m17 7-5 5-5-5"/><path d="m17 17-5-5-5 5"/>
+    <line x1="2" y1="12" x2="22" y2="12"/><path d="m7 7 5 5 5-5"/><path d="m7 17 5-5 5 5"/>
+  </svg>
+);
+
 const IcoCalendar = () => (
   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
@@ -236,7 +245,7 @@ export default function DashboardMetricCards({ scope, userId }: DashboardMetricC
       try {
         let leadsQuery = supabase
           .from("crm_leads")
-          .select("id, created_at, first_contact_at, stage_id, assigned_to, name");
+          .select("id, created_at, first_contact_at, stage_id, assigned_to, name, status, last_activity_at");
         if (scope === "assigned") leadsQuery = leadsQuery.eq("assigned_to", userId);
 
         let taskQuery = supabase
@@ -303,6 +312,13 @@ export default function DashboardMetricCards({ scope, userId }: DashboardMetricC
     (l) => l.stage_id === bookingStageId && l.created_at && l.created_at >= firstDayOfMonth
   ).length;
 
+  const sevenDaysAgoIso = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const coldLeadsCount = leads.filter((l) =>
+    l.last_activity_at &&
+    l.last_activity_at < sevenDaysAgoIso &&
+    !["lost", "won", "converted"].includes((l.status ?? "").toLowerCase())
+  ).length;
+
   const stageCounts: StageWithCount[] = stages.map((stage) => ({
     ...stage,
     count: leads.filter((l) => l.stage_id === stage.id).length,
@@ -353,8 +369,8 @@ export default function DashboardMetricCards({ scope, userId }: DashboardMetricC
   if (loading) {
     return (
       <div className="space-y-4">
-        <div className="grid gap-3 grid-cols-2 xl:grid-cols-4">
-          {[0, 1, 2, 3].map((i) => (
+        <div className="grid gap-3 grid-cols-2 xl:grid-cols-5">
+          {[0, 1, 2, 3, 4].map((i) => (
             <div key={i} className="rounded-xl border border-slate-800 bg-slate-900 p-4 animate-pulse" style={{ minHeight: "100px" }}>
               <div className="h-2.5 w-20 rounded bg-slate-800 mb-4" />
               <div className="h-8 w-10 rounded bg-slate-800 mb-3" />
@@ -387,9 +403,9 @@ export default function DashboardMetricCards({ scope, userId }: DashboardMetricC
     <div className="space-y-4">
 
       {/* -------------------------------------------------------------------- */}
-      {/* Today's snapshot — 2×2 on mobile, 4-col on desktop                   */}
+      {/* Today's snapshot — 2×2 on mobile, 5-col on desktop                   */}
       {/* -------------------------------------------------------------------- */}
-      <div className="grid gap-3 grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-3 grid-cols-2 xl:grid-cols-5">
         <SnapshotCard
           label="Leads today"
           value={leadsToday}
@@ -422,6 +438,15 @@ export default function DashboardMetricCards({ scope, userId }: DashboardMetricC
           statusText={bookingsThisMonth === 0 ? "None this month" : bookingsThisMonth === 1 ? "1 booking" : `${bookingsThisMonth} bookings`}
           icon={<IcoTrophy />}
           onClick={() => router.push("/leads?filter=bookings_month")}
+        />
+        <SnapshotCard
+          label="Gone cold"
+          value={coldLeadsCount}
+          accentColor={coldLeadsCount > 0 ? "#f97316" : "#475569"}
+          statusText={coldLeadsCount === 0 ? "All active" : "No activity in 7+ days"}
+          statusUrgent={coldLeadsCount > 0}
+          icon={<IcoSnowflake />}
+          onClick={() => router.push("/leads?filter=cold_leads")}
         />
       </div>
 
