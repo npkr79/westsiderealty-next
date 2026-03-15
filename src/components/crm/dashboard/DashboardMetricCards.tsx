@@ -5,6 +5,19 @@ import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { getBrowserClient } from "@/lib/supabase/browserClient";
 
+const toIST = (dateStr: string | null | undefined) => {
+  if (!dateStr) return "—";
+  return new Date(dateStr).toLocaleString("en-IN", {
+    timeZone: "Asia/Kolkata",
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  });
+};
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -500,7 +513,7 @@ export default function DashboardMetricCards({ scope, userId }: DashboardMetricC
                   {/* Date chip */}
                   {visit.created_at && (
                     <span className="flex-none rounded-md border border-slate-700 bg-slate-800 px-2 py-0.5 text-[11px] text-slate-400">
-                      {new Date(visit.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+                      {toIST(visit.created_at)}
                     </span>
                   )}
                 </button>

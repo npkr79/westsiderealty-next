@@ -70,19 +70,19 @@ function fmtBudget(min: number | null | undefined, max: number | null | undefine
 }
 
 function toIST(dateStr: string | null | undefined): string {
-  if (!dateStr) return "-";
+  if (!dateStr) return "—";
   try {
     return new Date(dateStr).toLocaleString("en-IN", {
       timeZone: "Asia/Kolkata",
       day: "2-digit",
-      month: "2-digit",
+      month: "short",
       year: "numeric",
       hour: "2-digit",
       minute: "2-digit",
-      hour12: false,
+      hour12: true,
     });
   } catch {
-    return "Invalid date";
+    return "—";
   }
 }
 
@@ -415,9 +415,7 @@ export default function LeadsTableView({ currentUserRole, currentUserId }: Leads
                     fontSize: "11px",
                     color: "var(--color-text-tertiary)",
                   }}>
-                    Last activity · {new Date(lead.last_activity_at).toLocaleDateString("en-IN", {
-                      day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit",
-                    })}
+                    Last activity · {toIST(lead.last_activity_at)}
                   </div>
                 )}
               </div>

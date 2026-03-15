@@ -24,31 +24,20 @@ import { getPriorityBadgeClassName, getPriorityLabel } from "@/lib/crm/leadPrior
 import { formatBudgetRange } from "@/lib/crm/budget";
 
 function toIST(dateStr: string | null | undefined): string {
-  if (!dateStr) return "Not updated";
+  if (!dateStr) return "—";
   try {
     return new Date(dateStr).toLocaleString("en-IN", {
       timeZone: "Asia/Kolkata",
       day: "2-digit",
-      month: "2-digit",
+      month: "short",
       year: "numeric",
       hour: "2-digit",
       minute: "2-digit",
-      hour12: false,
+      hour12: true,
     });
   } catch {
-    return "Invalid date";
+    return "—";
   }
-}
-
-function formatActivityTime(ts: string): string {
-  return new Date(ts).toLocaleString("en-IN", {
-    timeZone: "Asia/Kolkata",
-    day: "2-digit",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: true,
-  });
 }
 
 function toISTDate(dateStr: string | null | undefined): string {
@@ -1461,7 +1450,7 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
                           </div>
                         </div>
                         <p className="text-xs text-slate-400 whitespace-nowrap flex-shrink-0">
-                          {activity.created_at ? formatActivityTime(activity.created_at) : ""}
+                          {toIST(activity.created_at)}
                         </p>
                       </div>
                     </div>
@@ -1620,7 +1609,7 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
                           : "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300";
                     const visitDateStr = sv.metadata?.visit_date
                       ? toIST(sv.metadata.visit_date)
-                      : sv.created_at ? formatActivityTime(sv.created_at) : "";
+                      : toIST(sv.created_at);
                     return (
                       <div key={sv.id} className="rounded-md border p-3 space-y-1.5">
                         <div className="flex items-center justify-between gap-2">
@@ -1680,7 +1669,7 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
                             </span>
                           )}
                         </div>
-                        <p className="text-xs text-slate-400 whitespace-nowrap">{call.created_at ? formatActivityTime(call.created_at) : ""}</p>
+                        <p className="text-xs text-slate-400 whitespace-nowrap">{toIST(call.created_at)}</p>
                       </div>
                       {call.metadata?.notes && (
                         <p className="text-sm text-slate-600 dark:text-slate-300 pl-5">{call.metadata.notes}</p>

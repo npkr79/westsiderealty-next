@@ -1,6 +1,19 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+
+const toIST = (dateStr: string | null | undefined) => {
+  if (!dateStr) return "—";
+  return new Date(dateStr).toLocaleString("en-IN", {
+    timeZone: "Asia/Kolkata",
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  });
+};
 import { createClient } from "@/lib/supabase/client";
 import { useTasks } from "@/hooks/useTasks";
 import type { CrmTask } from "@/lib/crm/types";
@@ -131,7 +144,7 @@ export default function TasksWorkspace() {
                     {task.title}
                   </p>
                   <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                    Due: {task.due_date ? new Date(task.due_date).toLocaleDateString() : "Not set"}
+                    Due: {toIST(task.due_date)}
                   </p>
                 </div>
               </div>
