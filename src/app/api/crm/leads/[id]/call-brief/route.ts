@@ -36,18 +36,24 @@ export async function POST(
   }
 
   // Fetch lead first (needed for phone in subsequent queries)
-  const { data: lead } = await supabase
+  const { data: lead, error: leadError } = await supabase
     .from('crm_leads')
     .select(`
-      id, name, phone, email, budget_min, budget_max,
-      location_preference, buyer_type, timeline, notes,
-      source_type, source_channel, landing_page, status,
-      stage_id, lead_score, priority, investor_type,
-      attribution_metadata, created_at, first_contact_at,
-      last_activity_at, assigned_to
+      id, name, phone, email,
+      budget_min, budget_max,
+      location_preference, buyer_type,
+      timeline, notes, source_type,
+      source_channel, landing_page,
+      status, stage_id, lead_score,
+      priority, investor_type,
+      attribution_metadata, created_at,
+      first_contact_at, last_activity_at,
+      assigned_to
     `)
     .eq('id', leadId)
     .single();
+
+  console.log('[CallBrief] Lead query result:', lead ? 'found' : 'not found', leadError?.message);
 
   if (!lead) {
     return NextResponse.json({ error: 'Lead not found' }, { status: 404 });
