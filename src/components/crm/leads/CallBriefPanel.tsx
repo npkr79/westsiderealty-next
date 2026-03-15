@@ -205,107 +205,117 @@ export default function CallBriefPanel({ leadId, onClose }: CallBriefPanelProps)
                   </div>
                 ) : (
                   <div>
-                    {/* Best result highlight */}
-                    {brief.phone_intelligence.name && (
-                      <div style={{
-                        fontSize: '14px', fontWeight: 600,
-                        color: 'var(--color-text-primary)',
-                        marginBottom: '4px',
-                      }}>
-                        👤 {brief.phone_intelligence.name}
-                      </div>
-                    )}
+                    {(() => {
+                      const hasAiProfile = !!(
+                        brief.phone_intelligence.ai_profile &&
+                        brief.phone_intelligence.ai_profile !== 'No meaningful profile found.'
+                      );
 
-                    {brief.phone_intelligence.source && (
-                      <div style={{
-                        fontSize: '11px',
-                        color: 'var(--color-text-tertiary)',
-                        marginBottom: '10px',
-                      }}>
-                        Found on {brief.phone_intelligence.source} · Confidence: {brief.phone_intelligence.confidence}
-                      </div>
-                    )}
+                      return (
+                        <>
+                          {/* Name + source — only shown when no AI profile */}
+                          {!hasAiProfile && brief.phone_intelligence.name && (
+                            <div style={{
+                              fontSize: '14px', fontWeight: 600,
+                              color: 'var(--color-text-primary)',
+                              marginBottom: '4px',
+                            }}>
+                              👤 {brief.phone_intelligence.name}
+                            </div>
+                          )}
+                          {!hasAiProfile && brief.phone_intelligence.source && (
+                            <div style={{
+                              fontSize: '11px',
+                              color: 'var(--color-text-tertiary)',
+                              marginBottom: '10px',
+                            }}>
+                              Found on {brief.phone_intelligence.source} · Confidence: {brief.phone_intelligence.confidence}
+                            </div>
+                          )}
 
-                    {/* AI profile summary */}
-                    {brief.phone_intelligence.ai_profile &&
-                     brief.phone_intelligence.ai_profile !== 'No meaningful profile found.' && (
-                      <div style={{
-                        background: 'var(--color-background-secondary)',
-                        borderRadius: '8px',
-                        padding: '10px 12px',
-                        fontSize: '13px',
-                        lineHeight: 1.6,
-                        color: 'var(--color-text-primary)',
-                        marginBottom: '12px',
-                      }}>
-                        {brief.phone_intelligence.ai_profile}
-                      </div>
-                    )}
+                          {/* AI profile — replaces raw results when present */}
+                          {hasAiProfile && (
+                            <div style={{
+                              fontSize: '13px',
+                              lineHeight: 1.6,
+                              color: 'var(--color-text-primary)',
+                              marginBottom: '12px',
+                            }}>
+                              {brief.phone_intelligence.ai_profile}
+                            </div>
+                          )}
 
-                    {/* Search results */}
-                    <div style={{
-                      fontSize: '11px', fontWeight: 500,
-                      color: 'var(--color-text-tertiary)',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.05em',
-                      marginBottom: '8px',
-                    }}>
-                      Google Results
-                    </div>
+                          {/* Google Results — fallback when no AI profile */}
+                          {!hasAiProfile ? (
+                            <>
+                              <div style={{
+                                fontSize: '11px', fontWeight: 500,
+                                color: 'var(--color-text-tertiary)',
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.05em',
+                                marginBottom: '8px',
+                              }}>
+                                Google Results
+                              </div>
 
-                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                    {brief.phone_intelligence.all_results?.slice(0, 3).map((r: any, i: number) => (
-                      <a
-                        key={i}
-                        href={r.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{
-                          display: 'block',
-                          padding: '10px 0',
-                          borderBottom: i < 2 ? '0.5px solid var(--color-border-tertiary)' : 'none',
-                          textDecoration: 'none',
-                        }}
-                      >
-                        <div style={{
-                          fontSize: '13px', fontWeight: 500,
-                          color: 'var(--color-text-info)',
-                          marginBottom: '3px',
-                          lineHeight: 1.3,
-                        }}>
-                          {r.title}
-                        </div>
-                        <div style={{
-                          fontSize: '11px',
-                          color: 'var(--color-text-tertiary)',
-                          lineHeight: 1.5,
-                          display: '-webkit-box',
-                          WebkitLineClamp: 2,
-                          WebkitBoxOrient: 'vertical',
-                          overflow: 'hidden',
-                        }}>
-                          {r.snippet}
-                        </div>
-                        <div style={{
-                          fontSize: '10px',
-                          color: 'var(--color-text-tertiary)',
-                          marginTop: '2px',
-                          opacity: 0.6,
-                        }}>
-                          {r.url?.slice(0, 50)}...
-                        </div>
-                      </a>
-                    ))}
+                              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                              {brief.phone_intelligence.all_results?.slice(0, 3).map((r: any, i: number) => (
+                                <a
+                                  key={i}
+                                  href={r.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  style={{
+                                    display: 'block',
+                                    padding: '10px 0',
+                                    borderBottom: i < 2 ? '0.5px solid var(--color-border-tertiary)' : 'none',
+                                    textDecoration: 'none',
+                                  }}
+                                >
+                                  <div style={{
+                                    fontSize: '13px', fontWeight: 500,
+                                    color: 'var(--color-text-info)',
+                                    marginBottom: '3px',
+                                    lineHeight: 1.3,
+                                  }}>
+                                    {r.title}
+                                  </div>
+                                  <div style={{
+                                    fontSize: '11px',
+                                    color: 'var(--color-text-tertiary)',
+                                    lineHeight: 1.5,
+                                    display: '-webkit-box',
+                                    WebkitLineClamp: 2,
+                                    WebkitBoxOrient: 'vertical',
+                                    overflow: 'hidden',
+                                  }}>
+                                    {r.snippet}
+                                  </div>
+                                  <div style={{
+                                    fontSize: '10px',
+                                    color: 'var(--color-text-tertiary)',
+                                    marginTop: '2px',
+                                    opacity: 0.6,
+                                  }}>
+                                    {r.url?.slice(0, 50)}...
+                                  </div>
+                                </a>
+                              ))}
+                            </>
+                          ) : null}
 
-                    <div style={{
-                      marginTop: '12px', paddingTop: '8px',
-                      borderTop: '0.5px solid var(--color-border-tertiary)',
-                      fontSize: '11px',
-                      color: 'var(--color-text-tertiary)',
-                      fontStyle: 'italic',
-                    }}>
-                      ⚠ Public data only · verify before using
-                    </div>
+                          <div style={{
+                            marginTop: '12px', paddingTop: '8px',
+                            borderTop: '0.5px solid var(--color-border-tertiary)',
+                            fontSize: '11px',
+                            color: 'var(--color-text-tertiary)',
+                            fontStyle: 'italic',
+                          }}>
+                            ⚠ Public data only · verify before using
+                          </div>
+                        </>
+                      );
+                    })()}
                   </div>
                 )}
               </div>
