@@ -26,7 +26,11 @@ import { formatBudgetRange } from "@/lib/crm/budget";
 function toIST(dateStr: string | null | undefined): string {
   if (!dateStr) return "—";
   try {
-    const utc = new Date(dateStr).getTime();
+    // Append Z to treat as UTC if no timezone indicator present
+    const normalized = dateStr.includes('Z') || dateStr.includes('+')
+      ? dateStr
+      : dateStr + 'Z';
+    const utc = new Date(normalized).getTime();
     const ist = new Date(utc + 5.5 * 60 * 60 * 1000);
     const d = ist.getUTCDate().toString().padStart(2,"0");
     const m = ["Jan","Feb","Mar","Apr","May","Jun",
@@ -36,7 +40,7 @@ function toIST(dateStr: string | null | undefined): string {
     const min = ist.getUTCMinutes().toString().padStart(2,"0");
     const ampm = h >= 12 ? "PM" : "AM";
     h = h % 12 || 12;
-    return `IST:${d} ${m} ${y}, ${h}:${min} ${ampm}`;
+    return `${d} ${m} ${y}, ${h}:${min} ${ampm}`;
   } catch {
     return "—";
   }
