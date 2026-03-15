@@ -1,12 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/serviceClient';
 import { getCrmSessionResult } from '@/lib/crm/auth';
-import Anthropic from '@anthropic-ai/sdk';
-
-const anthropic = new Anthropic();
 
 // ---------------------------------------------------------------------------
-// Build a structured summary from lead data — no Claude call needed
+// Build a structured summary from lead data — no AI call needed
 // ---------------------------------------------------------------------------
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -191,7 +188,7 @@ export async function POST(
       : Promise.resolve({ data: null }),
   ]);
 
-  // Build summary from lead data — no Claude call
+  // Build summary from lead data — no AI call
   const aiSummary = buildSummary(lead);
 
   // Build raw snapshot for storage
@@ -216,7 +213,7 @@ export async function POST(
   };
 
   // ---------------------------------------------------------------------------
-  // Phone intelligence — Serper search + Claude extraction
+  // Phone intelligence — Serper search + direct result parsing
   // Cached permanently: skip entirely if already stored
   // ---------------------------------------------------------------------------
 
@@ -235,55 +232,41 @@ export async function POST(
         serperSearch(`"${phone10}" real estate OR property OR director OR founder`, serperKey),
       ]);
 
-      const allResults = [...r1, ...r2, ...r3].slice(0, 10);
+      const allItems = [...r1, ...r2, ...r3].slice(0, 10);
 
-      if (allResults.length > 0) {
-        const snippets = allResults
-          .map((r, i) => `[${i + 1}] ${r.title}\n${r.snippet}\n${r.link}`)
-          .join('\n\n');
+      if (allItems.length > 0) {
+        const priorityDomains = [
+          'linkedin.com', 'justdial.com', '99acres.com',
+          'magicbricks.com', 'housing.com', 'indiamart.com',
+          'sulekha.com', 'truecaller.com', 'zaubacorp.com',
+          'facebook.com', 'instagram.com', 'twitter.com',
+        ];
 
-        const extractionPrompt = `You are extracting structured profile data from Google search results for an Indian mobile number.
-
-Phone: ${phone10}
-
-Search results:
-${snippets}
-
-Based ONLY on the above search results, extract what you can verify about the person or business associated with this number.
-
-Return ONLY this JSON with no other text:
-{
-  "found": true or false,
-  "name": "full name if found or null",
-  "designation": "job title or null",
-  "company": "company or business name or null",
-  "location": "city or null",
-  "profile_url": "best url found or null",
-  "confidence": "high, medium, or low",
-  "summary": "one line about this person/business or null",
-  "source": "where found: LinkedIn/JustDial/Truecaller/99acres/etc or null"
-}
-
-If the results don't clearly identify this number's owner, return: {"found": false}`;
-
-        const extractionResponse = await anthropic.messages.create({
-          model: 'claude-haiku-4-5-20251001',
-          max_tokens: 400,
-          messages: [{ role: 'user', content: extractionPrompt }],
+        const sorted = [...allItems].sort((a, b) => {
+          const aScore = priorityDomains.some((d) => a.link?.includes(d)) ? 1 : 0;
+          const bScore = priorityDomains.some((d) => b.link?.includes(d)) ? 1 : 0;
+          return bScore - aScore;
         });
 
+        const best = sorted[0];
+        let domain = '';
         try {
-          const text = extractionResponse.content
-            .filter((b) => b.type === 'text')
-            .map((b) => (b as { type: 'text'; text: string }).text)
-            .join('');
-          const jsonMatch = text.match(/\{[\s\S]*\}/);
-          if (jsonMatch) {
-            phoneIntelligence = JSON.parse(jsonMatch[0]);
-          }
-        } catch (e) {
-          console.warn('[CallBrief] Intelligence parse error:', e);
-        }
+          domain = new URL(best.link).hostname.replace('www.', '');
+        } catch { /* invalid URL — leave domain empty */ }
+
+        phoneIntelligence = {
+          found: true,
+          name: best.title?.split(' - ')[0]?.split(' | ')[0]?.trim() || null,
+          summary: best.snippet || null,
+          profile_url: best.link || null,
+          source: domain || null,
+          confidence: priorityDomains.some((d) => domain.includes(d)) ? 'high' : 'medium',
+          all_results: sorted.slice(0, 5).map((r) => ({
+            title: r.title,
+            url: r.link,
+            snippet: r.snippet,
+          })),
+        };
       }
     } catch (e) {
       console.error('[CallBrief] Serper error:', e);
