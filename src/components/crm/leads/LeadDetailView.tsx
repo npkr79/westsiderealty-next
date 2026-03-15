@@ -924,6 +924,7 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
           </div>
           <div style={{ display: "flex", gap: "8px" }}>
             <input
+              id="post-call-note-input"
               autoFocus
               placeholder="What was discussed..."
               style={{
@@ -950,72 +951,38 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
               }}
             />
             <button
+              onClick={async () => {
+                const input = document.getElementById("post-call-note-input") as HTMLInputElement;
+                if (input?.value.trim()) {
+                  await supabase.from("crm_lead_activities").insert({
+                    lead_id: leadId,
+                    activity_type: "note",
+                    description: input.value.trim(),
+                    created_by: currentUser.id,
+                  });
+                  setShowPostCallNote(false);
+                  void loadCallLogs();
+                }
+              }}
+              style={{
+                padding: "6px 14px",
+                background: "var(--color-background-info)",
+                color: "var(--color-text-info)",
+                border: "none",
+                borderRadius: "var(--border-radius-md)",
+                fontSize: "13px",
+                fontWeight: 500,
+                cursor: "pointer",
+                whiteSpace: "nowrap",
+                flexShrink: 0,
+              }}
+            >Save</button>
+            <button
               onClick={() => setShowPostCallNote(false)}
               style={{ background: "none", border: "none", color: "var(--color-text-tertiary)", cursor: "pointer", fontSize: "18px", padding: "0 4px" }}
             >×</button>
           </div>
         </div>
-      )}
-
-      {/* ── Quick-call bottom sheet ── */}
-      {showCallSheet && (
-        <>
-          <div
-            onClick={() => setShowCallSheet(false)}
-            style={{ position: "fixed", inset: 0, zIndex: 99, background: "rgba(0,0,0,0.4)" }}
-          />
-          <div style={{
-            position: "fixed", bottom: 0, left: 0, right: 0,
-            zIndex: 100,
-            background: "var(--color-background-primary)",
-            borderTop: "0.5px solid var(--color-border-secondary)",
-            borderRadius: "16px 16px 0 0",
-            padding: "20px 16px 32px",
-            boxShadow: "0 -4px 24px rgba(0,0,0,0.1)",
-          }}>
-            <div style={{ fontSize: "14px", fontWeight: 500, color: "var(--color-text-primary)", marginBottom: "16px", textAlign: "center" }}>
-              How did the call go?
-            </div>
-            <div style={{ display: "grid", gap: "10px" }}>
-              {[
-                { outcome: "Connected",          emoji: "✅", color: "var(--color-background-success)", textColor: "var(--color-text-success)" },
-                { outcome: "No Answer",          emoji: "📵", color: "var(--color-background-secondary)", textColor: "var(--color-text-secondary)" },
-                { outcome: "Busy",               emoji: "🔴", color: "var(--color-background-secondary)", textColor: "var(--color-text-secondary)" },
-                { outcome: "Callback Requested", emoji: "🔁", color: "var(--color-background-warning)", textColor: "var(--color-text-warning)" },
-                { outcome: "Wrong Number",       emoji: "❌", color: "var(--color-background-danger)", textColor: "var(--color-text-danger)" },
-              ].map(({ outcome, emoji, color, textColor }) => (
-                <button
-                  key={outcome}
-                  onClick={() => handleQuickCall(outcome)}
-                  disabled={savingCall}
-                  style={{
-                    width: "100%", padding: "14px 16px", borderRadius: "12px",
-                    border: "none", background: color, color: textColor,
-                    fontSize: "15px", fontWeight: 500, cursor: "pointer",
-                    textAlign: "left", display: "flex", alignItems: "center",
-                    gap: "10px", minHeight: "52px",
-                    opacity: savingCall ? 0.6 : 1,
-                  }}
-                >
-                  <span style={{ fontSize: "20px" }}>{emoji}</span>
-                  {outcome}
-                </button>
-              ))}
-            </div>
-            <button
-              onClick={() => { setShowCallSheet(false); setShowCallForm(true); }}
-              style={{ width: "100%", marginTop: "12px", padding: "10px", background: "none", border: "none", fontSize: "13px", color: "var(--color-text-tertiary)", cursor: "pointer" }}
-            >
-              + Detailed log (with duration &amp; notes)
-            </button>
-            <button
-              onClick={() => setShowCallSheet(false)}
-              style={{ width: "100%", padding: "12px", background: "none", border: "none", fontSize: "14px", color: "var(--color-text-tertiary)", cursor: "pointer" }}
-            >
-              Cancel
-            </button>
-          </div>
-        </>
       )}
 
       {/* ── Detailed call form (desktop fallback / via "Detailed log" link) ── */}
@@ -1904,6 +1871,67 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* ── Quick-call bottom sheet — must be last child of root div to escape overflow containers ── */}
+      {showCallSheet && (
+        <>
+          <div
+            onClick={() => setShowCallSheet(false)}
+            style={{ position: "fixed", inset: 0, zIndex: 99, background: "rgba(0,0,0,0.4)" }}
+          />
+          <div style={{
+            position: "fixed", bottom: 0, left: 0, right: 0,
+            zIndex: 100,
+            background: "var(--color-background-primary)",
+            borderTop: "0.5px solid var(--color-border-secondary)",
+            borderRadius: "16px 16px 0 0",
+            padding: "20px 16px 32px",
+            boxShadow: "0 -4px 24px rgba(0,0,0,0.1)",
+          }}>
+            <div style={{ fontSize: "14px", fontWeight: 500, color: "var(--color-text-primary)", marginBottom: "16px", textAlign: "center" }}>
+              How did the call go?
+            </div>
+            <div style={{ display: "grid", gap: "10px" }}>
+              {[
+                { outcome: "Connected",          emoji: "✅", color: "var(--color-background-success)", textColor: "var(--color-text-success)" },
+                { outcome: "No Answer",          emoji: "📵", color: "var(--color-background-secondary)", textColor: "var(--color-text-secondary)" },
+                { outcome: "Busy",               emoji: "🔴", color: "var(--color-background-secondary)", textColor: "var(--color-text-secondary)" },
+                { outcome: "Callback Requested", emoji: "🔁", color: "var(--color-background-warning)", textColor: "var(--color-text-warning)" },
+                { outcome: "Wrong Number",       emoji: "❌", color: "var(--color-background-danger)", textColor: "var(--color-text-danger)" },
+              ].map(({ outcome, emoji, color, textColor }) => (
+                <button
+                  key={outcome}
+                  onClick={() => handleQuickCall(outcome)}
+                  disabled={savingCall}
+                  style={{
+                    width: "100%", padding: "14px 16px", borderRadius: "12px",
+                    border: "none", background: color, color: textColor,
+                    fontSize: "15px", fontWeight: 500, cursor: "pointer",
+                    textAlign: "left", display: "flex", alignItems: "center",
+                    gap: "10px", minHeight: "52px",
+                    opacity: savingCall ? 0.6 : 1,
+                  }}
+                >
+                  <span style={{ fontSize: "20px" }}>{emoji}</span>
+                  {outcome}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => { setShowCallSheet(false); setShowCallForm(true); }}
+              style={{ width: "100%", marginTop: "12px", padding: "10px", background: "none", border: "none", fontSize: "13px", color: "var(--color-text-tertiary)", cursor: "pointer" }}
+            >
+              + Detailed log (with duration &amp; notes)
+            </button>
+            <button
+              onClick={() => setShowCallSheet(false)}
+              style={{ width: "100%", padding: "12px", background: "none", border: "none", fontSize: "14px", color: "var(--color-text-tertiary)", cursor: "pointer" }}
+            >
+              Cancel
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 }
