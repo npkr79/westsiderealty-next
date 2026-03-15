@@ -314,6 +314,10 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
   const [callOutcome, setCallOutcome] = useState("Connected");
   const [callNotes, setCallNotes] = useState("");
   const [savingCall, setSavingCall] = useState(false);
+  // Quick-call bottom sheet
+  const [showCallSheet, setShowCallSheet] = useState(false);
+  const [showPostCallNote, setShowPostCallNote] = useState(false);
+  const [lastCallOutcome, setLastCallOutcome] = useState("");
 
   // Profile save (budget, location, buyer_type, assigned_to)
   const [savingProfile, setSavingProfile] = useState(false);
@@ -700,6 +704,37 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
     void loadLead();
   }, [callDuration, callOutcome, callNotes, leadId, lead?.status, currentUser.id, supabase, loadCallLogs, loadLead]);
 
+  const handleQuickCall = async (outcome: string) => {
+    setShowCallSheet(false);
+    setSavingCall(true);
+
+    await supabase.from("crm_lead_activities").insert({
+      lead_id: leadId,
+      activity_type: "call",
+      description: `Call — ${outcome}`,
+      notes: null,
+      metadata: { outcome, duration_minutes: null },
+      created_by: currentUser.id,
+    });
+
+    const updates: Record<string, unknown> = { last_activity_at: new Date().toISOString() };
+    if (outcome === "Connected" && /^new$/i.test(lead?.status ?? "")) {
+      updates.status = "contacted";
+      updates.first_contact_at = new Date().toISOString();
+    }
+    await fetch(`/api/crm/leads/${leadId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updates),
+    });
+
+    setSavingCall(false);
+    setLastCallOutcome(outcome);
+    setShowPostCallNote(true);
+    void loadCallLogs();
+    void loadLead();
+  };
+
   const saveProfileChanges = useCallback(async () => {
     setSavingProfile(true);
     setProfileSaved(false);
@@ -838,7 +873,7 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
       <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
         <button
           type="button"
-          onClick={() => setShowCallForm((v) => !v)}
+          onClick={() => setShowCallSheet(true)}
           className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-full bg-blue-600 hover:bg-blue-700 active:scale-95 text-white text-sm font-medium"
         >
           <Phone className="h-3.5 w-3.5" /> Call
@@ -875,20 +910,122 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
         </button>
       </div>
 
-      {/* ── Inline Log Call form ── */}
+      {/* ── Post-call note prompt ── */}
+      {showPostCallNote && (
+        <div style={{
+          background: "var(--color-background-secondary)",
+          borderRadius: "var(--border-radius-lg)",
+          padding: "12px 14px",
+          marginBottom: "12px",
+          border: "0.5px solid var(--color-border-secondary)",
+        }}>
+          <div style={{ fontSize: "12px", color: "var(--color-text-secondary)", marginBottom: "8px" }}>
+            {lastCallOutcome} logged ✓ — Add a note? (optional)
+          </div>
+          <div style={{ display: "flex", gap: "8px" }}>
+            <input
+              autoFocus
+              placeholder="What was discussed..."
+              style={{
+                flex: 1, border: "none",
+                background: "var(--color-background-primary)",
+                borderRadius: "var(--border-radius-md)",
+                padding: "8px 10px",
+                fontSize: "13px",
+                color: "var(--color-text-primary)",
+                outline: "none",
+              }}
+              onKeyDown={async (e) => {
+                if (e.key === "Enter" && e.currentTarget.value.trim()) {
+                  await supabase.from("crm_lead_activities").insert({
+                    lead_id: leadId,
+                    activity_type: "note",
+                    description: e.currentTarget.value.trim(),
+                    created_by: currentUser.id,
+                  });
+                  setShowPostCallNote(false);
+                  void loadCallLogs();
+                }
+                if (e.key === "Escape") setShowPostCallNote(false);
+              }}
+            />
+            <button
+              onClick={() => setShowPostCallNote(false)}
+              style={{ background: "none", border: "none", color: "var(--color-text-tertiary)", cursor: "pointer", fontSize: "18px", padding: "0 4px" }}
+            >×</button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Quick-call bottom sheet ── */}
+      {showCallSheet && (
+        <>
+          <div
+            onClick={() => setShowCallSheet(false)}
+            style={{ position: "fixed", inset: 0, zIndex: 99, background: "rgba(0,0,0,0.4)" }}
+          />
+          <div style={{
+            position: "fixed", bottom: 0, left: 0, right: 0,
+            zIndex: 100,
+            background: "var(--color-background-primary)",
+            borderTop: "0.5px solid var(--color-border-secondary)",
+            borderRadius: "16px 16px 0 0",
+            padding: "20px 16px 32px",
+            boxShadow: "0 -4px 24px rgba(0,0,0,0.1)",
+          }}>
+            <div style={{ fontSize: "14px", fontWeight: 500, color: "var(--color-text-primary)", marginBottom: "16px", textAlign: "center" }}>
+              How did the call go?
+            </div>
+            <div style={{ display: "grid", gap: "10px" }}>
+              {[
+                { outcome: "Connected",          emoji: "✅", color: "var(--color-background-success)", textColor: "var(--color-text-success)" },
+                { outcome: "No Answer",          emoji: "📵", color: "var(--color-background-secondary)", textColor: "var(--color-text-secondary)" },
+                { outcome: "Busy",               emoji: "🔴", color: "var(--color-background-secondary)", textColor: "var(--color-text-secondary)" },
+                { outcome: "Callback Requested", emoji: "🔁", color: "var(--color-background-warning)", textColor: "var(--color-text-warning)" },
+                { outcome: "Wrong Number",       emoji: "❌", color: "var(--color-background-danger)", textColor: "var(--color-text-danger)" },
+              ].map(({ outcome, emoji, color, textColor }) => (
+                <button
+                  key={outcome}
+                  onClick={() => handleQuickCall(outcome)}
+                  disabled={savingCall}
+                  style={{
+                    width: "100%", padding: "14px 16px", borderRadius: "12px",
+                    border: "none", background: color, color: textColor,
+                    fontSize: "15px", fontWeight: 500, cursor: "pointer",
+                    textAlign: "left", display: "flex", alignItems: "center",
+                    gap: "10px", minHeight: "52px",
+                    opacity: savingCall ? 0.6 : 1,
+                  }}
+                >
+                  <span style={{ fontSize: "20px" }}>{emoji}</span>
+                  {outcome}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => { setShowCallSheet(false); setShowCallForm(true); }}
+              style={{ width: "100%", marginTop: "12px", padding: "10px", background: "none", border: "none", fontSize: "13px", color: "var(--color-text-tertiary)", cursor: "pointer" }}
+            >
+              + Detailed log (with duration &amp; notes)
+            </button>
+            <button
+              onClick={() => setShowCallSheet(false)}
+              style={{ width: "100%", padding: "12px", background: "none", border: "none", fontSize: "14px", color: "var(--color-text-tertiary)", cursor: "pointer" }}
+            >
+              Cancel
+            </button>
+          </div>
+        </>
+      )}
+
+      {/* ── Detailed call form (desktop fallback / via "Detailed log" link) ── */}
       {showCallForm && (
         <div className="rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/40 p-4 space-y-3 mb-4">
           <p className="text-sm font-semibold text-blue-700 dark:text-blue-300">Log a Call</p>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1">
               <label className="text-xs font-medium text-slate-500 dark:text-slate-400">Call Duration (mins)</label>
-              <Input
-                type="number"
-                min="0"
-                placeholder="e.g. 5"
-                value={callDuration}
-                onChange={(e) => setCallDuration(e.target.value)}
-              />
+              <Input type="number" min="0" placeholder="e.g. 5" value={callDuration} onChange={(e) => setCallDuration(e.target.value)} />
             </div>
             <div className="space-y-1">
               <label className="text-xs font-medium text-slate-500 dark:text-slate-400">Call Outcome</label>
@@ -907,12 +1044,7 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
           </div>
           <div className="space-y-1">
             <label className="text-xs font-medium text-slate-500 dark:text-slate-400">Notes</label>
-            <Textarea
-              placeholder="What was discussed..."
-              value={callNotes}
-              onChange={(e) => setCallNotes(e.target.value)}
-              rows={3}
-            />
+            <Textarea placeholder="What was discussed..." value={callNotes} onChange={(e) => setCallNotes(e.target.value)} rows={3} />
           </div>
           <div className="flex gap-2">
             <Button type="button" onClick={logCall} disabled={savingCall}>
@@ -1538,7 +1670,7 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
               <CardTitle className="text-lg flex items-center gap-2">
                 <Phone className="h-4 w-4 text-blue-500" /> Call History
               </CardTitle>
-              <Button type="button" size="sm" onClick={() => setShowCallForm(true)}>
+              <Button type="button" size="sm" onClick={() => setShowCallSheet(true)}>
                 + Log Call
               </Button>
             </CardHeader>
