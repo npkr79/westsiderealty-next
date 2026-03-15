@@ -1889,12 +1889,13 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
         <>
           <div
             onClick={() => setShowCallSheet(false)}
-            style={{ position: "fixed", inset: 0, zIndex: 9998, background: "rgba(0,0,0,0.5)" }}
+            style={{ position: "fixed", inset: 0, zIndex: 9998, background: "rgba(0,0,0,0.6)" }}
           />
           <div style={{
             position: "fixed", bottom: 0, left: 0, right: 0,
             zIndex: 9999,
-            background: "var(--color-background-primary)",
+            background: typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches ? "#1a1a1a" : "#ffffff",
+            isolation: "isolate",
             borderTop: "0.5px solid var(--color-border-secondary)",
             borderRadius: "16px 16px 0 0",
             padding: "20px 16px 40px",
