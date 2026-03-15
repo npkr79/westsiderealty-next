@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import CallBriefPanel from "@/components/crm/leads/CallBriefPanel";
 import LeadWhatsAppPanel from "@/components/crm/leads/LeadWhatsAppPanel";
 import LeadBehaviorIntelligencePanel from "@/components/crm/leads/LeadBehaviorIntelligencePanel";
 import LeadProjectActivityTab from "@/components/crm/leads/LeadProjectActivityTab";
@@ -323,6 +324,7 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
   const [savingCall, setSavingCall] = useState(false);
   // Quick-call bottom sheet
   const [showCallSheet, setShowCallSheet] = useState(false);
+  const [showBriefPanel, setShowBriefPanel] = useState(false);
   const [showPostCallNote, setShowPostCallNote] = useState(false);
   const [lastCallOutcome, setLastCallOutcome] = useState("");
 
@@ -933,6 +935,22 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
           className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-full bg-slate-700 hover:bg-slate-600 active:scale-95 text-white text-sm font-medium"
         >
           📝 Add Note
+        </button>
+        <button
+          type="button"
+          onClick={() => setShowBriefPanel(true)}
+          style={{
+            display: 'flex', alignItems: 'center', gap: '6px',
+            padding: '8px 16px',
+            background: 'var(--color-background-info)',
+            color: 'var(--color-text-info)',
+            border: 'none', borderRadius: '20px',
+            fontSize: '13px', fontWeight: 500,
+            cursor: 'pointer', whiteSpace: 'nowrap',
+            flexShrink: 0,
+          }}
+        >
+          📋 Brief
         </button>
       </div>
 
@@ -1897,6 +1915,12 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* ── Call Brief panel — rendered via portal ── */}
+      {showBriefPanel && typeof document !== "undefined" && createPortal(
+        <CallBriefPanel leadId={leadId} onClose={() => setShowBriefPanel(false)} />,
+        document.body
+      )}
 
       {/* ── Quick-call bottom sheet — rendered via portal to escape CRM shell transforms/overflow ── */}
       {showCallSheet && typeof document !== "undefined" && createPortal(
