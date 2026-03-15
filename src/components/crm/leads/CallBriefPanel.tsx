@@ -18,6 +18,7 @@ interface PhoneIntelligence {
   summary?: string | null;
   source?: string | null;
   all_results?: { title: string; url: string; snippet: string }[];
+  ai_profile?: string | null;
 }
 
 interface Brief {
@@ -222,6 +223,22 @@ export default function CallBriefPanel({ leadId, onClose }: CallBriefPanelProps)
                         marginBottom: '10px',
                       }}>
                         Found on {brief.phone_intelligence.source} · Confidence: {brief.phone_intelligence.confidence}
+                      </div>
+                    )}
+
+                    {/* AI profile summary */}
+                    {brief.phone_intelligence.ai_profile &&
+                     brief.phone_intelligence.ai_profile !== 'No meaningful profile found.' && (
+                      <div style={{
+                        background: 'var(--color-background-secondary)',
+                        borderRadius: '8px',
+                        padding: '10px 12px',
+                        fontSize: '13px',
+                        lineHeight: 1.6,
+                        color: 'var(--color-text-primary)',
+                        marginBottom: '12px',
+                      }}>
+                        {brief.phone_intelligence.ai_profile}
                       </div>
                     )}
 

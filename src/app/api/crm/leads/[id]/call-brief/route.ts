@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/serviceClient';
 import { getCrmSessionResult } from '@/lib/crm/auth';
+import Anthropic from '@anthropic-ai/sdk';
+
+const anthropic = new Anthropic();
 
 // ---------------------------------------------------------------------------
 // Build a structured summary from lead data — no AI call needed
@@ -267,6 +270,37 @@ export async function POST(
             snippet: r.snippet,
           })),
         };
+      }
+
+      // Claude Haiku: summarize Serper findings into a concise AI profile
+      if (phoneIntelligence.found && phoneIntelligence.all_results?.length > 0) {
+        try {
+          const snippets = phoneIntelligence.all_results
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            .map((r: any) => `Title: ${r.title}\nSnippet: ${r.snippet}\nURL: ${r.url}`)
+            .join('\n\n');
+
+          const profileRes = await anthropic.messages.create({
+            model: 'claude-haiku-4-5',
+            max_tokens: 150,
+            messages: [{
+              role: 'user',
+              content: `Based on these Google search results for phone number ${phone10}, write a 2-3 line professional profile of this person or business. Be factual, use only what's in the results. Max 50 words. If results are spam/irrelevant, return "No meaningful profile found."
+
+${snippets}`,
+            }],
+          });
+
+          const profileText = profileRes.content
+            .filter((b) => b.type === 'text')
+            .map((b) => (b as { type: 'text'; text: string }).text)
+            .join('');
+
+          phoneIntelligence.ai_profile = profileText.trim();
+          console.log('[CallBrief] AI profile:', phoneIntelligence.ai_profile);
+        } catch (e) {
+          console.warn('[CallBrief] Profile summarization failed:', e);
+        }
       }
     } catch (e) {
       console.error('[CallBrief] Serper error:', e);
