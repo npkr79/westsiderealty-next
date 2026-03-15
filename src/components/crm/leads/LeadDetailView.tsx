@@ -26,15 +26,17 @@ import { formatBudgetRange } from "@/lib/crm/budget";
 function toIST(dateStr: string | null | undefined): string {
   if (!dateStr) return "—";
   try {
-    return new Date(dateStr).toLocaleString("en-IN", {
-      timeZone: "Asia/Kolkata",
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: true,
-    });
+    const utc = new Date(dateStr).getTime();
+    const ist = new Date(utc + 5.5 * 60 * 60 * 1000);
+    const d = ist.getUTCDate().toString().padStart(2,"0");
+    const m = ["Jan","Feb","Mar","Apr","May","Jun",
+               "Jul","Aug","Sep","Oct","Nov","Dec"][ist.getUTCMonth()];
+    const y = ist.getUTCFullYear();
+    let h = ist.getUTCHours();
+    const min = ist.getUTCMinutes().toString().padStart(2,"0");
+    const ampm = h >= 12 ? "PM" : "AM";
+    h = h % 12 || 12;
+    return `${d} ${m} ${y}, ${h}:${min} ${ampm}`;
   } catch {
     return "—";
   }
