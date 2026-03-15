@@ -17,7 +17,6 @@ const SILENT_SOURCES = new Set([
 ]);
 
 const PRAVEEN_ID = "9021aff0-6ba3-4f7b-852f-561862fbc1ac";
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.westsiderealty.in";
 
 interface LeadRow {
   id: string;
@@ -125,92 +124,82 @@ export async function POST(request: NextRequest) {
   }
 
   const leadId = record.id;
-  const name = record.name?.trim() || "New Lead";
+  const name = record.name?.trim() || "Unknown";
   const phone = record.phone?.trim() || "";
 
+  // Batch-fetch whatsapp numbers for all relevant users in one query
+  const userIds = [PRAVEEN_ID];
+  if (record.assigned_to && record.assigned_to !== PRAVEEN_ID) {
+    userIds.push(record.assigned_to);
+  }
+
+  const { data: users } = await supabase
+    .from("crm_users")
+    .select("id, full_name, whatsapp_number")
+    .in("id", userIds);
+
+  const adminUser = users?.find((u: { id: string }) => u.id === PRAVEEN_ID) as
+    | { id: string; full_name?: string | null; whatsapp_number?: string | null }
+    | undefined;
+  const agentUser = users?.find((u: { id: string }) => u.id === record.assigned_to) as
+    | { id: string; full_name?: string | null; whatsapp_number?: string | null }
+    | undefined;
+
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.westsiderealty.in";
+  const leadUrl = `${siteUrl}/leads/${leadId}`;
+
+  // Direct service call — /api/crm/whatsapp/send-text requires cookie-based CRM session
+  // auth and cannot be called from a webhook context. Call sendWhatsAppText directly.
+  async function sendWA(waPhone: string, message: string) {
+    if (!waPhone) return;
+    await sendWhatsAppText({ leadId, phone: waPhone, message, sentBy: PRAVEEN_ID })
+      .catch((err: unknown) => console.error("[WA Alert] send failed:", err));
+  }
+
   if (type === "INSERT") {
-    const agentId = record.assigned_to ?? null;
-    if (agentId && agentId !== PRAVEEN_ID) {
-      const agentName = await resolveFullName(agentId);
-
-      sendWhatsAppAlert(agentId, leadId, `🔔 New Lead Assigned!\n\nName: ${name}\nPhone: ${phone}\n\nOpen CRM: ${SITE_URL}/leads`)
-        .catch((err) => console.error("[WA Alert] Agent WA failed:", err));
-
-      sendWhatsAppAlert(PRAVEEN_ID, leadId, `🔔 New Lead!\n\nName: ${name}\nPhone: ${phone}\nAssigned to: ${agentName}\n\nOpen CRM: ${SITE_URL}/leads`)
-        .catch((err) => console.error("[WA Alert] Admin WA failed:", err));
+    if (record.assigned_to && record.assigned_to !== PRAVEEN_ID) {
+      // Assigned lead — alert agent + admin
+      if (agentUser?.whatsapp_number) {
+        await sendWA(
+          agentUser.whatsapp_number,
+          `🔔 New Lead Assigned!\n\nName: ${name}\nPhone: ${phone}\n\nView: ${leadUrl}`
+        );
+      }
+      if (adminUser?.whatsapp_number) {
+        await sendWA(
+          adminUser.whatsapp_number,
+          `🔔 New Lead\n\nName: ${name}\nPhone: ${phone}\nAgent: ${agentUser?.full_name || "Unknown"}\n\nView: ${leadUrl}`
+        );
+      }
     } else {
-      sendWhatsAppAlert(PRAVEEN_ID, leadId, `🔔 New Lead (Unassigned)!\n\nName: ${name}\nPhone: ${phone}\n\nNeeds assignment: ${SITE_URL}/leads`)
-        .catch((err) => console.error("[WA Alert] Admin unassigned WA failed:", err));
+      // Unassigned — alert admin only
+      if (adminUser?.whatsapp_number) {
+        await sendWA(
+          adminUser.whatsapp_number,
+          `🔔 New Lead (Unassigned)\n\nName: ${name}\nPhone: ${phone}\n\nAssign: ${siteUrl}/routing`
+        );
+      }
     }
-
-    console.log("[Push] Notifications disabled - WhatsApp alerts only");
-    return NextResponse.json({ success: true, reason: "wa_only" });
+    return NextResponse.json({ success: true, reason: "insert_ok" });
   }
 
   if (type === "UPDATE") {
-    // Only act when assigned_to just changed from null → a value (ownership routing fires after insert)
     const wasUnassigned = !oldRecord?.assigned_to;
     const nowAssigned = !!record.assigned_to;
+
     if (!wasUnassigned || !nowAssigned) {
-      console.log("[PushDebug] Returning", { reason: "assigned_to_unchanged" });
       return NextResponse.json({ skipped: true, reason: "assigned_to_unchanged" });
     }
 
-    const agentId = record.assigned_to!;
-    if (agentId === PRAVEEN_ID) {
-      // Admin assigned to themselves — nothing extra to do
-      console.log("[PushDebug] Returning", { reason: "update_self_assign", leadId });
-      return NextResponse.json({ ok: true, event: "update_self_assign", leadId });
+    // Lead just got assigned — alert agent only
+    if (record.assigned_to !== PRAVEEN_ID && agentUser?.whatsapp_number) {
+      await sendWA(
+        agentUser.whatsapp_number,
+        `🔔 Lead Assigned to You!\n\nName: ${name}\nPhone: ${phone}\n\nView: ${leadUrl}`
+      );
     }
-
-    sendWhatsAppAlert(agentId, leadId, `🔔 Lead Assigned to You!\n\nName: ${name}\nPhone: ${phone}\n\nOpen CRM: ${SITE_URL}/leads`)
-      .catch((err) => console.error("[WA Alert] Agent WA (update) failed:", err));
-
-    const agentName = await resolveFullName(agentId);
-
-    sendWhatsAppAlert(PRAVEEN_ID, leadId, `🔔 Lead Assigned!\n\nName: ${name}\nPhone: ${phone}\nAssigned to: ${agentName}\n\nOpen CRM: ${SITE_URL}/leads`)
-      .catch((err) => console.error("[WA Alert] Admin WA (update) failed:", err));
-
-    console.log("[Push] Notifications disabled - WhatsApp alerts only");
-    return NextResponse.json({ success: true, reason: "wa_only" });
+    return NextResponse.json({ success: true, reason: "update_ok" });
   }
 
-  console.log("[PushDebug] Returning", { reason: "unhandled_event_type" });
-  return NextResponse.json({ skipped: true, reason: "unhandled_event_type" });
-}
-
-async function resolveFullName(userId: string): Promise<string> {
-  try {
-    const supabase = createServiceClient();
-    const { data } = await supabase
-      .from("crm_users")
-      .select("full_name")
-      .eq("id", userId)
-      .maybeSingle();
-    return (data as { full_name?: string | null } | null)?.full_name?.trim() || "Agent";
-  } catch {
-    return "Agent";
-  }
-}
-
-async function sendWhatsAppAlert(recipientUserId: string, leadId: string, message: string): Promise<void> {
-  const supabase = createServiceClient();
-  const { data } = await supabase
-    .from("crm_users")
-    .select("whatsapp_number")
-    .eq("id", recipientUserId)
-    .maybeSingle();
-
-  const whatsappNumber = (data as { whatsapp_number?: string | null } | null)?.whatsapp_number?.trim();
-  if (!whatsappNumber) {
-    console.log(`[WA Alert] No whatsapp_number for user ${recipientUserId} — skipping`);
-    return;
-  }
-
-  await sendWhatsAppText({
-    leadId,
-    phone: whatsappNumber,
-    message,
-    sentBy: PRAVEEN_ID,
-  });
+  return NextResponse.json({ skipped: true, reason: "unknown_type" });
 }
