@@ -157,80 +157,71 @@ export async function POST(request: NextRequest) {
     return digits.startsWith("91") ? digits : `91${digits}`;
   }
 
-  // Direct Meta Cloud API call — sends template message, no conversation record needed.
-  async function sendTemplate(waPhone: string, templatePayload: Record<string, unknown>) {
+  // AiSensy Project API call — sends template message via AiSensy.
+  async function sendTemplate(waPhone: string) {
     if (!waPhone) return;
 
-    const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
-    const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
+    const apiKey = process.env.AISENSY_API_KEY;
+    const userName = process.env.AISENSY_USERNAME;
 
-    if (!phoneNumberId || !accessToken) {
-      console.error("[WA Alert] Missing WhatsApp credentials");
+    if (!apiKey || !userName) {
+      console.error("[WA Alert] Missing AiSensy credentials");
       return;
     }
 
-    const to = normalizePhone(waPhone);
+    const destination = normalizePhone(waPhone);
 
     const response = await fetch(
-      `https://graph.facebook.com/v18.0/${phoneNumberId}/messages`,
+      "https://apis.aisensy.com/project-apis/v1/send-template-message",
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
+          "x-aisensy-project-api-key": apiKey,
         },
-        body: JSON.stringify({ messaging_product: "whatsapp", to, ...templatePayload }),
+        body: JSON.stringify({
+          campaignName: "agent_new_lead_v3",
+          destination,
+          userName,
+          templateParams: [
+            String(record!.name || "Unknown"),
+            String(record!.phone || "N/A"),
+            String(record!.source_channel || record!.source_type || "Website"),
+            String(record!.location_preference || "Not specified"),
+            String(record!.budget || "Not specified"),
+            String(record!.id),
+          ],
+          source: "crm-new-lead",
+          media: {},
+          buttons: [],
+          carouselCards: [],
+          location: {},
+        }),
       }
     );
 
     const result = await response.json();
 
     if (!response.ok) {
-      console.error("[WA Alert] Meta API error:", result);
+      console.error("[WA Alert] AiSensy API error:", result);
     } else {
-      console.log("[WA Alert] Sent successfully to:", to);
+      console.log("[WA Alert] Sent successfully to:", destination);
     }
   }
 
-  // Template payload builder — same template for both agent and admin alerts
-  function buildTemplatePayload() {
-    return {
-      type: "template",
-      template: {
-        name: "agent_new_lead_v1",
-        language: { code: "en" },
-        components: [
-          {
-            type: "body",
-            parameters: [
-              { type: "text", text: String(record!.name || "Unknown") },
-              { type: "text", text: String(record!.phone || "N/A") },
-              { type: "text", text: String(record!.source_channel || record!.source_type || "Website") },
-              { type: "text", text: String(record!.location_preference || "Not specified") },
-              { type: "text", text: String(record!.budget || "Not specified") },
-              { type: "text", text: String(record!.id) },
-            ],
-          },
-        ],
-      },
-    };
-  }
-
   if (type === "INSERT") {
-    const templatePayload = buildTemplatePayload();
-
     if (record.assigned_to && record.assigned_to !== PRAVEEN_ID) {
       // Assigned lead — alert agent + admin
       if (agentUser?.whatsapp_number) {
-        await sendTemplate(agentUser.whatsapp_number, templatePayload);
+        await sendTemplate(agentUser.whatsapp_number);
       }
       if (adminUser?.whatsapp_number) {
-        await sendTemplate(adminUser.whatsapp_number, templatePayload);
+        await sendTemplate(adminUser.whatsapp_number);
       }
     } else {
       // Unassigned — alert admin only
       if (adminUser?.whatsapp_number) {
-        await sendTemplate(adminUser.whatsapp_number, templatePayload);
+        await sendTemplate(adminUser.whatsapp_number);
       }
     }
     return NextResponse.json({ success: true, reason: "insert_ok" });
@@ -246,7 +237,7 @@ export async function POST(request: NextRequest) {
 
     // Lead just got assigned — alert agent only
     if (record.assigned_to !== PRAVEEN_ID && agentUser?.whatsapp_number) {
-      await sendTemplate(agentUser.whatsapp_number, buildTemplatePayload());
+      await sendTemplate(agentUser.whatsapp_number);
     }
     return NextResponse.json({ success: true, reason: "update_ok" });
   }
