@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
-import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/serviceClient";
 
 export const metadata: Metadata = {
   title: "Insights & Research | Westside Realty",
@@ -21,7 +21,7 @@ function formatDate(dateStr: string | null | undefined): string {
 }
 
 export default async function BlogPage() {
-  const supabase = await createClient();
+  const supabase = createServiceClient();
 
   const { data: articles } = await supabase
     .from("blog_articles")
