@@ -33,7 +33,11 @@ function LatestInsightsColumn() {
       .limit(3)
       .then(({ data, error }: { data: RecentArticle[] | null; error: unknown }) => {
         console.log('[Footer] articles:', data, 'error:', error);
-        if (data) setArticles(data);
+        if (data && data.length > 0) setArticles(data);
+        setLoading(false);
+      })
+      .catch((err: unknown) => {
+        console.error('[Footer] fetch failed:', err);
         setLoading(false);
       });
   }, []);
