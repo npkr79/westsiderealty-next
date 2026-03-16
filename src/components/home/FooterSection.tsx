@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { MapPin, Facebook, Instagram, Youtube, Linkedin, Twitter } from "lucide-react";
+import { useEffect, useState } from "react";
+import { getBrowserClient } from "@/lib/supabase/browserClient";
 
 const socialLinks = [
   { icon: Facebook, href: "https://www.facebook.com/remaxwestsiderealty", label: "Facebook" },
@@ -11,13 +13,74 @@ const socialLinks = [
   { icon: Twitter, href: "https://x.com/remaxwestside", label: "X" },
 ];
 
+interface RecentArticle {
+  title: string;
+  slug: string;
+  category: string | null;
+}
+
+function LatestInsightsColumn() {
+  const [articles, setArticles] = useState<RecentArticle[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const supabase = getBrowserClient();
+    supabase
+      .from("blog_articles")
+      .select("title, slug, category")
+      .eq("status", "published")
+      .order("date", { ascending: false })
+      .limit(3)
+      .then(({ data }: { data: RecentArticle[] | null }) => {
+        if (data) setArticles(data);
+        setLoading(false);
+      });
+  }, []);
+
+  return (
+    <div className="space-y-4">
+      <h4 className="text-base font-semibold text-white">Latest Insights</h4>
+      <ul className="space-y-3 text-sm">
+        {loading
+          ? [0, 1, 2].map((i) => (
+              <li key={i} className="space-y-1">
+                <div className="h-2.5 w-16 rounded bg-slate-700 animate-pulse" />
+                <div className="h-3 w-full rounded bg-slate-800 animate-pulse" />
+              </li>
+            ))
+          : articles.map((a) => (
+              <li key={a.slug}>
+                {a.category && (
+                  <p className="text-[10px] uppercase tracking-wide text-slate-600 mb-0.5">
+                    {a.category}
+                  </p>
+                )}
+                <Link
+                  href={`/blog/${a.slug}`}
+                  className="text-slate-400 hover:text-white transition-colors leading-snug block overflow-hidden"
+                  style={{
+                    display: "-webkit-box",
+                    WebkitLineClamp: 1,
+                    WebkitBoxOrient: "vertical",
+                    overflow: "hidden",
+                  } as React.CSSProperties}
+                >
+                  {a.title}
+                </Link>
+              </li>
+            ))}
+      </ul>
+    </div>
+  );
+}
+
 export default function FooterSection() {
   const currentYear = new Date().getFullYear();
 
   return (
     <footer className="bg-slate-900 text-slate-300 mt-10">
       <div className="container mx-auto px-4 py-16">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-8 mb-8">
           {/* Company Info */}
           <div className="space-y-4">
             <h3 className="text-lg font-bold text-white">RE/MAX Westside Realty</h3>
@@ -47,7 +110,7 @@ export default function FooterSection() {
               </li>
               <li>
                 <Link href="/blog" className="hover:text-white transition-colors">
-                  Market Insights
+                  Articles &amp; Research
                 </Link>
               </li>
             </ul>
@@ -79,6 +142,9 @@ export default function FooterSection() {
               </li>
             </ul>
           </div>
+
+          {/* Latest Insights */}
+          <LatestInsightsColumn />
 
           {/* Contact Info */}
           <div className="space-y-4">

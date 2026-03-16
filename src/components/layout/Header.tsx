@@ -67,6 +67,7 @@ const STATIC_NAV_ITEMS: NavItem[] = [
       { label: "5-Year Outlook", href: "/insights/outlook", badge: "AI" },
       { label: "Buyer's Guide", href: "/insights/buyers-guide" },
       { label: "RERA Updates", href: "/insights/rera" },
+      { label: "Articles & Research", href: "/blog", badge: "NEW" },
     ],
     cta: { label: "View all insights →", href: "/insights" },
   },
