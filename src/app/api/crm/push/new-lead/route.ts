@@ -173,7 +173,7 @@ export async function POST(request: NextRequest) {
 
     const body = {
       apiKey,
-      campaignName: "agent_new_lead_v3",
+      campaignName: "agent_new_lead_v2",
       destination,
       userName,
       templateParams: [
