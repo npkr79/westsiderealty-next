@@ -23,6 +23,8 @@ interface LeadRow {
   phone?: string | null;
   source_type?: string | null;
   source_channel?: string | null;
+  location_preference?: string | null;
+  budget?: string | null;
   assigned_to?: string | null;
   is_bulk_upload?: boolean | null;
 }
@@ -145,10 +147,18 @@ export async function POST(request: NextRequest) {
     | undefined;
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.westsiderealty.in";
-  const leadUrl = `${siteUrl}/leads/${leadId}`;
 
-  // Direct Meta Cloud API call — no conversation record needed for internal alerts.
-  async function sendWA(waPhone: string, message: string) {
+  // Normalize a stored whatsapp_number (no country code) to E.164
+  function normalizePhone(raw: string): string {
+    const digits = raw.replace(/\D/g, "");
+    if (digits.length === 12 && digits.startsWith("91")) return digits;
+    if (digits.length === 10) return `91${digits}`;
+    // Fallback: prepend 91 and hope for the best
+    return digits.startsWith("91") ? digits : `91${digits}`;
+  }
+
+  // Direct Meta Cloud API call — sends template message, no conversation record needed.
+  async function sendTemplate(waPhone: string, templatePayload: Record<string, unknown>) {
     if (!waPhone) return;
 
     const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
@@ -159,11 +169,7 @@ export async function POST(request: NextRequest) {
       return;
     }
 
-    // Normalize phone — ensure it has country code
-    const normalizedPhone = waPhone.replace(/\D/g, "");
-    const phoneWithCode = normalizedPhone.startsWith("91")
-      ? normalizedPhone
-      : `91${normalizedPhone}`;
+    const to = normalizePhone(waPhone);
 
     const response = await fetch(
       `https://graph.facebook.com/v18.0/${phoneNumberId}/messages`,
@@ -173,12 +179,7 @@ export async function POST(request: NextRequest) {
           "Content-Type": "application/json",
           Authorization: `Bearer ${accessToken}`,
         },
-        body: JSON.stringify({
-          messaging_product: "whatsapp",
-          to: phoneWithCode,
-          type: "text",
-          text: { body: message },
-        }),
+        body: JSON.stringify({ messaging_product: "whatsapp", to, ...templatePayload }),
       }
     );
 
@@ -187,32 +188,49 @@ export async function POST(request: NextRequest) {
     if (!response.ok) {
       console.error("[WA Alert] Meta API error:", result);
     } else {
-      console.log("[WA Alert] Sent successfully to:", phoneWithCode);
+      console.log("[WA Alert] Sent successfully to:", to);
     }
   }
 
+  // Template payload builder — same template for both agent and admin alerts
+  function buildTemplatePayload() {
+    return {
+      type: "template",
+      template: {
+        name: "agent_new_lead_v1",
+        language: { code: "en" },
+        components: [
+          {
+            type: "body",
+            parameters: [
+              { type: "text", text: String(record!.name || "Unknown") },
+              { type: "text", text: String(record!.phone || "N/A") },
+              { type: "text", text: String(record!.source_channel || record!.source_type || "Website") },
+              { type: "text", text: String(record!.location_preference || "Not specified") },
+              { type: "text", text: String(record!.budget || "Not specified") },
+              { type: "text", text: String(record!.id) },
+            ],
+          },
+        ],
+      },
+    };
+  }
+
   if (type === "INSERT") {
+    const templatePayload = buildTemplatePayload();
+
     if (record.assigned_to && record.assigned_to !== PRAVEEN_ID) {
       // Assigned lead — alert agent + admin
       if (agentUser?.whatsapp_number) {
-        await sendWA(
-          agentUser.whatsapp_number,
-          `🔔 New Lead Assigned!\n\nName: ${name}\nPhone: ${phone}\n\nView: ${leadUrl}`
-        );
+        await sendTemplate(agentUser.whatsapp_number, templatePayload);
       }
       if (adminUser?.whatsapp_number) {
-        await sendWA(
-          adminUser.whatsapp_number,
-          `🔔 New Lead\n\nName: ${name}\nPhone: ${phone}\nAgent: ${agentUser?.full_name || "Unknown"}\n\nView: ${leadUrl}`
-        );
+        await sendTemplate(adminUser.whatsapp_number, templatePayload);
       }
     } else {
       // Unassigned — alert admin only
       if (adminUser?.whatsapp_number) {
-        await sendWA(
-          adminUser.whatsapp_number,
-          `🔔 New Lead (Unassigned)\n\nName: ${name}\nPhone: ${phone}\n\nAssign: ${siteUrl}/routing`
-        );
+        await sendTemplate(adminUser.whatsapp_number, templatePayload);
       }
     }
     return NextResponse.json({ success: true, reason: "insert_ok" });
@@ -228,10 +246,7 @@ export async function POST(request: NextRequest) {
 
     // Lead just got assigned — alert agent only
     if (record.assigned_to !== PRAVEEN_ID && agentUser?.whatsapp_number) {
-      await sendWA(
-        agentUser.whatsapp_number,
-        `🔔 Lead Assigned to You!\n\nName: ${name}\nPhone: ${phone}\n\nView: ${leadUrl}`
-      );
+      await sendTemplate(agentUser.whatsapp_number, buildTemplatePayload());
     }
     return NextResponse.json({ success: true, reason: "update_ok" });
   }
