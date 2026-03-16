@@ -170,7 +170,7 @@ export default async function BlogArticlePage({ params }: PageProps) {
   const primaryEntity: Record<string, any> = {
     "@type": "Article",
     headline: article.seo_title || article.title,
-    description: article.seo_description || article.description.substring(0, 160),
+    description: article.seo_description || (article.description ?? "").substring(0, 160),
     image: optimizedOgImage,
     datePublished: datePublished,
     dateModified: dateModified,

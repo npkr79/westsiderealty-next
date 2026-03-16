@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { MapPin, Facebook, Instagram, Youtube, Linkedin, Twitter } from "lucide-react";
 import { useEffect, useState } from "react";
-import { getBrowserClient } from "@/lib/supabase/browserClient";
 
 const socialLinks = [
   { icon: Facebook, href: "https://www.facebook.com/remaxwestsiderealty", label: "Facebook" },
@@ -24,15 +23,10 @@ function LatestInsightsColumn() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const supabase = getBrowserClient();
-    supabase
-      .from("blog_articles")
-      .select("title, slug, category")
-      .eq("status", "published")
-      .order("date", { ascending: false })
-      .limit(3)
-      .then(({ data, error }: { data: RecentArticle[] | null; error: unknown }) => {
-        console.log('[Footer] articles:', data, 'error:', error);
+    fetch('/api/blog/recent')
+      .then((res) => res.json())
+      .then(({ articles: data }: { articles: RecentArticle[] }) => {
+        console.log('[Footer] articles:', data);
         if (data && data.length > 0) setArticles(data);
         setLoading(false);
       })
