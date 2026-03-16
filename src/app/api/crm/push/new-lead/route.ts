@@ -181,7 +181,9 @@ export async function POST(request: NextRequest) {
         String(record!.phone || "N/A"),
         String(record!.source_channel || record!.source_type || "Website"),
         String(record!.location_preference || "Not specified"),
-        String(record!.budget || "Not specified"),
+        record!.budget
+          ? `₹${(Number(record!.budget) / 10000000).toFixed(2)} Cr`
+          : "Not specified",
         String(record!.id),
       ],
       source: "crm-new-lead",
