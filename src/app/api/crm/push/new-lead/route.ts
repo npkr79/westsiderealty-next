@@ -171,7 +171,28 @@ export async function POST(request: NextRequest) {
 
     const destination = normalizePhone(waPhone);
 
-    const response = await fetch(
+    const body = {
+      campaignName: "agent_new_lead_v3",
+      destination,
+      userName,
+      templateParams: [
+        String(record!.name || "Unknown"),
+        String(record!.phone || "N/A"),
+        String(record!.source_channel || record!.source_type || "Website"),
+        String(record!.location_preference || "Not specified"),
+        String(record!.budget || "Not specified"),
+        String(record!.id),
+      ],
+      source: "crm-new-lead",
+      media: {},
+      buttons: [],
+      carouselCards: [],
+      location: {},
+    };
+
+    console.log("[AiSensy] Request:", JSON.stringify(body));
+
+    const res = await fetch(
       "https://apis.aisensy.com/project-apis/v1/send-template-message",
       {
         method: "POST",
@@ -179,33 +200,25 @@ export async function POST(request: NextRequest) {
           "Content-Type": "application/json",
           "x-aisensy-project-api-key": apiKey,
         },
-        body: JSON.stringify({
-          campaignName: "agent_new_lead_v3",
-          destination,
-          userName,
-          templateParams: [
-            String(record!.name || "Unknown"),
-            String(record!.phone || "N/A"),
-            String(record!.source_channel || record!.source_type || "Website"),
-            String(record!.location_preference || "Not specified"),
-            String(record!.budget || "Not specified"),
-            String(record!.id),
-          ],
-          source: "crm-new-lead",
-          media: {},
-          buttons: [],
-          carouselCards: [],
-          location: {},
-        }),
+        body: JSON.stringify(body),
       }
     );
 
-    const result = await response.json();
+    const text = await res.text();
+    console.log("[AiSensy] Raw response:", text);
 
-    if (!response.ok) {
-      console.error("[WA Alert] AiSensy API error:", result);
+    let result: unknown;
+    try {
+      result = JSON.parse(text);
+    } catch {
+      console.error("[AiSensy] Non-JSON response (status", res.status, "):", text.slice(0, 200));
+      return;
+    }
+
+    if (!res.ok) {
+      console.error("[AiSensy] API error:", result);
     } else {
-      console.log("[WA Alert] Sent successfully to:", destination);
+      console.log("[AiSensy] Sent successfully to:", destination);
     }
   }
 
