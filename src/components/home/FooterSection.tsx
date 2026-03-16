@@ -31,7 +31,8 @@ function LatestInsightsColumn() {
       .eq("status", "published")
       .order("date", { ascending: false })
       .limit(3)
-      .then(({ data }: { data: RecentArticle[] | null }) => {
+      .then(({ data, error }: { data: RecentArticle[] | null; error: unknown }) => {
+        console.log('[Footer] articles:', data, 'error:', error);
         if (data) setArticles(data);
         setLoading(false);
       });
