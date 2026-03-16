@@ -1,186 +1,175 @@
-import { Metadata } from "next";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Calendar, ArrowRight } from "lucide-react";
+import type { Metadata } from "next";
 import Link from "next/link";
-import type { BlogArticle } from "@/services/blogService";
-// blogService imported dynamically to avoid top-level await
-import NewsletterCtaSection from "@/components/blog/NewsletterCtaSection";
-import { JsonLd } from "@/components/common/SEO";
-import { buildMetadata } from "@/components/common/SEO";
+import Image from "next/image";
+import { createClient } from "@/lib/supabase/server";
 
-// Always render this page dynamically so the blog list reflects latest Supabase data.
-// Static metadata is fine here because the page-level SEO (title/description) does not
-// depend on the specific article list, only the content does.
-export const dynamic = "force-dynamic";
-
-// Generate Blog schema markup
-function generateBlogSchema(articles: BlogArticle[]) {
-  const baseUrl = "https://www.westsiderealty.in";
-  
-  const blogPosts = articles.map((article) => {
-    // Format date to ISO 8601
-    const datePublished = new Date(article.date).toISOString();
-    
-    // Get full URL for the article
-    const articleUrl = `${baseUrl}/blog/${article.slug}`;
-    
-    // Get image URL (ensure it's absolute)
-    let imageUrl = article.image_url || "";
-    if (imageUrl && !imageUrl.startsWith("http")) {
-      imageUrl = imageUrl.startsWith("/") 
-        ? `${baseUrl}${imageUrl}` 
-        : `${baseUrl}/${imageUrl}`;
-    }
-    if (!imageUrl) {
-      imageUrl = `${baseUrl}/placeholder.svg`;
-    }
-    
-    return {
-      "@type": "BlogPosting",
-      headline: article.title,
-      description: article.seo_description || article.description || "",
-      image: imageUrl,
-      datePublished: datePublished,
-      url: articleUrl,
-      author: {
-        "@type": "Organization",
-        name: article.author || "RE/MAX Westside Realty",
-      },
-      publisher: {
-        "@type": "Organization",
-        name: "RE/MAX Westside Realty",
-        logo: {
-          "@type": "ImageObject",
-          url: "https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/brand-assets/remax-logo.jpg",
-        },
-      },
-    };
-  });
-
-  return {
-    "@context": "https://schema.org",
-    "@type": "Blog",
-    name: "Real Estate Market Insights & Investment Guide | RE/MAX Westside",
-    description: "Expert analysis and insights on real estate markets in Hyderabad, Goa, and Dubai. Stay informed with the latest trends and investment opportunities.",
-    url: `${baseUrl}/blog`,
-    blogPost: blogPosts,
-    publisher: {
-      "@type": "Organization",
-      name: "RE/MAX Westside Realty",
-      logo: {
-        "@type": "ImageObject",
-        url: "https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/brand-assets/remax-logo.jpg",
-      },
-    },
-  };
-}
-
-export const metadata: Metadata = buildMetadata({
-  title: "Real Estate Market Insights & Investment Guide | RE/MAX Westside",
+export const metadata: Metadata = {
+  title: "Insights & Research | Westside Realty",
   description:
-    "Expert analysis and insights on real estate markets in Hyderabad, Goa, and Dubai. Stay informed with the latest trends, investment opportunities, and market analysis from RE/MAX Westside Realty.",
-  canonicalUrl: "https://www.westsiderealty.in/blog",
-  keywords:
-    "hyderabad real estate insights, goa property market analysis, dubai investment guide, real estate trends, property market insights, investment opportunities",
-});
-
-const BlogListPage = ({
-  articles = [],
-}: {
-  articles: BlogArticle[];
-}) => {
-  const blogSchema = generateBlogSchema(articles);
-
-  return (
-    <>
-      <JsonLd jsonLd={blogSchema} />
-      <div>
-        {/* Hero Section */}
-        <section className="py-20 px-4 bg-gradient-to-r from-remax-blue/10 to-remax-red/10">
-          <div className="container mx-auto text-center">
-            <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
-              Market Insights
-            </h1>
-            <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
-              Expert analysis and insights on real estate markets in Hyderabad, Goa, and Dubai. 
-              Stay informed with the latest trends and investment opportunities.
-            </p>
-          </div>
-        </section>
-
-        {/* Articles Grid */}
-        <section className="py-16 px-4">
-          <div className="container mx-auto">
-            {articles.length === 0 ? (
-              <div className="text-center py-12">
-                <h2 className="text-xl font-semibold text-gray-700 mb-4">
-                  Coming Soon
-                </h2>
-                <p className="text-gray-600">
-                  We're working on bringing you the latest market insights and expert analysis.
-                </p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {articles.map((article) => (
-                  <Card key={article.id} className="hover:shadow-lg transition-shadow">
-                    <div className="relative">
-                      <img 
-                        src={article.image_url ?? ""}
-                        alt={article.title}
-                        className="w-full h-48 object-cover rounded-t-lg"
-                      />
-                      <div className="absolute top-4 left-4">
-                        <Badge variant="secondary" className="bg-white/90">
-                          {article.category || "Market Insight"}
-                        </Badge>
-                      </div>
-                    </div>
-                    
-                    <CardHeader>
-                      <div className="flex items-center text-sm text-gray-500 mb-2">
-                        <Calendar className="h-4 w-4 mr-2" />
-                        {new Date(article.date).toLocaleDateString()}
-                      </div>
-                      <h2 className="text-lg font-semibold line-clamp-2">
-                        {article.title}
-                      </h2>
-                    </CardHeader>
-                    
-                    <CardContent>
-                      <p className="text-gray-600 mb-4 line-clamp-3">
-                        {article.seo_description || article.description}
-                      </p>
-                      <Link href={`/blog/${article.slug}`}>
-                        <Button variant="outline" className="w-full border-remax-red text-remax-red hover:bg-remax-red/10">
-                          Read More
-                          <ArrowRight className="h-4 w-4 ml-2" />
-                        </Button>
-                      </Link>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </div>
-        </section>
-
-        <NewsletterCtaSection />
-      </div>
-    </>
-  );
+    "Market analysis, investment guides, and property intelligence from the Westside Realty team.",
 };
 
-export default async function BlogPage() {
-  let articles: BlogArticle[] = [];
-  try {
-    const { blogService } = await import('@/services/blogService');
-    articles = await blogService.getPublishedArticles();
-  } catch (error) {
-    console.error("Error fetching blog articles:", error);
-  }
+export const revalidate = 3600;
 
-  return <BlogListPage articles={articles} />;
+function formatDate(dateStr: string | null | undefined): string {
+  if (!dateStr) return "";
+  return new Date(dateStr).toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+export default async function BlogPage() {
+  const supabase = await createClient();
+
+  const { data: articles } = await supabase
+    .from("blog_articles")
+    .select("id, title, description, slug, date, read_time, category, image_url, author")
+    .eq("status", "published")
+    .order("date", { ascending: false });
+
+  return (
+    <main style={{ background: "#080808", minHeight: "100vh" }}>
+      <section
+        className="pt-20 pb-16 px-4"
+        style={{ background: "linear-gradient(to bottom, #0d0d0d, #080808)" }}
+      >
+        <div className="container mx-auto max-w-6xl">
+
+          {/* Back link */}
+          <Link
+            href="/insights"
+            className="inline-flex items-center gap-1 text-sm mb-8 transition-colors hover:opacity-80"
+            style={{ color: "#c8a96e" }}
+          >
+            ← Back to Insights
+          </Link>
+
+          {/* Heading */}
+          <p
+            className="text-xs font-bold uppercase tracking-[0.2em] mb-3"
+            style={{ color: "#c8a96e" }}
+          >
+            Market Intelligence
+          </p>
+          <h1 className="text-4xl sm:text-5xl font-bold text-white mb-4">
+            Insights &amp; Research
+          </h1>
+          <p className="text-slate-400 text-lg mb-12 max-w-xl">
+            Market analysis, investment guides, and property intelligence from the Westside Realty team.
+          </p>
+
+          {/* Grid */}
+          {!articles || articles.length === 0 ? (
+            <p className="text-slate-500 text-sm">No articles published yet.</p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {articles.map((article) => (
+                <Link
+                  key={article.id}
+                  href={`/blog/${article.slug}`}
+                  className="group flex flex-col rounded-2xl border overflow-hidden transition-all duration-200 hover:border-white/20 hover:bg-white/[0.04]"
+                  style={{
+                    background: "rgba(255,255,255,0.03)",
+                    borderColor: "rgba(255,255,255,0.08)",
+                  }}
+                >
+                  {/* Image */}
+                  <div
+                    className="relative w-full flex-shrink-0"
+                    style={{ aspectRatio: "16/9", background: "#111" }}
+                  >
+                    {article.image_url ? (
+                      <Image
+                        src={article.image_url}
+                        alt={article.title}
+                        fill
+                        className="object-cover transition-transform duration-300 group-hover:scale-105"
+                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                      />
+                    ) : (
+                      <div
+                        className="absolute inset-0 flex items-center justify-center"
+                        style={{ background: "rgba(200,169,110,0.06)" }}
+                      >
+                        <span
+                          className="text-xs font-bold uppercase tracking-widest"
+                          style={{ color: "rgba(200,169,110,0.4)" }}
+                        >
+                          {article.category || "Insight"}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Category badge */}
+                    {article.category && (
+                      <div className="absolute top-3 left-3">
+                        <span
+                          className="rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
+                          style={{
+                            background: "rgba(200,169,110,0.15)",
+                            color: "#c8a96e",
+                            borderColor: "rgba(200,169,110,0.3)",
+                          }}
+                        >
+                          {article.category}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Card body */}
+                  <div className="flex flex-col flex-1 p-5">
+                    <h2
+                      className="text-white font-semibold text-base leading-snug mb-2 group-hover:text-slate-200 transition-colors"
+                      style={{
+                        display: "-webkit-box",
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: "vertical",
+                        overflow: "hidden",
+                      } as React.CSSProperties}
+                    >
+                      {article.title}
+                    </h2>
+
+                    {article.description && (
+                      <p
+                        className="text-slate-500 text-sm leading-relaxed mb-4"
+                        style={{
+                          display: "-webkit-box",
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: "vertical",
+                          overflow: "hidden",
+                        } as React.CSSProperties}
+                      >
+                        {article.description}
+                      </p>
+                    )}
+
+                    {/* Meta row */}
+                    <div className="mt-auto flex flex-wrap items-center gap-2 text-xs text-slate-600">
+                      {article.date && <span>{formatDate(article.date)}</span>}
+                      {article.read_time && (
+                        <>
+                          <span style={{ color: "rgba(255,255,255,0.1)" }}>·</span>
+                          <span>{article.read_time}</span>
+                        </>
+                      )}
+                      {article.author && (
+                        <>
+                          <span style={{ color: "rgba(255,255,255,0.1)" }}>·</span>
+                          <span>{article.author}</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+    </main>
+  );
 }
