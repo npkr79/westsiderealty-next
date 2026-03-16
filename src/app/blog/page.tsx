@@ -9,7 +9,7 @@ export const metadata: Metadata = {
     "Market analysis, investment guides, and property intelligence from the Westside Realty team.",
 };
 
-export const revalidate = 3600;
+export const revalidate = 0;
 
 function formatDate(dateStr: string | null | undefined): string {
   if (!dateStr) return "";
