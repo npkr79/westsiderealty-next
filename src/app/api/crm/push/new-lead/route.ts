@@ -172,6 +172,7 @@ export async function POST(request: NextRequest) {
     const destination = normalizePhone(waPhone);
 
     const body = {
+      apiKey,
       campaignName: "agent_new_lead_v3",
       destination,
       userName,
@@ -193,12 +194,11 @@ export async function POST(request: NextRequest) {
     console.log("[AiSensy] Request:", JSON.stringify(body));
 
     const res = await fetch(
-      "https://apis.aisensy.com/project-apis/v1/send-template-message",
+      "https://backend.aisensy.com/campaign/t1/api",
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-aisensy-project-api-key": apiKey,
         },
         body: JSON.stringify(body),
       }
