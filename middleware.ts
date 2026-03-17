@@ -14,7 +14,7 @@ const rolePathMap: Record<string, CrmRole> = {
   "/dashboard/analytics": "analyst",
 };
 
-const protectedPrefixes = ["/dashboard", "/leads", "/pipeline", "/routing", "/tasks", "/whatsapp", "/crm/whatsapp", "/crm/automation-monitor", "/crm/revenue-dashboard", "/journeys", "/settings"];
+const protectedPrefixes = ["/dashboard", "/leads", "/pipeline", "/routing", "/tasks", "/whatsapp", "/crm/whatsapp", "/crm/automation-monitor", "/crm/revenue-dashboard", "/journeys", "/settings", "/social"];
 
 const isProtectedPath = (pathname: string): boolean =>
   protectedPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
@@ -111,6 +111,7 @@ export async function middleware(request: NextRequest) {
     '/crm/revenue-dashboard': ['admin', 'sales_head'],
     '/dashboard/admin/link-health': ['admin'],
     '/dashboard/admin/seo': ['admin'],
+    '/social': ['admin'],
   };
 
   for (const [route, allowedRoles] of Object.entries(roleRestrictedRoutes)) {
@@ -123,6 +124,6 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/crm/:path*", "/dashboard/:path*", "/leads/:path*", "/pipeline/:path*", "/routing/:path*", "/tasks/:path*", "/whatsapp/:path*", "/journeys/:path*", "/settings/:path*"],
+  matcher: ["/crm/:path*", "/dashboard/:path*", "/leads/:path*", "/pipeline/:path*", "/routing/:path*", "/tasks/:path*", "/whatsapp/:path*", "/journeys/:path*", "/settings/:path*", "/social/:path*", "/social"],
 };
 
