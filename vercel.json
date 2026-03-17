@@ -24,6 +24,14 @@
     {
       "path": "/api/admin/health-check",
       "schedule": "30 3 * * 1"
+    },
+    {
+      "path": "/api/cron/generate-occasion-posts",
+      "schedule": "30 17 * * 6"
+    },
+    {
+      "path": "/api/cron/publish-occasion-posts",
+      "schedule": "30 19 * * *"
     }
   ]
 }

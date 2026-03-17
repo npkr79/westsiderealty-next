@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import OccasionsTab from './OccasionsTab';
 import {
   Loader2, Copy, Check, Trash2, Send, ImagePlus, Clock,
   Facebook, Instagram, Linkedin, Twitter, MessageCircle, Sparkles,
@@ -1013,11 +1014,11 @@ function HistoryTab() {
 
 // ── Main Dashboard ────────────────────────────────────────────────────────────
 
-const TABS = ['Generate', 'Queue', 'Manual', 'History'] as const;
+const TABS = ['Occasions', 'Generate', 'Queue', 'Manual', 'History'] as const;
 type Tab = typeof TABS[number];
 
 export default function SocialMediaDashboard() {
-  const [activeTab, setActiveTab] = useState<Tab>('Generate');
+  const [activeTab, setActiveTab] = useState<Tab>('Occasions');
 
   return (
     <div className="min-h-screen bg-gray-950 text-white">
@@ -1041,6 +1042,7 @@ export default function SocialMediaDashboard() {
           ))}
         </div>
 
+        {activeTab === 'Occasions' && <OccasionsTab />}
         {activeTab === 'Generate' && <GenerateTab />}
         {activeTab === 'Queue' && <QueueTab />}
         {activeTab === 'Manual' && <ManualTab />}
