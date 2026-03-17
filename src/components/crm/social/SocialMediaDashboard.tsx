@@ -387,8 +387,10 @@ function QueueTab() {
           </div>
 
           {post.image_url && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={post.image_url} alt="Post image" className="w-full max-h-48 object-cover rounded-lg" />
+            <div className="w-full overflow-hidden rounded-lg">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={post.image_url} alt="Post image" className="w-full h-48 object-cover rounded-lg" />
+            </div>
           )}
 
           <p className="text-sm text-gray-300 leading-relaxed line-clamp-3">
