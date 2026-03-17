@@ -102,6 +102,23 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL(getDashboardPathForRole(resolvedRole), request.url));
   }
 
+  // Additional route-level role restrictions
+  const roleRestrictedRoutes: Record<string, CrmRole[]> = {
+    '/settings': ['admin'],
+    '/routing': ['admin', 'sales_head', 'team_lead'],
+    '/journeys': ['admin', 'sales_head', 'team_lead'],
+    '/crm/automation-monitor': ['admin', 'sales_head'],
+    '/crm/revenue-dashboard': ['admin', 'sales_head'],
+    '/dashboard/admin/link-health': ['admin'],
+    '/dashboard/admin/seo': ['admin'],
+  };
+
+  for (const [route, allowedRoles] of Object.entries(roleRestrictedRoutes)) {
+    if (pathname.startsWith(route) && resolvedRole && !allowedRoles.includes(resolvedRole)) {
+      return NextResponse.redirect(new URL(getDashboardPathForRole(resolvedRole), request.url));
+    }
+  }
+
   return response;
 }
 
