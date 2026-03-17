@@ -16,7 +16,23 @@ Writing rules:
 - ALWAYS include specific local context, landmarks, price points, developer names
 - Write like a trusted local expert who knows every lane of Hyderabad
 - Create genuine insight and value, not marketing fluff
-- Current year is 2026`;
+- Current year is 2026
+
+ACCURACY RULES:
+- You have strong knowledge of Hyderabad's real estate micro-markets.
+  Use it confidently.
+- For Tellapur specifically: nearby landmarks include Hitec City (18km),
+  Financial District (15km), Outer Ring Road exit (2km), My Home Vipina
+  (adjacent), Aparna Sarovar. Nearest major mall is Inorbit Cyberabad
+  (12km). International schools nearby: Oakridge International, Manthan.
+- For any micro-market you write about, only mention landmarks and
+  amenities you are highly confident exist near that location.
+- If you are not certain about a specific landmark's proximity,
+  describe the category generically (e.g. 'top international schools
+  within 5km' rather than naming a specific school you are unsure about)
+- Never place a developer in a micro-market where they have no presence.
+  My Home operates in: Tellapur, Kokapet, Narsingi, Gachibowli corridor.
+  NOT in Banjara Hills, Jubilee Hills, Madhapur.`;
 
 function buildUserPrompt(platform: string, content_type: string, idea: string, topic_type: string): string {
   if (platform === 'LinkedIn' && content_type === 'article') {
