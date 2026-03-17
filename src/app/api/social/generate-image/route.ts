@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     },
     body: JSON.stringify({
       model: 'dall-e-3',
-      prompt: `${prompt} Professional real estate photography, high quality, no text overlays`,
+      prompt: `${prompt}. Professional real estate photography style, architectural visualization, premium quality, no text or watermarks, no people.`,
       n: 1,
       size: '1024x1024',
       quality: 'standard',
@@ -53,12 +53,12 @@ export async function POST(request: NextRequest) {
   const supabase = createServiceClient();
   const { error } = await supabase
     .from('social_posts')
-    .update({ image_url })
+    .update({ image_url, updated_at: new Date().toISOString() })
     .eq('id', post_id);
 
   if (error) {
     console.error('[social/generate-image] Update error:', error);
   }
 
-  return NextResponse.json({ image_url });
+  return NextResponse.json({ success: true, image_url });
 }

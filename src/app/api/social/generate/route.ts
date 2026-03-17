@@ -1,39 +1,114 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCrmSessionResult } from '@/lib/crm/auth';
 
-export async function POST(request: NextRequest) {
-  const session = await getCrmSessionResult();
-  if (!session.user || session.user.role !== 'admin') {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+const SYSTEM_PROMPT = `You are an expert social media manager and content strategist for Westside Realty, a premium real estate advisory firm in Hyderabad, India.
+
+Company context:
+- Premium real estate advisory, not a developer
+- Key markets: Jubilee Hills, Banjara Hills, Kokapet, Narsingi, Tellapur, Gachibowli, Financial District, Kondapur, Shamshabad
+- Top developers we work with: My Home, Prestige, Lodha, Aparna, Aliens, Ramky, Shapoorji
+- Buyer profiles: HNIs (₹2Cr+), NRIs, senior IT professionals, investors
+- Hyderabad is India's fastest growing real estate market in 2026
+- Price range: ₹80L to ₹10Cr+ depending on micro-market
+
+Writing rules:
+- NEVER use generic phrases: 'incredible resilience', 'smart investors', 'strategic patience', 'in today's market'
+- ALWAYS include specific local context, landmarks, price points, developer names
+- Write like a trusted local expert who knows every lane of Hyderabad
+- Create genuine insight and value, not marketing fluff
+- Current year is 2026`;
+
+function buildUserPrompt(platform: string, content_type: string, idea: string, topic_type: string): string {
+  if (platform === 'LinkedIn' && content_type === 'article') {
+    return `Write a LinkedIn article about: ${idea}
+Topic category: ${topic_type}
+
+Return JSON with:
+{
+  "article_title": "compelling headline (max 80 chars)",
+  "article_body": "full article in markdown (800-1200 words), structured with: hook paragraph, 3-4 H2 sections with substantive content, data points and specific locations, practical insights, closing CTA",
+  "image_prompt": "DALL-E prompt for article cover image",
+  "hashtags": ["5 relevant professional hashtags without # symbol"],
+  "title": "same as article_title"
+}
+Return ONLY valid JSON.`;
   }
 
-  let body: { idea: string; platforms: string[]; count: number };
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+  if (platform === 'LinkedIn' && content_type === 'post') {
+    return `Write a LinkedIn short post about: ${idea}
+Topic category: ${topic_type}
+
+Return JSON with:
+{
+  "caption": "LinkedIn post (150-300 chars, professional insight, no hashtags, ends with a thought-provoking question or observation)",
+  "hashtags": [],
+  "image_prompt": "DALL-E prompt for post image",
+  "title": "short title (max 60 chars)"
+}
+Return ONLY valid JSON.`;
   }
 
-  const { idea, platforms, count } = body;
+  if (platform === 'Instagram' && content_type === 'post') {
+    return `Write an Instagram caption about: ${idea}
+Topic category: ${topic_type}
 
-  const prompt = `Generate ${count} social media posts for this idea: ${idea}
-Platforms: ${platforms.join(', ')}
-Return a JSON array where each object has:
-- platforms: array of platform names from the requested list
-- caption_facebook: max 500 chars, conversational, 3-5 hashtags
-- caption_instagram: max 300 chars, visual, 5-8 hashtags
-- caption_linkedin: max 700 chars, professional, no hashtags
-- caption_x: max 280 chars, punchy, 2-3 hashtags
-- caption_whatsapp: max 400 chars, friendly, no hashtags
-- image_prompt: detailed DALL-E prompt for professional real estate photo
-- title: max 60 chars
-ONLY return the JSON array.`;
-
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    return NextResponse.json({ error: 'ANTHROPIC_API_KEY not configured' }, { status: 500 });
+Return JSON with:
+{
+  "caption": "Instagram caption (150-250 chars, aspirational and visual, lifestyle-focused)",
+  "hashtags": ["8-10 relevant hashtags without # symbol, mix of broad and niche like HyderabadRealEstate and LuxuryHomes"],
+  "image_prompt": "DALL-E prompt for a stunning real estate lifestyle photo",
+  "title": "short title (max 60 chars)"
+}
+Return ONLY valid JSON.`;
   }
 
+  if (platform === 'Facebook' && content_type === 'post') {
+    return `Write a Facebook post about: ${idea}
+Topic category: ${topic_type}
+
+Return JSON with:
+{
+  "caption": "Facebook post (200-400 chars, conversational community tone, informative, ends with question to drive comments)",
+  "hashtags": ["3-5 hashtags without # symbol"],
+  "image_prompt": "DALL-E prompt for post image",
+  "title": "short title (max 60 chars)"
+}
+Return ONLY valid JSON.`;
+  }
+
+  if (platform === 'X' && content_type === 'tweet') {
+    return `Write a tweet about: ${idea}
+Topic category: ${topic_type}
+
+Return JSON with:
+{
+  "caption": "tweet (max 240 chars, punchy contrarian or insightful take, must make reader stop scrolling)",
+  "hashtags": ["2-3 hashtags without # symbol"],
+  "image_prompt": "DALL-E prompt for tweet image",
+  "title": "short title (max 60 chars)"
+}
+Return ONLY valid JSON.`;
+  }
+
+  if (platform === 'WhatsApp' && content_type === 'broadcast') {
+    return `Write a WhatsApp broadcast message about: ${idea}
+Topic category: ${topic_type}
+
+Return JSON with:
+{
+  "caption": "WhatsApp message (150-300 chars, feels like exclusive insider tip from a trusted advisor, personal tone, creates urgency without being pushy)",
+  "hashtags": [],
+  "image_prompt": "DALL-E prompt for accompanying image",
+  "title": "short title (max 60 chars)"
+}
+Return ONLY valid JSON.`;
+  }
+
+  return `Write a ${content_type} for ${platform} about: ${idea}
+Return JSON with { caption, hashtags, image_prompt, title }. Return ONLY valid JSON.`;
+}
+
+async function callClaude(userPrompt: string, apiKey: string): Promise<Record<string, unknown>> {
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -44,49 +119,78 @@ ONLY return the JSON array.`;
     body: JSON.stringify({
       model: 'claude-sonnet-4-20250514',
       max_tokens: 4000,
-      system: `You are an expert social media manager for Westside Realty, a premium real estate advisory firm in Hyderabad, India. You have deep knowledge of:
-- Hyderabad micro-markets: Jubilee Hills, Banjara Hills, Kokapet, Narsingi, Tellapur, Gachibowli, Financial District, Kondapur
-- Premium developers: My Home, Prestige, Lodha, Aparna, Aliens, Ramky
-- Buyer profiles: HNIs, NRIs, IT professionals, investors
-- Market context: Hyderabad is India's fastest growing real estate market in 2026
-
-Your posts must:
-- Sound like they come from a trusted real estate expert, NOT a generic AI
-- Include specific local insights, not generic statements
-- Reference actual locations, landmarks, price points where relevant
-- Create genuine FOMO and urgency for serious buyers
-- LinkedIn: thought leadership tone, data-driven, professional insights
-- Instagram: aspirational lifestyle, visual storytelling
-- Facebook: community-focused, approachable, informative
-- X: sharp market takes, contrarian insights
-- WhatsApp: personal, exclusive feel like insider information
-
-NEVER use generic phrases like 'incredible resilience', 'smart investors', 'strategic patience'.
-ALWAYS include specific Hyderabad/India context.
-Current year is 2026. Never use hashtags with years before 2025.
-
-Return ONLY valid JSON array, no other text.`,
-      messages: [{ role: 'user', content: prompt }],
+      system: SYSTEM_PROMPT,
+      messages: [{ role: 'user', content: userPrompt }],
     }),
   });
 
   if (!res.ok) {
     const err = await res.text();
-    console.error('[social/generate] Anthropic error:', err);
-    return NextResponse.json({ error: 'AI generation failed' }, { status: 500 });
+    throw new Error(`Claude API error: ${err.slice(0, 200)}`);
   }
 
   const data = await res.json();
-  const raw: string = data.content?.[0]?.text ?? '[]';
+  const raw: string = data.content?.[0]?.text ?? '{}';
   const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim();
 
-  let posts: unknown[];
   try {
-    posts = JSON.parse(cleaned);
+    return JSON.parse(cleaned) as Record<string, unknown>;
   } catch {
-    console.error('[social/generate] JSON parse failed:', cleaned.slice(0, 200));
-    return NextResponse.json({ error: 'Failed to parse AI response' }, { status: 500 });
+    throw new Error(`JSON parse failed: ${cleaned.slice(0, 200)}`);
+  }
+}
+
+export async function POST(request: NextRequest) {
+  const session = await getCrmSessionResult();
+  if (!session.user || session.user.role !== 'admin') {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  return NextResponse.json({ posts });
+  let body: { idea: string; topic_type: string; selections: Array<{ platform: string; content_type: string }> };
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+  }
+
+  const { idea, topic_type, selections } = body;
+
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
+    return NextResponse.json({ error: 'ANTHROPIC_API_KEY not configured' }, { status: 500 });
+  }
+
+  const batch_id = crypto.randomUUID();
+
+  const results = await Promise.allSettled(
+    selections.map(async ({ platform, content_type }) => {
+      const userPrompt = buildUserPrompt(platform, content_type, idea, topic_type);
+      const generated = await callClaude(userPrompt, apiKey);
+      return {
+        batch_id,
+        platform,
+        content_type,
+        topic_type,
+        content_idea: idea,
+        status: 'draft',
+        ...generated,
+      };
+    })
+  );
+
+  const posts: unknown[] = [];
+  const errors: string[] = [];
+  for (const result of results) {
+    if (result.status === 'fulfilled') {
+      posts.push(result.value);
+    } else {
+      errors.push(result.reason instanceof Error ? result.reason.message : String(result.reason));
+    }
+  }
+
+  if (posts.length === 0) {
+    return NextResponse.json({ error: 'All generations failed', details: errors }, { status: 500 });
+  }
+
+  return NextResponse.json({ posts, batch_id, errors: errors.length > 0 ? errors : undefined });
 }

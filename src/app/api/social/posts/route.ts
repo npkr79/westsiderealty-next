@@ -1,20 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getCrmSessionResult } from '@/lib/crm/auth';
 import { createServiceClient } from '@/lib/supabase/serviceClient';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
-  const status = searchParams.get('status');
+  const statusParam = searchParams.get('status');
+  const platform = searchParams.get('platform');
 
   const supabase = createServiceClient();
   let query = supabase
     .from('social_posts')
     .select('*')
-    .order('scheduled_at', { ascending: false });
+    .order('created_at', { ascending: false });
 
-  if (status === 'pending') {
-    query = query.in('status', ['draft', 'scheduled']);
-  } else if (status) {
-    query = query.eq('status', status);
+  if (statusParam) {
+    const statuses = statusParam.split(',').map((s) => s.trim());
+    if (statuses.length === 1) {
+      query = query.eq('status', statuses[0]);
+    } else {
+      query = query.in('status', statuses);
+    }
+  }
+
+  if (platform) {
+    query = query.eq('platform', platform);
   }
 
   const { data, error } = await query;
@@ -28,22 +37,59 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  let body: Record<string, unknown>;
+  const session = await getCrmSessionResult();
+  if (!session.user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  let body: Record<string, unknown> | Record<string, unknown>[];
+  try {
+    body = await request.json() as Record<string, unknown> | Record<string, unknown>[];
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+  }
+
+  const isArray = Array.isArray(body);
+  const rows: Record<string, unknown>[] = isArray ? body as Record<string, unknown>[] : [body as Record<string, unknown>];
+  const rowsWithCreatedBy = rows.map((r) => ({ ...r, created_by: session.user!.id }));
+
+  const supabase = createServiceClient();
+  const { data, error } = await supabase
+    .from('social_posts')
+    .insert(rowsWithCreatedBy)
+    .select();
+
+  if (error) {
+    console.error('[social/posts POST] error:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json(isArray ? { posts: data } : { post: data?.[0] });
+}
+
+export async function PATCH(request: NextRequest) {
+  let body: { id: string; [key: string]: unknown };
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 
+  const { id, ...updates } = body;
+  if (!id) {
+    return NextResponse.json({ error: 'id required' }, { status: 400 });
+  }
+
   const supabase = createServiceClient();
   const { data, error } = await supabase
     .from('social_posts')
-    .insert(body)
+    .update({ ...updates, updated_at: new Date().toISOString() })
+    .eq('id', id)
     .select()
     .single();
 
   if (error) {
-    console.error('[social/posts POST] error:', error);
+    console.error('[social/posts PATCH] error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
