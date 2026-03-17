@@ -52,6 +52,18 @@ interface SavedPost {
   created_at: string;
 }
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function toIST(ts: string): string {
+  if (!ts) return '';
+  const normalized = ts.includes('Z') || ts.includes('+') ? ts : ts + 'Z';
+  const ist = new Date(new Date(normalized).getTime() + 5.5 * 60 * 60 * 1000);
+  return ist.toLocaleString('en-IN', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', hour12: true,
+  }) + ' IST';
+}
+
 // ── Shared Helpers ─────────────────────────────────────────────────────────────
 
 function platformBg(p: string): string {
@@ -794,7 +806,7 @@ function QueueTab() {
 
                 {post.scheduled_at && (
                   <p className="flex items-center gap-1 text-xs text-gray-500">
-                    <Clock size={12} /> {new Date(post.scheduled_at).toLocaleString('en-IN')}
+                    <Clock size={12} /> {toIST(post.scheduled_at)}
                   </p>
                 )}
 
@@ -931,7 +943,7 @@ function ManualTab() {
 
           {post.scheduled_at && (
             <p className="flex items-center gap-1 text-xs text-gray-500">
-              <Clock size={12} /> Scheduled: {new Date(post.scheduled_at).toLocaleString('en-IN')}
+              <Clock size={12} /> Scheduled: {toIST(post.scheduled_at)}
             </p>
           )}
 
@@ -985,7 +997,7 @@ function HistoryTab() {
             <div className="flex items-center gap-3 mt-1.5 flex-wrap">
               {post.posted_at && (
                 <p className="text-xs text-gray-600">
-                  {new Date(post.posted_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  {toIST(post.posted_at)}
                 </p>
               )}
               {post.platform_post_id && (
