@@ -117,6 +117,7 @@ function GenerateTab() {
   const [posts, setPosts] = useState<GeneratedPost[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [savingIdx, setSavingIdx] = useState<number | null>(null);
+  const [savedIndices, setSavedIndices] = useState<Set<number>>(new Set());
 
   const togglePlatform = (p: string) => {
     setSelectedPlatforms((prev) =>
@@ -173,7 +174,7 @@ function GenerateTab() {
         }),
       });
       if (!res.ok) throw new Error('Save failed');
-      setPosts((prev) => prev.filter((_, i) => i !== idx));
+      setSavedIndices((prev) => new Set(prev).add(idx));
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Save failed');
     } finally {
@@ -305,11 +306,11 @@ function GenerateTab() {
           <div className="flex gap-2">
             <button
               onClick={() => saveToQueue(idx)}
-              disabled={savingIdx === idx}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white text-sm font-medium transition-colors"
+              disabled={savingIdx === idx || savedIndices.has(idx)}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg disabled:cursor-not-allowed text-white text-sm font-medium transition-colors bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40"
             >
               {savingIdx === idx ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
-              Save to Queue
+              {savedIndices.has(idx) ? 'Saved ✓' : 'Save to Queue'}
             </button>
             <button
               onClick={() => setPosts((prev) => prev.filter((_, i) => i !== idx))}
