@@ -4,10 +4,27 @@ import { createServiceClient } from '@/lib/supabase/serviceClient';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
+  const id = searchParams.get('id');
   const month = searchParams.get('month');
   const year = searchParams.get('year');
 
   const supabase = createServiceClient();
+
+  // Single occasion fetch
+  if (id) {
+    const { data, error } = await supabase
+      .from('occasions_calendar')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ occasion: data });
+  }
+
   let query = supabase
     .from('occasions_calendar')
     .select('*')

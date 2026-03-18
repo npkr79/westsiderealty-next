@@ -52,9 +52,16 @@ async function createTextSVGWithFont(
 }
 
 export async function POST(request: NextRequest) {
-  const session = await getCrmSessionResult();
-  if (!session.user || session.user.role !== 'admin') {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  // Dual auth: admin session OR cron secret (review-image calls this internally)
+  const authHeader = request.headers.get('authorization');
+  const cronSecret = process.env.CRON_SECRET;
+  const isCron = cronSecret && authHeader === `Bearer ${cronSecret}`;
+
+  if (!isCron) {
+    const session = await getCrmSessionResult();
+    if (!session.user || session.user.role !== 'admin') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
   }
 
   let body: { occasion_id: string };
@@ -80,166 +87,162 @@ export async function POST(request: NextRequest) {
 
   const occasionName: string = occasion?.occasion_name ?? 'the occasion';
 
-  const { data: captions, error: captionsError } = await serviceClient
+  // Fetch ONE approved caption for image_prompt + telugu_greeting
+  const { data: anyCaption, error: captionError } = await serviceClient
     .from('occasion_captions')
-    .select('*')
+    .select('image_prompt, telugu_greeting')
     .eq('occasion_id', occasion_id)
-    .eq('status', 'approved');
+    .eq('status', 'approved')
+    .limit(1)
+    .single();
 
-  if (captionsError || !captions?.length) {
+  if (captionError || !anyCaption) {
     return NextResponse.json({ error: 'No approved captions found' }, { status: 404 });
   }
 
-  const results: { platform: string; image_url: string | null; status: string }[] = [];
+  try {
+    // Generate ONE image
+    console.log('[Occasions Images] Starting gpt-image-1 for:', occasionName);
+    const enhanced_prompt = `Create a beautiful festive background for ${occasionName}. Pure visual design only — NO text, NO words, NO letters anywhere in the image. Visual theme: ${anyCaption.image_prompt} Style: Premium Indian festive social media background, warm colors, culturally authentic symbols and decorative elements only. High quality, suitable as background for text overlay.`;
 
-  for (const caption of captions) {
-    try {
-      // GPT-4o image generation
-      console.log('[Occasions Images] Starting gpt-image-1 for:', caption.platform);
-      const enhanced_prompt = `Create a beautiful festive background for ${occasionName}. Pure visual design only — NO text, NO words, NO letters anywhere in the image. Visual theme: ${caption.image_prompt} Style: Premium Indian festive social media background, warm colors, culturally authentic symbols and decorative elements only. High quality, suitable as background for text overlay.`;
-      const imageRes = await fetch('https://api.openai.com/v1/images/generations', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${openaiKey}`,
-        },
-        body: JSON.stringify({
-          model: 'gpt-image-1',
-          prompt: enhanced_prompt,
-          n: 1,
-          size: '1024x1024',
-          quality: 'medium',
-          output_format: 'jpeg',
-        }),
-      });
+    const imageRes = await fetch('https://api.openai.com/v1/images/generations', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${openaiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'gpt-image-1',
+        prompt: enhanced_prompt,
+        n: 1,
+        size: '1024x1024',
+        quality: 'medium',
+        output_format: 'jpeg',
+      }),
+    });
 
-      if (!imageRes.ok) {
-        const errText = await imageRes.text();
-        throw new Error(`gpt-image-1 API error: ${errText.slice(0, 200)}`);
-      }
-
-      const imageData = await imageRes.json();
-      const base64Image: string = imageData.data?.[0]?.b64_json;
-      if (!base64Image) throw new Error('gpt-image-1 returned no image data');
-      console.log('[Occasions Images] gpt-image-1 response received, converting buffer');
-
-      const rawImageBuffer = Buffer.from(base64Image, 'base64');
-
-      // Sharp composite — text overlays + logo
-      console.log('[Occasions Images] Starting sharp composite');
-
-      const logoRes = await fetch(LOGO_URL);
-      const logoBuffer = Buffer.from(await logoRes.arrayBuffer());
-      const logoResized = await sharp(logoBuffer)
-        .resize(200, null, { fit: 'inside' })
-        .toBuffer();
-      const logoMeta = await sharp(logoResized).metadata();
-      const logoWidth = logoMeta.width ?? 200;
-      const logoHeight = logoMeta.height ?? 80;
-
-      const imageMeta = await sharp(rawImageBuffer).metadata();
-      const imgWidth = imageMeta.width ?? 1024;
-
-      const teluguFontBase64 = await getTeluguFontBase64();
-      const teluguGreeting: string = caption.telugu_greeting || '';
-
-      const compositeLayers: sharp.OverlayOptions[] = [];
-
-      // 1. Dark banner at top for text
-      compositeLayers.push({
-        input: Buffer.from(`
-          <svg width="${imgWidth}" height="200">
-            <rect width="${imgWidth}" height="200" fill="rgba(0,0,0,0.5)"/>
-          </svg>
-        `),
-        top: 0, left: 0,
-      });
-
-      // 2. "Happy {occasion_name}" in gold
-      const titleSvg = await createTextSVGWithFont(`Happy ${occasionName}`, imgWidth, 72, '#FFD700', 'rgba(0,0,0,0.6)');
-      compositeLayers.push({ input: titleSvg, top: 20, left: 0 });
-
-      // 3. Telugu greeting (from DB — no hardcoding)
-      if (teluguGreeting) {
-        const teluguSvg = await createTextSVGWithFont(teluguGreeting, imgWidth, 52, '#FFFFFF', 'rgba(0,0,0,0.5)', teluguFontBase64);
-        compositeLayers.push({ input: teluguSvg, top: 105, left: 0 });
-      }
-
-      // 4. Dark banner at bottom for brand line
-      compositeLayers.push({
-        input: Buffer.from(`
-          <svg width="${imgWidth}" height="50">
-            <rect width="${imgWidth}" height="50" fill="rgba(0,0,0,0.5)"/>
-          </svg>
-        `),
-        top: imgWidth - logoHeight - 80,
-        left: 0,
-      });
-
-      // 5. Brand name text
-      const brandSvg = await createTextSVGWithFont('— Team RE/MAX Westside Realty', imgWidth, 28, '#FFFFFF', 'rgba(0,0,0,0.3)');
-      compositeLayers.push({ input: brandSvg, top: imgWidth - logoHeight - 75, left: 0 });
-
-      // 6. Logo bottom right (always last)
-      compositeLayers.push({
-        input: logoResized,
-        top: 1024 - logoHeight - 30,
-        left: imgWidth - logoWidth - 30,
-      });
-
-      const compositedBuffer = await sharp(rawImageBuffer)
-        .composite(compositeLayers)
-        .jpeg({ quality: 90 })
-        .toBuffer();
-
-      // Supabase upload
-      const fileName = `occasions/${occasion_id}/${caption.platform}-${Date.now()}.jpg`;
-      console.log('[Occasions Images] Starting Supabase upload:', fileName);
-      const { error: uploadError } = await serviceClient.storage
-        .from('social-media-images')
-        .upload(fileName, compositedBuffer, {
-          contentType: 'image/jpeg',
-          upsert: true,
-        });
-
-      if (uploadError) throw new Error(`Supabase upload error: ${uploadError.message}`);
-
-      const { data: { publicUrl } } = serviceClient.storage
-        .from('social-media-images')
-        .getPublicUrl(fileName);
-
-      if (!publicUrl) throw new Error('getPublicUrl returned null');
-      console.log('[Occasions Images] Upload complete:', publicUrl);
-
-      // Update caption
-      await serviceClient
-        .from('occasion_captions')
-        .update({
-          image_url: publicUrl,
-          image_status: 'generated',
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', caption.id);
-
-      results.push({ platform: caption.platform, image_url: publicUrl, status: 'generated' });
-    } catch (err) {
-      console.error('[Occasions Images] Failed for platform', caption.platform, ':', err);
-      await serviceClient
-        .from('occasion_captions')
-        .update({ image_status: 'failed', updated_at: new Date().toISOString() })
-        .eq('id', caption.id);
-      results.push({ platform: caption.platform, image_url: null, status: 'failed' });
+    if (!imageRes.ok) {
+      const errText = await imageRes.text();
+      throw new Error(`gpt-image-1 API error: ${errText.slice(0, 200)}`);
     }
+
+    const imageData = await imageRes.json();
+    const base64Image: string = imageData.data?.[0]?.b64_json;
+    if (!base64Image) throw new Error('gpt-image-1 returned no image data');
+    console.log('[Occasions Images] gpt-image-1 response received, converting buffer');
+
+    const rawImageBuffer = Buffer.from(base64Image, 'base64');
+
+    // Sharp composite — text overlays + logo
+    console.log('[Occasions Images] Starting sharp composite');
+
+    const logoRes = await fetch(LOGO_URL);
+    const logoBuffer = Buffer.from(await logoRes.arrayBuffer());
+    const logoResized = await sharp(logoBuffer)
+      .resize(200, null, { fit: 'inside' })
+      .toBuffer();
+    const logoMeta = await sharp(logoResized).metadata();
+    const logoWidth = logoMeta.width ?? 200;
+    const logoHeight = logoMeta.height ?? 80;
+
+    const imageMeta = await sharp(rawImageBuffer).metadata();
+    const imgWidth = imageMeta.width ?? 1024;
+
+    const teluguFontBase64 = await getTeluguFontBase64();
+    const teluguGreeting: string = anyCaption.telugu_greeting || '';
+
+    const compositeLayers: sharp.OverlayOptions[] = [];
+
+    // 1. Dark banner at top for text
+    compositeLayers.push({
+      input: Buffer.from(`
+        <svg width="${imgWidth}" height="200">
+          <rect width="${imgWidth}" height="200" fill="rgba(0,0,0,0.5)"/>
+        </svg>
+      `),
+      top: 0, left: 0,
+    });
+
+    // 2. "Happy {occasion_name}" in gold
+    const titleSvg = await createTextSVGWithFont(`Happy ${occasionName}`, imgWidth, 72, '#FFD700', 'rgba(0,0,0,0.6)');
+    compositeLayers.push({ input: titleSvg, top: 20, left: 0 });
+
+    // 3. Telugu greeting (from DB — no hardcoding)
+    if (teluguGreeting) {
+      const teluguSvg = await createTextSVGWithFont(teluguGreeting, imgWidth, 52, '#FFFFFF', 'rgba(0,0,0,0.5)', teluguFontBase64);
+      compositeLayers.push({ input: teluguSvg, top: 105, left: 0 });
+    }
+
+    // 4. Dark banner at bottom for brand line
+    compositeLayers.push({
+      input: Buffer.from(`
+        <svg width="${imgWidth}" height="50">
+          <rect width="${imgWidth}" height="50" fill="rgba(0,0,0,0.5)"/>
+        </svg>
+      `),
+      top: imgWidth - logoHeight - 80,
+      left: 0,
+    });
+
+    // 5. Brand name text
+    const brandSvg = await createTextSVGWithFont('— Team RE/MAX Westside Realty', imgWidth, 28, '#FFFFFF', 'rgba(0,0,0,0.3)');
+    compositeLayers.push({ input: brandSvg, top: imgWidth - logoHeight - 75, left: 0 });
+
+    // 6. Logo bottom right (always last)
+    compositeLayers.push({
+      input: logoResized,
+      top: 1024 - logoHeight - 30,
+      left: imgWidth - logoWidth - 30,
+    });
+
+    const compositedBuffer = await sharp(rawImageBuffer)
+      .composite(compositeLayers)
+      .jpeg({ quality: 90 })
+      .toBuffer();
+
+    // Upload single shared image
+    const fileName = `occasions/${occasion_id}/main.jpg`;
+    console.log('[Occasions Images] Starting Supabase upload:', fileName);
+    const { error: uploadError } = await serviceClient.storage
+      .from('social-media-images')
+      .upload(fileName, compositedBuffer, {
+        contentType: 'image/jpeg',
+        upsert: true,
+      });
+
+    if (uploadError) throw new Error(`Supabase upload error: ${uploadError.message}`);
+
+    const { data: { publicUrl } } = serviceClient.storage
+      .from('social-media-images')
+      .getPublicUrl(fileName);
+
+    if (!publicUrl) throw new Error('getPublicUrl returned null');
+    console.log('[Occasions Images] Upload complete:', publicUrl);
+
+    // Update occasions_calendar with image URL and stage
+    await serviceClient
+      .from('occasions_calendar')
+      .update({
+        occasion_image_url: publicUrl,
+        image_stage: 'generated',
+        stage: 'images_generated',
+      })
+      .eq('id', occasion_id);
+
+    // Update ALL captions for this occasion with the shared image
+    await serviceClient
+      .from('occasion_captions')
+      .update({
+        image_url: publicUrl,
+        image_status: 'generated',
+        updated_at: new Date().toISOString(),
+      })
+      .eq('occasion_id', occasion_id);
+
+    return NextResponse.json({ success: true, image_url: publicUrl });
+
+  } catch (err) {
+    console.error('[Occasions Images] Failed:', err);
+    return NextResponse.json({ error: String(err) }, { status: 500 });
   }
-
-  // Update occasion stage
-  await serviceClient
-    .from('occasions_calendar')
-    .update({ stage: 'images_generated' })
-    .eq('id', occasion_id);
-
-  return NextResponse.json({
-    success: true,
-    results: results,
-  });
 }

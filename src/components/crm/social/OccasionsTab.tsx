@@ -14,6 +14,7 @@ interface Occasion {
   platforms?: string[];
   auto_generate?: boolean;
   stage: string;
+  occasion_image_url?: string | null;
 }
 
 interface OccasionCaption {
@@ -249,136 +250,90 @@ function CaptionReviewPanel({ occasion, onStageChange }: { occasion: Occasion; o
 // ── Image Review ──────────────────────────────────────────────────────────────
 
 function ImageReviewPanel({ occasion, onStageChange }: { occasion: Occasion; onStageChange: () => void }) {
-  const [captions, setCaptions] = useState<OccasionCaption[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [approvingId, setApprovingId] = useState<string | null>(null);
-  const [regeneratingId, setRegeneratingId] = useState<string | null>(null);
-  const [approvedIds, setApprovedIds] = useState<Set<string>>(new Set());
+  const [approving, setApproving] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
+  const [approved, setApproved] = useState(false);
 
-  const load = () => {
-    fetch(`/api/occasions/captions?occasion_id=${occasion.id}&image_status=generated`)
-      .then((r) => r.json())
-      .then((d) => { setCaptions(d.captions ?? []); setLoading(false); });
-  };
-
-  useEffect(() => { load(); }, [occasion.id]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const approveImage = async (captionId: string) => {
-    setApprovingId(captionId);
-    const res = await fetch('/api/occasions/review-image', {
+  const approveImage = async () => {
+    setApproving(true);
+    await fetch('/api/occasions/review-image', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ caption_id: captionId, action: 'approve' }),
+      body: JSON.stringify({ occasion_id: occasion.id, action: 'approve' }),
     });
-    const data = await res.json();
-    setApprovedIds((prev) => new Set(prev).add(captionId));
-    setApprovingId(null);
-    if (data.all_approved) onStageChange();
+    setApproved(true);
+    setApproving(false);
+    onStageChange();
   };
 
-  const approveAll = async () => {
-    for (const caption of captions) {
-      if (!approvedIds.has(caption.id)) {
-        await approveImage(caption.id);
-      }
-    }
-  };
-
-  const regenerate = async (captionId: string) => {
-    setRegeneratingId(captionId);
-    const res = await fetch('/api/occasions/review-image', {
+  const regenerateImage = async () => {
+    setRegenerating(true);
+    await fetch('/api/occasions/review-image', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ caption_id: captionId, action: 'regenerate' }),
+      body: JSON.stringify({ occasion_id: occasion.id, action: 'regenerate' }),
     });
-    const data = await res.json();
-    if (data.new_image_url) {
-      setCaptions((prev) =>
-        prev.map((c) => (c.id === captionId ? { ...c, image_url: data.new_image_url } : c))
-      );
-    }
-    setRegeneratingId(null);
+    setRegenerating(false);
+    onStageChange();
   };
-
-  if (loading) return <div className="flex justify-center py-8"><Loader2 size={20} className="animate-spin text-gray-400" /></div>;
-  if (!captions.length) return <p className="text-gray-500 text-sm py-4 text-center">No images to review.</p>;
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-white">Image Review — {occasion.occasion_name}</h3>
-        <button
-          onClick={approveAll}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-700 hover:bg-green-600 text-white text-xs font-medium transition-colors"
-        >
-          <Check size={12} /> Approve All Images
-        </button>
-      </div>
+      <h3 className="text-sm font-semibold text-white">Image Review — {occasion.occasion_name}</h3>
 
-      {captions.map((caption) => {
-        const isApproved = approvedIds.has(caption.id);
-        const isRegenerating = regeneratingId === caption.id;
-        return (
-          <div
-            key={caption.id}
-            className={`bg-gray-800 rounded-xl p-4 space-y-3 border transition-colors ${
-              isApproved ? 'border-green-600' : 'border-gray-700'
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              <PlatformBadge platform={caption.platform} />
-              {isApproved && (
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-green-900 text-green-400">Approved ✓</span>
-              )}
-            </div>
-
-            <div className="relative w-full">
-              {caption.image_url ? (
-                <>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={caption.image_url}
-                    alt={caption.platform}
-                    className="w-full object-contain rounded-lg"
-                  />
-                  {isRegenerating && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/60 rounded-lg">
-                      <Loader2 size={32} className="animate-spin text-white" />
-                    </div>
-                  )}
-                </>
-              ) : (
-                <div className="w-full rounded-lg bg-gray-700 flex items-center justify-center py-16">
-                  <ImageIcon size={32} className="text-gray-500" />
+      <div className={`bg-gray-800 rounded-xl p-4 space-y-3 border transition-colors ${approved ? 'border-green-600' : 'border-gray-700'}`}>
+        <div className="relative w-full">
+          {occasion.occasion_image_url ? (
+            <>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={occasion.occasion_image_url}
+                alt={occasion.occasion_name}
+                className="w-full object-contain rounded-lg"
+              />
+              {regenerating && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/60 rounded-lg">
+                  <div className="text-center">
+                    <Loader2 size={32} className="animate-spin text-white mx-auto" />
+                    <p className="text-white text-sm mt-2">Generating new image…</p>
+                  </div>
                 </div>
               )}
+            </>
+          ) : (
+            <div className="w-full rounded-lg bg-gray-700 flex items-center justify-center py-16">
+              <ImageIcon size={32} className="text-gray-500" />
             </div>
+          )}
+        </div>
 
-            <p className="text-sm text-gray-400 line-clamp-2">{caption.caption}</p>
+        <p className="text-sm text-gray-400">
+          This image will be used for all platforms: {occasion.platforms?.join(', ')}
+        </p>
 
-            {!isApproved && (
-              <div className="flex gap-2">
-                <button
-                  onClick={() => approveImage(caption.id)}
-                  disabled={approvingId === caption.id || isRegenerating}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-700 hover:bg-green-600 disabled:opacity-40 text-white text-xs font-medium transition-colors"
-                >
-                  {approvingId === caption.id ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
-                  Approve Image ✓
-                </button>
-                <button
-                  onClick={() => regenerate(caption.id)}
-                  disabled={isRegenerating || approvingId === caption.id}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-700 hover:bg-gray-600 disabled:opacity-40 text-gray-300 text-xs font-medium transition-colors"
-                >
-                  {isRegenerating ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
-                  Regenerate Image
-                </button>
-              </div>
-            )}
+        {approved ? (
+          <span className="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full bg-green-900 text-green-400">Approved ✓</span>
+        ) : (
+          <div className="flex gap-3">
+            <button
+              onClick={approveImage}
+              disabled={approving || regenerating}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-700 hover:bg-green-600 disabled:opacity-40 text-white text-xs font-medium transition-colors"
+            >
+              {approving ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
+              Approve Image ✓
+            </button>
+            <button
+              onClick={regenerateImage}
+              disabled={regenerating || approving}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-700 hover:bg-gray-600 disabled:opacity-40 text-gray-300 text-xs font-medium transition-colors"
+            >
+              {regenerating ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
+              Regenerate Image
+            </button>
           </div>
-        );
-      })}
+        )}
+      </div>
     </div>
   );
 }
