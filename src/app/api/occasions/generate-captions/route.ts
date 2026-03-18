@@ -83,6 +83,7 @@ interface ContentStrategy {
   avoid: string[];
   image_style: string;
   image_elements: string[];
+  telugu_greeting: string;
 }
 
 interface CaptionResult {
@@ -306,7 +307,8 @@ Create a content strategy. Return ONLY valid JSON:
   "real_estate_angle": "how to subtly connect this occasion to home/real estate journey (1 sentence)",
   "avoid": ["things to avoid for this occasion"],
   "image_style": "description of visual style, colors, symbols appropriate for this occasion",
-  "image_elements": ["specific visual element 1", "specific visual element 2", "specific visual element 3"]
+  "image_elements": ["specific visual element 1", "specific visual element 2", "specific visual element 3"],
+  "telugu_greeting": "The correct greeting for this occasion in Telugu script. If this is a Telugu/Hindu festival: provide the authentic Telugu greeting (e.g. ఉగాది శుభాకాంక్షలు, దీపావళి శుభాకాంక్షలు etc.). If this is NOT a Telugu festival (Eid, Christmas, Independence Day etc.): return empty string"
 }`,
     anthropicKey,
     1500
@@ -370,6 +372,7 @@ Return ONLY the prompt string, no JSON.`,
         caption: result.caption,
         hashtags: result.hashtags,
         image_prompt: refinedImagePrompt,
+        telugu_greeting: strategy.telugu_greeting || '',
         status: 'pending_review',
         batch_id,
         updated_at: now,
