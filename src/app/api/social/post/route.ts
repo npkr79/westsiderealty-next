@@ -1,14 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCrmSessionResult } from '@/lib/crm/auth';
 import { createServiceClient } from '@/lib/supabase/serviceClient';
 import { publishPost } from '@/lib/social/publishPost';
 
 export async function POST(request: NextRequest) {
-  const session = await getCrmSessionResult();
-  if (!session.user || session.user.role !== 'admin') {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
   let body: { post_id: string };
   try {
     body = await request.json();
