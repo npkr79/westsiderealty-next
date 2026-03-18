@@ -43,8 +43,47 @@ function formatBudget(budget?: string | null): string | null {
   return `₹${(n / 10000000).toFixed(2)} Cr`;
 }
 
+async function extractPropertyFromFormName(formName: string): Promise<string> {
+  if (!formName || formName === 'Meta Lead Ad') return 'Not specified';
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': process.env.ANTHROPIC_API_KEY!,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 100,
+        messages: [{
+          role: 'user',
+          content: `Extract only the property/project name from this Meta Lead Ad form name.
+Return ONLY the clean property name, nothing else.
+Remove dates, "Lead form", "Lead Gen", "Submit Form", "Leads Form" etc.
+Keep location if present.
+
+Examples:
+"Godrej Lead form 15th Feb 2026" → "Godrej Regal Pavilion"
+"Sapphire Lead Gen Submit Form 09Feb" → "Sapphire, Siolim, Goa"
+"Commercial Investors Leads Form March 5th 2026" → "Commercial Property, Hyderabad"
+"Kokapet & Gandipet Resale Villas Lead Form - 10th March" → "Villas in Kokapet & Gandipet"
+"Westsiderealty - Buyers Feb 2026" → "General Enquiry"
+
+Form name: "${formName}"
+Property name:`,
+        }],
+      }),
+    });
+    const data = await response.json();
+    return data.content?.[0]?.text?.trim() || formName;
+  } catch {
+    return formName;
+  }
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function getSourceSpecificInfo(lead: FullLead): { line3: string; line4: string } {
+async function getSourceSpecificInfo(lead: FullLead): Promise<{ line3: string; line4: string }> {
   const sourceChannel = lead.source_channel?.toLowerCase() || '';
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const meta = (lead.attribution_metadata as Record<string, any>) || {};
@@ -54,22 +93,9 @@ function getSourceSpecificInfo(lead: FullLead): { line3: string; line4: string }
     sourceChannel.includes('meta') || sourceChannel.includes('facebook') ||
     sourceChannel.includes('fb') || lead.source_id === '192bf7e8-8be9-46e5-bb8f-dfe9298e3598'
   ) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const fieldData = (meta.field_data as Array<{ field_name: string; values: string[] }>) || [];
-    if (fieldData.length > 0) {
-      const qaPairs = fieldData
-        .filter((f) => !['full_name', 'phone_number', 'email'].includes(f.field_name.toLowerCase()))
-        .map((f) => `${f.field_name}: ${f.values?.[0] || ''}`)
-        .slice(0, 2)
-        .join(' | ');
-      return {
-        line3: qaPairs || meta.fb_form_name || 'Meta Lead Ad',
-        line4: meta.campaign_name || meta.ad_name || 'Meta Campaign',
-      };
-    }
     return {
-      line3: meta.fb_form_name || 'Meta Lead Ad',
-      line4: meta.campaign_name || 'Meta Campaign',
+      line3: await extractPropertyFromFormName(meta.fb_form_name || ''),
+      line4: 'Not specified',
     };
   }
 
@@ -220,6 +246,31 @@ export async function POST(request: NextRequest) {
     .single();
   const fullLead: FullLead = fullLeadData ?? record;
 
+  // Fetch agent name for WhatsApp greeting
+  let agentName = 'Team';
+  if (fullLead.assigned_to) {
+    const { data: agentData } = await supabase
+      .from('crm_users')
+      .select('full_name')
+      .eq('id', fullLead.assigned_to)
+      .single();
+    if (agentData?.full_name) agentName = agentData.full_name;
+  }
+
+  // 99acres Srinivas routing for unassigned leads
+  if (
+    (fullLead.source_channel?.toLowerCase().includes('99acres') || fullLead.source_id === '3308dd6c-a656-42c8-947e-a94e2e46c0ab') &&
+    !fullLead.assigned_to
+  ) {
+    const srinivasProperties = ['rajapushpa', 'imperia', 'prestige'];
+    const locationLower = (fullLead.location_preference || '').toLowerCase();
+    if (srinivasProperties.some(p => locationLower.includes(p))) {
+      agentName = 'Srinivas';
+    }
+  }
+
+  const { line3, line4 } = await getSourceSpecificInfo(fullLead);
+
   const leadId = record.id;
   const name = record.name?.trim() || "Unknown";
   const phone = record.phone?.trim() || "";
@@ -267,14 +318,13 @@ export async function POST(request: NextRequest) {
 
     const destination = normalizePhone(waPhone);
 
-    const { line3, line4 } = getSourceSpecificInfo(fullLead);
     const body = {
       apiKey,
       campaignName: "agent_new_lead_v2",
       destination,
       userName,
       templateParams: [
-        fullLead.name || "Unknown",
+        agentName,
         normalizePhone(fullLead.phone || ""),
         fullLead.source_channel || fullLead.source_type || "Website",
         line3,
