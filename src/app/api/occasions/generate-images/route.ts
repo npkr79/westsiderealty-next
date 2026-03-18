@@ -77,21 +77,7 @@ export async function POST(request: NextRequest) {
     try {
       // GPT-4o image generation
       console.log('[Occasions Images] Starting gpt-image-1 for:', caption.platform);
-      const enhanced_prompt = `
-Create a professional social media creative for ${occasionName}.
-
-Design requirements:
-- Style: Premium festive Indian social media post, 1080x1080
-- Visual theme: ${caption.image_prompt}
-- Include accurate text on the image:
-  * Main heading: "Happy ${occasionName}" in large decorative font
-  * If Telugu festival: also include Telugu greeting text
-- Bottom right corner: Leave a clean 220x80px white/transparent area for logo placement
-- Color palette: Culturally appropriate for ${occasionName}
-- Quality: Premium brand-level design, NOT generic clipart
-- NO watermarks, NO placeholder text, NO lorem ipsum
-- Make it look like it was designed by a professional graphic designer
-`;
+      const enhanced_prompt = `Create a beautiful festive background for ${occasionName}. Pure visual design only — NO text, NO words, NO letters anywhere in the image. Visual theme: ${caption.image_prompt} Style: Premium Indian festive social media background, warm colors, culturally authentic symbols and decorative elements only. High quality, suitable as background for text overlay.`;
       const imageRes = await fetch('https://api.openai.com/v1/images/generations', {
         method: 'POST',
         headers: {
