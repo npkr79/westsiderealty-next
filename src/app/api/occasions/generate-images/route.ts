@@ -6,30 +6,22 @@ import { createServiceClient } from '@/lib/supabase/serviceClient';
 const LOGO_URL =
   'https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/brand-assets/REMAX%20WR%20Logo%20with%20no%20background.jpg';
 
-async function compositeWithLogo(imageBuffer: Buffer): Promise<Buffer> {
-  const logoRes = await fetch(LOGO_URL);
-  const logoBuffer = Buffer.from(await logoRes.arrayBuffer());
-
-  const logoResized = await sharp(logoBuffer)
-    .resize(200, null, { fit: 'inside' })
-    .toBuffer();
-
-  const logoMeta = await sharp(logoResized).metadata();
-  const logoWidth = logoMeta.width ?? 220;
-  const logoHeight = logoMeta.height ?? 80;
-
-  const compositedBuffer = await sharp(imageBuffer)
-    .composite([
-      {
-        input: logoResized,
-        left: 1024 - logoWidth - 30,
-        top: 1024 - logoHeight - 30,
-      },
-    ])
-    .jpeg({ quality: 90 })
-    .toBuffer();
-
-  return compositedBuffer;
+function createTextSVG(text: string, width: number, fontSize: number, color: string, strokeColor: string): Buffer {
+  return Buffer.from(`
+    <svg width="${width}" height="${fontSize + 20}">
+      <text
+        x="${width / 2}"
+        y="${fontSize}"
+        text-anchor="middle"
+        font-size="${fontSize}"
+        font-weight="bold"
+        fill="${color}"
+        stroke="${strokeColor}"
+        stroke-width="2"
+        paint-order="stroke"
+      >${text}</text>
+    </svg>
+  `);
 }
 
 export async function POST(request: NextRequest) {
@@ -106,9 +98,77 @@ export async function POST(request: NextRequest) {
 
       const rawImageBuffer = Buffer.from(base64Image, 'base64');
 
-      // Sharp composite
+      // Sharp composite — text overlays + logo
       console.log('[Occasions Images] Starting sharp composite');
-      const compositedBuffer = await compositeWithLogo(rawImageBuffer);
+
+      const logoRes = await fetch(LOGO_URL);
+      const logoBuffer = Buffer.from(await logoRes.arrayBuffer());
+      const logoResized = await sharp(logoBuffer)
+        .resize(200, null, { fit: 'inside' })
+        .toBuffer();
+      const logoMeta = await sharp(logoResized).metadata();
+      const logoWidth = logoMeta.width ?? 200;
+      const logoHeight = logoMeta.height ?? 80;
+
+      const imageMeta = await sharp(rawImageBuffer).metadata();
+      const imgWidth = imageMeta.width ?? 1024;
+
+      const compositeLayers: sharp.OverlayOptions[] = [];
+
+      // 1. Dark banner at top for text
+      compositeLayers.push({
+        input: Buffer.from(`
+          <svg width="${imgWidth}" height="180">
+            <rect width="${imgWidth}" height="180" fill="rgba(0,0,0,0.5)"/>
+          </svg>
+        `),
+        top: 0, left: 0,
+      });
+
+      // 2. "Happy {occasion_name}" in gold
+      compositeLayers.push({
+        input: createTextSVG(`Happy ${occasionName}`, imgWidth, 72, '#FFD700', 'rgba(0,0,0,0.6)'),
+        top: 20, left: 0,
+      });
+
+      // 3. Telugu greeting (from DB — no hardcoding)
+      const teluguGreeting: string = caption.telugu_greeting || '';
+      if (teluguGreeting) {
+        compositeLayers.push({
+          input: createTextSVG(teluguGreeting, imgWidth, 48, '#FFFFFF', 'rgba(0,0,0,0.5)'),
+          top: 105, left: 0,
+        });
+      }
+
+      // 4. Dark banner at bottom for brand line
+      compositeLayers.push({
+        input: Buffer.from(`
+          <svg width="${imgWidth}" height="50">
+            <rect width="${imgWidth}" height="50" fill="rgba(0,0,0,0.5)"/>
+          </svg>
+        `),
+        top: imgWidth - logoHeight - 80,
+        left: 0,
+      });
+
+      // 5. Brand name text
+      compositeLayers.push({
+        input: createTextSVG('— Team RE/MAX Westside Realty', imgWidth, 28, '#FFFFFF', 'rgba(0,0,0,0.3)'),
+        top: imgWidth - logoHeight - 75,
+        left: 0,
+      });
+
+      // 6. Logo bottom right (always last)
+      compositeLayers.push({
+        input: logoResized,
+        top: 1024 - logoHeight - 30,
+        left: imgWidth - logoWidth - 30,
+      });
+
+      const compositedBuffer = await sharp(rawImageBuffer)
+        .composite(compositeLayers)
+        .jpeg({ quality: 90 })
+        .toBuffer();
 
       // Supabase upload
       const fileName = `occasions/${occasion_id}/${caption.platform}-${Date.now()}.jpg`;
