@@ -23,10 +23,98 @@ interface LeadRow {
   phone?: string | null;
   source_type?: string | null;
   source_channel?: string | null;
+  source_id?: string | null;
   location_preference?: string | null;
   budget?: string | null;
+  notes?: string | null;
+  attribution_metadata?: Record<string, unknown> | null;
+  fb_lead_id?: string | null;
+  meta_leadgen_id?: string | null;
   assigned_to?: string | null;
   is_bulk_upload?: boolean | null;
+}
+
+interface FullLead extends LeadRow {}
+
+function formatBudget(budget?: string | null): string | null {
+  if (!budget) return null;
+  const n = Number(budget);
+  if (isNaN(n) || n === 0) return null;
+  return `₹${(n / 10000000).toFixed(2)} Cr`;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function getSourceSpecificInfo(lead: FullLead): { line3: string; line4: string } {
+  const sourceChannel = lead.source_channel?.toLowerCase() || '';
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const meta = (lead.attribution_metadata as Record<string, any>) || {};
+
+  // META ADS
+  if (
+    sourceChannel.includes('meta') || sourceChannel.includes('facebook') ||
+    sourceChannel.includes('fb') || lead.source_id === '192bf7e8-8be9-46e5-bb8f-dfe9298e3598'
+  ) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const fieldData = (meta.field_data as Array<{ field_name: string; values: string[] }>) || [];
+    if (fieldData.length > 0) {
+      const qaPairs = fieldData
+        .filter((f) => !['full_name', 'phone_number', 'email'].includes(f.field_name.toLowerCase()))
+        .map((f) => `${f.field_name}: ${f.values?.[0] || ''}`)
+        .slice(0, 2)
+        .join(' | ');
+      return {
+        line3: qaPairs || meta.fb_form_name || 'Meta Lead Ad',
+        line4: meta.campaign_name || meta.ad_name || 'Meta Campaign',
+      };
+    }
+    return {
+      line3: meta.fb_form_name || 'Meta Lead Ad',
+      line4: meta.campaign_name || 'Meta Campaign',
+    };
+  }
+
+  // 99ACRES
+  if (sourceChannel.includes('99acres') || lead.source_id === '3308dd6c-a656-42c8-947e-a94e2e46c0ab') {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const rawPayload = (meta.raw_payload as Record<string, any>) || {};
+    const propertyName =
+      rawPayload.property_name || rawPayload.project_name ||
+      lead.location_preference || 'Not specified';
+    const location = rawPayload.location || rawPayload.city || rawPayload.area || '';
+    return {
+      line3: `Property: ${propertyName}`,
+      line4: location ? `Location: ${location}` : (lead.notes?.split('\n')[0] || 'Not specified'),
+    };
+  }
+
+  // WEBSITE
+  if (sourceChannel.includes('website') || lead.source_id === 'c3b72f38-171b-4ce6-a060-f40beed8bdb4') {
+    const enquiryType = meta.lead_type || lead.source_channel || 'Website Enquiry';
+    const projectName =
+      lead.location_preference ||
+      meta.project_name ||
+      (lead.notes?.match(/Interested in (.+)/)?.[1]) ||
+      'Not specified';
+    const message = lead.notes?.split('\n').slice(-1)[0] || 'Not specified';
+    return {
+      line3: `${enquiryType}: ${projectName}`,
+      line4: message.length > 60 ? message.substring(0, 60) + '...' : message,
+    };
+  }
+
+  // GOOGLE ADS
+  if (sourceChannel.includes('google') || lead.source_id === '27215444-e232-427c-acbb-2b17bcb92613') {
+    return {
+      line3: `Google Ads: ${lead.location_preference || 'Not specified'}`,
+      line4: meta.keyword || meta.campaign_name || 'Google Campaign',
+    };
+  }
+
+  // DEFAULT FALLBACK
+  return {
+    line3: lead.location_preference || 'Not specified',
+    line4: formatBudget(lead.budget) || 'Not specified',
+  };
 }
 
 // Called by a Supabase Database Webhook on:
@@ -124,6 +212,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ skipped: true, reason: "bulk_upload" });
   }
 
+  // Fetch full lead for rich templateParams
+  const { data: fullLeadData } = await supabase
+    .from('crm_leads')
+    .select('id, name, phone, source_channel, source_type, source_id, location_preference, budget, notes, attribution_metadata, fb_lead_id, meta_leadgen_id, assigned_to, is_bulk_upload')
+    .eq('id', record.id)
+    .single();
+  const fullLead: FullLead = fullLeadData ?? record;
+
   const leadId = record.id;
   const name = record.name?.trim() || "Unknown";
   const phone = record.phone?.trim() || "";
@@ -171,20 +267,19 @@ export async function POST(request: NextRequest) {
 
     const destination = normalizePhone(waPhone);
 
+    const { line3, line4 } = getSourceSpecificInfo(fullLead);
     const body = {
       apiKey,
       campaignName: "agent_new_lead_v2",
       destination,
       userName,
       templateParams: [
-        String(record!.name || "Unknown"),
-        String(record!.phone || "N/A"),
-        String(record!.source_channel || record!.source_type || "Website"),
-        String(record!.location_preference || "Not specified"),
-        record!.budget
-          ? `₹${(Number(record!.budget) / 10000000).toFixed(2)} Cr`
-          : "Not specified",
-        String(record!.id),
+        fullLead.name || "Unknown",
+        normalizePhone(fullLead.phone || ""),
+        fullLead.source_channel || fullLead.source_type || "Website",
+        line3,
+        line4,
+        fullLead.id,
       ],
       source: "crm-new-lead",
       media: {},
