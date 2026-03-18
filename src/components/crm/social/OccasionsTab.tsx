@@ -253,6 +253,8 @@ function ImageReviewPanel({ occasion, onStageChange }: { occasion: Occasion; onS
   const [approving, setApproving] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
   const [approved, setApproved] = useState(false);
+  const [showFeedback, setShowFeedback] = useState(false);
+  const [feedbackText, setFeedbackText] = useState('');
 
   const approveImage = async () => {
     setApproving(true);
@@ -266,12 +268,14 @@ function ImageReviewPanel({ occasion, onStageChange }: { occasion: Occasion; onS
     onStageChange();
   };
 
-  const regenerateImage = async () => {
+  const regenerateImage = async (feedback: string) => {
     setRegenerating(true);
+    setShowFeedback(false);
+    setFeedbackText('');
     await fetch('/api/occasions/review-image', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ occasion_id: occasion.id, action: 'regenerate' }),
+      body: JSON.stringify({ occasion_id: occasion.id, action: 'regenerate', feedback }),
     });
     setRegenerating(false);
     onStageChange();
@@ -314,23 +318,55 @@ function ImageReviewPanel({ occasion, onStageChange }: { occasion: Occasion; onS
         {approved ? (
           <span className="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full bg-green-900 text-green-400">Approved ✓</span>
         ) : (
-          <div className="flex gap-3">
-            <button
-              onClick={approveImage}
-              disabled={approving || regenerating}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-700 hover:bg-green-600 disabled:opacity-40 text-white text-xs font-medium transition-colors"
-            >
-              {approving ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
-              Approve Image ✓
-            </button>
-            <button
-              onClick={regenerateImage}
-              disabled={regenerating || approving}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-700 hover:bg-gray-600 disabled:opacity-40 text-gray-300 text-xs font-medium transition-colors"
-            >
-              {regenerating ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
-              Regenerate Image
-            </button>
+          <div className="space-y-3">
+            <div className="flex gap-3">
+              <button
+                onClick={approveImage}
+                disabled={approving || regenerating}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-700 hover:bg-green-600 disabled:opacity-40 text-white text-xs font-medium transition-colors"
+              >
+                {approving ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
+                Approve Image ✓
+              </button>
+              {!showFeedback && (
+                <button
+                  onClick={() => setShowFeedback(true)}
+                  disabled={regenerating || approving}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-700 hover:bg-gray-600 disabled:opacity-40 text-gray-300 text-xs font-medium transition-colors"
+                >
+                  <RefreshCw size={12} />
+                  Regenerate Image
+                </button>
+              )}
+            </div>
+
+            {showFeedback && (
+              <div className="space-y-2 border-t border-gray-700 pt-3">
+                <textarea
+                  value={feedbackText}
+                  onChange={(e) => setFeedbackText(e.target.value)}
+                  rows={2}
+                  placeholder="e.g. Use warmer colors, add more flowers, brighter background..."
+                  className="w-full bg-gray-900 border border-gray-600 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500 resize-none"
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => regenerateImage(feedbackText)}
+                    disabled={regenerating}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white text-xs font-medium"
+                  >
+                    {regenerating ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
+                    Regenerate with feedback
+                  </button>
+                  <button
+                    onClick={() => { setShowFeedback(false); setFeedbackText(''); }}
+                    className="px-3 py-1.5 rounded-lg bg-gray-700 hover:bg-gray-600 text-gray-300 text-xs font-medium"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

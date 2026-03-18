@@ -8,14 +8,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  let body: { occasion_id: string; action: 'approve' | 'regenerate' };
+  let body: { occasion_id: string; action: 'approve' | 'regenerate'; feedback?: string };
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 
-  const { occasion_id, action } = body;
+  const { occasion_id, action, feedback } = body;
   const serviceClient = createServiceClient();
 
   if (action === 'approve') {
@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${cronSecret}`,
       },
-      body: JSON.stringify({ occasion_id }),
+      body: JSON.stringify({ occasion_id, feedback }),
     });
 
     return NextResponse.json({ success: true, regenerating: true });

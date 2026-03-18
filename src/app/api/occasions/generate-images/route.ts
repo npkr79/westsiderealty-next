@@ -27,14 +27,14 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  let body: { occasion_id: string };
+  let body: { occasion_id: string; feedback?: string };
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 
-  const { occasion_id } = body;
+  const { occasion_id, feedback } = body;
   const openaiKey = process.env.OPENAI_API_KEY;
   if (!openaiKey) {
     return NextResponse.json({ error: 'OPENAI_API_KEY not configured' }, { status: 500 });
@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const teluguGreeting: string = anyCaption.telugu_greeting || '';
+    const feedbackInstruction = feedback ? `\n\nSPECIFIC CHANGES REQUESTED: ${feedback}` : '';
 
     // Generate ONE image — GPT-4o renders text directly
     console.log('[Occasions Images] Starting gpt-image-1 for:', occasionName);
@@ -73,9 +73,8 @@ Create a stunning professional social media creative (1080x1080px) for ${occasio
 
 CRITICAL TEXT REQUIREMENTS - render these EXACTLY as specified:
 - At the TOP of the image, render in large bold decorative gold/yellow font: "Happy ${occasionName}"
-${teluguGreeting ? `- Directly below that, render in Telugu script: "${teluguGreeting}"` : ''}
-- At the BOTTOM of the image in small elegant white font: "Team RE/MAX Westside Realty"
-- Leave a 200x80px clear space at bottom-right corner for logo placement
+- At the BOTTOM-LEFT of the image in small elegant white font: "Team RE/MAX Westside Realty"
+- Leave the bottom-right corner (220x100px) completely clear
 
 Visual design:
 ${anyCaption.image_prompt}
@@ -84,7 +83,7 @@ Style: Premium Indian festive social media post, professional quality,
 suitable for a luxury real estate brand. The text must be clearly
 readable, properly rendered, and look professionally designed.
 The overall composition should look like it was created by a
-professional graphic designer.
+professional graphic designer.${feedbackInstruction}
 `;
 
     const imageRes = await fetch('https://api.openai.com/v1/images/generations', {
