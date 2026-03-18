@@ -6,48 +6,52 @@ import { createServiceClient } from '@/lib/supabase/serviceClient';
 const LOGO_URL =
   'https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/brand-assets/REMAX%20WR%20Logo%20with%20no%20background.jpg';
 
-async function getTeluguFontBase64(): Promise<string> {
-  const fontUrl = 'https://fonts.gstatic.com/s/notosanstelugu/v35/0pptoa2_VHVbBD0klBSXRoFNe86gCZPX.ttf';
-  const response = await fetch(fontUrl);
-  const buffer = await response.arrayBuffer();
-  return Buffer.from(buffer).toString('base64');
+async function fetchFontAsBase64(url: string): Promise<string> {
+  try {
+    const response = await fetch(url);
+    const buffer = await response.arrayBuffer();
+    return Buffer.from(buffer).toString('base64');
+  } catch (err) {
+    console.error('[Font] Failed to fetch font:', err);
+    return '';
+  }
 }
 
-async function createTextSVGWithFont(
+function buildTextSVG(
   text: string,
-  width: number,
+  canvasWidth: number,
   fontSize: number,
-  color: string,
-  strokeColor: string,
-  fontBase64?: string
-): Promise<Buffer> {
-  const fontStyle = fontBase64 ? `
-    <style>
-      @font-face {
-        font-family: 'NotoTelugu';
-        src: url('data:font/truetype;base64,${fontBase64}');
-      }
-      .telugu { font-family: 'NotoTelugu', sans-serif; }
-    </style>` : '';
+  fillColor: string,
+  fontB64: string,
+  fontFamily: string
+): Buffer {
+  const height = fontSize + 40;
+  const fontEmbedStyle = fontB64 ? `
+    <defs>
+      <style>
+        @font-face {
+          font-family: '${fontFamily}';
+          src: url('data:font/truetype;base64,${fontB64}') format('truetype');
+        }
+      </style>
+    </defs>` : '';
 
-  const fontFamily = fontBase64 ? 'NotoTelugu' : 'serif';
-
-  const svg = `
-    <svg width="${width}" height="${fontSize + 30}">
-      ${fontStyle}
-      <text
-        x="${width / 2}"
-        y="${fontSize}"
-        text-anchor="middle"
-        font-size="${fontSize}"
-        font-weight="bold"
-        font-family="${fontFamily}"
-        fill="${color}"
-        stroke="${strokeColor}"
-        stroke-width="2"
-        paint-order="stroke"
-      >${text}</text>
-    </svg>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${canvasWidth}" height="${height}">
+    ${fontEmbedStyle}
+    <text
+      x="${canvasWidth / 2}"
+      y="${fontSize + 10}"
+      text-anchor="middle"
+      dominant-baseline="auto"
+      font-family="${fontFamily}, serif"
+      font-size="${fontSize}"
+      font-weight="700"
+      fill="${fillColor}"
+      stroke="rgba(0,0,0,0.7)"
+      stroke-width="3"
+      paint-order="stroke fill"
+    >${text}</text>
+  </svg>`;
   return Buffer.from(svg);
 }
 
@@ -136,68 +140,70 @@ export async function POST(request: NextRequest) {
     // Sharp composite — text overlays + logo
     console.log('[Occasions Images] Starting sharp composite');
 
-    const logoRes = await fetch(LOGO_URL);
-    const logoBuffer = Buffer.from(await logoRes.arrayBuffer());
-    const logoResized = await sharp(logoBuffer)
+    const [logoFetch, teluguFontB64, englishFontB64] = await Promise.all([
+      fetch(LOGO_URL).then((r) => r.arrayBuffer()).then((b) => Buffer.from(b)),
+      fetchFontAsBase64('https://fonts.gstatic.com/s/notosanstelugu/v35/0pptoa2_VHVbBD0klBSXRoFNe86gCZPX.ttf'),
+      fetchFontAsBase64('https://fonts.gstatic.com/s/poppins/v21/pxiByp8kv8JHgFVrLDD4Z1xlFQ.ttf'),
+    ]);
+
+    const logoResized = await sharp(logoFetch)
       .resize(200, null, { fit: 'inside' })
       .toBuffer();
     const logoMeta = await sharp(logoResized).metadata();
-    const logoWidth = logoMeta.width ?? 200;
     const logoHeight = logoMeta.height ?? 80;
+    const logoWidth = logoMeta.width ?? 200;
 
-    const imageMeta = await sharp(rawImageBuffer).metadata();
-    const imgWidth = imageMeta.width ?? 1024;
-
-    const teluguFontBase64 = await getTeluguFontBase64();
+    const imgWidth = 1024;
     const teluguGreeting: string = anyCaption.telugu_greeting || '';
 
     const compositeLayers: sharp.OverlayOptions[] = [];
 
-    // 1. Dark banner at top for text
+    // 1. Dark top banner
     compositeLayers.push({
-      input: Buffer.from(`
-        <svg width="${imgWidth}" height="200">
-          <rect width="${imgWidth}" height="200" fill="rgba(0,0,0,0.5)"/>
-        </svg>
-      `),
+      input: Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${imgWidth}" height="200">
+        <rect width="${imgWidth}" height="200" fill="rgba(0,0,0,0.55)"/>
+      </svg>`),
       top: 0, left: 0,
     });
 
-    // 2. "Happy {occasion_name}" in gold
-    const titleSvg = await createTextSVGWithFont(`Happy ${occasionName}`, imgWidth, 72, '#FFD700', 'rgba(0,0,0,0.6)');
-    compositeLayers.push({ input: titleSvg, top: 20, left: 0 });
+    // 2. "Happy {occasion_name}" in gold using Poppins
+    compositeLayers.push({
+      input: buildTextSVG(`Happy ${occasionName}`, imgWidth, 72, '#FFD700', englishFontB64, 'Poppins'),
+      top: 15, left: 0,
+    });
 
-    // 3. Telugu greeting (from DB — no hardcoding)
+    // 3. Telugu greeting if available
     if (teluguGreeting) {
-      const teluguSvg = await createTextSVGWithFont(teluguGreeting, imgWidth, 52, '#FFFFFF', 'rgba(0,0,0,0.5)', teluguFontBase64);
-      compositeLayers.push({ input: teluguSvg, top: 105, left: 0 });
+      compositeLayers.push({
+        input: buildTextSVG(teluguGreeting, imgWidth, 50, '#FFFFFF', teluguFontB64, 'NotoSansTelugu'),
+        top: 110, left: 0,
+      });
     }
 
-    // 4. Dark banner at bottom for brand line
+    // 4. Dark bottom banner for brand
     compositeLayers.push({
-      input: Buffer.from(`
-        <svg width="${imgWidth}" height="50">
-          <rect width="${imgWidth}" height="50" fill="rgba(0,0,0,0.5)"/>
-        </svg>
-      `),
-      top: imgWidth - logoHeight - 80,
-      left: 0,
+      input: Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${imgWidth}" height="55">
+        <rect width="${imgWidth}" height="55" fill="rgba(0,0,0,0.55)"/>
+      </svg>`),
+      top: imgWidth - 55, left: 0,
     });
 
     // 5. Brand name text
-    const brandSvg = await createTextSVGWithFont('— Team RE/MAX Westside Realty', imgWidth, 28, '#FFFFFF', 'rgba(0,0,0,0.3)');
-    compositeLayers.push({ input: brandSvg, top: imgWidth - logoHeight - 75, left: 0 });
+    compositeLayers.push({
+      input: buildTextSVG('— Team RE/MAX Westside Realty', imgWidth, 26, '#FFFFFF', englishFontB64, 'Poppins'),
+      top: imgWidth - 50, left: 0,
+    });
 
     // 6. Logo bottom right (always last)
     compositeLayers.push({
       input: logoResized,
-      top: 1024 - logoHeight - 30,
+      top: imgWidth - 55 - logoHeight - 10,
       left: imgWidth - logoWidth - 30,
     });
 
     const compositedBuffer = await sharp(rawImageBuffer)
       .composite(compositeLayers)
-      .jpeg({ quality: 90 })
+      .jpeg({ quality: 92 })
       .toBuffer();
 
     // Upload single shared image
