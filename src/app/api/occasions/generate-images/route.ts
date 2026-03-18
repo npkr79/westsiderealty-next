@@ -129,92 +129,58 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Build transformation URL with text overlays
-    const teluguGreeting: string = anyCaption.telugu_greeting || '';
-
+    // Apply transformations eagerly to produce a clean final URL
+    console.log('[Occasions Images] Applying eager transformations');
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const transformations: any[] = [
-      // Dark banner at top
-      {
-        effect: 'colorize:100',
-        color: 'black',
-        opacity: 55,
-        width: 1024,
-        height: 160,
-        crop: 'fill',
-        gravity: 'north',
-      },
-      // "Happy {occasion_name}" text
-      {
-        overlay: {
-          font_family: 'Arial',
-          font_size: 68,
-          font_weight: 'bold',
-          text: `Happy ${occasionName}`,
-        },
-        color: 'FFD700',
-        gravity: 'north',
-        y: 20,
-      },
-    ];
-
-    // Telugu greeting if available
-    if (teluguGreeting) {
-      transformations.push({
-        overlay: {
-          font_family: 'Noto Sans Telugu',
-          font_size: 48,
-          font_weight: 'bold',
-          text: teluguGreeting,
-        },
-        color: 'FFFFFF',
-        gravity: 'north',
-        y: 100,
-      });
-    }
-
-    // Dark banner at bottom
-    transformations.push({
-      effect: 'colorize:100',
-      color: 'black',
-      opacity: 55,
-      width: 1024,
-      height: 55,
-      crop: 'fill',
-      gravity: 'south',
-    });
-
-    // Brand name text
-    transformations.push({
-      overlay: {
-        font_family: 'Arial',
-        font_size: 26,
-        font_weight: 'bold',
-        text: 'Team REMAX Westside Realty',
-      },
-      color: 'FFFFFF',
-      gravity: 'south',
-      y: 15,
-    });
-
-    // Logo overlay bottom right
-    transformations.push({
-      overlay: LOGO_PUBLIC_ID,
-      width: 200,
-      crop: 'scale',
-      gravity: 'south_east',
-      x: 20,
-      y: 65,
-    });
-
-    // Generate final URL with all transformations
-    const finalImageUrl = cloudinary.url(publicId, {
-      transformation: transformations,
-      secure: true,
-      sign_url: false,
+    const eagerResult = await (cloudinary.uploader as any).explicit(publicId, {
       type: 'upload',
+      eager: [
+        {
+          transformation: [
+            // Resize to square
+            { width: 1024, height: 1024, crop: 'fill' },
+            // Title text
+            {
+              overlay: {
+                font_family: 'Arial',
+                font_size: 72,
+                font_weight: 'bold',
+                text: `Happy ${occasionName}`,
+              },
+              color: '#FFD700',
+              gravity: 'north',
+              y: 40,
+              effect: 'shadow:40',
+            },
+            // Brand text
+            {
+              overlay: {
+                font_family: 'Arial',
+                font_size: 30,
+                font_weight: 'bold',
+                text: 'Team REMAX Westside Realty',
+              },
+              color: '#FFFFFF',
+              gravity: 'south',
+              y: 80,
+              effect: 'shadow:20',
+            },
+            // Logo bottom right
+            {
+              overlay: LOGO_PUBLIC_ID,
+              width: 180,
+              crop: 'scale',
+              gravity: 'south_east',
+              x: 20,
+              y: 20,
+            },
+          ],
+        },
+      ],
+      eager_async: false,
     });
 
+    const finalImageUrl: string = eagerResult.eager[0].secure_url;
     console.log('[Occasions Images] Final Cloudinary URL:', finalImageUrl);
 
     // Update occasions_calendar with image URL and stage
