@@ -1,58 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server';
 import sharp from 'sharp';
+import { createCanvas } from '@napi-rs/canvas';
 import { getCrmSessionResult } from '@/lib/crm/auth';
 import { createServiceClient } from '@/lib/supabase/serviceClient';
 
 const LOGO_URL =
   'https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/brand-assets/REMAX%20WR%20Logo%20with%20no%20background.jpg';
 
-async function fetchFontAsBase64(url: string): Promise<string> {
-  try {
-    const response = await fetch(url);
-    const buffer = await response.arrayBuffer();
-    return Buffer.from(buffer).toString('base64');
-  } catch (err) {
-    console.error('[Font] Failed to fetch font:', err);
-    return '';
-  }
-}
-
-function buildTextSVG(
+async function createTextImageBuffer(
   text: string,
   canvasWidth: number,
   fontSize: number,
   fillColor: string,
-  fontB64: string,
-  fontFamily: string
-): Buffer {
+  font: string
+): Promise<Buffer> {
   const height = fontSize + 40;
-  const fontEmbedStyle = fontB64 ? `
-    <defs>
-      <style>
-        @font-face {
-          font-family: '${fontFamily}';
-          src: url('data:font/truetype;base64,${fontB64}') format('truetype');
-        }
-      </style>
-    </defs>` : '';
-
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${canvasWidth}" height="${height}">
-    ${fontEmbedStyle}
-    <text
-      x="${canvasWidth / 2}"
-      y="${fontSize + 10}"
-      text-anchor="middle"
-      dominant-baseline="auto"
-      font-family="${fontFamily}, serif"
-      font-size="${fontSize}"
-      font-weight="700"
-      fill="${fillColor}"
-      stroke="rgba(0,0,0,0.7)"
-      stroke-width="3"
-      paint-order="stroke fill"
-    >${text}</text>
-  </svg>`;
-  return Buffer.from(svg);
+  const canvas = createCanvas(canvasWidth, height);
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvasWidth, height);
+  ctx.font = `bold ${fontSize}px ${font}`;
+  ctx.fillStyle = fillColor;
+  ctx.strokeStyle = 'rgba(0,0,0,0.7)';
+  ctx.lineWidth = 3;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.strokeText(text, canvasWidth / 2, height / 2);
+  ctx.fillText(text, canvasWidth / 2, height / 2);
+  return canvas.toBuffer('image/png');
 }
 
 export async function POST(request: NextRequest) {
@@ -137,16 +111,12 @@ export async function POST(request: NextRequest) {
 
     const rawImageBuffer = Buffer.from(base64Image, 'base64');
 
-    // Sharp composite — text overlays + logo
+    // Sharp composite — canvas text overlays + logo
     console.log('[Occasions Images] Starting sharp composite');
 
-    const [logoFetch, teluguFontB64, englishFontB64] = await Promise.all([
-      fetch(LOGO_URL).then((r) => r.arrayBuffer()).then((b) => Buffer.from(b)),
-      fetchFontAsBase64('https://fonts.gstatic.com/s/notosanstelugu/v35/0pptoa2_VHVbBD0klBSXRoFNe86gCZPX.ttf'),
-      fetchFontAsBase64('https://fonts.gstatic.com/s/poppins/v21/pxiByp8kv8JHgFVrLDD4Z1xlFQ.ttf'),
-    ]);
-
-    const logoResized = await sharp(logoFetch)
+    const logoFetch = await fetch(LOGO_URL);
+    const logoBuffer = Buffer.from(await logoFetch.arrayBuffer());
+    const logoResized = await sharp(logoBuffer)
       .resize(200, null, { fit: 'inside' })
       .toBuffer();
     const logoMeta = await sharp(logoResized).metadata();
@@ -160,44 +130,44 @@ export async function POST(request: NextRequest) {
 
     // 1. Dark top banner
     compositeLayers.push({
-      input: Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${imgWidth}" height="200">
-        <rect width="${imgWidth}" height="200" fill="rgba(0,0,0,0.55)"/>
+      input: Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${imgWidth}" height="140">
+        <rect width="${imgWidth}" height="140" fill="rgba(0,0,0,0.6)"/>
       </svg>`),
       top: 0, left: 0,
     });
 
-    // 2. "Happy {occasion_name}" in gold using Poppins
-    compositeLayers.push({
-      input: buildTextSVG(`Happy ${occasionName}`, imgWidth, 72, '#FFD700', englishFontB64, 'Poppins'),
-      top: 15, left: 0,
-    });
+    // 2. "Happy {occasion_name}" title
+    const titleBuffer = await createTextImageBuffer(
+      `Happy ${occasionName}`, imgWidth, 68, '#FFD700', 'Arial'
+    );
+    compositeLayers.push({ input: titleBuffer, top: 10, left: 0 });
 
-    // 3. Telugu greeting if available
+    // 3. Telugu greeting
     if (teluguGreeting) {
-      compositeLayers.push({
-        input: buildTextSVG(teluguGreeting, imgWidth, 50, '#FFFFFF', teluguFontB64, 'NotoSansTelugu'),
-        top: 110, left: 0,
-      });
+      const teluguBuffer = await createTextImageBuffer(
+        teluguGreeting, imgWidth, 44, '#FFFFFF', 'Arial Unicode MS'
+      );
+      compositeLayers.push({ input: teluguBuffer, top: 88, left: 0 });
     }
 
-    // 4. Dark bottom banner for brand
+    // 4. Dark bottom banner
     compositeLayers.push({
-      input: Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${imgWidth}" height="55">
-        <rect width="${imgWidth}" height="55" fill="rgba(0,0,0,0.55)"/>
+      input: Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${imgWidth}" height="50">
+        <rect width="${imgWidth}" height="50" fill="rgba(0,0,0,0.6)"/>
       </svg>`),
-      top: imgWidth - 55, left: 0,
-    });
-
-    // 5. Brand name text
-    compositeLayers.push({
-      input: buildTextSVG('— Team RE/MAX Westside Realty', imgWidth, 26, '#FFFFFF', englishFontB64, 'Poppins'),
       top: imgWidth - 50, left: 0,
     });
 
-    // 6. Logo bottom right (always last)
+    // 5. Brand name
+    const brandBuffer = await createTextImageBuffer(
+      '— Team RE/MAX Westside Realty', imgWidth, 24, '#FFFFFF', 'Arial'
+    );
+    compositeLayers.push({ input: brandBuffer, top: imgWidth - 45, left: 0 });
+
+    // 6. Logo above bottom banner
     compositeLayers.push({
       input: logoResized,
-      top: imgWidth - 55 - logoHeight - 10,
+      top: imgWidth - logoHeight - 60,
       left: imgWidth - logoWidth - 30,
     });
 
