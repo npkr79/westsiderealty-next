@@ -6,13 +6,12 @@ import { createServiceClient } from '@/lib/supabase/serviceClient';
 const LOGO_URL =
   'https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/brand-assets/REMAX%20WR%20Logo%20with%20no%20background.jpg';
 
-async function compositeWithLogo(imageUrl: string): Promise<Buffer> {
-  const [imageRes, logoRes] = await Promise.all([fetch(imageUrl), fetch(LOGO_URL)]);
-  const imageBuffer = Buffer.from(await imageRes.arrayBuffer());
+async function compositeWithLogo(imageBuffer: Buffer): Promise<Buffer> {
+  const logoRes = await fetch(LOGO_URL);
   const logoBuffer = Buffer.from(await logoRes.arrayBuffer());
 
   const logoResized = await sharp(logoBuffer)
-    .resize(220, null, { fit: 'inside' })
+    .resize(200, null, { fit: 'inside' })
     .toBuffer();
 
   const logoMeta = await sharp(logoResized).metadata();
@@ -54,6 +53,14 @@ export async function POST(request: NextRequest) {
 
   const serviceClient = createServiceClient();
 
+  const { data: occasion } = await serviceClient
+    .from('occasions_calendar')
+    .select('occasion_name')
+    .eq('id', occasion_id)
+    .single();
+
+  const occasionName: string = occasion?.occasion_name ?? 'the occasion';
+
   const { data: captions, error: captionsError } = await serviceClient
     .from('occasion_captions')
     .select('*')
@@ -68,36 +75,54 @@ export async function POST(request: NextRequest) {
 
   for (const caption of captions) {
     try {
-      // DALL-E generation
-      console.log('[Occasions Images] Starting DALL-E for:', caption.platform);
-      const dalleRes = await fetch('https://api.openai.com/v1/images/generations', {
+      // GPT-4o image generation
+      console.log('[Occasions Images] Starting gpt-image-1 for:', caption.platform);
+      const enhanced_prompt = `
+Create a professional social media creative for ${occasionName}.
+
+Design requirements:
+- Style: Premium festive Indian social media post, 1080x1080
+- Visual theme: ${caption.image_prompt}
+- Include accurate text on the image:
+  * Main heading: "Happy ${occasionName}" in large decorative font
+  * If Telugu festival: also include Telugu greeting text
+- Bottom right corner: Leave a clean 220x80px white/transparent area for logo placement
+- Color palette: Culturally appropriate for ${occasionName}
+- Quality: Premium brand-level design, NOT generic clipart
+- NO watermarks, NO placeholder text, NO lorem ipsum
+- Make it look like it was designed by a professional graphic designer
+`;
+      const imageRes = await fetch('https://api.openai.com/v1/images/generations', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${openaiKey}`,
         },
         body: JSON.stringify({
-          model: 'dall-e-3',
-          prompt: `${caption.image_prompt}. Vibrant festive atmosphere, professional quality, no text overlays, no watermarks, no human faces, suitable for social media post.`,
+          model: 'gpt-image-1',
+          prompt: enhanced_prompt,
           n: 1,
           size: '1024x1024',
           quality: 'standard',
+          output_format: 'jpeg',
         }),
       });
 
-      if (!dalleRes.ok) {
-        const errText = await dalleRes.text();
-        throw new Error(`DALL-E API error: ${errText.slice(0, 200)}`);
+      if (!imageRes.ok) {
+        const errText = await imageRes.text();
+        throw new Error(`gpt-image-1 API error: ${errText.slice(0, 200)}`);
       }
 
-      const dalleData = await dalleRes.json();
-      const dalleImageUrl: string = dalleData.data?.[0]?.url;
-      if (!dalleImageUrl) throw new Error('DALL-E returned no image URL');
-      console.log('[Occasions Images] DALL-E response:', dalleImageUrl);
+      const imageData = await imageRes.json();
+      const base64Image: string = imageData.data?.[0]?.b64_json;
+      if (!base64Image) throw new Error('gpt-image-1 returned no image data');
+      console.log('[Occasions Images] gpt-image-1 response received, converting buffer');
+
+      const rawImageBuffer = Buffer.from(base64Image, 'base64');
 
       // Sharp composite
       console.log('[Occasions Images] Starting sharp composite');
-      const compositedBuffer = await compositeWithLogo(dalleImageUrl);
+      const compositedBuffer = await compositeWithLogo(rawImageBuffer);
 
       // Supabase upload
       const fileName = `occasions/${occasion_id}/${caption.platform}-${Date.now()}.jpg`;
