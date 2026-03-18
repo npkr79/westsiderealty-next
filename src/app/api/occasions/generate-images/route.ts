@@ -1,33 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import sharp from 'sharp';
-import { createCanvas } from '@napi-rs/canvas';
 import { getCrmSessionResult } from '@/lib/crm/auth';
 import { createServiceClient } from '@/lib/supabase/serviceClient';
 
 const LOGO_URL =
   'https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/brand-assets/REMAX%20WR%20Logo%20with%20no%20background.jpg';
-
-async function createTextImageBuffer(
-  text: string,
-  canvasWidth: number,
-  fontSize: number,
-  fillColor: string,
-  font: string
-): Promise<Buffer> {
-  const height = fontSize + 40;
-  const canvas = createCanvas(canvasWidth, height);
-  const ctx = canvas.getContext('2d');
-  ctx.clearRect(0, 0, canvasWidth, height);
-  ctx.font = `bold ${fontSize}px ${font}`;
-  ctx.fillStyle = fillColor;
-  ctx.strokeStyle = 'rgba(0,0,0,0.7)';
-  ctx.lineWidth = 3;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.strokeText(text, canvasWidth / 2, height / 2);
-  ctx.fillText(text, canvasWidth / 2, height / 2);
-  return canvas.toBuffer('image/png');
-}
 
 export async function POST(request: NextRequest) {
   // Dual auth: admin session OR cron secret (review-image calls this internally)
@@ -65,10 +42,10 @@ export async function POST(request: NextRequest) {
 
   const occasionName: string = occasion?.occasion_name ?? 'the occasion';
 
-  // Fetch ONE approved caption for image_prompt + telugu_greeting
+  // Fetch ONE approved caption for image_prompt
   const { data: anyCaption, error: captionError } = await serviceClient
     .from('occasion_captions')
-    .select('image_prompt, telugu_greeting')
+    .select('image_prompt')
     .eq('occasion_id', occasion_id)
     .eq('status', 'approved')
     .limit(1)
@@ -111,7 +88,7 @@ export async function POST(request: NextRequest) {
 
     const rawImageBuffer = Buffer.from(base64Image, 'base64');
 
-    // Sharp composite — canvas text overlays + logo
+    // Sharp composite — SVG text overlays + logo
     console.log('[Occasions Images] Starting sharp composite');
 
     const logoFetch = await fetch(LOGO_URL);
@@ -124,52 +101,67 @@ export async function POST(request: NextRequest) {
     const logoWidth = logoMeta.width ?? 200;
 
     const imgWidth = 1024;
-    const teluguGreeting: string = anyCaption.telugu_greeting || '';
 
-    const compositeLayers: sharp.OverlayOptions[] = [];
-
-    // 1. Dark top banner
-    compositeLayers.push({
-      input: Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${imgWidth}" height="140">
-        <rect width="${imgWidth}" height="140" fill="rgba(0,0,0,0.6)"/>
-      </svg>`),
-      top: 0, left: 0,
-    });
-
-    // 2. "Happy {occasion_name}" title
-    const titleBuffer = await createTextImageBuffer(
-      `Happy ${occasionName}`, imgWidth, 68, '#FFD700', 'Arial'
-    );
-    compositeLayers.push({ input: titleBuffer, top: 10, left: 0 });
-
-    // 3. Telugu greeting
-    if (teluguGreeting) {
-      const teluguBuffer = await createTextImageBuffer(
-        teluguGreeting, imgWidth, 44, '#FFFFFF', 'Arial Unicode MS'
-      );
-      compositeLayers.push({ input: teluguBuffer, top: 88, left: 0 });
-    }
-
-    // 4. Dark bottom banner
-    compositeLayers.push({
-      input: Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${imgWidth}" height="50">
-        <rect width="${imgWidth}" height="50" fill="rgba(0,0,0,0.6)"/>
-      </svg>`),
-      top: imgWidth - 50, left: 0,
-    });
-
-    // 5. Brand name
-    const brandBuffer = await createTextImageBuffer(
-      '— Team RE/MAX Westside Realty', imgWidth, 24, '#FFFFFF', 'Arial'
-    );
-    compositeLayers.push({ input: brandBuffer, top: imgWidth - 45, left: 0 });
-
-    // 6. Logo above bottom banner
-    compositeLayers.push({
-      input: logoResized,
-      top: imgWidth - logoHeight - 60,
-      left: imgWidth - logoWidth - 30,
-    });
+    const compositeLayers: sharp.OverlayOptions[] = [
+      // 1. Dark top banner
+      {
+        input: Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${imgWidth}" height="100">
+          <rect width="${imgWidth}" height="100" fill="rgba(0,0,0,0.6)"/>
+        </svg>`),
+        top: 0, left: 0,
+      },
+      // 2. "Happy {occasion_name}" title
+      {
+        input: Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${imgWidth}" height="100">
+          <rect width="${imgWidth}" height="100" fill="rgba(0,0,0,0)"/>
+          <text
+            x="${imgWidth / 2}"
+            y="72"
+            text-anchor="middle"
+            font-family="Arial, Helvetica, sans-serif"
+            font-size="68"
+            font-weight="bold"
+            fill="#FFD700"
+            stroke="rgba(0,0,0,0.8)"
+            stroke-width="3"
+            paint-order="stroke fill"
+          >Happy ${occasionName}</text>
+        </svg>`),
+        top: 0, left: 0,
+      },
+      // 3. Dark bottom banner
+      {
+        input: Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${imgWidth}" height="50">
+          <rect width="${imgWidth}" height="50" fill="rgba(0,0,0,0.6)"/>
+        </svg>`),
+        top: imgWidth - 50, left: 0,
+      },
+      // 4. Brand name text
+      {
+        input: Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${imgWidth}" height="50">
+          <rect width="${imgWidth}" height="50" fill="rgba(0,0,0,0)"/>
+          <text
+            x="${imgWidth / 2}"
+            y="36"
+            text-anchor="middle"
+            font-family="Arial, Helvetica, sans-serif"
+            font-size="26"
+            font-weight="bold"
+            fill="#FFFFFF"
+            stroke="rgba(0,0,0,0.6)"
+            stroke-width="2"
+            paint-order="stroke fill"
+          >— Team RE/MAX Westside Realty</text>
+        </svg>`),
+        top: imgWidth - 50, left: 0,
+      },
+      // 5. Logo bottom right
+      {
+        input: logoResized,
+        top: imgWidth - logoHeight - 60,
+        left: imgWidth - logoWidth - 30,
+      },
+    ];
 
     const compositedBuffer = await sharp(rawImageBuffer)
       .composite(compositeLayers)

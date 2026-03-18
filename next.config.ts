@@ -1,7 +1,6 @@
 import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ['@napi-rs/canvas'],
   async redirects() {
     return [
       // Slug aliases — add more as needed when DB slug ≠ expected URL
