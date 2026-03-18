@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import sharp from 'sharp';
 import { v2 as cloudinary } from 'cloudinary';
 import { getCrmSessionResult } from '@/lib/crm/auth';
 import { createServiceClient } from '@/lib/supabase/serviceClient';
@@ -10,8 +11,7 @@ cloudinary.config({
   analytics: false,
 });
 
-const LOGO_PUBLIC_ID = 'westside_realty_logo';
-const LOGO_SOURCE_URL =
+const LOGO_URL =
   'https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/brand-assets/REMAX%20WR%20Logo%20with%20no%20background.jpg';
 
 export async function POST(request: NextRequest) {
@@ -64,9 +64,28 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    // Generate ONE image
+    const teluguGreeting: string = anyCaption.telugu_greeting || '';
+
+    // Generate ONE image — GPT-4o renders text directly
     console.log('[Occasions Images] Starting gpt-image-1 for:', occasionName);
-    const enhanced_prompt = `Create a beautiful festive background for ${occasionName}. Pure visual design only — NO text, NO words, NO letters anywhere in the image. Visual theme: ${anyCaption.image_prompt} Style: Premium Indian festive social media background, warm colors, culturally authentic symbols and decorative elements only. High quality, suitable as background for text overlay.`;
+    const enhanced_prompt = `
+Create a stunning professional social media creative (1080x1080px) for ${occasionName} festival.
+
+CRITICAL TEXT REQUIREMENTS - render these EXACTLY as specified:
+- At the TOP of the image, render in large bold decorative gold/yellow font: "Happy ${occasionName}"
+${teluguGreeting ? `- Directly below that, render in Telugu script: "${teluguGreeting}"` : ''}
+- At the BOTTOM of the image in small elegant white font: "Team RE/MAX Westside Realty"
+- Leave a 200x80px clear space at bottom-right corner for logo placement
+
+Visual design:
+${anyCaption.image_prompt}
+
+Style: Premium Indian festive social media post, professional quality,
+suitable for a luxury real estate brand. The text must be clearly
+readable, properly rendered, and look professionally designed.
+The overall composition should look like it was created by a
+professional graphic designer.
+`;
 
     const imageRes = await fetch('https://api.openai.com/v1/images/generations', {
       method: 'POST',
@@ -92,11 +111,33 @@ export async function POST(request: NextRequest) {
     const imageData = await imageRes.json();
     const base64Image: string = imageData.data?.[0]?.b64_json;
     if (!base64Image) throw new Error('gpt-image-1 returned no image data');
-    console.log('[Occasions Images] gpt-image-1 response received, uploading to Cloudinary');
+    console.log('[Occasions Images] gpt-image-1 response received');
 
-    const imageBuffer = Buffer.from(base64Image, 'base64');
+    const rawImageBuffer = Buffer.from(base64Image, 'base64');
 
-    // Upload raw image to Cloudinary
+    // Composite logo onto bottom-right (sharp only, no text overlays)
+    console.log('[Occasions Images] Compositing logo');
+    const logoFetch = await fetch(LOGO_URL);
+    const logoBuffer = Buffer.from(await logoFetch.arrayBuffer());
+    const logoResized = await sharp(logoBuffer)
+      .resize(200, null, { fit: 'inside' })
+      .toBuffer();
+    const logoMeta = await sharp(logoResized).metadata();
+    const logoWidth = logoMeta.width ?? 200;
+    const logoHeight = logoMeta.height ?? 80;
+
+    const compositedBuffer = await sharp(rawImageBuffer)
+      .composite([{
+        input: logoResized,
+        gravity: 'southeast',
+        left: 1024 - logoWidth - 20,
+        top: 1024 - logoHeight - 20,
+      }])
+      .jpeg({ quality: 92 })
+      .toBuffer();
+
+    // Upload to Cloudinary (simple storage, no transformations)
+    console.log('[Occasions Images] Uploading to Cloudinary');
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const uploadResult = await new Promise<any>((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
@@ -111,79 +152,13 @@ export async function POST(request: NextRequest) {
           else resolve(result);
         }
       );
-      uploadStream.end(imageBuffer);
+      uploadStream.end(compositedBuffer);
     });
 
-    const rawImageUrl: string = uploadResult.secure_url;
-    const publicId: string = uploadResult.public_id;
-    console.log('[Occasions Images] Cloudinary upload complete:', rawImageUrl);
+    const finalImageUrl: string = uploadResult.secure_url;
+    console.log('[Occasions Images] Upload complete:', finalImageUrl);
 
-    // Ensure logo exists in Cloudinary
-    try {
-      await cloudinary.api.resource(LOGO_PUBLIC_ID);
-    } catch {
-      console.log('[Occasions Images] Uploading logo to Cloudinary');
-      await cloudinary.uploader.upload(LOGO_SOURCE_URL, {
-        public_id: LOGO_PUBLIC_ID,
-        overwrite: false,
-      });
-    }
-
-    // Apply transformations eagerly to produce a clean final URL
-    console.log('[Occasions Images] Applying eager transformations');
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const eagerResult = await (cloudinary.uploader as any).explicit(publicId, {
-      type: 'upload',
-      eager: [
-        {
-          transformation: [
-            // Resize to square
-            { width: 1024, height: 1024, crop: 'fill' },
-            // Title text
-            {
-              overlay: {
-                font_family: 'Arial',
-                font_size: 72,
-                font_weight: 'bold',
-                text: `Happy ${occasionName}`,
-              },
-              color: '#FFD700',
-              gravity: 'north',
-              y: 40,
-              effect: 'shadow:40',
-            },
-            // Brand text
-            {
-              overlay: {
-                font_family: 'Arial',
-                font_size: 30,
-                font_weight: 'bold',
-                text: 'Team REMAX Westside Realty',
-              },
-              color: '#FFFFFF',
-              gravity: 'south',
-              y: 80,
-              effect: 'shadow:20',
-            },
-            // Logo bottom right
-            {
-              overlay: LOGO_PUBLIC_ID,
-              width: 180,
-              crop: 'scale',
-              gravity: 'south_east',
-              x: 20,
-              y: 20,
-            },
-          ],
-        },
-      ],
-      eager_async: false,
-    });
-
-    const finalImageUrl: string = eagerResult.eager[0].secure_url;
-    console.log('[Occasions Images] Final Cloudinary URL:', finalImageUrl);
-
-    // Update occasions_calendar with image URL and stage
+    // Update occasions_calendar
     await serviceClient
       .from('occasions_calendar')
       .update({
@@ -193,7 +168,7 @@ export async function POST(request: NextRequest) {
       })
       .eq('id', occasion_id);
 
-    // Update ALL captions for this occasion with the shared image
+    // Update ALL captions for this occasion
     await serviceClient
       .from('occasion_captions')
       .update({
