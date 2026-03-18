@@ -6,22 +6,49 @@ import { createServiceClient } from '@/lib/supabase/serviceClient';
 const LOGO_URL =
   'https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/brand-assets/REMAX%20WR%20Logo%20with%20no%20background.jpg';
 
-function createTextSVG(text: string, width: number, fontSize: number, color: string, strokeColor: string): Buffer {
-  return Buffer.from(`
-    <svg width="${width}" height="${fontSize + 20}">
+async function getTeluguFontBase64(): Promise<string> {
+  const fontUrl = 'https://fonts.gstatic.com/s/notosanstelugu/v35/0pptoa2_VHVbBD0klBSXRoFNe86gCZPX.ttf';
+  const response = await fetch(fontUrl);
+  const buffer = await response.arrayBuffer();
+  return Buffer.from(buffer).toString('base64');
+}
+
+async function createTextSVGWithFont(
+  text: string,
+  width: number,
+  fontSize: number,
+  color: string,
+  strokeColor: string,
+  fontBase64?: string
+): Promise<Buffer> {
+  const fontStyle = fontBase64 ? `
+    <style>
+      @font-face {
+        font-family: 'NotoTelugu';
+        src: url('data:font/truetype;base64,${fontBase64}');
+      }
+      .telugu { font-family: 'NotoTelugu', sans-serif; }
+    </style>` : '';
+
+  const fontFamily = fontBase64 ? 'NotoTelugu' : 'serif';
+
+  const svg = `
+    <svg width="${width}" height="${fontSize + 30}">
+      ${fontStyle}
       <text
         x="${width / 2}"
         y="${fontSize}"
         text-anchor="middle"
         font-size="${fontSize}"
         font-weight="bold"
+        font-family="${fontFamily}"
         fill="${color}"
         stroke="${strokeColor}"
         stroke-width="2"
         paint-order="stroke"
       >${text}</text>
-    </svg>
-  `);
+    </svg>`;
+  return Buffer.from(svg);
 }
 
 export async function POST(request: NextRequest) {
@@ -113,31 +140,29 @@ export async function POST(request: NextRequest) {
       const imageMeta = await sharp(rawImageBuffer).metadata();
       const imgWidth = imageMeta.width ?? 1024;
 
+      const teluguFontBase64 = await getTeluguFontBase64();
+      const teluguGreeting: string = caption.telugu_greeting || '';
+
       const compositeLayers: sharp.OverlayOptions[] = [];
 
       // 1. Dark banner at top for text
       compositeLayers.push({
         input: Buffer.from(`
-          <svg width="${imgWidth}" height="180">
-            <rect width="${imgWidth}" height="180" fill="rgba(0,0,0,0.5)"/>
+          <svg width="${imgWidth}" height="200">
+            <rect width="${imgWidth}" height="200" fill="rgba(0,0,0,0.5)"/>
           </svg>
         `),
         top: 0, left: 0,
       });
 
       // 2. "Happy {occasion_name}" in gold
-      compositeLayers.push({
-        input: createTextSVG(`Happy ${occasionName}`, imgWidth, 72, '#FFD700', 'rgba(0,0,0,0.6)'),
-        top: 20, left: 0,
-      });
+      const titleSvg = await createTextSVGWithFont(`Happy ${occasionName}`, imgWidth, 72, '#FFD700', 'rgba(0,0,0,0.6)');
+      compositeLayers.push({ input: titleSvg, top: 20, left: 0 });
 
       // 3. Telugu greeting (from DB — no hardcoding)
-      const teluguGreeting: string = caption.telugu_greeting || '';
       if (teluguGreeting) {
-        compositeLayers.push({
-          input: createTextSVG(teluguGreeting, imgWidth, 48, '#FFFFFF', 'rgba(0,0,0,0.5)'),
-          top: 105, left: 0,
-        });
+        const teluguSvg = await createTextSVGWithFont(teluguGreeting, imgWidth, 52, '#FFFFFF', 'rgba(0,0,0,0.5)', teluguFontBase64);
+        compositeLayers.push({ input: teluguSvg, top: 105, left: 0 });
       }
 
       // 4. Dark banner at bottom for brand line
@@ -152,11 +177,8 @@ export async function POST(request: NextRequest) {
       });
 
       // 5. Brand name text
-      compositeLayers.push({
-        input: createTextSVG('— Team RE/MAX Westside Realty', imgWidth, 28, '#FFFFFF', 'rgba(0,0,0,0.3)'),
-        top: imgWidth - logoHeight - 75,
-        left: 0,
-      });
+      const brandSvg = await createTextSVGWithFont('— Team RE/MAX Westside Realty', imgWidth, 28, '#FFFFFF', 'rgba(0,0,0,0.3)');
+      compositeLayers.push({ input: brandSvg, top: imgWidth - logoHeight - 75, left: 0 });
 
       // 6. Logo bottom right (always last)
       compositeLayers.push({
