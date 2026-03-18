@@ -382,37 +382,6 @@ Return ONLY the prompt string, no JSON.`,
     .update({ stage: 'captions_generated' })
     .eq('id', occasion_id);
 
-  // ── WhatsApp Alert ────────────────────────────────────────────────────────────
-
-  const aiSensyKey = process.env.AISENSY_API_KEY;
-  const aiSensyUser = process.env.AISENSY_USERNAME;
-  if (aiSensyKey && aiSensyUser) {
-    try {
-      await fetch('https://backend.aisensy.com/campaign/t1/api', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          apiKey: aiSensyKey,
-          campaignName: 'occasions_review_alert',
-          destination: '919866085831',
-          userName: aiSensyUser,
-          templateParams: [
-            occasionName,
-            String(platforms.length),
-            'https://www.westsiderealty.in/social',
-          ],
-          source: 'occasions-agent',
-          media: {},
-          buttons: [],
-          carouselCards: [],
-          location: {},
-        }),
-      });
-    } catch (e) {
-      console.error('[Occasions Agent] AiSensy alert failed:', e);
-    }
-  }
-
   console.log('[Occasions Agent] Pipeline complete for:', occasionName, '| Captions:', platforms.length);
 
   return NextResponse.json({

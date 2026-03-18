@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import sharp from 'sharp';
 import { getCrmSessionResult } from '@/lib/crm/auth';
 import { createServiceClient } from '@/lib/supabase/serviceClient';
 
@@ -6,9 +7,6 @@ const LOGO_URL =
   'https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/brand-assets/REMAX%20WR%20Logo%20with%20no%20background.jpg';
 
 async function compositeWithLogo(imageUrl: string): Promise<Buffer> {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const sharp = require('sharp') as typeof import('sharp');
-
   const [imageRes, logoRes] = await Promise.all([fetch(imageUrl), fetch(LOGO_URL)]);
   const imageBuffer = Buffer.from(await imageRes.arrayBuffer());
   const logoBuffer = Buffer.from(await logoRes.arrayBuffer());
@@ -35,40 +33,6 @@ async function compositeWithLogo(imageUrl: string): Promise<Buffer> {
   return compositedBuffer;
 }
 
-async function sendAiSensyAlert(occasionName: string, message: string) {
-  const apiKey = process.env.AISENSY_API_KEY;
-  const userName = process.env.AISENSY_USERNAME;
-  if (!apiKey || !userName) return;
-
-  try {
-    await fetch('https://backend.aisensy.com/campaign/t1/api', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        apiKey,
-        campaignName: 'agent_new_lead_v2',
-        destination: '919866085831',
-        userName,
-        templateParams: [
-          'Praveen',
-          '919866085831',
-          'Occasions',
-          occasionName + ' ' + message,
-          'Review now',
-          'system-occasions',
-        ],
-        source: 'occasions-generator',
-        media: {},
-        buttons: [],
-        carouselCards: [],
-        location: {},
-      }),
-    });
-  } catch (e) {
-    console.error('[occasions] AiSensy alert failed:', e);
-  }
-}
-
 export async function POST(request: NextRequest) {
   const session = await getCrmSessionResult();
   if (!session.user || session.user.role !== 'admin') {
@@ -88,15 +52,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'OPENAI_API_KEY not configured' }, { status: 500 });
   }
 
-  const supabase = createServiceClient();
+  const serviceClient = createServiceClient();
 
-  const { data: occasion } = await supabase
-    .from('occasions_calendar')
-    .select('occasion_name')
-    .eq('id', occasion_id)
-    .single();
-
-  const { data: captions, error: captionsError } = await supabase
+  const { data: captions, error: captionsError } = await serviceClient
     .from('occasion_captions')
     .select('*')
     .eq('occasion_id', occasion_id)
@@ -106,11 +64,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'No approved captions found' }, { status: 404 });
   }
 
-  let imagesGenerated = 0;
+  const results: { platform: string; image_url: string | null; status: string }[] = [];
 
   for (const caption of captions) {
     try {
-      // Generate image with DALL-E 3
+      // DALL-E generation
+      console.log('[Occasions Images] Starting DALL-E for:', caption.platform);
       const dalleRes = await fetch('https://api.openai.com/v1/images/generations', {
         method: 'POST',
         headers: {
@@ -127,53 +86,67 @@ export async function POST(request: NextRequest) {
       });
 
       if (!dalleRes.ok) {
-        console.error(`[occasions/generate-images] DALL-E error for caption ${caption.id}`);
-        continue;
+        const errText = await dalleRes.text();
+        throw new Error(`DALL-E API error: ${errText.slice(0, 200)}`);
       }
 
       const dalleData = await dalleRes.json();
       const dalleImageUrl: string = dalleData.data?.[0]?.url;
-      if (!dalleImageUrl) continue;
+      if (!dalleImageUrl) throw new Error('DALL-E returned no image URL');
+      console.log('[Occasions Images] DALL-E response:', dalleImageUrl);
 
-      // Composite logo onto image
+      // Sharp composite
+      console.log('[Occasions Images] Starting sharp composite');
       const compositedBuffer = await compositeWithLogo(dalleImageUrl);
 
-      // Upload to Supabase storage
+      // Supabase upload
       const fileName = `occasions/${occasion_id}/${caption.platform}-${Date.now()}.jpg`;
-      await supabase.storage
+      console.log('[Occasions Images] Starting Supabase upload:', fileName);
+      const { error: uploadError } = await serviceClient.storage
         .from('social-media-images')
         .upload(fileName, compositedBuffer, {
           contentType: 'image/jpeg',
           upsert: true,
         });
 
-      const { data: { publicUrl } } = supabase.storage
+      if (uploadError) throw new Error(`Supabase upload error: ${uploadError.message}`);
+
+      const { data: { publicUrl } } = serviceClient.storage
         .from('social-media-images')
         .getPublicUrl(fileName);
 
-      // Update caption with image URL
-      await supabase
+      if (!publicUrl) throw new Error('getPublicUrl returned null');
+      console.log('[Occasions Images] Upload complete:', publicUrl);
+
+      // Update caption
+      await serviceClient
         .from('occasion_captions')
-        .update({ image_url: publicUrl, image_status: 'generated' })
+        .update({
+          image_url: publicUrl,
+          image_status: 'generated',
+          updated_at: new Date().toISOString(),
+        })
         .eq('id', caption.id);
 
-      imagesGenerated++;
-    } catch (e) {
-      console.error(`[occasions/generate-images] Error for caption ${caption.id}:`, e);
+      results.push({ platform: caption.platform, image_url: publicUrl, status: 'generated' });
+    } catch (err) {
+      console.error('[Occasions Images] Failed for platform', caption.platform, ':', err);
+      await serviceClient
+        .from('occasion_captions')
+        .update({ image_status: 'failed', updated_at: new Date().toISOString() })
+        .eq('id', caption.id);
+      results.push({ platform: caption.platform, image_url: null, status: 'failed' });
     }
   }
 
   // Update occasion stage
-  await supabase
+  await serviceClient
     .from('occasions_calendar')
     .update({ stage: 'images_generated' })
     .eq('id', occasion_id);
 
-  // WhatsApp alert
-  await sendAiSensyAlert(
-    occasion?.occasion_name ?? 'Occasion',
-    'images ready for final approval'
-  );
-
-  return NextResponse.json({ success: true, images_generated: imagesGenerated });
+  return NextResponse.json({
+    success: true,
+    results: results,
+  });
 }
