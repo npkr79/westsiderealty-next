@@ -339,7 +339,7 @@ function ImageReviewPanel({ occasion, onStageChange }: { occasion: Occasion; onS
                   <img
                     src={caption.image_url}
                     alt={caption.platform}
-                    className="w-full h-64 object-cover rounded-lg"
+                    className="w-full object-contain rounded-lg"
                   />
                   {isRegenerating && (
                     <div className="absolute inset-0 flex items-center justify-center bg-black/60 rounded-lg">
@@ -348,7 +348,7 @@ function ImageReviewPanel({ occasion, onStageChange }: { occasion: Occasion; onS
                   )}
                 </>
               ) : (
-                <div className="w-full h-64 rounded-lg bg-gray-700 flex items-center justify-center">
+                <div className="w-full rounded-lg bg-gray-700 flex items-center justify-center py-16">
                   <ImageIcon size={32} className="text-gray-500" />
                 </div>
               )}
