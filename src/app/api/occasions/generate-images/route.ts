@@ -7,6 +7,7 @@ cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET,
+  analytics: false,
 });
 
 const LOGO_PUBLIC_ID = 'westside_realty_logo';
@@ -189,7 +190,7 @@ export async function POST(request: NextRequest) {
         font_family: 'Arial',
         font_size: 26,
         font_weight: 'bold',
-        text: '— Team RE/MAX Westside Realty',
+        text: 'Team REMAX Westside Realty',
       },
       color: 'FFFFFF',
       gravity: 'south',
@@ -210,6 +211,8 @@ export async function POST(request: NextRequest) {
     const finalImageUrl = cloudinary.url(publicId, {
       transformation: transformations,
       secure: true,
+      sign_url: false,
+      type: 'upload',
     });
 
     console.log('[Occasions Images] Final Cloudinary URL:', finalImageUrl);
