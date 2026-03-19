@@ -32,6 +32,8 @@ interface LeadRow {
   meta_leadgen_id?: string | null;
   assigned_to?: string | null;
   is_bulk_upload?: boolean | null;
+  property_type?: string | null;
+  landing_page?: string | null;
 }
 
 interface FullLead extends LeadRow {}
@@ -82,66 +84,6 @@ Property name:`,
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getSourceSpecificInfo(lead: FullLead): Promise<{ line3: string; line4: string }> {
-  const sourceChannel = lead.source_channel?.toLowerCase() || '';
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const meta = (lead.attribution_metadata as Record<string, any>) || {};
-
-  // META ADS
-  if (
-    sourceChannel.includes('meta') || sourceChannel.includes('facebook') ||
-    sourceChannel.includes('fb') || lead.source_id === '192bf7e8-8be9-46e5-bb8f-dfe9298e3598'
-  ) {
-    return {
-      line3: await extractPropertyFromFormName(meta.fb_form_name || ''),
-      line4: 'Not specified',
-    };
-  }
-
-  // 99ACRES
-  if (sourceChannel.includes('99acres') || lead.source_id === '3308dd6c-a656-42c8-947e-a94e2e46c0ab') {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const rawPayload = (meta.raw_payload as Record<string, any>) || {};
-    const propertyName =
-      rawPayload.property_name || rawPayload.project_name ||
-      lead.location_preference || 'Not specified';
-    const location = rawPayload.location || rawPayload.city || rawPayload.area || '';
-    return {
-      line3: `Property: ${propertyName}`,
-      line4: location ? `Location: ${location}` : (lead.notes?.split('\n')[0] || 'Not specified'),
-    };
-  }
-
-  // WEBSITE
-  if (sourceChannel.includes('website') || lead.source_id === 'c3b72f38-171b-4ce6-a060-f40beed8bdb4') {
-    const enquiryType = meta.lead_type || lead.source_channel || 'Website Enquiry';
-    const projectName =
-      lead.location_preference ||
-      meta.project_name ||
-      (lead.notes?.match(/Interested in (.+)/)?.[1]) ||
-      'Not specified';
-    const message = lead.notes?.split('\n').slice(-1)[0] || 'Not specified';
-    return {
-      line3: `${enquiryType}: ${projectName}`,
-      line4: message.length > 60 ? message.substring(0, 60) + '...' : message,
-    };
-  }
-
-  // GOOGLE ADS
-  if (sourceChannel.includes('google') || lead.source_id === '27215444-e232-427c-acbb-2b17bcb92613') {
-    return {
-      line3: `Google Ads: ${lead.location_preference || 'Not specified'}`,
-      line4: meta.keyword || meta.campaign_name || 'Google Campaign',
-    };
-  }
-
-  // DEFAULT FALLBACK
-  return {
-    line3: lead.location_preference || 'Not specified',
-    line4: formatBudget(lead.budget) || 'Not specified',
-  };
-}
 
 // Called by a Supabase Database Webhook on:
 //   - INSERT into crm_leads
@@ -241,148 +183,199 @@ export async function POST(request: NextRequest) {
   // Fetch full lead for rich templateParams
   const { data: fullLeadData } = await supabase
     .from('crm_leads')
-    .select('id, name, phone, source_channel, source_type, source_id, location_preference, budget, notes, attribution_metadata, fb_lead_id, meta_leadgen_id, assigned_to, is_bulk_upload')
+    .select('id, name, phone, source_channel, source_type, source_id, location_preference, budget, notes, attribution_metadata, fb_lead_id, meta_leadgen_id, assigned_to, is_bulk_upload, property_type, landing_page')
     .eq('id', record.id)
     .single();
   const fullLead: FullLead = fullLeadData ?? record;
 
-  // Fetch agent name for WhatsApp greeting
-  let agentName = 'Team';
-  if (fullLead.assigned_to) {
-    const { data: agentData } = await supabase
-      .from('crm_users')
-      .select('full_name')
-      .eq('id', fullLead.assigned_to)
-      .single();
-    if (agentData?.full_name) agentName = agentData.full_name;
-  }
-
-  // 99acres Srinivas routing for unassigned leads
-  if (
-    (fullLead.source_channel?.toLowerCase().includes('99acres') || fullLead.source_id === '3308dd6c-a656-42c8-947e-a94e2e46c0ab') &&
-    !fullLead.assigned_to
-  ) {
-    const srinivasProperties = ['rajapushpa', 'imperia', 'prestige'];
-    const locationLower = (fullLead.location_preference || '').toLowerCase();
-    if (srinivasProperties.some(p => locationLower.includes(p))) {
-      agentName = 'Srinivas';
-    }
-  }
-
-  const { line3, line4 } = await getSourceSpecificInfo(fullLead);
-
-  const leadId = record.id;
-  const name = record.name?.trim() || "Unknown";
-  const phone = record.phone?.trim() || "";
-
-  // Batch-fetch whatsapp numbers for all relevant users in one query
-  const userIds = [PRAVEEN_ID];
-  if (record.assigned_to && record.assigned_to !== PRAVEEN_ID) {
-    userIds.push(record.assigned_to);
-  }
-
-  const { data: users } = await supabase
-    .from("crm_users")
-    .select("id, full_name, whatsapp_number")
-    .in("id", userIds);
-
-  const adminUser = users?.find((u: { id: string }) => u.id === PRAVEEN_ID) as
-    | { id: string; full_name?: string | null; whatsapp_number?: string | null }
-    | undefined;
-  const agentUser = users?.find((u: { id: string }) => u.id === record.assigned_to) as
-    | { id: string; full_name?: string | null; whatsapp_number?: string | null }
-    | undefined;
-
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.westsiderealty.in";
-
-  // Normalize a stored whatsapp_number (no country code) to E.164
+  // ── Normalize phone helper ────────────────────────────────────────────────
   function normalizePhone(raw: string): string {
     const digits = raw.replace(/\D/g, "");
     if (digits.length === 12 && digits.startsWith("91")) return digits;
     if (digits.length === 10) return `91${digits}`;
-    // Fallback: prepend 91 and hope for the best
     return digits.startsWith("91") ? digits : `91${digits}`;
   }
 
-  // AiSensy Project API call — sends template message via AiSensy.
-  async function sendTemplate(waPhone: string) {
-    if (!waPhone) return;
+  // ── Source detection ──────────────────────────────────────────────────────
+  const sourceChannel = fullLead.source_channel?.toLowerCase() || '';
+  const sourceId = fullLead.source_id || '';
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const meta = (fullLead.attribution_metadata as Record<string, any>) || {};
 
-    const apiKey = process.env.AISENSY_API_KEY;
-    const userName = process.env.AISENSY_USERNAME;
+  const is99acres = sourceId === '3308dd6c-a656-42c8-947e-a94e2e46c0ab' ||
+                    sourceChannel.includes('99acres');
+  const isMeta = sourceId === '192bf7e8-8be9-46e5-bb8f-dfe9298e3598' ||
+                 sourceChannel.includes('meta') ||
+                 sourceChannel.includes('facebook') ||
+                 sourceChannel.includes('fb');
+  const isWebsite = sourceId === 'c3b72f38-171b-4ce6-a060-f40beed8bdb4' ||
+                    sourceChannel.includes('website');
 
-    if (!apiKey || !userName) {
-      console.error("[WA Alert] Missing AiSensy credentials");
-      return;
+  // ── Target routing ────────────────────────────────────────────────────────
+  type AlertTarget = { name: string; phone: string };
+  const targets: AlertTarget[] = [];
+  const adminTarget = { name: 'Praveen', phone: '919866085831' };
+
+  if (is99acres) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const rawPayload = (meta.raw_payload as Record<string, any>) || {};
+    const propertyName = (
+      rawPayload.property_name ||
+      rawPayload.project_name ||
+      fullLead.location_preference || ''
+    ).toLowerCase();
+
+    const srinivasProperties = ['rajapushpa imperia', 'aparna zenon', 'nk villa scapes', 'hallmark treasor'];
+    const krishnaProperties = ['aparna cyberon', 'aparna cyber heights'];
+
+    if (srinivasProperties.some(p => propertyName.includes(p))) {
+      targets.push({ name: 'Srinivas', phone: '918520099841' });
+    } else if (krishnaProperties.some(p => propertyName.includes(p))) {
+      targets.push({ name: 'Krishna', phone: '919666845340' });
     }
+    targets.push(adminTarget);
 
-    const destination = normalizePhone(waPhone);
+  } else if (isWebsite) {
+    const propertyType = (fullLead.property_type || '').toLowerCase();
+    const locationPref = (fullLead.location_preference || '').toLowerCase();
+    const landingPage = (fullLead.landing_page || '').toLowerCase();
+    const leadType = (meta.lead_type || '').toLowerCase();
 
-    const body = {
-      apiKey,
-      campaignName: "agent_new_lead_v2",
-      destination,
-      userName,
-      templateParams: [
-        agentName,
-        normalizePhone(fullLead.phone || ""),
-        fullLead.source_channel || fullLead.source_type || "Website",
-        line3,
-        line4,
-        fullLead.id,
-      ],
-      source: "crm-new-lead",
-      media: {},
-      buttons: [],
-      carouselCards: [],
-      location: {},
-    };
+    const isGoa = leadType === 'goa_property' ||
+                  locationPref.includes('goa') ||
+                  landingPage.includes('/goa');
+    const isCommercial = propertyType.includes('commercial');
+    const isResidential = propertyType.includes('villa') ||
+                          propertyType.includes('flat') ||
+                          propertyType.includes('apartment') ||
+                          propertyType.includes('residential');
 
-    console.log("[AiSensy] Request:", JSON.stringify(body));
+    if (isGoa) {
+      targets.push({ name: 'Swetha', phone: '918367724368' });
+    } else if (isCommercial) {
+      targets.push({ name: 'Krishna', phone: '919666845340' });
+    } else if (isResidential) {
+      targets.push({ name: 'Srinivas', phone: '918520099841' });
+    }
+    targets.push(adminTarget);
 
-    const res = await fetch(
-      "https://backend.aisensy.com/campaign/t1/api",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(body),
+  } else if (isMeta) {
+    if (fullLead.assigned_to) {
+      const { data: assignedAgent } = await supabase
+        .from('crm_users')
+        .select('full_name, whatsapp_number')
+        .eq('id', fullLead.assigned_to)
+        .single();
+      if (assignedAgent?.whatsapp_number) {
+        targets.push({
+          name: assignedAgent.full_name || 'Team',
+          phone: normalizePhone(assignedAgent.whatsapp_number),
+        });
       }
-    );
-
-    const text = await res.text();
-    console.log("[AiSensy] Raw response:", text);
-
-    let result: unknown;
-    try {
-      result = JSON.parse(text);
-    } catch {
-      console.error("[AiSensy] Non-JSON response (status", res.status, "):", text.slice(0, 200));
-      return;
     }
+    targets.push(adminTarget);
 
-    if (!res.ok) {
-      console.error("[AiSensy] API error:", result);
-    } else {
-      console.log("[AiSensy] Sent successfully to:", destination);
-    }
+  } else {
+    targets.push(adminTarget);
   }
 
+  // ── Template params builder ───────────────────────────────────────────────
+  async function buildTemplateParams(
+    lead: FullLead,
+    agentName: string,
+    source: '99acres' | 'meta' | 'website' | 'default'
+  ): Promise<{ campaign: string; params: string[] }> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const leadMeta = (lead.attribution_metadata as Record<string, any>) || {};
+    const crmLink = `https://www.westsiderealty.in/leads/${lead.id}`;
+    const phone = normalizePhone(lead.phone || '');
+
+    if (source === '99acres') {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const rawPayload = (leadMeta.raw_payload as Record<string, any>) || {};
+      const propertyName = rawPayload.property_name ||
+                           rawPayload.project_name ||
+                           lead.location_preference ||
+                           'Not specified';
+      const location = rawPayload.location ||
+                       rawPayload.city ||
+                       rawPayload.area ||
+                       'Not specified';
+      return {
+        campaign: 'alert_99acres_v1',
+        params: [agentName, lead.name || 'Unknown', phone, propertyName, location, crmLink],
+      };
+    }
+
+    if (source === 'meta') {
+      const propertyInterest = await extractPropertyFromFormName(leadMeta.fb_form_name || '');
+      const fieldData = (leadMeta.field_data as Array<{ field_name: string; values: string[] }>) || [];
+      const formResponses = fieldData
+        .filter(f => !['full_name', 'phone_number', 'email', 'phone'].includes(f.field_name.toLowerCase()))
+        .map(f => `${f.field_name}: ${f.values?.[0] || 'N/A'}`)
+        .slice(0, 3)
+        .join(', ') || 'Not specified';
+      return {
+        campaign: 'alert_meta_v1',
+        params: [agentName, lead.name || 'Unknown', phone, propertyInterest, formResponses, crmLink],
+      };
+    }
+
+    if (source === 'website') {
+      const leadType = (leadMeta.lead_type || 'GENERAL_CONTACT')
+        .replace(/_/g, ' ')
+        .toLowerCase()
+        .replace(/\b\w/g, (c: string) => c.toUpperCase());
+      const propertyInterest = lead.location_preference
+        ? `${leadType}: ${lead.location_preference}`
+        : leadType;
+      const message = lead.notes || 'Not specified';
+      const truncatedMessage = message.length > 100 ? message.substring(0, 100) + '...' : message;
+      return {
+        campaign: 'alert_website_v1',
+        params: [agentName, lead.name || 'Unknown', phone, propertyInterest, truncatedMessage, crmLink],
+      };
+    }
+
+    // Default fallback
+    return {
+      campaign: 'agent_new_lead_v2',
+      params: [
+        agentName,
+        phone,
+        fullLead.source_channel || 'Unknown',
+        lead.location_preference || 'Not specified',
+        'Not specified',
+        crmLink,
+      ],
+    };
+  }
+
+  // ── AiSensy sender ────────────────────────────────────────────────────────
+  async function sendAiSensyAlert(phone: string, campaignName: string, templateParams: string[]) {
+    const res = await fetch('https://backend.aisensy.com/campaign/t1/api', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        apiKey: process.env.AISENSY_API_KEY,
+        campaignName,
+        destination: phone,
+        userName: process.env.AISENSY_USERNAME,
+        templateParams,
+        source: 'crm-lead-alert',
+      }),
+    });
+    const result = await res.json();
+    console.log(`[Alert] Sent to ${phone} via ${campaignName}:`, result);
+    return result;
+  }
+
+  const alertSource = is99acres ? '99acres' : isMeta ? 'meta' : isWebsite ? 'website' : 'default';
+
   if (type === "INSERT") {
-    if (record.assigned_to && record.assigned_to !== PRAVEEN_ID) {
-      // Assigned lead — alert agent + admin
-      if (agentUser?.whatsapp_number) {
-        await sendTemplate(agentUser.whatsapp_number);
-      }
-      if (adminUser?.whatsapp_number) {
-        await sendTemplate(adminUser.whatsapp_number);
-      }
-    } else {
-      // Unassigned — alert admin only
-      if (adminUser?.whatsapp_number) {
-        await sendTemplate(adminUser.whatsapp_number);
-      }
+    for (const target of targets) {
+      const { campaign, params } = await buildTemplateParams(fullLead, target.name, alertSource);
+      await sendAiSensyAlert(target.phone, campaign, params);
     }
     return NextResponse.json({ success: true, reason: "insert_ok" });
   }
@@ -395,9 +388,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ skipped: true, reason: "assigned_to_unchanged" });
     }
 
-    // Lead just got assigned — alert agent only
-    if (record.assigned_to !== PRAVEEN_ID && agentUser?.whatsapp_number) {
-      await sendTemplate(agentUser.whatsapp_number);
+    // Lead just got assigned — alert the newly assigned agent only
+    if (record.assigned_to && record.assigned_to !== PRAVEEN_ID) {
+      const { data: assignedAgent } = await supabase
+        .from('crm_users')
+        .select('full_name, whatsapp_number')
+        .eq('id', record.assigned_to)
+        .single();
+      if (assignedAgent?.whatsapp_number) {
+        const { campaign, params } = await buildTemplateParams(
+          fullLead,
+          assignedAgent.full_name || 'Team',
+          alertSource
+        );
+        await sendAiSensyAlert(normalizePhone(assignedAgent.whatsapp_number), campaign, params);
+      }
     }
     return NextResponse.json({ success: true, reason: "update_ok" });
   }
