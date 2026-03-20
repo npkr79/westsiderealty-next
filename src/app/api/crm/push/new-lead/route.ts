@@ -309,7 +309,18 @@ export async function POST(request: NextRequest) {
 
     if (source === 'meta') {
       const propertyInterest = await extractPropertyFromFormName(leadMeta.fb_form_name || '');
-      const fieldData = (leadMeta.field_data as Array<{ field_name: string; values: string[] }>) || [];
+      let fieldData: Array<{ field_name: string; values: string[] }> = [];
+      try {
+        const rawFieldData = leadMeta.field_data;
+        if (Array.isArray(rawFieldData)) {
+          fieldData = rawFieldData;
+        } else if (typeof rawFieldData === 'string') {
+          const parsed = JSON.parse(rawFieldData);
+          fieldData = Array.isArray(parsed) ? parsed : [];
+        }
+      } catch {
+        fieldData = [];
+      }
       const formResponses = fieldData
         .filter(f => !['full_name', 'phone_number', 'email', 'phone'].includes(f.field_name.toLowerCase()))
         .map(f => `${f.field_name}: ${f.values?.[0] || 'N/A'}`)
