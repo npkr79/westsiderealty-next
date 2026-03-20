@@ -1221,7 +1221,7 @@ export const projectService = {
             runWithServiceFallback<any>((client) => {
               let q = client
                 .from("rera_units")
-                .select("saleable_area")
+                .select("saleable_area, builtup_area, total_units")
                 .eq("project_id", reraRow.id)
                 // Always exclude amenity/facility rows
                 .not("unit_category", "ilike", "%club%")
@@ -1280,14 +1280,18 @@ export const projectService = {
             aiKeyUpdatesText = keyUpdates.join(" ");
           }
 
-          // Unit sizes: convert, filter 400–50000 sqft, remove outliers < 50% of max
+          // Unit sizes: compute per-unit area, convert, filter 400–15000 sqft
           const sizeRows = (sizeResult.data as any[]) || [];
           const allAreas = sizeRows
-            .map((r: any) => toSqft(r.saleable_area))
-            .filter((v: number) => v >= 400 && v <= 50000);
-          if (allAreas.length) {
-            const maxVal = Math.max(...allAreas);
-            const cleanAreas = allAreas.filter((v: number) => v >= maxVal * 0.5);
+            .map((r: any) => {
+              const rawArea = r.saleable_area || r.builtup_area || 0;
+              const numUnits = r.total_units && r.total_units > 0 ? r.total_units : 1;
+              const perUnitArea = rawArea / numUnits;
+              return toSqft(perUnitArea);
+            })
+            .filter((v): v is number => v !== null && v >= 400 && v <= 15000);
+          const cleanAreas = allAreas;
+          if (cleanAreas.length) {
             cleanMinArea = Math.min(...cleanAreas);
             cleanMaxArea = Math.max(...cleanAreas);
           }
