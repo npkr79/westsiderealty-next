@@ -1221,7 +1221,7 @@ export const projectService = {
             runWithServiceFallback<any>((client) => {
               let q = client
                 .from("rera_units")
-                .select("saleable_area, builtup_area, total_units")
+                .select("saleable_area, builtup_area, total_units, unit_category")
                 .eq("project_id", reraRow.id)
                 // Always exclude amenity/facility rows
                 .not("unit_category", "ilike", "%club%")
@@ -1280,18 +1280,33 @@ export const projectService = {
             aiKeyUpdatesText = keyUpdates.join(" ");
           }
 
-          // Unit sizes: compute per-unit area, convert, filter 400–15000 sqft
+          // Unit sizes: compute per-unit area, convert, filter 300–15000 sqft
           const sizeRows = (sizeResult.data as any[]) || [];
           const allAreas = sizeRows
             .map((r: any) => {
               const rawArea = r.saleable_area || r.builtup_area || 0;
-              const numUnits = r.total_units && r.total_units > 0 ? r.total_units : 1;
+              if (!rawArea || rawArea <= 0) return null;
+
+              // Skip commercial units in residential projects
+              const cat = (r.unit_category || '').toLowerCase();
+              if (cat.includes('commercial') ||
+                  cat.includes('office') ||
+                  cat.includes('shop') ||
+                  cat.includes('retail')) return null;
+
+              // total_units > 500 means it's an apartment serial number
+              // not a unit count — treat as 1
+              const numUnits = (r.total_units &&
+                                r.total_units > 0 &&
+                                r.total_units <= 500)
+                                ? r.total_units : 1;
+
               const perUnitArea = rawArea / numUnits;
               return toSqft(perUnitArea);
             })
-            .filter((v): v is number => v !== null && v >= 400 && v <= 15000);
+            .filter((v): v is number => v !== null && v >= 300 && v <= 15000);
           const cleanAreas = allAreas;
-          if (cleanAreas.length) {
+          if (cleanAreas.length > 0) {
             cleanMinArea = Math.min(...cleanAreas);
             cleanMaxArea = Math.max(...cleanAreas);
           }
