@@ -61,25 +61,37 @@ async function extractPropertyFromFormName(formName: string): Promise<string> {
         messages: [{
           role: 'user',
           content: `Extract only the property/project name from this Meta Lead Ad form name.
-Return ONLY the clean property name, nothing else.
+Return ONLY the clean property name as plain text, nothing else, no explanation.
 Remove dates, "Lead form", "Lead Gen", "Submit Form", "Leads Form" etc.
-Keep location if present.
 
 Examples:
-"Godrej Lead form 15th Feb 2026" → "Godrej Regal Pavilion"
-"Sapphire Lead Gen Submit Form 09Feb" → "Sapphire, Siolim, Goa"
-"Commercial Investors Leads Form March 5th 2026" → "Commercial Property, Hyderabad"
-"Kokapet & Gandipet Resale Villas Lead Form - 10th March" → "Villas in Kokapet & Gandipet"
-"Westsiderealty - Buyers Feb 2026" → "General Enquiry"
+"Godrej Lead form 15th Feb 2026" → Godrej Regal Pavilion
+"Sapphire Lead Gen Submit Form 09Feb" → Sapphire, Siolim, Goa
+"Commercial Investors Leads Form March 5th 2026" → Commercial Property, Hyderabad
+"Kokapet & Gandipet Resale Villas Lead Form - 10th March" → Villas in Kokapet & Gandipet
+"Westsiderealty - Buyers Feb 2026" → General Enquiry
 
 Form name: "${formName}"
 Property name:`,
         }],
       }),
     });
+
+    if (!response.ok) {
+      console.error('[extractProperty] API error:', response.status);
+      return formName;
+    }
+
     const data = await response.json();
-    return data.content?.[0]?.text?.trim() || formName;
-  } catch {
+    const text = data?.content?.[0]?.text?.trim();
+
+    // Return plain text directly - no JSON.parse needed
+    if (text && text.length > 0 && text.length < 200) {
+      return text;
+    }
+    return formName;
+  } catch (err) {
+    console.error('[extractProperty] Failed:', err);
     return formName;
   }
 }
