@@ -1280,7 +1280,7 @@ export const projectService = {
             aiKeyUpdatesText = keyUpdates.join(" ");
           }
 
-          // Unit sizes: compute per-unit area, convert, filter 300–15000 sqft
+          // Unit sizes: smart per-unit area, convert, filter 300–15000 sqft
           const sizeRows = (sizeResult.data as any[]) || [];
           const allAreas = sizeRows
             .map((r: any) => {
@@ -1294,14 +1294,17 @@ export const projectService = {
                   cat.includes('shop') ||
                   cat.includes('retail')) return null;
 
-              // total_units > 500 means it's an apartment serial number
-              // not a unit count — treat as 1
-              const numUnits = (r.total_units &&
-                                r.total_units > 0 &&
-                                r.total_units <= 500)
-                                ? r.total_units : 1;
+              // Smart logic: if area > 500 and dividing by total_units
+              // gives reasonable result, treat as total area
+              let perUnitArea = rawArea;
+              const numUnits = r.total_units && r.total_units > 0 ? r.total_units : 1;
+              if (rawArea > 500 && numUnits > 1) {
+                const divided = rawArea / numUnits;
+                if (divided >= 60 && divided <= 2000) {
+                  perUnitArea = divided;
+                }
+              }
 
-              const perUnitArea = rawArea / numUnits;
               return toSqft(perUnitArea);
             })
             .filter((v): v is number => v !== null && v >= 300 && v <= 15000);
