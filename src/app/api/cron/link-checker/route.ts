@@ -3,7 +3,7 @@ import { createServiceClient } from "@/lib/supabase/serviceClient";
 
 const CONCURRENCY = 3;
 const TIMEOUT_MS = 5_000;
-const DEFAULT_LIMIT = 50;
+const DEFAULT_LIMIT = 150;
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.westsiderealty.in";
 
 const isAuthorized = (request: NextRequest): boolean => {
@@ -126,8 +126,17 @@ async function handler(request: NextRequest) {
 
     console.log("[link-checker] fetching slugs...");
     const allEntries = await fetchAllSlugs(supabase, baseUrl);
-    const entries = allEntries.slice(offset, offset + limit);
-    console.log(`[link-checker] total=${allEntries.length} limit=${limit} offset=${offset} — checking ${entries.length} URLs against ${baseUrl}`);
+
+    const isManualOffset = searchParams.has("offset");
+    const effectiveOffset = isManualOffset
+      ? offset
+      : (() => {
+          const start = new Date(new Date().getFullYear(), 0, 0).getTime();
+          const dayOfYear = Math.floor((Date.now() - start) / 86_400_000);
+          return (dayOfYear * limit) % Math.max(allEntries.length, 1);
+        })();
+    const entries = allEntries.slice(effectiveOffset, effectiveOffset + limit);
+    console.log(`[link-checker] total=${allEntries.length} limit=${limit} effectiveOffset=${effectiveOffset} — checking ${entries.length} URLs against ${baseUrl}`);
     const results = await checkInBatches(entries);
     console.log(`[link-checker] checks complete — ${results.filter(r => r.is_broken).length} broken`);
 
@@ -152,12 +161,12 @@ async function handler(request: NextRequest) {
 
     return NextResponse.json({
       run_id,
-      offset,
+      effective_offset: effectiveOffset,
       limit,
       checked: results.length,
       total_available: allEntries.length,
-      has_more: offset + limit < allEntries.length,
-      next_offset: offset + limit < allEntries.length ? offset + limit : null,
+      has_more: effectiveOffset + limit < allEntries.length,
+      next_offset: effectiveOffset + limit < allEntries.length ? effectiveOffset + limit : null,
       broken_count: broken.length,
       broken: broken.map((r) => ({ type: r.type, slug: r.slug, status: r.http_status, url: r.url })),
     });
