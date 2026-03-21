@@ -388,9 +388,12 @@ export async function POST(request: NextRequest) {
         source: 'crm-lead-alert',
       }),
     });
-    const result = await res.json();
-    console.log(`[Alert] Sent to ${phone} via ${campaignName}:`, result);
-    return result;
+    const rawText = await res.text();
+    const success = res.ok || rawText.includes("Success");
+    if (!success) {
+      console.error("[AiSensy] Unexpected response:", rawText);
+    }
+    return success;
   }
 
   const alertSource = is99acres ? '99acres' : isMeta ? 'meta' : isWebsite ? 'website' : 'default';
