@@ -2,6 +2,9 @@
   "functions": {
     "src/app/api/cron/link-checker/route.ts": {
       "maxDuration": 300
+    },
+    "src/app/api/cron/rental-intelligence/hyderabad/route.ts": {
+      "maxDuration": 300
     }
   },
   "crons": [
@@ -32,6 +35,10 @@
     {
       "path": "/api/cron/publish-occasion-posts",
       "schedule": "30 19 * * *"
+    },
+    {
+      "path": "/api/cron/rental-intelligence/hyderabad",
+      "schedule": "0 4 1 * *"
     }
   ]
 }

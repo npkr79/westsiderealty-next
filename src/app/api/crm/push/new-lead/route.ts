@@ -237,7 +237,7 @@ export async function POST(request: NextRequest) {
       fullLead.location_preference || ''
     ).toLowerCase();
 
-    const srinivasProperties = ['rajapushpa imperia', 'aparna zenon', 'nk villa scapes', 'hallmark treasor'];
+    const srinivasProperties = ['rajapushpa imperia', 'aparna zenon', 'nk villa scapes', 'hallmark treasor', 'my home vipina', 'rajapushpa cannon dale', 'aparna elixir'];
     const krishnaProperties = ['aparna cyberon', 'aparna cyber heights'];
 
     if (srinivasProperties.some(p => propertyName.includes(p))) {

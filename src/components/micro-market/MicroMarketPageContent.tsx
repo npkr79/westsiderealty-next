@@ -1,4 +1,5 @@
 import BreadcrumbNav from "@/components/layout/BreadcrumbNav";
+import RentalYieldIntelligence from "./RentalYieldIntelligenceNoSSR";
 import { ProjectsInMarketWithSkeleton } from "./ProjectsInMarketAsync";
 import GoaProjectsInMarket from "./GoaProjectsInMarket";
 import type { GoaMarketProject } from "./GoaProjectsInMarket";
@@ -170,6 +171,24 @@ interface MicroMarketPageContentProps {
   marketMetrics?: MarketMetrics | null;
   aiEnrichment?: AiEnrichment | null;
   goaProjects?: GoaMarketProject[];
+  rentalIntelligence?: {
+    intelligence: Array<{
+      intelligence_type: string;
+      ai_verdict: string | null;
+      vs_fd_rate: number | null;
+      highlight_stat: string | null;
+      data_period: string | null;
+    }>;
+    rentalRows: Array<{
+      property_type: string;
+      furnishing_type: string | null;
+      rent_min: number | null;
+      rent_max: number | null;
+      rent_median: number | null;
+      rent_psf_min: number | null;
+      rent_psf_max: number | null;
+    }>;
+  } | null;
 }
 
 export default function MicroMarketPageContent({
@@ -186,6 +205,7 @@ export default function MicroMarketPageContent({
   marketMetrics,
   aiEnrichment,
   goaProjects,
+  rentalIntelligence,
 }: MicroMarketPageContentProps) {
   const mapEmbedUrl = mapCenter ? buildMapEmbedUrl(mapCenter.lat, mapCenter.lng) : null;
   const {
@@ -1126,6 +1146,15 @@ export default function MicroMarketPageContent({
 
           </div>
         </section>
+
+        {/* Rental Yield Intelligence — Hyderabad only */}
+        {rentalIntelligence && (
+          <RentalYieldIntelligence
+            marketName={viewModel.hero.name}
+            intelligence={rentalIntelligence.intelligence}
+            rentalRows={rentalIntelligence.rentalRows}
+          />
+        )}
 
         {/* CHANGE 1: FAQ section — before CTA */}
         {faqs && faqs.length > 0 && (

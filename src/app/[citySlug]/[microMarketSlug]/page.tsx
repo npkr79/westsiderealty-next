@@ -11,6 +11,25 @@ import type { GoaMarketProject } from "@/components/micro-market/GoaProjectsInMa
 
 export const revalidate = 600;
 
+type RentalIntelligenceData = {
+  intelligence: Array<{
+    intelligence_type: string;
+    ai_verdict: string | null;
+    vs_fd_rate: number | null;
+    highlight_stat: string | null;
+    data_period: string | null;
+  }>;
+  rentalRows: Array<{
+    property_type: string;
+    furnishing_type: string | null;
+    rent_min: number | null;
+    rent_max: number | null;
+    rent_median: number | null;
+    rent_psf_min: number | null;
+    rent_psf_max: number | null;
+  }>;
+};
+
 interface PageProps {
   params: Promise<{ citySlug: string; microMarketSlug: string }>;
 }
@@ -376,6 +395,30 @@ export default async function MicroMarketPage({ params }: PageProps) {
       }
   }
 
+  // Hyderabad-only: fetch rental intelligence data
+  let rentalIntelligence: RentalIntelligenceData | null = null;
+  if (citySlug === "hyderabad") {
+    const [intelRes, rentalRes] = await Promise.all([
+      supabase
+        .from("micro_market_rental_intelligence" as never)
+        .select("intelligence_type, ai_verdict, vs_fd_rate, highlight_stat, data_period")
+        .eq("micro_market_id", cache.id)
+        .order("generated_at", { ascending: false }),
+      supabase
+        .from("rental_market_data" as never)
+        .select("property_type, furnishing_type, rent_min, rent_max, rent_median, rent_psf_min, rent_psf_max")
+        .eq("micro_market_id", cache.id)
+        .order("data_month", { ascending: false }),
+    ]);
+    const intelData = (intelRes as { data: unknown[] | null }).data ?? [];
+    if (intelData.length > 0) {
+      rentalIntelligence = {
+        intelligence: intelData as RentalIntelligenceData["intelligence"],
+        rentalRows: ((rentalRes as { data: unknown[] | null }).data ?? []) as RentalIntelligenceData["rentalRows"],
+      };
+    }
+  }
+
   return (
     <MicroMarketPageContent
       viewModel={viewModel}
@@ -391,6 +434,7 @@ export default async function MicroMarketPage({ params }: PageProps) {
       marketMetrics={marketMetrics}
       aiEnrichment={aiEnrichment}
       goaProjects={goaProjects}
+      rentalIntelligence={rentalIntelligence}
     />
   );
 }

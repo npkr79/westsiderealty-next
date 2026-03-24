@@ -78,7 +78,7 @@
 | `crm_whatsapp_conversations` | WhatsApp conversation threads |
 | `crm_whatsapp_delivery_logs` | Delivery status logs |
 | `crm_activity_log` | General CRM activity audit log |
-| `crm_automation_config` | WhatsApp automation configuration |
+| `crm_automation_config` | Automation configuration — controls WhatsApp journey automation and task SLA monitoring (`enabled`, `metadata` jsonb) |
 | `crm_automation_logs` | Automation execution logs |
 | `crm_journey_queue` | Journey execution queue |
 | `crm_journey_steps` | Journey step definitions |
@@ -88,13 +88,28 @@
 | `crm_notifications` | In-app notifications |
 | `crm_outbound_notifications` | Outbound notification queue |
 | `crm_behavior_events` | User behavior events (linked to leads by phone) |
-| `crm_meta_raw_leads` | Raw Meta Lead Ads webhook data |
+| `crm_meta_raw_leads` | Raw Meta Lead Ads webhook data — columns: `id, crm_lead_id, payload, ad_id, campaign_id` |
 | `crm_deals` | Deal/opportunity records |
 | `crm_investor_preferences` | Investor preference profiles |
 | `crm_shortlist_projects` | Projects shortlisted by leads |
 | `crm_listing_interactions` | Listing page interaction events |
 | `crm_agent_alerts` | Agent alert records |
 | `crm_creative_performance` | Ad creative performance |
+| `crm_call_briefs` | AI-generated pre-call briefs per lead — `lead_id` (FK), `ai_summary` (text), `phone_intelligence` (jsonb), `raw_data` (jsonb), `generated_by`, `generated_at` |
+| `crm_push_dedup` | Deduplication table for push/new-lead webhook — `dedup_key` (unique), `created_at`; rows auto-purged after 5 min |
+| `crm_sla_log` | Task SLA breach log — stores overdue task notifications and SLA violation events |
+
+### Key `crm_leads` Columns (selected)
+| Column | Type | Notes |
+|---|---|---|
+| `status` | text | Pipeline status: `new`, `contacted`, `qualified`, `site_visit`, `negotiation`, `converted`, `lost`, `won` |
+| `lead_status` | text | Secondary status field — distinct from `status`, tracks additional qualification states |
+| `priority` | text | Buyer intent: `serious_buyer` / `evaluating` / `early_stage` |
+| `first_contact_at` | timestamptz | Timestamp when lead was first contacted — null until first contact logged |
+| `first_contact_minutes` | integer | Minutes between lead creation and first contact (computed/stored on contact) |
+| `is_bulk_upload` | boolean | True for CSV imports / bulk migrations — suppresses push alerts and journey triggers |
+| `last_activity_at` | timestamptz | Updated on every activity — used for cold lead detection (> 7 days = cold) |
+| `attribution_metadata` | jsonb | UTM params, `fb_form_name`, `field_data` (Meta form answers), gclid, fbclid, landing page |
 
 ### Key Source UUIDs (`crm_lead_sources`)
 | UUID | Name |
@@ -164,10 +179,27 @@ Other protected routes: `/leads`, `/pipeline`, `/routing`, `/tasks`, `/whatsapp`
 | Route | Purpose |
 |---|---|
 | `/api/crm/leads` | CRM lead ingestion |
+| `/api/crm/leads/[id]` | Get/update individual lead |
+| `/api/crm/leads/[id]/call-brief` | POST — generate or return cached AI call brief (AI summary + Serper phone intelligence) |
+| `/api/crm/leads/website` | Website lead submission endpoint |
 | `/api/crm/whatsapp/webhook` | WhatsApp Cloud API webhook |
 | `/api/crm/whatsapp/send-template` | Send WhatsApp template |
+| `/api/crm/whatsapp/send-text` | Send plain WhatsApp text |
+| `/api/crm/whatsapp/inbox/send` | Send from inbox UI |
+| `/api/crm/whatsapp/automation/run` | Trigger automation run |
+| `/api/crm/whatsapp/automation/config` | Get/update automation config |
 | `/api/crm/routing/assign` | Lead routing assignment |
+| `/api/crm/routing/bulk-assign` | Bulk lead assignment |
+| `/api/crm/routing/reconcile` | Reconcile unassigned leads |
 | `/api/crm/pipeline/update-stage` | Move lead through pipeline |
+| `/api/crm/push/new-lead` | Supabase DB webhook — sends WhatsApp alerts on new lead INSERT or assigned_to UPDATE; deduped via `crm_push_dedup`; skips bulk imports and silent sources |
+| `/api/crm/push/register` | Register push notification token |
+| `/api/crm/tasks/sla` | Task SLA summary and monitoring |
+| `/api/crm/alerts/escalate` | Escalate overdue alerts |
+| `/api/crm/campaigns` | Campaign management |
+| `/api/crm/journeys/monitor` | Journey execution monitoring |
+| `/api/crm/simulation` | Lead/routing simulation |
+| `/api/crm/auth/me` | Current CRM user session |
 | `/api/cron/journey-worker` | WhatsApp journey execution (every 2 min) |
 | `/api/cron/link-checker` | Weekly URL health check (Mon 3am UTC) |
 | `/api/sitemap/regenerate` | Daily sitemap rebuild (2am UTC) |
@@ -198,6 +230,43 @@ Other protected routes: `/leads`, `/pipeline`, `/routing`, `/tasks`, `/whatsapp`
 - Website `source_id` = `c3b72f38-171b-4ce6-a060-f40beed8bdb4`
 - All web form submissions go through `src/app/actions/submit-lead.ts` (`submitLead()`)
 
+### Lead Priority Values
+`priority` column stores buyer intent level — three valid values:
+| Value | Display | Meaning |
+|---|---|---|
+| `serious_buyer` | Serious Buyer | High intent, ready to transact |
+| `evaluating` | Evaluating | Active consideration, not yet committed |
+| `early_stage` | Early Stage | Research phase, low urgency |
+
+`priority` is **not** the same as `lead_status`. `lead_status` is a separate column for additional qualification tracking (e.g. warm/cold state), while `priority` reflects buyer readiness. `status` is the pipeline stage (new/contacted/qualified/etc.).
+
+### Cold Leads Detection
+A lead is "cold" when: `last_activity_at < 7 days ago` AND `status NOT IN ('lost', 'won', 'converted')`.
+Shown in the "Gone Cold" metric card on the dashboard, filterable via `?filter=cold_leads` in `/leads`.
+
+### Call Brief Caching Logic
+`crm_call_briefs` stores two independently cached components:
+- **AI summary** (`ai_summary`): regenerated every **6 hours** — Claude Haiku generates a 1-2 sentence brief from structured lead data (meta form answers, budget, location, timeline, recent calls)
+- **Phone intelligence** (`phone_intelligence` jsonb): cached **permanently** — Serper runs 3 parallel searches by phone number, parses results by priority domains, then Claude Haiku writes a 2-3 line `ai_profile`. Re-run only when `ai_profile` is null in the cached record (i.e. old records without the AI profile get refreshed)
+
+### WhatsApp Alert Flow
+`/api/crm/push/new-lead` is called via Supabase Database Webhook on `crm_leads` INSERT or `assigned_to` UPDATE.
+- Makes a **direct Meta Graph API call** (`https://graph.facebook.com/v18.0/{phoneNumberId}/messages`) — no conversation record required
+- Skips alerts for: `is_bulk_upload = true`, or `source_type` in `{bulk_import, csv_import, migration, simulation, test, seed}`
+- Uses `crm_push_dedup` table (unique `dedup_key`) for serverless deduplication; stale entries (> 5 min) are purged before each check
+- INSERT: alerts assigned agent + admin (or admin only if unassigned)
+- UPDATE: alerts agent only when `assigned_to` transitions from null → a value
+
+### IST Timestamp Conversion
+Supabase returns timestamps without timezone suffix in some contexts. Pattern used throughout CRM:
+```ts
+// Append Z if no timezone indicator — treats bare timestamp as UTC
+const normalized = ts.includes('Z') || ts.includes('+') ? ts : ts + 'Z';
+// Manual IST offset (+5:30) instead of relying on browser locale
+const ist = new Date(new Date(normalized).getTime() + 5.5 * 60 * 60 * 1000);
+```
+This avoids inconsistent browser timezone rendering and ensures IST display in all environments.
+
 ### Developer Brand Mapping
 - Brands live in `developer_brands` table with `url_slug`
 - Map via `developer_project_brand_map` view (joins through `developer_brand_entities`)
@@ -226,11 +295,14 @@ Other protected routes: `/leads`, `/pipeline`, `/routing`, `/tasks`, `/whatsapp`
 | `src/services/crmLeadRoutingService.ts` | Lead routing and assignment logic |
 | `src/services/whatsappCloudService.ts` | WhatsApp Cloud API integration |
 | `src/services/journeyExecutionService.ts` | WhatsApp journey execution engine |
+| `src/services/taskSlaMonitoringService.ts` | Task SLA monitoring — overdue detection, agent responsiveness stats |
 | `src/app/actions/submit-lead.ts` | **Master lead submission server action** |
 | `src/lib/routes.ts` | URL builder helpers (MUST use for project URLs) |
 | `src/lib/crm/types.ts` | CRM type definitions (`CrmRole`, `CrmLead`, `CrmTask`, etc.) |
 | `src/lib/crm/leadAttribution.ts` | UTM/attribution extraction |
 | `src/lib/crm/budget.ts` | Budget number normalization |
+| `src/lib/crm/leadPriority.ts` | Priority label/badge helpers — maps `serious_buyer / evaluating / early_stage` |
+| `src/lib/crm/sanitizeLeadPayload.ts` | Allowlist of valid `crm_leads` column names for safe updates |
 | `src/lib/project-utils.ts` | Project utility helpers |
 
 ### Supabase Clients
@@ -249,6 +321,19 @@ Other protected routes: `/leads`, `/pipeline`, `/routing`, `/tasks`, `/whatsapp`
 | `src/components/micro-market/` | Micro-market page section components |
 | `src/components/homepage/HomepageContent.tsx` | Homepage client content |
 | `src/components/institutional-investment-commercial/InstitutionalLeadForm.tsx` | Institutional investor lead form |
+| `src/components/crm/leads/CallBriefPanel.tsx` | Bottom-sheet panel showing AI summary + Serper phone intelligence for a lead; opened from LeadDetailView quick actions bar |
+| `src/components/crm/dashboard/DashboardMetricCards.tsx` | Dashboard snapshot cards — Total, New, Contacted, SiteVisit, Gone Cold; links to filtered `/leads` views |
+| `src/components/crm/settings/RoutingTab.tsx` | Settings: lead routing rules |
+| `src/components/crm/settings/AutomationsTab.tsx` | Settings: WhatsApp automation config |
+| `src/components/crm/settings/PipelineTab.tsx` | Settings: pipeline stage management |
+| `src/components/crm/settings/WhatsAppTab.tsx` | Settings: WhatsApp credentials and webhook status display |
+| `src/components/crm/settings/TeamTab.tsx` | Settings: team member management |
+
+### API Route Handlers (CRM)
+| File | Purpose |
+|---|---|
+| `src/app/api/crm/leads/[id]/call-brief/route.ts` | Call brief generation — Claude Haiku summary + Serper phone intelligence, split caching |
+| `src/app/api/crm/push/new-lead/route.ts` | DB webhook handler — WhatsApp alerts for new/assigned leads, dedup via `crm_push_dedup` |
 
 ### Pages
 | File | Purpose |
@@ -287,6 +372,8 @@ When mapping form fields to `crm_leads` columns:
 
 **Never use**: `source_name`, `project_id`, `lead_type` as column names — these do not exist in `crm_leads`.
 
+Use `src/lib/crm/sanitizeLeadPayload.ts` as the authoritative allowlist when building dynamic update payloads.
+
 ---
 
 ## Developer Brand Logic
@@ -318,6 +405,36 @@ Use `v_developer_brand_profile` for aggregated brand stats.
 | Mon 3am UTC (8:30am IST) | `/api/cron/link-checker` | Link health check |
 
 All cron routes require `Authorization: Bearer {CRON_SECRET}` header.
+
+---
+
+## Environment Variables
+
+### Supabase
+| Variable | Purpose |
+|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon/public key |
+| `SUPABASE_SERVICE_ROLE_KEY` | Service role key — bypasses RLS (server-only) |
+
+### WhatsApp / Meta
+| Variable | Purpose |
+|---|---|
+| `WHATSAPP_PHONE_NUMBER_ID` | Meta Cloud API phone number ID — used for sending messages |
+| `WHATSAPP_ACCESS_TOKEN` | Meta Cloud API access token — used in `Authorization: Bearer` header |
+| `NEXT_PUBLIC_WHATSAPP_PHONE_NUMBER_ID` | Client-visible version for settings display in `WhatsAppTab` |
+
+### AI / Search
+| Variable | Purpose |
+|---|---|
+| `ANTHROPIC_API_KEY` | Anthropic API key — used by `@anthropic-ai/sdk` in call-brief route (Claude Haiku) |
+| `SERPER_API_KEY` | Serper.dev API key — used for phone number intelligence searches in call-brief route |
+
+### Infrastructure
+| Variable | Purpose |
+|---|---|
+| `CRON_SECRET` | Bearer token for authenticating cron jobs and DB webhook calls |
+| `NEXT_PUBLIC_SITE_URL` | Full production URL (e.g. `https://www.westsiderealty.in`) — used in alert messages and link-checker |
 
 ---
 

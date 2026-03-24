@@ -14,7 +14,17 @@ export function usePushNotifications(userId: string | null) {
         if (!messaging) return;
         const permission = await Notification.requestPermission();
         if (permission !== "granted") return;
-        const token = await getToken(messaging, { vapidKey: VAPID_KEY });
+
+        // Register SW explicitly — avoids Firebase's 10s auto-registration timeout
+        const swReg = await navigator.serviceWorker.register(
+          "/firebase-messaging-sw.js",
+          { scope: "/" },
+        );
+
+        const token = await getToken(messaging, {
+          vapidKey: VAPID_KEY,
+          serviceWorkerRegistration: swReg,
+        });
         if (!token) return;
         await fetch("/api/crm/push/register", {
           method: "POST",
