@@ -16,4 +16,5 @@ export interface Project {
   script: string;
   ssml: string;
   audioUrl: string;
+  sceneJson?: unknown;
 }

@@ -5,19 +5,21 @@ import IdeasPanel from "./IdeasPanel";
 import ScriptPanel from "./ScriptPanel";
 import SSMLPanel from "./SSMLPanel";
 import AudioPanel from "./AudioPanel";
+import VideoReviewPanel from "./VideoReviewPanel";
 import type { Project } from "./types";
 export type { IdeaObject, Project } from "./types";
 
-type Step = "ideas" | "script" | "ssml" | "audio";
+type Step = "ideas" | "script" | "ssml" | "audio" | "video";
 
 const STEPS: { key: Step; label: string; num: number }[] = [
   { key: "ideas", label: "Ideas", num: 1 },
   { key: "script", label: "Script", num: 2 },
   { key: "ssml", label: "SSML", num: 3 },
   { key: "audio", label: "Audio", num: 4 },
+  { key: "video", label: "Video", num: 5 },
 ];
 
-const STEP_ORDER: Step[] = ["ideas", "script", "ssml", "audio"];
+const STEP_ORDER: Step[] = ["ideas", "script", "ssml", "audio", "video"];
 
 const EMPTY_PROJECT: Project = {
   id: null,
@@ -125,7 +127,16 @@ export default function ContentStudio() {
           <AudioPanel
             project={project}
             onUpdate={updateProject}
+            onContinue={() => setStep("video")}
             onBack={() => setStep("ssml")}
+          />
+        )}
+        {step === "video" && (
+          <VideoReviewPanel
+            projectId={project.id}
+            sceneJson={project.sceneJson}
+            projectTitle={project.title}
+            onBack={() => setStep("audio")}
           />
         )}
       </div>
