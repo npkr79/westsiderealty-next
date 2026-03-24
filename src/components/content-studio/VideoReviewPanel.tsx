@@ -45,6 +45,14 @@ export default function VideoReviewPanel({ projectId, sceneJson, projectTitle, o
   const [loadingVideos, setLoadingVideos] = useState(true);
 
   useEffect(() => {
+    console.log("[VideoReviewPanel] props:", {
+      projectId,
+      canvaConnected,
+      sceneJson: !!sceneJson,
+    });
+  }, [projectId, canvaConnected]);
+
+  useEffect(() => {
     // Check Canva connection status
     fetch("/api/canva/token")
       .then(r => r.json())
@@ -155,7 +163,7 @@ export default function VideoReviewPanel({ projectId, sceneJson, projectTitle, o
         <div className="space-y-3">
           <button
             onClick={handleCreateInCanva}
-            disabled={creating || !projectId}
+            disabled={creating}
             className="w-full py-3 bg-[#7D2AE8] text-white rounded-xl text-sm font-medium hover:bg-[#6B24C7] disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {creating ? (
