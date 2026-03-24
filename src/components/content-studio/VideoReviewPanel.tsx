@@ -85,25 +85,31 @@ export default function VideoReviewPanel({ projectId, sceneJson, projectTitle, o
   };
 
   const handleCreateInCanva = async () => {
-    if (!projectId) return;
+    console.log("[canva] handleCreateInCanva fired, projectId:", projectId);
+    if (!projectId) {
+      alert("No project ID — please start from Ideas step");
+      return;
+    }
     setCreating(true);
-    setCanvaError(null);
     try {
+      console.log("[canva] calling API...");
       const res = await fetch("/api/content/canva-design", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ project_id: projectId }),
       });
-      const data = await res.json() as { success: boolean; edit_url?: string; error?: string };
-      if (data.success && data.edit_url) {
+      console.log("[canva] API response status:", res.status);
+      const data = await res.json();
+      console.log("[canva] API response data:", data);
+      if (data.success) {
         setCanvaEditUrl(data.edit_url);
         window.open(data.edit_url, "_blank");
-        await loadVideos();
       } else {
-        setCanvaError("Failed to create Canva design: " + (data.error ?? "Unknown error"));
+        alert("Failed: " + data.error);
       }
     } catch (err) {
-      setCanvaError("Failed to create Canva design: " + String(err));
+      console.error("[canva] error:", err);
+      alert("Error: " + err);
     } finally {
       setCreating(false);
     }
@@ -162,20 +168,14 @@ export default function VideoReviewPanel({ projectId, sceneJson, projectTitle, o
       {canvaConnected && (
         <div className="space-y-3">
           <button
-            onClick={handleCreateInCanva}
+            onClick={async () => {
+              console.log("[canva] button clicked");
+              await handleCreateInCanva();
+            }}
             disabled={creating}
             className="w-full py-3 bg-[#7D2AE8] text-white rounded-xl text-sm font-medium hover:bg-[#6B24C7] disabled:opacity-50 flex items-center justify-center gap-2"
           >
-            {creating ? (
-              <>
-                <span className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full inline-block" />
-                Creating design in Canva...
-              </>
-            ) : canvaEditUrl ? (
-              "↻ Recreate in Canva"
-            ) : (
-              "Create Design in Canva →"
-            )}
+            {creating ? "Creating..." : "Create Design in Canva →"}
           </button>
 
           {/* Section C — After successful creation */}
