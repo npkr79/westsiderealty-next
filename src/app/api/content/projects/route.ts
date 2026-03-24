@@ -4,21 +4,14 @@ import { createServiceClient } from "@/lib/supabase/serviceClient";
 
 const allowedRoles = new Set(["admin"]);
 
-export async function GET() {
-  try {
-    const supabase = createServiceClient();
-    const { data, error } = await supabase
-      .from("content_projects" as never)
-      .select("id, title, topic, content_type, status, created_at")
-      .order("created_at", { ascending: false })
-      .limit(50);
-
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    return NextResponse.json({ projects: data ?? [] });
-  } catch (err) {
-    console.error("[content-projects] GET error:", err);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
-  }
+export async function GET(_request: NextRequest) {
+  const supabase = createServiceClient();
+  const { data } = await supabase
+    .from("content_projects" as never)
+    .select("id, title, status, target_platform, estimated_duration, created_at, audio_url")
+    .order("created_at", { ascending: false })
+    .limit(50);
+  return NextResponse.json({ projects: data ?? [] });
 }
 
 export async function POST(req: NextRequest) {
