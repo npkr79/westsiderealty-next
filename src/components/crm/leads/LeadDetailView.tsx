@@ -1247,6 +1247,7 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
                       className="w-full h-8 text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                     >
                       <option value="new">New</option>
+                      <option value="not_connected">Not Connected</option>
                       <option value="contacted">Contacted</option>
                       <option value="qualified">Qualified</option>
                       <option value="site_visit">Site Visit</option>

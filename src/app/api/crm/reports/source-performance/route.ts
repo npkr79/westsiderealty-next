@@ -67,7 +67,7 @@ export async function GET(req: NextRequest) {
     if (!grouped[src]) grouped[src] = { total: 0, contacted: 0, site_visits: 0, won: 0 };
     grouped[src].total++;
     const status = (lead as { status: string | null }).status ?? "new";
-    if (status !== "new") grouped[src].contacted++;
+    if (!["new", "not_connected"].includes(status)) grouped[src].contacted++;
     if (status === "site_visit") grouped[src].site_visits++;
     if (status === "won" || status === "converted") grouped[src].won++;
   }

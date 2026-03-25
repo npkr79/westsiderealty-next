@@ -35,8 +35,9 @@ function formatSourceName(s: string | null | undefined): string {
 }
 
 const statusConfig: Record<string, { label: string; bg: string; color: string }> = {
-  new:         { label: "New",         bg: "var(--color-background-secondary)", color: "var(--color-text-secondary)" },
-  contacted:   { label: "Contacted",   bg: "var(--color-background-info)",      color: "var(--color-text-info)" },
+  new:           { label: "New",           bg: "var(--color-background-secondary)", color: "var(--color-text-secondary)" },
+  not_connected: { label: "Not Connected", bg: "var(--color-background-secondary)", color: "var(--color-text-secondary)" },
+  contacted:     { label: "Contacted",     bg: "var(--color-background-info)",      color: "var(--color-text-info)" },
   qualified:   { label: "Qualified",   bg: "var(--color-background-success)",   color: "var(--color-text-success)" },
   site_visit:  { label: "Site Visit",  bg: "var(--color-background-warning)",   color: "var(--color-text-warning)" },
   negotiation: { label: "Negotiation", bg: "var(--color-background-warning)",   color: "var(--color-text-warning)" },
@@ -156,6 +157,8 @@ export default function LeadsTableView({ currentUserRole, currentUserId }: Leads
         lastActivityBefore: sevenDaysAgo,
         excludeStatuses: ["lost", "won", "converted"],
       }));
+    } else if (filter === "not_connected") {
+      setFilters((prev) => ({ ...prev, status: "not_connected" }));
     } else if (filter === "overdue") {
       router.push("/tasks?filter=overdue");
     }
@@ -213,7 +216,7 @@ export default function LeadsTableView({ currentUserRole, currentUserId }: Leads
   const visibleLeads = useMemo(() => (hotOnly ? leads.filter((lead) => getPriorityLabel(lead.priority) === "Serious Buyer") : leads), [hotOnly, leads]);
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
 
-  const statuses = useMemo(() => ["new", "contacted", "qualified", "proposal", "won", "lost"], []);
+  const statuses = useMemo(() => ["new", "not_connected", "contacted", "qualified", "proposal", "won", "lost"], []);
 
   useEffect(() => {
     const loadAgents = async () => {

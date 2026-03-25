@@ -319,6 +319,10 @@ export default function DashboardMetricCards({ scope, userId }: DashboardMetricC
     !["lost", "won", "converted"].includes((l.status ?? "").toLowerCase())
   ).length;
 
+  const notConnectedCount = leads.filter(
+    (l) => (l.status ?? "").toLowerCase() === "not_connected"
+  ).length;
+
   const stageCounts: StageWithCount[] = stages.map((stage) => ({
     ...stage,
     count: leads.filter((l) => l.stage_id === stage.id).length,
@@ -369,8 +373,8 @@ export default function DashboardMetricCards({ scope, userId }: DashboardMetricC
   if (loading) {
     return (
       <div className="space-y-4">
-        <div className="grid gap-3 grid-cols-2 xl:grid-cols-5">
-          {[0, 1, 2, 3, 4].map((i) => (
+        <div className="grid gap-3 grid-cols-2 xl:grid-cols-6">
+          {[0, 1, 2, 3, 4, 5].map((i) => (
             <div key={i} className="rounded-xl border border-slate-800 bg-slate-900 p-4 animate-pulse" style={{ minHeight: "100px" }}>
               <div className="h-2.5 w-20 rounded bg-slate-800 mb-4" />
               <div className="h-8 w-10 rounded bg-slate-800 mb-3" />
@@ -405,7 +409,7 @@ export default function DashboardMetricCards({ scope, userId }: DashboardMetricC
       {/* -------------------------------------------------------------------- */}
       {/* Today's snapshot — 2×2 on mobile, 5-col on desktop                   */}
       {/* -------------------------------------------------------------------- */}
-      <div className="grid gap-3 grid-cols-2 xl:grid-cols-5">
+      <div className="grid gap-3 grid-cols-2 xl:grid-cols-6">
         <SnapshotCard
           label="Leads today"
           value={leadsToday}
@@ -447,6 +451,14 @@ export default function DashboardMetricCards({ scope, userId }: DashboardMetricC
           statusUrgent={coldLeadsCount > 0}
           icon={<IcoSnowflake />}
           onClick={() => router.push("/leads?filter=cold_leads")}
+        />
+        <SnapshotCard
+          label="Not Connected"
+          value={notConnectedCount}
+          accentColor="#64748b"
+          statusText={notConnectedCount === 0 ? "None pending" : "Call not answered"}
+          icon={<IcoPhone />}
+          onClick={() => router.push("/leads?filter=not_connected")}
         />
       </div>
 

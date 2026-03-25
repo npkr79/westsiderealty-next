@@ -27,7 +27,7 @@ interface Lead {
 }
 
 const statusOptions = ["new", "active", "closed"];
-const stageOptions = ["new", "contacted", "qualified", "site_visit", "negotiation", "won", "lost"];
+const stageOptions = ["new", "not_connected", "contacted", "qualified", "site_visit", "negotiation", "won", "lost"];
 const priorityOptions = ["low", "medium", "high"];
 
 export default function AgentLeadsPage() {

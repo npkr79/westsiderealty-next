@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCrmSessionResult } from "@/lib/crm/auth";
 import { createServiceClient } from "@/lib/supabase/serviceClient";
 
-const STAGE_ORDER = ["new", "contacted", "qualified", "site_visit", "negotiation", "converted", "won", "lost"];
+const STAGE_ORDER = ["new", "not_connected", "contacted", "qualified", "site_visit", "negotiation", "converted", "won", "lost"];
 
 export async function GET(req: NextRequest) {
   const session = await getCrmSessionResult();
