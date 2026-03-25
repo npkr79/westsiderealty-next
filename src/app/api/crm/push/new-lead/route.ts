@@ -227,6 +227,7 @@ export async function POST(request: NextRequest) {
   type AlertTarget = { name: string; phone: string };
   const targets: AlertTarget[] = [];
   const adminTarget = { name: 'Praveen', phone: '919866085831' };
+  let agentWhatsappForAssignment: string | null = null; // set for 99acres matched leads only
 
   if (is99acres) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -237,13 +238,18 @@ export async function POST(request: NextRequest) {
       fullLead.location_preference || ''
     ).toLowerCase();
 
-    const srinivasProperties = ['rajapushpa imperia', 'aparna zenon', 'nk villa scapes', 'hallmark treasor', 'my home vipina', 'rajapushpa cannon dale', 'aparna elixir'];
+    const SRINIVAS_WHATSAPP = '918520099841';
+    const KRISHNA_WHATSAPP = '919666845340';
+
+    const srinivasProperties = ['rajapushpa imperia', 'aparna zenon', 'nk villa scapes', 'hallmark treasor', 'my home vipina', 'rajapushpa cannon dale', 'aparna elixir', 'preston', 'anvitas', 'amari'];
     const krishnaProperties = ['aparna cyberon', 'aparna cyber heights'];
 
     if (srinivasProperties.some(p => propertyName.includes(p))) {
-      targets.push({ name: 'Srinivas', phone: '918520099841' });
+      targets.push({ name: 'Srinivas', phone: SRINIVAS_WHATSAPP });
+      agentWhatsappForAssignment = SRINIVAS_WHATSAPP;
     } else if (krishnaProperties.some(p => propertyName.includes(p))) {
-      targets.push({ name: 'Krishna', phone: '919666845340' });
+      targets.push({ name: 'Krishna', phone: KRISHNA_WHATSAPP });
+      agentWhatsappForAssignment = KRISHNA_WHATSAPP;
     }
     targets.push(adminTarget);
 
@@ -403,6 +409,26 @@ export async function POST(request: NextRequest) {
       const { campaign, params } = await buildTemplateParams(fullLead, target.name, alertSource);
       await sendAiSensyAlert(target.phone, campaign, params);
     }
+
+    // Assign 99acres lead to matched agent (Srinivas or Krishna only — not Praveen)
+    if (is99acres && agentWhatsappForAssignment) {
+      try {
+        const { data: agentUser } = await supabase
+          .from('crm_users')
+          .select('id')
+          .eq('whatsapp_number', agentWhatsappForAssignment)
+          .maybeSingle();
+        if (agentUser) {
+          await supabase
+            .from('crm_leads')
+            .update({ assigned_to: agentUser.id, assignment_status: 'assigned' })
+            .eq('id', record.id);
+        }
+      } catch (err) {
+        console.error('[Push/new-lead] 99acres assignment failed:', err);
+      }
+    }
+
     return NextResponse.json({ success: true, reason: "insert_ok" });
   }
 

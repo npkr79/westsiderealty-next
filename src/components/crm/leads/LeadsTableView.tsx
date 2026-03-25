@@ -112,7 +112,10 @@ export default function LeadsTableView({ currentUserRole, currentUserId }: Leads
   const [filters, setFilters] = useState<LeadsFilters>(
     isAgent && currentUserId ? { assignedAgentId: currentUserId } : {}
   );
-  const [sort, setSort] = useState<LeadsSort>({ key: "last_activity_at", ascending: false });
+  const [sort, setSort] = useState<LeadsSort>({ key: "created_at", ascending: false });
+  const [datePreset, setDatePreset] = useState("all");
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
   const [hotOnly, setHotOnly] = useState(false);
   const [agents, setAgents] = useState<AgentOption[]>([]);
   const [showFilters, setShowFilters] = useState(false);
@@ -157,6 +160,39 @@ export default function LeadsTableView({ currentUserRole, currentUserId }: Leads
       router.push("/tasks?filter=overdue");
     }
   }, [searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Date range logic
+  const dateRange = useMemo(() => {
+    const IST = 5.5 * 60 * 60 * 1000;
+    const nowIST = new Date(Date.now() + IST);
+    nowIST.setUTCHours(0, 0, 0, 0);
+    const todayUTC = new Date(nowIST.getTime() - IST);
+    const tomorrowUTC = new Date(todayUTC.getTime() + 86400_000);
+    switch (datePreset) {
+      case "today":     return { from: todayUTC.toISOString(), to: tomorrowUTC.toISOString() };
+      case "yesterday": return { from: new Date(todayUTC.getTime() - 86400_000).toISOString(), to: todayUTC.toISOString() };
+      case "last7":     return { from: new Date(todayUTC.getTime() - 7 * 86400_000).toISOString(), to: tomorrowUTC.toISOString() };
+      case "last14":    return { from: new Date(todayUTC.getTime() - 14 * 86400_000).toISOString(), to: tomorrowUTC.toISOString() };
+      case "last30":    return { from: new Date(todayUTC.getTime() - 30 * 86400_000).toISOString(), to: tomorrowUTC.toISOString() };
+      case "this_month": {
+        const f = new Date(Date.UTC(nowIST.getUTCFullYear(), nowIST.getUTCMonth(), 1) - IST);
+        return { from: f.toISOString(), to: tomorrowUTC.toISOString() };
+      }
+      case "last_month": {
+        const f = new Date(Date.UTC(nowIST.getUTCFullYear(), nowIST.getUTCMonth() - 1, 1) - IST);
+        const t = new Date(Date.UTC(nowIST.getUTCFullYear(), nowIST.getUTCMonth(), 1) - IST);
+        return { from: f.toISOString(), to: t.toISOString() };
+      }
+      case "custom":    return { from: customFrom ? new Date(customFrom).toISOString() : undefined, to: customTo ? new Date(new Date(customTo).getTime() + 86400_000).toISOString() : undefined };
+      default:          return { from: undefined, to: undefined };
+    }
+  }, [datePreset, customFrom, customTo]);
+
+  // Apply date range into filters
+  useEffect(() => {
+    setFilters(prev => ({ ...prev, createdFrom: dateRange.from, createdTo: dateRange.to }));
+    setPage(1);
+  }, [dateRange.from, dateRange.to]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const activeFilterCount = useMemo(() => {
     return [
@@ -226,6 +262,36 @@ export default function LeadsTableView({ currentUserRole, currentUserId }: Leads
           </span>
         </div>
       )}
+
+      {/* Date range filter */}
+      <div className="flex flex-wrap items-center gap-2">
+        {[
+          { key: "all", label: "All time" },
+          { key: "today", label: "Today" },
+          { key: "yesterday", label: "Yesterday" },
+          { key: "last7", label: "Last 7 days" },
+          { key: "last14", label: "Last 14 days" },
+          { key: "last30", label: "Last 30 days" },
+          { key: "this_month", label: "This month" },
+          { key: "last_month", label: "Last month" },
+          { key: "custom", label: "Custom" },
+        ].map(({ key, label }) => (
+          <button
+            key={key}
+            onClick={() => { setDatePreset(key); setPage(1); }}
+            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${datePreset === key ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900" : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300"}`}
+          >
+            {label}
+          </button>
+        ))}
+        {datePreset === "custom" && (
+          <>
+            <input type="date" value={customFrom} onChange={e => setCustomFrom(e.target.value)} className="px-2 py-1 text-xs border border-slate-300 rounded-lg dark:bg-slate-800 dark:border-slate-600 dark:text-white" />
+            <span className="text-xs text-slate-400">to</span>
+            <input type="date" value={customTo} onChange={e => setCustomTo(e.target.value)} className="px-2 py-1 text-xs border border-slate-300 rounded-lg dark:bg-slate-800 dark:border-slate-600 dark:text-white" />
+          </>
+        )}
+      </div>
 
       {/* Search + filter toggle */}
       <div className="flex gap-2">
@@ -461,10 +527,11 @@ export default function LeadsTableView({ currentUserRole, currentUserId }: Leads
                   { key: "buyer_type",       label: "Buyer Type" },
                   { key: "status",           label: "Status" },
                   ...(!isAgent ? [{ key: "assigned_agent", label: "Agent" }] : []),
+                  { key: "created_at", label: "Created" },
                   { key: "last_activity_at", label: "Last Activity" },
                 ].map((col) => (
                   <TableHead key={col.key} className={"className" in col ? col.className : undefined}>
-                    {col.key === "name" || col.key === "status" || col.key === "last_activity_at" ? (
+                    {col.key === "name" || col.key === "status" || col.key === "last_activity_at" || col.key === "created_at" ? (
                       <button
                         type="button"
                         className="inline-flex items-center gap-1"
@@ -486,11 +553,11 @@ export default function LeadsTableView({ currentUserRole, currentUserId }: Leads
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={isAgent ? 9 : 10}>Loading leads...</TableCell>
+                  <TableCell colSpan={isAgent ? 10 : 11}>Loading leads...</TableCell>
                 </TableRow>
               ) : visibleLeads.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={isAgent ? 9 : 10}>No leads found.</TableCell>
+                  <TableCell colSpan={isAgent ? 10 : 11}>No leads found.</TableCell>
                 </TableRow>
               ) : (
                 visibleLeads.map((lead) => {
@@ -522,6 +589,7 @@ export default function LeadsTableView({ currentUserRole, currentUserId }: Leads
                         </span>
                       </TableCell>
                       {!isAgent && <TableCell style={{ color: "#94a3b8", fontSize: "13px" }}>{lead.assigned_agent_name || "—"}</TableCell>}
+                      <TableCell style={{ color: "#94a3b8", fontSize: "13px" }}>{toIST(lead.created_at)}</TableCell>
                       <TableCell style={{ color: "#94a3b8", fontSize: "13px" }}>{toIST(lead.last_activity_at)}</TableCell>
                     </TableRow>
                   );

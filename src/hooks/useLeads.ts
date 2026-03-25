@@ -19,6 +19,7 @@ export interface LeadsFilters {
   stageId?: string;
   stageName?: string;            // ilike match on stage_name column
   createdFrom?: string;          // ISO string — gte created_at
+  createdTo?: string;            // ISO string — lt created_at
   pendingContact?: boolean;      // is(first_contact_at, null)
   contactedFrom?: string;        // ISO string — gte first_contact_at
   lastActivityBefore?: string;   // ISO string — lt last_activity_at
@@ -131,6 +132,7 @@ export function useLeads({
         if (filters.stageId) query = query.eq("stage_id", filters.stageId);
         if (filters.stageName) query = query.ilike("stage_name", `%${filters.stageName}%`);
         if (filters.createdFrom) query = query.gte("created_at", filters.createdFrom);
+        if (filters.createdTo) query = query.lt("created_at", filters.createdTo);
         if (filters.pendingContact) query = query.is("first_contact_at", null);
         if (filters.contactedFrom) query = query.gte("first_contact_at", filters.contactedFrom);
         if (filters.lastActivityBefore) query = query.lt("last_activity_at", filters.lastActivityBefore);
@@ -177,6 +179,7 @@ export function useLeads({
     filters.buyerType,
     filters.contactedFrom,
     filters.createdFrom,
+    filters.createdTo,
     filters.location,
     filters.pendingContact,
     filters.source,
