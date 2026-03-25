@@ -50,6 +50,8 @@ export async function fetchMarketSummary(
   locality: string
 ): Promise<{ data: unknown; fallbackLevel: string } | null> {
   try {
+    console.log("[airroi] querying market:", JSON.stringify({ district, locality }));
+
     let res = await postWithTimeout(
       `${AIRROI_BASE}/markets/summary`,
       buildMarketQuery(district, locality)
@@ -68,7 +70,15 @@ export async function fetchMarketSummary(
       console.error("[airroi] summary error:", res?.status, district);
       return null;
     }
-    return { data: await res.json(), fallbackLevel: "district" };
+
+    console.log("[airroi] summary response status:", res.status);
+    const responseText = await res.text();
+    console.log("[airroi] summary raw response:", responseText.slice(0, 500));
+
+    const data = JSON.parse(responseText);
+    console.log("[airroi] summary parsed keys:", Object.keys(data));
+
+    return { data, fallbackLevel: "district" };
   } catch (err) {
     console.error("[airroi] fetchMarketSummary failed:", err);
     return null;
