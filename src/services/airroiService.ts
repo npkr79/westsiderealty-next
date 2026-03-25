@@ -81,13 +81,13 @@ export async function fetchMarketADR(
 ): Promise<unknown[] | null> {
   try {
     let res = await postWithTimeout(
-      `${AIRROI_BASE}/markets/metrics/adr`,
+      `${AIRROI_BASE}/markets/metrics/average-daily-rate`,
       buildMarketQuery(district, locality)
     );
 
     if (res && res.status === 404) {
       res = await postWithTimeout(
-        `${AIRROI_BASE}/markets/metrics/adr`,
+        `${AIRROI_BASE}/markets/metrics/average-daily-rate`,
         buildLocalityQuery(locality)
       );
       if (!res || !res.ok) return null;

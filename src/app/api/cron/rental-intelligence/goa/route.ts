@@ -39,14 +39,15 @@ const SHOULDER_MONTHS = [3, 10];
 const ASSUMED_PROPERTY_VALUE_INR = 20_000_000;
 
 function avg(rows: Array<{ avg: number }>): number {
-  return rows.reduce((s, r) => s + r.avg, 0) / rows.length;
+  return rows.reduce((s, r) => s + (r.avg ?? 0), 0) / rows.length;
 }
 
 function monthOf(dateStr: string): number {
   return new Date(dateStr).getMonth() + 1;
 }
 
-interface AirRoiRow { date: string; avg: number }
+interface AdrRow { date: string; average_daily_rate: { avg: number } }
+interface OccRow { date: string; avg: number }
 
 export async function processMarket(
   market: (typeof GOA_MARKETS)[number],
@@ -78,30 +79,38 @@ export async function processMarket(
   let peakOcc = null, offseasonOcc = null;
 
   if (adrData && adrData.length > 0) {
-    const rows = adrData as AirRoiRow[];
-    const peakRows    = rows.filter(r => PEAK_MONTHS.includes(monthOf(r.date)));
+    const rows = adrData as AdrRow[];
+    const peakRows     = rows.filter(r => PEAK_MONTHS.includes(monthOf(r.date)));
     const shoulderRows = rows.filter(r => SHOULDER_MONTHS.includes(monthOf(r.date)));
-    const offRows     = rows.filter(r => !PEAK_MONTHS.includes(monthOf(r.date)) && !SHOULDER_MONTHS.includes(monthOf(r.date)));
+    const offRows      = rows.filter(r => !PEAK_MONTHS.includes(monthOf(r.date)) && !SHOULDER_MONTHS.includes(monthOf(r.date)));
 
-    if (peakRows.length)    peakADR      = parseFloat(avg(peakRows).toFixed(2));
-    if (shoulderRows.length) shoulderADR = parseFloat(avg(shoulderRows).toFixed(2));
-    if (offRows.length)     offseasonADR = parseFloat(avg(offRows).toFixed(2));
+    const adrAvg = (rs: AdrRow[]) => rs.reduce((s, r) => s + (r.average_daily_rate?.avg ?? 0), 0) / rs.length;
+    if (peakRows.length)     peakADR     = parseFloat(adrAvg(peakRows).toFixed(2));
+    if (shoulderRows.length) shoulderADR = parseFloat(adrAvg(shoulderRows).toFixed(2));
+    if (offRows.length)      offseasonADR = parseFloat(adrAvg(offRows).toFixed(2));
   }
 
   if (occupancyData && occupancyData.length > 0) {
-    const rows = occupancyData as AirRoiRow[];
+    const rows = occupancyData as OccRow[];
     const peakOccRows = rows.filter(r => PEAK_MONTHS.includes(monthOf(r.date)));
     const offOccRows  = rows.filter(r => !PEAK_MONTHS.includes(monthOf(r.date)) && !SHOULDER_MONTHS.includes(monthOf(r.date)));
 
-    if (peakOccRows.length) peakOcc      = parseFloat((avg(peakOccRows) * 100).toFixed(2));
+    if (peakOccRows.length) peakOcc     = parseFloat((avg(peakOccRows) * 100).toFixed(2));
     if (offOccRows.length)  offseasonOcc = parseFloat((avg(offOccRows) * 100).toFixed(2));
   }
 
-  const ttmOccupancy = parseFloat(((summary.ttm_occupancy ?? 0) * 100).toFixed(2));
-  const ttmADR       = summary.ttm_avg_rate ?? null;
-  const ttmRevpar    = summary.ttm_revpar ?? null;
-  const ttmRevenue   = summary.ttm_revenue ?? null;
-  const activeListings = summary.active_listings ?? null;
+  const ttmOccupancy   = parseFloat(((summary.occupancy ?? 0) * 100).toFixed(2));
+  const ttmADR         = summary.average_daily_rate ?? null;
+  const ttmRevpar      = summary.rev_par ?? null;
+  const ttmRevenue     = summary.revenue ?? null;
+  const activeListings = summary.active_listings_count ?? null;
+
+  console.log(`[goa-rental] ${market.name} data:`, {
+    adr:      summary.average_daily_rate,
+    occupancy: summary.occupancy,
+    revpar:   summary.rev_par,
+    listings: summary.active_listings_count,
+  });
 
   const grossYield = ttmRevpar
     ? parseFloat(((ttmRevpar * 365) / ASSUMED_PROPERTY_VALUE_INR * 100).toFixed(2))
