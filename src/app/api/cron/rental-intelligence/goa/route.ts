@@ -69,7 +69,7 @@ export async function processMarket(
       data_quarter: dataQuarter,
       fetch_error: "No data returned from AirROI",
     } as never, { onConflict: "micro_market_slug,data_quarter" } as never);
-    return { ok: false };
+    return { ok: false, error: `No data from AirROI — ${JSON.stringify(summaryResult)}` };
   }
 
   const summary = summaryResult.data as Record<string, number | null>;
@@ -162,16 +162,22 @@ async function handler(request: NextRequest) {
   }
 
   const dataQuarter = currentQuarter();
-  const results = { success: 0, failed: 0 };
+  const results = { success: 0, failed: 0, errors: [] as string[] };
 
   for (const market of GOA_MARKETS) {
     await new Promise(r => setTimeout(r, 1000));
     try {
-      const { ok } = await processMarket(market, dataQuarter);
-      if (ok) results.success++; else results.failed++;
+      const { ok, error } = await processMarket(market, dataQuarter);
+      if (ok) {
+        results.success++;
+      } else {
+        results.failed++;
+        if (error) results.errors.push(`${market.name}: ${error}`);
+      }
     } catch (err) {
       console.error(`[goa-rental] ✗ ${market.name}:`, err);
       results.failed++;
+      results.errors.push(`${market.name}: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 
