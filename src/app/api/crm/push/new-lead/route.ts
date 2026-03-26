@@ -451,6 +451,9 @@ export async function POST(request: NextRequest) {
         if (digits.startsWith('91') && digits.length === 12) {
           return `+91 ${digits.slice(2, 7)} ${digits.slice(7)}`;
         }
+        if (digits.length === 10) {
+          return `+91 ${digits.slice(0, 5)} ${digits.slice(5)}`;
+        }
         return `+${digits}`;
       };
 
@@ -472,7 +475,7 @@ export async function POST(request: NextRequest) {
       if (is99acres)       welcomeCampaign = 'lead_welcome_99acres';
       else if (isGoa)      welcomeCampaign = 'lead_welcome_goa';
       else if (isCommercial) welcomeCampaign = 'lead_welcome_commercial';
-      else if (isMeta)     welcomeCampaign = 'lead_welcome_meta';
+      else if (isMeta)     welcomeCampaign = 'lead_welcome_meta_v1';
       else if (isWebsite)  welcomeCampaign = 'lead_welcome_residential';
       // else: manual / unknown source — skip
 
@@ -622,6 +625,9 @@ export async function POST(request: NextRequest) {
             const digits = phone.replace(/\D/g, '');
             if (digits.startsWith('91') && digits.length === 12) {
               return `+91 ${digits.slice(2, 7)} ${digits.slice(7)}`;
+            }
+            if (digits.length === 10) {
+              return `+91 ${digits.slice(0, 5)} ${digits.slice(5)}`;
             }
             return `+${digits}`;
           };
