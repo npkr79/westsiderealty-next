@@ -80,6 +80,25 @@ export async function PATCH(
   patch.last_activity_at = now;
 
   const supabase = createServiceClient();
+
+  // Set first_contact_at (once only) when status becomes 'contacted' or 'not_connected'
+  const incomingStatus = body.status;
+  if (incomingStatus === "contacted" || incomingStatus === "not_connected") {
+    const { data: currentLead } = await supabase
+      .from("crm_leads")
+      .select("first_contact_at, created_at")
+      .eq("id", id)
+      .maybeSingle();
+
+    if (currentLead && !currentLead.first_contact_at) {
+      patch.first_contact_at = now;
+      if (currentLead.created_at) {
+        patch.first_contact_minutes = Math.round(
+          (new Date(now).getTime() - new Date(currentLead.created_at).getTime()) / (1000 * 60)
+        );
+      }
+    }
+  }
   const { data, error } = await supabase
     .from("crm_leads")
     .update(patch)
