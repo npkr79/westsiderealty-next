@@ -25,6 +25,7 @@ const toIST = (dateStr: string | null | undefined) => {
 type LeadRow = {
   id: string;
   created_at: string | null;
+  updated_at: string | null;
   first_contact_at: string | null;
   stage_id: string | null;
   assigned_to: string | null;
@@ -245,7 +246,7 @@ export default function DashboardMetricCards({ scope, userId }: DashboardMetricC
       try {
         let leadsQuery = supabase
           .from("crm_leads")
-          .select("id, created_at, first_contact_at, stage_id, assigned_to, name, status, last_activity_at");
+          .select("id, created_at, updated_at, first_contact_at, stage_id, assigned_to, name, status, last_activity_at");
         if (scope === "assigned") leadsQuery = leadsQuery.eq("assigned_to", userId);
 
         let taskQuery = supabase
@@ -304,7 +305,9 @@ export default function DashboardMetricCards({ scope, userId }: DashboardMetricC
   const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1).toISOString();
 
   const leadsToday = leads.filter((l) => l.created_at && l.created_at >= todayIso).length;
-  const contactedToday = leads.filter((l) => l.first_contact_at && l.first_contact_at >= todayIso).length;
+  const contactedToday = leads.filter(
+    (l) => l.status === "contacted" && (l.updated_at ?? l.created_at) >= todayIso
+  ).length;
   const pendingContact = leads.filter((l) => !l.first_contact_at && l.created_at && l.created_at >= todayIso).length;
 
   const bookingStageId = stages.find((s) => s.name.toLowerCase().includes("book"))?.id;
