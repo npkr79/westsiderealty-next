@@ -437,6 +437,146 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // ── Lead welcome message ────────────────────────────────────────────────
+    // Runs after agent alerts + assignment. Failures are isolated — never
+    // affect the response returned to Supabase's webhook delivery.
+    try {
+      const formatLeadPhone = (phone: string) => {
+        const digits = phone.replace(/\D/g, '');
+        if (!digits.startsWith('91')) return '91' + digits;
+        return digits;
+      };
+      const formatAgentPhone = (phone: string) => {
+        const digits = phone.replace(/\D/g, '');
+        if (digits.startsWith('91') && digits.length === 12) {
+          return `+91 ${digits.slice(2, 7)} ${digits.slice(7)}`;
+        }
+        return `+${digits}`;
+      };
+
+      // Re-derive isGoa / isCommercial (same logic as routing block above)
+      const _metaSourceType = ((meta.source_type as string) || '').toLowerCase();
+      const _leadType        = (meta.lead_type || '').toLowerCase();
+      const _locationPref    = (fullLead.location_preference || '').toLowerCase();
+      const _landingPage     = (fullLead.landing_page || '').toLowerCase();
+      const _propertyType    = (fullLead.property_type || '').toLowerCase();
+
+      const isGoa        = _metaSourceType === 'goa_property' ||
+                           _leadType === 'goa_property' ||
+                           _locationPref.includes('goa') ||
+                           _landingPage.includes('/goa');
+      const isCommercial = _metaSourceType === 'commercial' ||
+                           _propertyType.includes('commercial');
+
+      let welcomeCampaign: string | null = null;
+      if (is99acres)       welcomeCampaign = 'lead_welcome_99acres';
+      else if (isGoa)      welcomeCampaign = 'lead_welcome_goa';
+      else if (isCommercial) welcomeCampaign = 'lead_welcome_commercial';
+      else if (isMeta)     welcomeCampaign = 'lead_welcome_meta';
+      else if (isWebsite)  welcomeCampaign = 'lead_welcome_residential';
+      // else: manual / unknown source — skip
+
+      if (welcomeCampaign && fullLead.phone) {
+        // Resolve assigned agent name + formatted phone
+        let agentName  = 'our advisor';
+        let agentPhone = '';
+        if (fullLead.assigned_to) {
+          const { data: welcomeAgent } = await supabase
+            .from('crm_users')
+            .select('full_name, whatsapp_number')
+            .eq('id', fullLead.assigned_to)
+            .maybeSingle();
+          if (welcomeAgent) {
+            agentName  = welcomeAgent.full_name || 'our advisor';
+            agentPhone = welcomeAgent.whatsapp_number
+              ? formatAgentPhone(welcomeAgent.whatsapp_number)
+              : '';
+          }
+        }
+
+        const leadName  = fullLead.name ?? 'there';
+        const leadPhone = formatLeadPhone(fullLead.phone);
+
+        // Positional params per template
+        let templateParams: string[];
+        if (welcomeCampaign === 'lead_welcome_99acres') {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const rawPayload = (meta.raw_payload as Record<string, any>) || {};
+          const projectName = rawPayload.property_name ||
+                              rawPayload.project_name ||
+                              fullLead.location_preference ||
+                              'Not specified';
+          templateParams = [leadName, projectName, agentName, agentPhone];
+        } else {
+          templateParams = [leadName, agentName, agentPhone];
+        }
+
+        // Send welcome WhatsApp
+        await sendAiSensyAlert(leadPhone, welcomeCampaign, templateParams);
+        console.log(`[Push/new-lead] Welcome sent — campaign=${welcomeCampaign} phone=${leadPhone}`);
+
+        // Log to crm_whatsapp_messages (visible in WhatsApp Logs tab)
+        await supabase
+          .from('crm_whatsapp_messages')
+          .insert({
+            lead_id:      record.id,
+            content:      welcomeCampaign,
+            template_name: welcomeCampaign,
+            direction:    'outbound',
+            status:       'sent',
+            message_type: 'template',
+            phone:        leadPhone,
+          });
+
+        // Log to crm_conversations + crm_messages (visible in WhatsApp chat tab)
+        const { data: existingConv } = await supabase
+          .from('crm_conversations')
+          .select('id')
+          .eq('lead_id', record.id)
+          .eq('channel', 'whatsapp')
+          .maybeSingle();
+
+        let conversationId = existingConv?.id as string | undefined;
+
+        if (!conversationId) {
+          const { data: newConv } = await supabase
+            .from('crm_conversations')
+            .insert({
+              lead_id:        record.id,
+              channel:        'whatsapp',
+              recipient_phone: leadPhone,
+              status:         'open',
+              last_message_at: new Date().toISOString(),
+            })
+            .select('id')
+            .maybeSingle();
+          conversationId = newConv?.id as string | undefined;
+        }
+
+        if (conversationId) {
+          await supabase
+            .from('crm_messages')
+            .insert({
+              conversation_id: conversationId,
+              lead_id:         record.id,
+              direction:       'outbound',
+              message_type:    'template',
+              template_name:   welcomeCampaign,
+              content:         welcomeCampaign,
+              status:          'sent',
+              created_at:      new Date().toISOString(),
+            });
+
+          await supabase
+            .from('crm_conversations')
+            .update({ last_message_at: new Date().toISOString() })
+            .eq('id', conversationId);
+        }
+      }
+    } catch (err) {
+      console.error('[Push/new-lead] Lead welcome message failed:', err);
+    }
+
     return NextResponse.json({ success: true, reason: "insert_ok" });
   }
 
