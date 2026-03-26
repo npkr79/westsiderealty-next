@@ -610,6 +610,100 @@ export async function POST(request: NextRequest) {
           alertSource
         );
         await sendAiSensyAlert(normalizePhone(assignedAgent.whatsapp_number), campaign, params);
+
+        // Send lead welcome message now that we know the assigned agent
+        try {
+          const formatLeadPhone = (phone: string) => {
+            const digits = phone.replace(/\D/g, '');
+            if (!digits.startsWith('91')) return '91' + digits;
+            return digits;
+          };
+          const formatAgentPhone = (phone: string) => {
+            const digits = phone.replace(/\D/g, '');
+            if (digits.startsWith('91') && digits.length === 12) {
+              return `+91 ${digits.slice(2, 7)} ${digits.slice(7)}`;
+            }
+            return `+${digits}`;
+          };
+
+          if (fullLead.phone) {
+            const leadPhone = formatLeadPhone(fullLead.phone);
+            const metaWelcomeParams = [
+              fullLead.name?.trim() || 'there',
+              assignedAgent.full_name?.trim() || 'our advisor',
+              formatAgentPhone(assignedAgent.whatsapp_number),
+            ];
+
+            console.log('[lead-welcome] params being sent:', {
+              campaign: 'lead_welcome_meta_v1',
+              phone: leadPhone,
+              params: metaWelcomeParams,
+            });
+
+            await sendAiSensyAlert(leadPhone, 'lead_welcome_meta_v1', metaWelcomeParams);
+
+            // Log to crm_whatsapp_messages
+            await supabase
+              .from('crm_whatsapp_messages')
+              .insert({
+                lead_id:       record.id,
+                content:       'lead_welcome_meta_v1',
+                template_name: 'lead_welcome_meta_v1',
+                direction:     'outbound',
+                status:        'sent',
+                message_type:  'template',
+                phone:         leadPhone,
+              });
+
+            // Find or create conversation
+            const { data: existingConv } = await supabase
+              .from('crm_conversations')
+              .select('id')
+              .eq('lead_id', record.id)
+              .eq('channel', 'whatsapp')
+              .maybeSingle();
+
+            let conversationId = existingConv?.id as string | undefined;
+            if (!conversationId) {
+              const { data: newConv } = await supabase
+                .from('crm_conversations')
+                .insert({
+                  lead_id:         record.id,
+                  channel:         'whatsapp',
+                  recipient_phone: leadPhone,
+                  status:          'open',
+                  last_message_at: new Date().toISOString(),
+                })
+                .select('id')
+                .maybeSingle();
+              conversationId = newConv?.id as string | undefined;
+            }
+
+            if (conversationId) {
+              await supabase
+                .from('crm_messages')
+                .insert({
+                  conversation_id: conversationId,
+                  lead_id:         record.id,
+                  direction:       'outbound',
+                  message_type:    'template',
+                  template_name:   'lead_welcome_meta_v1',
+                  content:         'lead_welcome_meta_v1',
+                  status:          'sent',
+                  created_at:      new Date().toISOString(),
+                });
+
+              await supabase
+                .from('crm_conversations')
+                .update({ last_message_at: new Date().toISOString() })
+                .eq('id', conversationId);
+            }
+
+            console.log('[lead-welcome] Meta welcome sent:', leadPhone, assignedAgent.full_name);
+          }
+        } catch (err) {
+          console.error('[lead-welcome] Meta welcome failed:', err);
+        }
       }
     }
     return NextResponse.json({ success: true, reason: "update_ok" });
