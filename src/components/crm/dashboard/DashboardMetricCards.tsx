@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { getBrowserClient } from "@/lib/supabase/browserClient";
@@ -240,60 +240,72 @@ export default function DashboardMetricCards({ scope, userId }: DashboardMetricC
   const [upcomingVisits, setUpcomingVisits] = useState<VisitRow[]>([]);
   const [agents, setAgents] = useState<AgentRow[]>([]);
 
-  useEffect(() => {
-    async function fetchAll() {
-      setLoading(true);
-      try {
-        let leadsQuery = supabase
+  const fetchAll = useCallback(async () => {
+    setLoading(true);
+    try {
+      let leadsQuery = supabase
+        .from("crm_leads")
+        .select("id, created_at, updated_at, first_contact_at, stage_id, assigned_to, name, status, last_activity_at");
+      if (scope === "assigned") leadsQuery = leadsQuery.eq("assigned_to", userId);
+
+      let taskQuery = supabase
+        .from("crm_tasks")
+        .select("id, title, due_date, lead_id, assigned_to")
+        .lt("due_date", new Date().toISOString())
+        .neq("status", "completed");
+      if (scope === "assigned") taskQuery = taskQuery.eq("assigned_to", userId);
+
+      const stagesQuery = supabase.from("crm_lead_stages").select("id, name, position").order("position");
+      const agentsQuery = supabase.from("crm_users").select("id, full_name").eq("is_active", true);
+
+      const [stagesRes, leadsRes, taskRes, agentsRes] = await Promise.all([
+        stagesQuery, leadsQuery, taskQuery, agentsQuery,
+      ]);
+
+      const stagesResult: StageRow[] = (stagesRes.data as StageRow[]) ?? [];
+
+      const siteVisitStage = stagesResult.find(
+        (s) => /visit.*scheduled/i.test(s.name) || /site.*visit/i.test(s.name)
+      );
+      let visitsResult: VisitRow[] = [];
+      if (siteVisitStage) {
+        const next7Days = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+        let visitQuery = supabase
           .from("crm_leads")
-          .select("id, created_at, updated_at, first_contact_at, stage_id, assigned_to, name, status, last_activity_at");
-        if (scope === "assigned") leadsQuery = leadsQuery.eq("assigned_to", userId);
-
-        let taskQuery = supabase
-          .from("crm_tasks")
-          .select("id, title, due_date, lead_id, assigned_to")
-          .lt("due_date", new Date().toISOString())
-          .neq("status", "completed");
-        if (scope === "assigned") taskQuery = taskQuery.eq("assigned_to", userId);
-
-        const stagesQuery = supabase.from("crm_lead_stages").select("id, name, position").order("position");
-        const agentsQuery = supabase.from("crm_users").select("id, full_name").eq("is_active", true);
-
-        const [stagesRes, leadsRes, taskRes, agentsRes] = await Promise.all([
-          stagesQuery, leadsQuery, taskQuery, agentsQuery,
-        ]);
-
-        const stagesResult: StageRow[] = (stagesRes.data as StageRow[]) ?? [];
-
-        const siteVisitStage = stagesResult.find(
-          (s) => /visit.*scheduled/i.test(s.name) || /site.*visit/i.test(s.name)
-        );
-        let visitsResult: VisitRow[] = [];
-        if (siteVisitStage) {
-          const next7Days = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
-          let visitQuery = supabase
-            .from("crm_leads")
-            .select("id, name, phone, assigned_to, stage_id, created_at")
-            .eq("stage_id", siteVisitStage.id)
-            .lte("created_at", next7Days);
-          if (scope === "assigned") visitQuery = visitQuery.eq("assigned_to", userId);
-          const { data: visitData } = await visitQuery;
-          visitsResult = (visitData as VisitRow[]) ?? [];
-        }
-
-        setStages(stagesResult);
-        setLeads((leadsRes.data as LeadRow[]) ?? []);
-        setOverdueTasks((taskRes.data as TaskRow[]) ?? []);
-        setUpcomingVisits(visitsResult);
-        setAgents((agentsRes.data as AgentRow[]) ?? []);
-      } catch (err) {
-        console.error("DashboardMetricCards fetch error:", err);
-      } finally {
-        setLoading(false);
+          .select("id, name, phone, assigned_to, stage_id, created_at")
+          .eq("stage_id", siteVisitStage.id)
+          .lte("created_at", next7Days);
+        if (scope === "assigned") visitQuery = visitQuery.eq("assigned_to", userId);
+        const { data: visitData } = await visitQuery;
+        visitsResult = (visitData as VisitRow[]) ?? [];
       }
+
+      setStages(stagesResult);
+      setLeads((leadsRes.data as LeadRow[]) ?? []);
+      setOverdueTasks((taskRes.data as TaskRow[]) ?? []);
+      setUpcomingVisits(visitsResult);
+      setAgents((agentsRes.data as AgentRow[]) ?? []);
+    } catch (err) {
+      console.error("DashboardMetricCards fetch error:", err);
+    } finally {
+      setLoading(false);
     }
+  }, [scope, userId, supabase]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
     void fetchAll();
-  }, [scope, userId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [fetchAll]);
+
+  // Realtime subscription — re-fetch whenever any crm_leads row changes
+  useEffect(() => {
+    const channel = supabase
+      .channel("dashboard-metrics-live")
+      .on("postgres_changes", { event: "*", schema: "public", table: "crm_leads" }, () => {
+        void fetchAll();
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [fetchAll, supabase]);
 
   // ---------------------------------------------------------------------------
   // Derived metrics
@@ -308,7 +320,9 @@ export default function DashboardMetricCards({ scope, userId }: DashboardMetricC
   const contactedToday = leads.filter(
     (l) => l.status === "contacted" && (l.updated_at ?? l.created_at) >= todayIso
   ).length;
-  const pendingContact = leads.filter((l) => !l.first_contact_at && l.created_at && l.created_at >= todayIso).length;
+  const pendingContact = leads.filter(
+    (l) => (l.status === "new" || !l.status) && l.created_at && l.created_at >= todayIso
+  ).length;
 
   const bookingStageId = stages.find((s) => s.name.toLowerCase().includes("book"))?.id;
   const bookingsThisMonth = leads.filter(
@@ -347,7 +361,9 @@ export default function DashboardMetricCards({ scope, userId }: DashboardMetricC
       .map((agent) => {
         const agentLeads = leads.filter((l) => l.assigned_to === agent.id);
         const agentLeadsToday = agentLeads.filter((l) => l.created_at && l.created_at >= todayIso);
-        const agentContactedToday = agentLeads.filter((l) => l.first_contact_at && l.first_contact_at >= todayIso);
+        const agentContactedToday = agentLeads.filter(
+          (l) => l.status === "contacted" && (l.updated_at ?? l.created_at) >= todayIso
+        );
         const responseTimes = agentLeads
           .filter((l) => l.first_contact_at && l.created_at && l.first_contact_at >= todayIso)
           .map((l) => (new Date(l.first_contact_at!).getTime() - new Date(l.created_at!).getTime()) / (1000 * 60))

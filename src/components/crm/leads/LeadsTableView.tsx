@@ -35,23 +35,23 @@ function formatSourceName(s: string | null | undefined): string {
 }
 
 const statusConfig: Record<string, { label: string; bg: string; color: string }> = {
-  new:           { label: "New",           bg: "var(--color-background-secondary)", color: "var(--color-text-secondary)" },
-  not_connected: { label: "Not Connected", bg: "var(--color-background-secondary)", color: "var(--color-text-secondary)" },
-  contacted:     { label: "Contacted",     bg: "var(--color-background-info)",      color: "var(--color-text-info)" },
-  qualified:   { label: "Qualified",   bg: "var(--color-background-success)",   color: "var(--color-text-success)" },
-  site_visit:  { label: "Site Visit",  bg: "var(--color-background-warning)",   color: "var(--color-text-warning)" },
-  negotiation: { label: "Negotiation", bg: "var(--color-background-warning)",   color: "var(--color-text-warning)" },
-  converted:   { label: "Converted",   bg: "var(--color-background-success)",   color: "var(--color-text-success)" },
-  lost:        { label: "Lost",        bg: "var(--color-background-danger)",    color: "var(--color-text-danger)" },
+  new:           { label: "New",           bg: "rgba(100,116,139,0.15)", color: "#94a3b8" },
+  not_connected: { label: "Not Connected", bg: "rgba(100,116,139,0.15)", color: "#94a3b8" },
+  contacted:     { label: "Contacted",     bg: "rgba(59,130,246,0.15)",  color: "#93c5fd" },
+  qualified:     { label: "Qualified",     bg: "rgba(34,197,94,0.15)",   color: "#86efac" },
+  site_visit:    { label: "Site Visit",    bg: "rgba(245,158,11,0.15)",  color: "#fcd34d" },
+  negotiation:   { label: "Negotiation",  bg: "rgba(245,158,11,0.15)",  color: "#fcd34d" },
+  converted:     { label: "Converted",    bg: "rgba(34,197,94,0.15)",   color: "#86efac" },
+  lost:          { label: "Lost",         bg: "rgba(239,68,68,0.15)",   color: "#fca5a5" },
 };
 
 const priorityConfig: Record<string, { label: string; bg: string; color: string }> = {
-  serious_buyer: { label: "Serious",    bg: "var(--color-background-danger)",    color: "var(--color-text-danger)" },
-  evaluating:    { label: "Evaluating", bg: "var(--color-background-warning)",   color: "var(--color-text-warning)" },
-  early_stage:   { label: "Early Stage",bg: "var(--color-background-secondary)", color: "var(--color-text-secondary)" },
-  hot:           { label: "Serious",    bg: "var(--color-background-danger)",    color: "var(--color-text-danger)" },
-  warm:          { label: "Evaluating", bg: "var(--color-background-warning)",   color: "var(--color-text-warning)" },
-  cold:          { label: "Early Stage",bg: "var(--color-background-secondary)", color: "var(--color-text-secondary)" },
+  serious_buyer: { label: "Serious",     bg: "rgba(239,68,68,0.15)",   color: "#fca5a5" },
+  evaluating:    { label: "Evaluating",  bg: "rgba(245,158,11,0.15)",  color: "#fcd34d" },
+  early_stage:   { label: "Early Stage", bg: "rgba(100,116,139,0.15)", color: "#94a3b8" },
+  hot:           { label: "Serious",     bg: "rgba(239,68,68,0.15)",   color: "#fca5a5" },
+  warm:          { label: "Evaluating",  bg: "rgba(245,158,11,0.15)",  color: "#fcd34d" },
+  cold:          { label: "Early Stage", bg: "rgba(100,116,139,0.15)", color: "#94a3b8" },
 };
 
 function fmt(v: number | null | undefined): string | null {
