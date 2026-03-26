@@ -477,24 +477,24 @@ export async function POST(request: NextRequest) {
       // else: manual / unknown source — skip
 
       if (welcomeCampaign && fullLead.phone) {
-        // Resolve assigned agent name + formatted phone
-        let agentName  = 'our advisor';
-        let agentPhone = '';
+        // Resolve assigned agent
+        let welcomeAgent: { full_name: string | null; whatsapp_number: string | null } | null = null;
         if (fullLead.assigned_to) {
-          const { data: welcomeAgent } = await supabase
+          const { data } = await supabase
             .from('crm_users')
             .select('full_name, whatsapp_number')
             .eq('id', fullLead.assigned_to)
             .maybeSingle();
-          if (welcomeAgent) {
-            agentName  = welcomeAgent.full_name || 'our advisor';
-            agentPhone = welcomeAgent.whatsapp_number
-              ? formatAgentPhone(welcomeAgent.whatsapp_number)
-              : '';
-          }
+          welcomeAgent = data;
         }
 
-        const leadName  = fullLead.name ?? 'there';
+        // Null-safe params — never pass empty/null/undefined to AiSensy
+        const welcomeLeadName  = fullLead.name?.trim() || 'there';
+        const welcomeAgentName = welcomeAgent?.full_name?.trim() || 'our advisor';
+        const welcomeAgentPhone = welcomeAgent?.whatsapp_number
+          ? formatAgentPhone(welcomeAgent.whatsapp_number)
+          : '+91 83677 24368';
+
         const leadPhone = formatLeadPhone(fullLead.phone);
 
         // Positional params per template
@@ -502,14 +502,22 @@ export async function POST(request: NextRequest) {
         if (welcomeCampaign === 'lead_welcome_99acres') {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const rawPayload = (meta.raw_payload as Record<string, any>) || {};
-          const projectName = rawPayload.property_name ||
-                              rawPayload.project_name ||
-                              fullLead.location_preference ||
-                              'Not specified';
-          templateParams = [leadName, projectName, agentName, agentPhone];
+          const welcomeProjectName = (
+            rawPayload.property_name ||
+            rawPayload.project_name ||
+            fullLead.location_preference ||
+            ''
+          ).trim() || 'the property';
+          templateParams = [welcomeLeadName, welcomeProjectName, welcomeAgentName, welcomeAgentPhone];
         } else {
-          templateParams = [leadName, agentName, agentPhone];
+          templateParams = [welcomeLeadName, welcomeAgentName, welcomeAgentPhone];
         }
+
+        console.log('[lead-welcome] params being sent:', {
+          campaign: welcomeCampaign,
+          phone: leadPhone,
+          params: templateParams,
+        });
 
         // Send welcome WhatsApp
         await sendAiSensyAlert(leadPhone, welcomeCampaign, templateParams);
