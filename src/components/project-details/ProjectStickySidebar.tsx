@@ -5,6 +5,16 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import ProjectStickyCard from "./ProjectStickyCard";
 import ProjectLeadForm from "./ProjectLeadForm";
 
+interface LeadContext {
+  city?: string;
+  projectName?: string;
+  projectSlug?: string;
+  propertyType?: string;
+  sourceType?: string;
+  microMarket?: string;
+  landingPage?: string;
+}
+
 interface ProjectStickySidebarProps {
   projectName: string;
   projectId: string;
@@ -24,6 +34,7 @@ interface ProjectStickySidebarProps {
   demandContext?: string;
   advisoryYears?: number | null;
   buyersHelped?: number | null;
+  leadContext?: LeadContext;
 }
 
 export default function ProjectStickySidebar({
@@ -45,6 +56,7 @@ export default function ProjectStickySidebar({
   demandContext,
   advisoryYears,
   buyersHelped,
+  leadContext,
 }: ProjectStickySidebarProps) {
   const [isLeadFormOpen, setIsLeadFormOpen] = useState(false);
   const [leadFormMode, setLeadFormMode] = useState<'brochure' | 'callback'>('brochure');
@@ -107,6 +119,7 @@ export default function ProjectStickySidebar({
             inModal={true}
             leadPersona="auto"
             triggerContext="modal"
+            leadContext={leadContext}
           />
         </DialogContent>
       </Dialog>

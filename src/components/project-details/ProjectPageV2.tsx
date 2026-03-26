@@ -117,14 +117,27 @@ function FaqItem({ q, a }: { q: string; a: string }) {
   );
 }
 
+// ─── Lead context type ────────────────────────────────────────────────────────
+
+export interface LeadContext {
+  city: string;
+  projectName: string;
+  projectSlug: string;
+  propertyType: string;
+  sourceType: string;
+  microMarket: string;
+  landingPage: string;
+}
+
 function InlineLeadForm({
-  projectName, projectId, reraId, locationPreference, dark = true,
+  projectName, projectId, reraId, locationPreference, dark = true, leadContext,
 }: {
   projectName: string;
   projectId: string;
   reraId?: string | null;
   locationPreference?: string;
   dark?: boolean;
+  leadContext?: LeadContext;
 }) {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -141,6 +154,13 @@ function InlineLeadForm({
         phone,
         type: "PROJECT_INTEREST",
         source_page: typeof window !== "undefined" ? window.location.href : "project_page_v2",
+        property_type: leadContext?.propertyType ?? null,
+        attribution_metadata: leadContext ? {
+          project_name: leadContext.projectName,
+          source_type: leadContext.sourceType,
+          micro_market: leadContext.microMarket,
+          city: leadContext.city,
+        } : null,
         details: {
           source_id: "c3b72f38-171b-4ce6-a060-f40beed8bdb4",
           project_name: projectName,
@@ -362,8 +382,8 @@ function formatDate(dateStr: string | null | undefined): string {
 
 // ─── Expert Analysis Modal ────────────────────────────────────────────────────
 
-function ExpertModal({ projectName, projectId, developerName, onClose }: {
-  projectName: string; projectId: string; developerName?: string; onClose: () => void;
+function ExpertModal({ projectName, projectId, developerName, leadContext, onClose }: {
+  projectName: string; projectId: string; developerName?: string; leadContext?: LeadContext; onClose: () => void;
 }) {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -384,6 +404,13 @@ function ExpertModal({ projectName, projectId, developerName, onClose }: {
         email: email || null,
         type: "PROJECT_INTEREST",
         source_page: typeof window !== "undefined" ? window.location.href : "project_page_v2_expert",
+        property_type: leadContext?.propertyType ?? null,
+        attribution_metadata: leadContext ? {
+          project_name: leadContext.projectName,
+          source_type: leadContext.sourceType,
+          micro_market: leadContext.microMarket,
+          city: leadContext.city,
+        } : null,
         details: { project_name: projectName, project_id: projectId, developer_name: developerName, goal },
       });
       if (!result.success) {
@@ -517,6 +544,7 @@ interface ProjectPageV2Props {
   }>;
   developerBrandSlug?: string | null;
   developerBrandName?: string | null;
+  leadContext?: LeadContext;
 }
 
 // ─── Handover notes parser ────────────────────────────────────────────────────
@@ -609,7 +637,7 @@ function getAmenityIcon(name: string): string {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export default function ProjectPageV2({ project, insights, context, citySlug, projectSlug, developerProjects, liveIntelligence, microMarketDetail, relatedProjects = [], nearbyMarkets = [], configDistribution = [], otherProjectsInMarket = [], developerBrandSlug, developerBrandName }: ProjectPageV2Props) {
+export default function ProjectPageV2({ project, insights, context, citySlug, projectSlug, developerProjects, liveIntelligence, microMarketDetail, relatedProjects = [], nearbyMarkets = [], configDistribution = [], otherProjectsInMarket = [], developerBrandSlug, developerBrandName, leadContext }: ProjectPageV2Props) {
   const [modalOpen, setModalOpen] = useState(false);
   const [reraCopied, setReraCopied] = useState(false);
 
@@ -860,6 +888,7 @@ export default function ProjectPageV2({ project, insights, context, citySlug, pr
                   reraId={project.rera_id}
                   locationPreference={microMarket?.micro_market_name ? `${microMarket.micro_market_name}, ${citySlug}` : citySlug}
                   dark
+                  leadContext={leadContext}
                 />
               </div>
 
@@ -2232,6 +2261,7 @@ export default function ProjectPageV2({ project, insights, context, citySlug, pr
             reraId={project.rera_id}
             locationPreference={microMarket?.micro_market_name ? `${microMarket.micro_market_name}, ${citySlug}` : citySlug}
             dark
+            leadContext={leadContext}
           />
         </div>
       </div>
@@ -2245,6 +2275,7 @@ export default function ProjectPageV2({ project, insights, context, citySlug, pr
           projectName={project.project_name}
           projectId={project.id || String((project as any).project_id || "")}
           developerName={developer?.developer_name || project.developer_name || undefined}
+          leadContext={leadContext}
           onClose={() => setModalOpen(false)}
         />
       )}

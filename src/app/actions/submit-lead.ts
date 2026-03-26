@@ -23,6 +23,8 @@ export interface SubmitLeadData {
   type: LeadType;
   source_page: string;
   details?: Record<string, unknown>;
+  property_type?: string | null;
+  attribution_metadata?: Record<string, unknown> | null;
 }
 
 export interface SubmitLeadResponse {
@@ -107,9 +109,11 @@ export async function submitLead(formData: SubmitLeadData): Promise<SubmitLeadRe
     const notesValue = buildNotes(details);
 
     // Merge attribution metadata with extra form context
+    // Order: form-level context < UTMs/attribution < explicit fields
     const attributionMeta: Record<string, unknown> = Object.assign(
       {},
-      attribution.attribution_metadata,
+      formData.attribution_metadata ?? {},  // page/project context (project_name, source_type, etc.)
+      attribution.attribution_metadata,     // UTMs, gclid, fbclid win over generic context
       { lead_type: formData.type },
       details.segment ? { segment: details.segment } : {},
       details.institution ? { institution: details.institution } : {},
@@ -147,6 +151,7 @@ export async function submitLead(formData: SubmitLeadData): Promise<SubmitLeadRe
         (typeof details.location_preference === "string" ? details.location_preference : null) ||
         (typeof details.location === "string" ? details.location : null),
       property_type:
+        typeof formData.property_type === "string" ? formData.property_type :
         typeof details.property_type === "string" ? details.property_type :
         Array.isArray(details.propertyTypes) ? (details.propertyTypes as string[]).join(", ") :
         null,

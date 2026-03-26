@@ -327,6 +327,19 @@ export default async function ProjectDetailPage({ params }: PageProps) {
   const developerBrandName = developerBrandResult?.brandName ?? null;
 
   const context = projectService.buildProjectPageContext(project, citySlug, projectSlug);
+
+  // Build lead context for form attribution
+  const isGoaCity = citySlug === "goa";
+  const leadContext = {
+    city: citySlug,
+    projectName: project.project_name ?? "",
+    projectSlug,
+    propertyType: "residential" as string,
+    sourceType: isGoaCity ? "goa_property" : "website_project",
+    microMarket: (project.micro_market as any)?.micro_market_name ?? "",
+    landingPage: `/${citySlug}/projects/${projectSlug}`,
+  };
+
   return (
     <ProjectPageV2
       citySlug={citySlug}
@@ -343,6 +356,7 @@ export default async function ProjectDetailPage({ params }: PageProps) {
       otherProjectsInMarket={otherProjectsInMarket}
       developerBrandSlug={developerBrandSlug}
       developerBrandName={developerBrandName}
+      leadContext={leadContext}
     />
   );
 }

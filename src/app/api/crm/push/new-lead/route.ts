@@ -258,12 +258,17 @@ export async function POST(request: NextRequest) {
     const locationPref = (fullLead.location_preference || '').toLowerCase();
     const landingPage = (fullLead.landing_page || '').toLowerCase();
     const leadType = (meta.lead_type || '').toLowerCase();
+    const metaSourceType = ((meta.source_type as string) || '').toLowerCase();
 
-    const isGoa = leadType === 'goa_property' ||
+    const isGoa = metaSourceType === 'goa_property' ||
+                  leadType === 'goa_property' ||
                   locationPref.includes('goa') ||
                   landingPage.includes('/goa');
-    const isCommercial = propertyType.includes('commercial');
-    const isResidential = propertyType.includes('villa') ||
+    const isCommercial = metaSourceType === 'commercial' ||
+                         propertyType.includes('commercial');
+    const isResidential = metaSourceType === 'residential' ||
+                          metaSourceType === 'website_project' ||
+                          propertyType.includes('villa') ||
                           propertyType.includes('flat') ||
                           propertyType.includes('apartment') ||
                           propertyType.includes('residential');
@@ -355,9 +360,12 @@ export async function POST(request: NextRequest) {
         .replace(/_/g, ' ')
         .toLowerCase()
         .replace(/\b\w/g, (c: string) => c.toUpperCase());
-      const propertyInterest = lead.location_preference
-        ? `${leadType}: ${lead.location_preference}`
-        : leadType;
+      const projectName = (leadMeta.project_name as string) || null;
+      const propertyInterest = projectName
+        ? `${leadType}: ${projectName}`
+        : lead.location_preference
+          ? `${leadType}: ${lead.location_preference}`
+          : leadType;
       const message = lead.notes || 'Not specified';
       const truncatedMessage = message.length > 100 ? message.substring(0, 100) + '...' : message;
       return {

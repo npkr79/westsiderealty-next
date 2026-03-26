@@ -14,6 +14,16 @@ import { buildProjectsIndexUrl } from "@/lib/routes";
 import { getAdvisoryTrackingContext, trackListingsEvent } from "@/lib/analytics/listingsTracking";
 import { trackBehaviorEvent } from "@/lib/analytics/behaviorTracking";
 
+interface LeadContext {
+  city?: string;
+  projectName?: string;
+  projectSlug?: string;
+  propertyType?: string;
+  sourceType?: string;
+  microMarket?: string;
+  landingPage?: string;
+}
+
 interface ProjectLeadFormProps {
   projectName: string;
   projectId: string;
@@ -25,6 +35,7 @@ interface ProjectLeadFormProps {
   triggerContext?: "sidebar-sticky" | "inline-mobile" | "modal";
   initialIntent?: "investment" | "end-use" | "upgrade" | "nri";
   compactMode?: boolean;
+  leadContext?: LeadContext;
 }
 
 const leadSchema = z.object({
@@ -84,6 +95,7 @@ export default function ProjectLeadForm({
   triggerContext = "sidebar-sticky",
   initialIntent,
   compactMode = false,
+  leadContext,
 }: ProjectLeadFormProps) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
@@ -163,6 +175,13 @@ export default function ProjectLeadForm({
         email: validated.email,
         type: "PROJECT_INTEREST",
         source_page: sourcePage,
+        property_type: leadContext?.propertyType ?? null,
+        attribution_metadata: leadContext ? {
+          project_name: leadContext.projectName ?? projectName,
+          source_type: leadContext.sourceType,
+          micro_market: leadContext.microMarket,
+          city: leadContext.city,
+        } : null,
         details,
       });
 
