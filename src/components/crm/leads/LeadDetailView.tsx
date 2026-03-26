@@ -901,7 +901,10 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
       <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
         <button
           type="button"
-          onClick={() => setShowCallSheet(true)}
+          onClick={() => {
+            if (lead?.phone) window.location.href = `tel:${lead.phone}`;
+            setTimeout(() => setShowCallSheet(true), 1500);
+          }}
           className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-full bg-blue-600 hover:bg-blue-700 active:scale-95 text-white text-sm font-medium"
         >
           <Phone className="h-3.5 w-3.5" /> Call
@@ -1961,16 +1964,16 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
               ))}
             </div>
             <button
-              onClick={() => { setShowCallSheet(false); setShowCallForm(true); }}
-              style={{ width: "100%", marginTop: "12px", padding: "10px", background: "none", border: "none", fontSize: "13px", color: "var(--color-text-tertiary)", cursor: "pointer" }}
+              onClick={() => setShowCallSheet(false)}
+              style={{ width: "100%", marginTop: "12px", padding: "10px", background: "none", border: "none", fontSize: "13px", color: "var(--color-text-tertiary)", cursor: "pointer", textDecoration: "underline", textUnderlineOffset: "3px" }}
             >
-              + Detailed log (with duration &amp; notes)
+              Skip logging
             </button>
             <button
-              onClick={() => setShowCallSheet(false)}
-              style={{ width: "100%", padding: "12px", background: "none", border: "none", fontSize: "14px", color: "var(--color-text-tertiary)", cursor: "pointer" }}
+              onClick={() => { setShowCallSheet(false); setShowCallForm(true); }}
+              style={{ width: "100%", padding: "10px", background: "none", border: "none", fontSize: "13px", color: "var(--color-text-tertiary)", cursor: "pointer" }}
             >
-              Cancel
+              + Detailed log (with duration &amp; notes)
             </button>
           </div>
         </>,
