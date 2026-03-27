@@ -51,12 +51,12 @@ type TaskRow = {
 };
 
 type VisitRow = {
-  id: string;
-  name: string | null;
-  phone: string | null;
-  assigned_to: string | null;
-  stage_id: string | null;
-  created_at: string | null;
+  id: string;           // activity id
+  lead_id: string;
+  lead_name: string | null;
+  project_name: string | null;
+  visit_date: string | null;
+  status: string | null;
 };
 
 type AgentRow = {
@@ -264,21 +264,56 @@ export default function DashboardMetricCards({ scope, userId }: DashboardMetricC
 
       const stagesResult: StageRow[] = (stagesRes.data as StageRow[]) ?? [];
 
-      const siteVisitStage = stagesResult.find(
-        (s) => /visit.*scheduled/i.test(s.name) || /site.*visit/i.test(s.name)
-      );
-      let visitsResult: VisitRow[] = [];
-      if (siteVisitStage) {
-        const next7Days = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
-        let visitQuery = supabase
-          .from("crm_leads")
-          .select("id, name, phone, assigned_to, stage_id, created_at")
-          .eq("stage_id", siteVisitStage.id)
-          .lte("created_at", next7Days);
-        if (scope === "assigned") visitQuery = visitQuery.eq("assigned_to", userId);
-        const { data: visitData } = await visitQuery;
-        visitsResult = (visitData as VisitRow[]) ?? [];
+      // Fetch upcoming site visits from crm_lead_activities
+      const now = new Date().toISOString();
+      const next7Days = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let visitQuery: any = supabase
+        .from("crm_lead_activities")
+        .select("id, lead_id, description, metadata, created_at, crm_leads!crm_lead_activities_lead_id_fkey(id, name, assigned_to)")
+        .eq("activity_type", "site_visit")
+        .ilike("description", "%Scheduled%")
+        .order("created_at", { ascending: false })
+        .limit(20);
+
+      if (scope === "assigned") {
+        visitQuery = visitQuery.eq("crm_leads.assigned_to", userId);
       }
+
+      const { data: visitData } = await visitQuery;
+
+      const visitsResult: VisitRow[] = (visitData ?? [])
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .map((row: any) => {
+          const meta = (row.metadata || {}) as Record<string, unknown>;
+          const lead = row.crm_leads as { id: string; name: string | null; assigned_to: string | null } | null;
+          const visitDate = (meta.visit_date as string) || null;
+          let projectName = (meta.project_name as string) || null;
+          if (!projectName && row.description) {
+            const match = (row.description as string).match(/Site visit at (.+?) —/i);
+            if (match) projectName = match[1].trim();
+          }
+          return {
+            id: row.id as string,
+            lead_id: row.lead_id as string,
+            lead_name: lead?.name || null,
+            project_name: projectName,
+            visit_date: visitDate,
+            status: (meta.status as string) || "Scheduled",
+          };
+        })
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .filter((v: any) => {
+          if (!v.visit_date) return true;
+          return v.visit_date >= now.slice(0, 16) && v.visit_date <= next7Days.slice(0, 16);
+        })
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .sort((a: any, b: any) => {
+          if (!a.visit_date) return 1;
+          if (!b.visit_date) return -1;
+          return a.visit_date.localeCompare(b.visit_date);
+        });
 
       setStages(stagesResult);
       setLeads((leadsRes.data as LeadRow[]) ?? []);
@@ -550,26 +585,26 @@ export default function DashboardMetricCards({ scope, userId }: DashboardMetricC
                   type="button"
                   className="w-full flex items-center gap-3 rounded-lg border border-slate-800 bg-slate-900/50 px-3 py-2.5 text-left hover:border-slate-700 hover:bg-slate-800/70 active:scale-[0.99] transition-all select-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-slate-600"
                   style={{ minHeight: "52px" }}
-                  onClick={() => router.push(`/leads/${visit.id}`)}
+                  onClick={() => visit.lead_id && router.push(`/leads/${visit.lead_id}`)}
                 >
                   {/* Avatar */}
                   <div
                     className="flex-none flex items-center justify-center rounded-full bg-slate-700 text-[11px] font-bold text-slate-200"
                     style={{ width: "34px", height: "34px" }}
                   >
-                    {getInitials(visit.name)}
+                    {getInitials(visit.lead_name)}
                   </div>
-                  {/* Name + stage */}
+                  {/* Name + project */}
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-slate-200 truncate">{visit.name || "—"}</p>
+                    <p className="text-sm font-medium text-slate-200 truncate">{visit.lead_name || "—"}</p>
                     <p className="text-xs text-slate-500 truncate">
-                      {stages.find((s) => s.id === visit.stage_id)?.name ?? "—"}
+                      {visit.project_name || "Project not specified"}
                     </p>
                   </div>
-                  {/* Date chip */}
-                  {visit.created_at && (
+                  {/* Visit date chip */}
+                  {visit.visit_date && (
                     <span className="flex-none rounded-md border border-slate-700 bg-slate-800 px-2 py-0.5 text-[11px] text-slate-400">
-                      {toIST(visit.created_at)}
+                      {toIST(visit.visit_date)}
                     </span>
                   )}
                 </button>
