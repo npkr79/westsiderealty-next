@@ -332,167 +332,238 @@ export default function LeadsTableView({ currentUserRole, currentUserId }: Leads
         )
       : visitActivities;
 
+    const fmtVisitDate = (d: string | null) =>
+      d
+        ? new Date(d).toLocaleDateString("en-IN", {
+            timeZone: "Asia/Kolkata",
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+          })
+        : "—";
+
+    const visitStatusStyle = (s: string) =>
+      s.toLowerCase() === "completed"
+        ? { background: "rgba(34,197,94,0.15)", color: "#86efac" }
+        : { background: "rgba(59,130,246,0.15)", color: "#93c5fd" };
+
     return (
-      <div className="space-y-4">
+      <div style={{ color: "#e2e8f0" }}>
         {/* Back link */}
         <button
           type="button"
           onClick={() => router.push("/leads")}
-          className="flex items-center gap-1.5 text-sm text-slate-400 hover:text-slate-200 transition-colors"
+          className="mb-4 flex items-center gap-1.5 text-sm font-medium text-blue-400 hover:text-blue-300 transition-colors"
         >
           ← Back to all leads
         </button>
 
-        <h2 className="text-xl font-semibold text-slate-200">Site Visits — Next 7 Days</h2>
+        {/* Title row */}
+        <div className="mb-5 flex flex-wrap items-center gap-3">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="flex-none">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
+          </svg>
+          <h2 style={{ fontSize: "20px", fontWeight: 700, color: "#f1f5f9", margin: 0 }}>
+            Site Visits — Next 7 Days
+          </h2>
+          {!visitLoading && (
+            <span style={{
+              padding: "2px 10px", borderRadius: "999px", fontSize: "12px", fontWeight: 600,
+              background: "rgba(59,130,246,0.18)", color: "#93c5fd",
+              border: "1px solid rgba(59,130,246,0.3)",
+            }}>
+              {filteredVisits.length} scheduled
+            </span>
+          )}
+        </div>
 
         {/* Search bar */}
-        <div className="relative md:max-w-xs">
-          <Search className="pointer-events-none absolute left-2 top-2.5 h-4 w-4 text-slate-400" />
-          <Input
+        <div className="relative mb-5" style={{ maxWidth: "320px" }}>
+          <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4" style={{ color: "#64748b" }} />
+          <input
             placeholder="Search name or phone"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-8"
+            style={{
+              width: "100%", paddingLeft: "36px", paddingRight: "12px",
+              paddingTop: "8px", paddingBottom: "8px",
+              background: "#1e293b", border: "1px solid #334155",
+              borderRadius: "8px", color: "#e2e8f0", fontSize: "14px", outline: "none",
+            }}
+            onFocus={(e) => { e.currentTarget.style.borderColor = "#475569"; }}
+            onBlur={(e) => { e.currentTarget.style.borderColor = "#334155"; }}
           />
         </div>
 
-        {/* Desktop table */}
-        <div className="hidden md:block">
-          <div className="rounded-xl border border-slate-800 overflow-hidden" style={{ backgroundColor: "#0f172a" }}>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="min-w-[140px]">Name</TableHead>
-                  <TableHead style={{ width: "140px" }}>Phone</TableHead>
-                  <TableHead>Project</TableHead>
-                  <TableHead style={{ width: "120px" }}>Visit Date</TableHead>
-                  <TableHead style={{ width: "100px" }}>Status</TableHead>
-                  {!isAgent && <TableHead style={{ width: "120px" }}>Agent</TableHead>}
-                  <TableHead style={{ width: "100px" }}>Priority</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {visitLoading ? (
-                  <TableRow>
-                    <TableCell colSpan={isAgent ? 6 : 7} style={{ color: "#94a3b8" }}>Loading site visits...</TableCell>
-                  </TableRow>
-                ) : filteredVisits.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={isAgent ? 6 : 7} style={{ color: "#94a3b8" }}>No upcoming site visits found.</TableCell>
-                  </TableRow>
-                ) : (
-                  filteredVisits.map((visit) => {
+        {/* Loading state */}
+        {visitLoading && (
+          <p style={{ color: "#64748b", fontSize: "14px", textAlign: "center", padding: "40px 0" }}>
+            Loading site visits…
+          </p>
+        )}
+
+        {/* Empty state */}
+        {!visitLoading && filteredVisits.length === 0 && (
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "56px 0", color: "#475569" }}>
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#334155" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ marginBottom: "16px" }}>
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
+            </svg>
+            <p style={{ fontSize: "14px", fontWeight: 600, color: "#64748b", margin: 0 }}>No site visits scheduled</p>
+            <p style={{ fontSize: "12px", color: "#475569", marginTop: "4px" }}>No site visits scheduled in the next 7 days</p>
+          </div>
+        )}
+
+        {/* Desktop table — xl+ */}
+        {!visitLoading && filteredVisits.length > 0 && (
+          <div className="hidden md:block mb-4">
+            <div style={{ borderRadius: "12px", border: "1px solid #1e293b", overflow: "hidden", background: "#0f172a" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr style={{ borderBottom: "1px solid #1e293b", background: "#0f172a" }}>
+                    {[
+                      { label: "Name",       w: "auto" },
+                      { label: "Phone",      w: "140px" },
+                      { label: "Project",    w: "auto" },
+                      { label: "Visit Date", w: "120px" },
+                      { label: "Status",     w: "110px" },
+                      ...(!isAgent ? [{ label: "Agent", w: "120px" }] : []),
+                      { label: "Priority",   w: "110px" },
+                    ].map(({ label, w }) => (
+                      <th key={label} style={{
+                        width: w, padding: "10px 14px", textAlign: "left",
+                        fontSize: "11px", fontWeight: 600, textTransform: "uppercase",
+                        letterSpacing: "0.06em", color: "#64748b", whiteSpace: "nowrap",
+                      }}>
+                        {label}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredVisits.map((visit, idx) => {
                     const priorityKey = (visit.priority ?? "early_stage").toLowerCase().replace(/[\s-]+/g, "_");
                     const pCfg = priorityConfig[priorityKey] ?? priorityConfig.early_stage;
-                    const vsBg    = visit.visit_status.toLowerCase() === "completed" ? "rgba(34,197,94,0.15)"  : "rgba(59,130,246,0.15)";
-                    const vsColor = visit.visit_status.toLowerCase() === "completed" ? "#86efac" : "#93c5fd";
+                    const vsStyle = visitStatusStyle(visit.visit_status);
                     const agentName = agents.find((a) => a.id === visit.assigned_to)?.full_name || "—";
                     return (
-                      <TableRow
+                      <tr
                         key={visit.activity_id}
-                        style={{ backgroundColor: "#0f172a", cursor: "pointer" }}
                         onClick={() => router.push(`/leads/${visit.lead_id}`)}
+                        style={{
+                          borderBottom: idx < filteredVisits.length - 1 ? "1px solid #1e293b" : "none",
+                          background: "#0f172a", cursor: "pointer", transition: "background 0.15s",
+                        }}
+                        onMouseEnter={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = "#1e293b"; }}
+                        onMouseLeave={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = "#0f172a"; }}
                       >
-                        <TableCell className="font-medium min-w-[140px]">
-                          <span style={{ color: "#ffffff", fontSize: "14px", fontWeight: 500 }}>{visit.lead_name}</span>
-                        </TableCell>
-                        <TableCell>
-                          <span style={{ color: "#94a3b8", fontSize: "13px" }}>{visit.phone}</span>
-                        </TableCell>
-                        <TableCell style={{ color: "#94a3b8", fontSize: "13px" }}>{visit.project_name}</TableCell>
-                        <TableCell style={{ color: "#94a3b8", fontSize: "13px" }}>
-                          {visit.visit_date
-                            ? new Date(visit.visit_date).toLocaleDateString("en-IN", {
-                                timeZone: "Asia/Kolkata",
-                                day: "2-digit",
-                                month: "short",
-                                year: "numeric",
-                              })
-                            : "—"}
-                        </TableCell>
-                        <TableCell>
-                          <span style={{ padding: "2px 8px", borderRadius: "20px", fontSize: "11px", fontWeight: 500, background: vsBg, color: vsColor }}>
+                        <td style={{ padding: "12px 14px", fontSize: "14px", fontWeight: 500, color: "#f1f5f9", whiteSpace: "nowrap" }}>
+                          {visit.lead_name}
+                        </td>
+                        <td style={{ padding: "12px 14px", fontSize: "13px", color: "#94a3b8", whiteSpace: "nowrap" }}>
+                          {visit.phone}
+                        </td>
+                        <td style={{ padding: "12px 14px", fontSize: "13px", color: "#93c5fd", fontWeight: 500 }}>
+                          {visit.project_name}
+                        </td>
+                        <td style={{ padding: "12px 14px", fontSize: "13px", color: "#cbd5e1", whiteSpace: "nowrap" }}>
+                          {fmtVisitDate(visit.visit_date)}
+                        </td>
+                        <td style={{ padding: "12px 14px" }}>
+                          <span style={{ padding: "2px 10px", borderRadius: "999px", fontSize: "11px", fontWeight: 600, ...vsStyle }}>
                             {visit.visit_status}
                           </span>
-                        </TableCell>
-                        {!isAgent && <TableCell style={{ color: "#94a3b8", fontSize: "13px" }}>{agentName}</TableCell>}
-                        <TableCell>
-                          <span style={{ padding: "2px 8px", borderRadius: "20px", fontSize: "11px", fontWeight: 500, background: pCfg.bg, color: pCfg.color }}>
+                        </td>
+                        {!isAgent && (
+                          <td style={{ padding: "12px 14px", fontSize: "13px", color: "#94a3b8" }}>
+                            {agentName}
+                          </td>
+                        )}
+                        <td style={{ padding: "12px 14px" }}>
+                          <span style={{ padding: "2px 10px", borderRadius: "999px", fontSize: "11px", fontWeight: 600, background: pCfg.bg, color: pCfg.color }}>
                             {pCfg.label}
                           </span>
-                        </TableCell>
-                      </TableRow>
+                        </td>
+                      </tr>
                     );
-                  })
-                )}
-              </TableBody>
-            </Table>
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* Mobile cards */}
-        <div className="md:hidden">
-          {visitLoading ? (
-            <p className="text-sm text-slate-500 py-4 text-center">Loading site visits...</p>
-          ) : filteredVisits.length === 0 ? (
-            <p className="text-sm text-slate-500 py-4 text-center">No upcoming site visits found.</p>
-          ) : (
-            filteredVisits.map((visit) => {
+        {/* Mobile cards — below md */}
+        {!visitLoading && filteredVisits.length > 0 && (
+          <div className="md:hidden space-y-3 mb-4">
+            {filteredVisits.map((visit) => {
               const priorityKey = (visit.priority ?? "early_stage").toLowerCase().replace(/[\s-]+/g, "_");
               const pCfg = priorityConfig[priorityKey] ?? priorityConfig.early_stage;
-              const vsBg    = visit.visit_status.toLowerCase() === "completed" ? "rgba(34,197,94,0.15)"  : "rgba(59,130,246,0.15)";
-              const vsColor = visit.visit_status.toLowerCase() === "completed" ? "#86efac" : "#93c5fd";
+              const vsStyle = visitStatusStyle(visit.visit_status);
               const agentName = agents.find((a) => a.id === visit.assigned_to)?.full_name || "—";
               return (
                 <div
                   key={visit.activity_id}
                   onClick={() => router.push(`/leads/${visit.lead_id}`)}
                   style={{
-                    borderRadius: "12px", marginBottom: "12px", padding: "16px", cursor: "pointer",
-                    borderWidth: "1px", borderStyle: "solid",
-                    borderColor: "rgba(255,255,255,0.15)", backgroundColor: "rgba(255,255,255,0.05)",
+                    borderRadius: "12px", padding: "16px", cursor: "pointer",
+                    border: "1px solid #334155", background: "#1e293b",
+                    transition: "border-color 0.15s, background 0.15s",
+                  }}
+                  onMouseEnter={(e) => {
+                    const el = e.currentTarget as HTMLDivElement;
+                    el.style.borderColor = "#475569";
+                    el.style.background = "#253347";
+                  }}
+                  onMouseLeave={(e) => {
+                    const el = e.currentTarget as HTMLDivElement;
+                    el.style.borderColor = "#334155";
+                    el.style.background = "#1e293b";
                   }}
                 >
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "10px" }}>
-                    <div style={{ fontSize: "16px", fontWeight: 600, color: "#f1f5f9", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {/* Top row: name + status */}
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "6px" }}>
+                    <div style={{ fontSize: "15px", fontWeight: 600, color: "#f1f5f9", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {visit.lead_name}
                     </div>
-                    <span style={{ padding: "3px 10px", borderRadius: "20px", fontSize: "12px", fontWeight: 500, flexShrink: 0, marginLeft: "8px", background: vsBg, color: vsColor }}>
+                    <span style={{ padding: "2px 10px", borderRadius: "999px", fontSize: "11px", fontWeight: 600, flexShrink: 0, marginLeft: "10px", ...vsStyle }}>
                       {visit.visit_status}
                     </span>
                   </div>
+                  {/* Phone */}
                   <div style={{ fontSize: "13px", color: "#94a3b8", marginBottom: "4px" }}>{visit.phone}</div>
-                  <div style={{ fontSize: "13px", color: "#94a3b8", marginBottom: "8px" }}>{visit.project_name}</div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginTop: "8px" }}>
+                  {/* Project */}
+                  <div style={{ fontSize: "13px", color: "#93c5fd", fontWeight: 500, marginBottom: "12px" }}>
+                    {visit.project_name}
+                  </div>
+                  {/* Meta grid */}
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "12px", paddingTop: "10px", borderTop: "1px solid #1e293b" }}>
                     <div>
-                      <div style={{ fontSize: "10px", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "2px" }}>Visit Date</div>
-                      <div style={{ fontSize: "13px", color: "#f1f5f9" }}>
-                        {visit.visit_date
-                          ? new Date(visit.visit_date).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short", year: "numeric" })
-                          : "—"}
-                      </div>
+                      <div style={{ fontSize: "10px", color: "#475569", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "3px" }}>Visit Date</div>
+                      <div style={{ fontSize: "13px", color: "#cbd5e1", fontWeight: 500 }}>{fmtVisitDate(visit.visit_date)}</div>
                     </div>
                     <div>
-                      <div style={{ fontSize: "10px", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "2px" }}>Agent</div>
-                      <div style={{ fontSize: "13px", color: "#f1f5f9" }}>{agentName}</div>
+                      <div style={{ fontSize: "10px", color: "#475569", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "3px" }}>Agent</div>
+                      <div style={{ fontSize: "13px", color: "#cbd5e1", fontWeight: 500 }}>{agentName}</div>
                     </div>
                     <div>
-                      <div style={{ fontSize: "10px", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "2px" }}>Priority</div>
-                      <span style={{ padding: "2px 8px", borderRadius: "20px", fontSize: "11px", fontWeight: 500, background: pCfg.bg, color: pCfg.color }}>
+                      <div style={{ fontSize: "10px", color: "#475569", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "3px" }}>Priority</div>
+                      <span style={{ padding: "2px 8px", borderRadius: "999px", fontSize: "11px", fontWeight: 600, background: pCfg.bg, color: pCfg.color }}>
                         {pCfg.label}
                       </span>
                     </div>
                   </div>
                 </div>
               );
-            })
-          )}
-        </div>
+            })}
+          </div>
+        )}
 
-        {/* Count badge */}
-        <p className="text-sm text-slate-500">
-          Showing {filteredVisits.length} site visit{filteredVisits.length !== 1 ? "s" : ""}
-        </p>
+        {/* Footer count */}
+        {!visitLoading && (
+          <p style={{ fontSize: "13px", color: "#475569", marginTop: "4px" }}>
+            Showing {filteredVisits.length} site visit{filteredVisits.length !== 1 ? "s" : ""}
+          </p>
+        )}
       </div>
     );
   }
