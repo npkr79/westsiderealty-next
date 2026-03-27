@@ -161,6 +161,15 @@ export default async function CityProjectsPage({ params, searchParams }: PagePro
     name: `${city.city_name} Real Estate Projects`,
     description: `Premium residential projects in ${city.city_name}`,
     url: `https://www.westsiderealty.in/${citySlug}/projects`,
+    mainEntity: {
+      "@type": "ItemList",
+      itemListElement: projectsList.slice(0, 10).map((p, i) => ({
+        "@type": "ListItem",
+        position: i + 1,
+        name: p.project_name,
+        url: `https://www.westsiderealty.in/${citySlug}/projects/${p.url_slug}`,
+      })),
+    },
   };
 
   const breadcrumbItems = [

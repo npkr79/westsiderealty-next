@@ -375,10 +375,15 @@ export default function MicroMarketPageContent({
 
   const jsonLd = {
     "@context": "https://schema.org",
-    "@type": "RealEstateListing",
-    name: hero.name,
-    address: cityName,
+    "@type": "Place",
+    name: `${hero.name} Real Estate`,
     description: hero.hook ?? `${hero.name} residential corridor in ${cityName}`,
+    address: {
+      "@type": "PostalAddress",
+      addressLocality: hero.name,
+      addressRegion: cityName,
+      addressCountry: "IN",
+    },
   };
 
   return (

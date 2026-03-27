@@ -132,6 +132,7 @@ export default async function HomePage() {
     name: "Westside Realty",
     url: "https://www.westsiderealty.in",
     logo: "https://www.westsiderealty.in/logo.png",
+    image: "https://www.westsiderealty.in/logo.png",
     description: "Premium real estate advisory in West Hyderabad specialising in apartments, villas and commercial investments",
     address: {
       "@type": "PostalAddress",
@@ -139,17 +140,37 @@ export default async function HomePage() {
       addressRegion: "Telangana",
       addressCountry: "IN",
     },
+    geo: {
+      "@type": "GeoCoordinates",
+      latitude: 17.4401,
+      longitude: 78.3489,
+    },
     areaServed: ["Gachibowli", "Kokapet", "Kondapur", "Gandipet", "HITEC City"],
-    telephone: "+91-XXXXXXXXXX",
+    telephone: "+91-83677-24368",
+    priceRange: "₹50L - ₹15Cr",
+    openingHours: "Mo-Sa 09:00-19:00",
     sameAs: [
       "https://www.facebook.com/westsiderealty",
       "https://www.instagram.com/westsiderealty",
     ],
   };
 
+  const organizationSchema = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: "RE/MAX Westside Realty",
+    url: "https://www.westsiderealty.in",
+    logo: "https://www.westsiderealty.in/logo.png",
+    parentOrganization: {
+      "@type": "Organization",
+      name: "RE/MAX India",
+      url: "https://www.remax.in",
+    },
+  };
+
   return (
     <main style={{ background: "#080808", minHeight: "100vh" }}>
-      <JsonLd jsonLd={businessSchema} />
+      <JsonLd jsonLd={[businessSchema, organizationSchema]} />
 
       {/* ── Hero ──────────────────────────────────────────────── */}
       <section

@@ -83,7 +83,7 @@ export default async function DeveloperDetailPage({ params }: { params: Promise<
   // 1. Brand
   const { data: brandRow } = await supabase
     .from("developer_brands")
-    .select("id, brand_name, url_slug, is_premium, institutional_grade, asset_focus, about_developer")
+    .select("id, brand_name, url_slug, is_premium, institutional_grade, asset_focus, about_developer, logo_url, total_projects, years_in_business")
     .eq("url_slug", slug)
     .maybeSingle();
 
@@ -329,9 +329,32 @@ export default async function DeveloperDetailPage({ params }: { params: Promise<
     })),
   };
 
+  const organizationSchema: Record<string, unknown> = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: brand.brand_name,
+    url: `https://www.westsiderealty.in/developers/${slug}`,
+    ...(brand.about_developer ? { description: brand.about_developer } : {}),
+    ...(brand.logo_url ? { logo: brand.logo_url } : {}),
+    areaServed: {
+      "@type": "City",
+      name: "Hyderabad",
+    },
+    ...(brand.total_projects ? {
+      numberOfEmployees: {
+        "@type": "QuantitativeValue",
+        value: `${brand.total_projects} projects delivered`,
+      },
+    } : {}),
+  };
+
   // ─── Render ───────────────────────────────────────────────────────────────
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }}
+      />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}

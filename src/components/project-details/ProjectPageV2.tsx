@@ -12,6 +12,7 @@ import { submitLead } from "@/app/actions/submit-lead";
 import { optimizeSupabaseImage, getHeroImageUrl } from "@/utils/imageOptimization";
 import { buildProjectUrl } from "@/lib/routes";
 import { GoogleMap, Marker, useJsApiLoader } from "@react-google-maps/api";
+import ProjectSEO from "./ProjectSEO";
 
 // ─── Font import (Playfair Display via Google Fonts inline style) ─────────────
 const PLAYFAIR_IMPORT = `@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&display=swap');`;
@@ -666,6 +667,7 @@ export default function ProjectPageV2({ project, insights, context, citySlug, pr
 
   return (
     <>
+      <ProjectSEO project={project} citySlug={citySlug} projectSlug={projectSlug} />
       <style>{PLAYFAIR_IMPORT}</style>
 
       {/* ── 1. CINEMATIC HERO ─────────────────────────────────────────────── */}

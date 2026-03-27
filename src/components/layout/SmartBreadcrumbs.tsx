@@ -58,9 +58,10 @@ export function SmartBreadcrumbs() {
 
   return (
     <>
-      <script type="application/ld+json">
-        {JSON.stringify(breadcrumbSchema)}
-      </script>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
+      />
 
       <Breadcrumb className="mb-6">
         <BreadcrumbList>
