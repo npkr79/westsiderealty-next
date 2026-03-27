@@ -527,61 +527,52 @@ export async function POST(request: NextRequest) {
         console.log(`[Push/new-lead] Welcome sent — campaign=${welcomeCampaign} phone=${leadPhone}`);
 
         // Log to crm_whatsapp_messages (visible in WhatsApp Logs tab)
-        await supabase
+        const { error: waLogErr } = await supabase
           .from('crm_whatsapp_messages')
           .insert({
-            lead_id:      record.id,
-            content:      welcomeCampaign,
+            lead_id:       record.id,
+            message:       `Template: ${welcomeCampaign}`,
+            content:       welcomeCampaign,
             template_name: welcomeCampaign,
-            direction:    'outbound',
-            status:       'sent',
-            message_type: 'template',
-            phone:        leadPhone,
+            direction:     'outbound',
+            status:        'sent',
+            phone:         leadPhone,
           });
+        if (waLogErr) console.error('[lead-welcome] crm_whatsapp_messages insert failed:', waLogErr);
 
-        // Log to crm_conversations + crm_messages (visible in WhatsApp chat tab)
-        const { data: existingConv } = await supabase
+        // Find or create conversation (crm_messages is a view — do not insert into it)
+        const { data: existingConv, error: convFetchErr } = await supabase
           .from('crm_conversations')
           .select('id')
           .eq('lead_id', record.id)
           .eq('channel', 'whatsapp')
           .maybeSingle();
+        if (convFetchErr) console.error('[lead-welcome] crm_conversations fetch failed:', convFetchErr);
 
         let conversationId = existingConv?.id as string | undefined;
 
         if (!conversationId) {
-          const { data: newConv } = await supabase
+          const { data: newConv, error: convInsertErr } = await supabase
             .from('crm_conversations')
             .insert({
-              lead_id:        record.id,
-              channel:        'whatsapp',
+              lead_id:         record.id,
+              channel:         'whatsapp',
               recipient_phone: leadPhone,
-              status:         'open',
+              status:          'open',
               last_message_at: new Date().toISOString(),
             })
             .select('id')
             .maybeSingle();
+          if (convInsertErr) console.error('[lead-welcome] crm_conversations insert failed:', convInsertErr);
           conversationId = newConv?.id as string | undefined;
         }
 
         if (conversationId) {
-          await supabase
-            .from('crm_messages')
-            .insert({
-              conversation_id: conversationId,
-              lead_id:         record.id,
-              direction:       'outbound',
-              message_type:    'template',
-              template_name:   welcomeCampaign,
-              content:         welcomeCampaign,
-              status:          'sent',
-              created_at:      new Date().toISOString(),
-            });
-
-          await supabase
+          const { error: convUpdateErr } = await supabase
             .from('crm_conversations')
             .update({ last_message_at: new Date().toISOString() })
             .eq('id', conversationId);
+          if (convUpdateErr) console.error('[lead-welcome] crm_conversations update failed:', convUpdateErr);
         }
       }
     } catch (err) {
@@ -649,29 +640,31 @@ export async function POST(request: NextRequest) {
             await sendAiSensyAlert(leadPhone, 'lead_welcome_meta_v1', metaWelcomeParams);
 
             // Log to crm_whatsapp_messages
-            await supabase
+            const { error: waLogErr } = await supabase
               .from('crm_whatsapp_messages')
               .insert({
                 lead_id:       record.id,
+                message:       'Template: lead_welcome_meta_v1',
                 content:       'lead_welcome_meta_v1',
                 template_name: 'lead_welcome_meta_v1',
                 direction:     'outbound',
                 status:        'sent',
-                message_type:  'template',
                 phone:         leadPhone,
               });
+            if (waLogErr) console.error('[lead-welcome] crm_whatsapp_messages insert failed:', waLogErr);
 
-            // Find or create conversation
-            const { data: existingConv } = await supabase
+            // Find or create conversation (crm_messages is a view — do not insert into it)
+            const { data: existingConv, error: convFetchErr } = await supabase
               .from('crm_conversations')
               .select('id')
               .eq('lead_id', record.id)
               .eq('channel', 'whatsapp')
               .maybeSingle();
+            if (convFetchErr) console.error('[lead-welcome] crm_conversations fetch failed:', convFetchErr);
 
             let conversationId = existingConv?.id as string | undefined;
             if (!conversationId) {
-              const { data: newConv } = await supabase
+              const { data: newConv, error: convInsertErr } = await supabase
                 .from('crm_conversations')
                 .insert({
                   lead_id:         record.id,
@@ -682,27 +675,16 @@ export async function POST(request: NextRequest) {
                 })
                 .select('id')
                 .maybeSingle();
+              if (convInsertErr) console.error('[lead-welcome] crm_conversations insert failed:', convInsertErr);
               conversationId = newConv?.id as string | undefined;
             }
 
             if (conversationId) {
-              await supabase
-                .from('crm_messages')
-                .insert({
-                  conversation_id: conversationId,
-                  lead_id:         record.id,
-                  direction:       'outbound',
-                  message_type:    'template',
-                  template_name:   'lead_welcome_meta_v1',
-                  content:         'lead_welcome_meta_v1',
-                  status:          'sent',
-                  created_at:      new Date().toISOString(),
-                });
-
-              await supabase
+              const { error: convUpdateErr } = await supabase
                 .from('crm_conversations')
                 .update({ last_message_at: new Date().toISOString() })
                 .eq('id', conversationId);
+              if (convUpdateErr) console.error('[lead-welcome] crm_conversations update failed:', convUpdateErr);
             }
 
             console.log('[lead-welcome] Meta welcome sent:', leadPhone, assignedAgent.full_name);
