@@ -96,6 +96,19 @@ interface AgentOption {
   full_name: string | null;
 }
 
+interface VisitActivityRow {
+  activity_id: string;
+  lead_id: string;
+  lead_name: string;
+  phone: string;
+  assigned_to: string | null;
+  status: string | null;
+  priority: string | null;
+  project_name: string;
+  visit_date: string | null;
+  visit_status: string;
+}
+
 interface LeadsTableViewProps {
   currentUserRole?: CrmRole;
   currentUserId?: string;
@@ -120,6 +133,9 @@ export default function LeadsTableView({ currentUserRole, currentUserId }: Leads
   const [hotOnly, setHotOnly] = useState(false);
   const [agents, setAgents] = useState<AgentOption[]>([]);
   const [showFilters, setShowFilters] = useState(false);
+  const [visitActivities, setVisitActivities] = useState<VisitActivityRow[]>([]);
+  const [visitLoading, setVisitLoading] = useState(false);
+  const isVisitsFilter = searchParams.get("filter") === "visits_upcoming";
 
   // Apply filter from ?filter= URL param
   useEffect(() => {
@@ -143,7 +159,7 @@ export default function LeadsTableView({ currentUserRole, currentUserId }: Leads
     } else if (filter === "bookings_month") {
       setFilters((prev) => ({ ...prev, stageName: "book", createdFrom: firstOfMonthUTC }));
     } else if (filter === "visits_upcoming") {
-      setFilters((prev) => ({ ...prev, stageName: "visit" }));
+      // Handled by the specialized visits view — no useLeads filter needed
     } else if (filter.startsWith("stage_")) {
       const stageId = filter.slice("stage_".length);
       setFilters((prev) => ({ ...prev, stageId }));
@@ -230,6 +246,64 @@ export default function LeadsTableView({ currentUserRole, currentUserId }: Leads
     loadAgents();
   }, [supabase]);
 
+  // Fetch visit activities when visits_upcoming filter is active
+  useEffect(() => {
+    if (!isVisitsFilter) return;
+    setVisitLoading(true);
+    const loadVisits = async () => {
+      const now = new Date();
+      const next7Days = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+      const nowStr = now.toISOString().slice(0, 16);
+      const next7Str = next7Days.slice(0, 16);
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: visitData } = await (supabase as any)
+        .from("crm_lead_activities")
+        .select("id, lead_id, description, metadata, crm_leads!crm_lead_activities_lead_id_fkey(id, name, phone, assigned_to, status, priority)")
+        .eq("activity_type", "site_visit")
+        .ilike("description", "%Scheduled%");
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const rows: VisitActivityRow[] = ((visitData ?? []) as any[])
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .map((a: any) => {
+          const meta = (a.metadata || {}) as Record<string, unknown>;
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const lead = a.crm_leads as any;
+          let projectName = (meta.project_name as string) || null;
+          if (!projectName && a.description) {
+            const match = (a.description as string).match(/Site visit at (.+?) —/i);
+            if (match) projectName = match[1].trim();
+          }
+          return {
+            activity_id: a.id as string,
+            lead_id: a.lead_id as string,
+            lead_name: (lead?.name as string) || "—",
+            phone: (lead?.phone as string) || "—",
+            assigned_to: (lead?.assigned_to as string) || null,
+            status: (lead?.status as string) || null,
+            priority: (lead?.priority as string) || null,
+            project_name: projectName || "Not specified",
+            visit_date: (meta.visit_date as string) || null,
+            visit_status: (meta.status as string) || "Scheduled",
+          };
+        })
+        .filter((v: VisitActivityRow) => {
+          if (!v.visit_date) return true;
+          return v.visit_date >= nowStr && v.visit_date <= next7Str;
+        })
+        .sort((a: VisitActivityRow, b: VisitActivityRow) => {
+          if (!a.visit_date) return 1;
+          if (!b.visit_date) return -1;
+          return a.visit_date.localeCompare(b.visit_date);
+        });
+
+      setVisitActivities(rows);
+      setVisitLoading(false);
+    };
+    void loadVisits();
+  }, [isVisitsFilter, supabase]);
+
   // ── Pagination footer (shared) ─────────────────────────────────────────────
 
   const paginationFooter = (
@@ -247,6 +321,183 @@ export default function LeadsTableView({ currentUserRole, currentUserId }: Leads
       </div>
     </div>
   );
+
+  // ── Specialized site visits view ─────────────────────────────────────────
+  if (isVisitsFilter) {
+    const filteredVisits = search
+      ? visitActivities.filter(
+          (v) =>
+            v.lead_name.toLowerCase().includes(search.toLowerCase()) ||
+            v.phone.includes(search)
+        )
+      : visitActivities;
+
+    return (
+      <div className="space-y-4">
+        {/* Back link */}
+        <button
+          type="button"
+          onClick={() => router.push("/leads")}
+          className="flex items-center gap-1.5 text-sm text-slate-400 hover:text-slate-200 transition-colors"
+        >
+          ← Back to all leads
+        </button>
+
+        <h2 className="text-xl font-semibold text-slate-200">Site Visits — Next 7 Days</h2>
+
+        {/* Search bar */}
+        <div className="relative md:max-w-xs">
+          <Search className="pointer-events-none absolute left-2 top-2.5 h-4 w-4 text-slate-400" />
+          <Input
+            placeholder="Search name or phone"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-8"
+          />
+        </div>
+
+        {/* Desktop table */}
+        <div className="hidden md:block">
+          <div className="rounded-xl border border-slate-800 overflow-hidden" style={{ backgroundColor: "#0f172a" }}>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="min-w-[140px]">Name</TableHead>
+                  <TableHead style={{ width: "140px" }}>Phone</TableHead>
+                  <TableHead>Project</TableHead>
+                  <TableHead style={{ width: "120px" }}>Visit Date</TableHead>
+                  <TableHead style={{ width: "100px" }}>Status</TableHead>
+                  {!isAgent && <TableHead style={{ width: "120px" }}>Agent</TableHead>}
+                  <TableHead style={{ width: "100px" }}>Priority</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {visitLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={isAgent ? 6 : 7} style={{ color: "#94a3b8" }}>Loading site visits...</TableCell>
+                  </TableRow>
+                ) : filteredVisits.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={isAgent ? 6 : 7} style={{ color: "#94a3b8" }}>No upcoming site visits found.</TableCell>
+                  </TableRow>
+                ) : (
+                  filteredVisits.map((visit) => {
+                    const priorityKey = (visit.priority ?? "early_stage").toLowerCase().replace(/[\s-]+/g, "_");
+                    const pCfg = priorityConfig[priorityKey] ?? priorityConfig.early_stage;
+                    const vsBg    = visit.visit_status.toLowerCase() === "completed" ? "rgba(34,197,94,0.15)"  : "rgba(59,130,246,0.15)";
+                    const vsColor = visit.visit_status.toLowerCase() === "completed" ? "#86efac" : "#93c5fd";
+                    const agentName = agents.find((a) => a.id === visit.assigned_to)?.full_name || "—";
+                    return (
+                      <TableRow
+                        key={visit.activity_id}
+                        style={{ backgroundColor: "#0f172a", cursor: "pointer" }}
+                        onClick={() => router.push(`/leads/${visit.lead_id}`)}
+                      >
+                        <TableCell className="font-medium min-w-[140px]">
+                          <span style={{ color: "#ffffff", fontSize: "14px", fontWeight: 500 }}>{visit.lead_name}</span>
+                        </TableCell>
+                        <TableCell>
+                          <span style={{ color: "#94a3b8", fontSize: "13px" }}>{visit.phone}</span>
+                        </TableCell>
+                        <TableCell style={{ color: "#94a3b8", fontSize: "13px" }}>{visit.project_name}</TableCell>
+                        <TableCell style={{ color: "#94a3b8", fontSize: "13px" }}>
+                          {visit.visit_date
+                            ? new Date(visit.visit_date).toLocaleDateString("en-IN", {
+                                timeZone: "Asia/Kolkata",
+                                day: "2-digit",
+                                month: "short",
+                                year: "numeric",
+                              })
+                            : "—"}
+                        </TableCell>
+                        <TableCell>
+                          <span style={{ padding: "2px 8px", borderRadius: "20px", fontSize: "11px", fontWeight: 500, background: vsBg, color: vsColor }}>
+                            {visit.visit_status}
+                          </span>
+                        </TableCell>
+                        {!isAgent && <TableCell style={{ color: "#94a3b8", fontSize: "13px" }}>{agentName}</TableCell>}
+                        <TableCell>
+                          <span style={{ padding: "2px 8px", borderRadius: "20px", fontSize: "11px", fontWeight: 500, background: pCfg.bg, color: pCfg.color }}>
+                            {pCfg.label}
+                          </span>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
+
+        {/* Mobile cards */}
+        <div className="md:hidden">
+          {visitLoading ? (
+            <p className="text-sm text-slate-500 py-4 text-center">Loading site visits...</p>
+          ) : filteredVisits.length === 0 ? (
+            <p className="text-sm text-slate-500 py-4 text-center">No upcoming site visits found.</p>
+          ) : (
+            filteredVisits.map((visit) => {
+              const priorityKey = (visit.priority ?? "early_stage").toLowerCase().replace(/[\s-]+/g, "_");
+              const pCfg = priorityConfig[priorityKey] ?? priorityConfig.early_stage;
+              const vsBg    = visit.visit_status.toLowerCase() === "completed" ? "rgba(34,197,94,0.15)"  : "rgba(59,130,246,0.15)";
+              const vsColor = visit.visit_status.toLowerCase() === "completed" ? "#86efac" : "#93c5fd";
+              const agentName = agents.find((a) => a.id === visit.assigned_to)?.full_name || "—";
+              return (
+                <div
+                  key={visit.activity_id}
+                  onClick={() => router.push(`/leads/${visit.lead_id}`)}
+                  style={{
+                    borderRadius: "12px", marginBottom: "12px", padding: "16px", cursor: "pointer",
+                    borderWidth: "1px", borderStyle: "solid",
+                    borderColor: "rgba(255,255,255,0.15)", backgroundColor: "rgba(255,255,255,0.05)",
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "10px" }}>
+                    <div style={{ fontSize: "16px", fontWeight: 600, color: "#f1f5f9", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {visit.lead_name}
+                    </div>
+                    <span style={{ padding: "3px 10px", borderRadius: "20px", fontSize: "12px", fontWeight: 500, flexShrink: 0, marginLeft: "8px", background: vsBg, color: vsColor }}>
+                      {visit.visit_status}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: "13px", color: "#94a3b8", marginBottom: "4px" }}>{visit.phone}</div>
+                  <div style={{ fontSize: "13px", color: "#94a3b8", marginBottom: "8px" }}>{visit.project_name}</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginTop: "8px" }}>
+                    <div>
+                      <div style={{ fontSize: "10px", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "2px" }}>Visit Date</div>
+                      <div style={{ fontSize: "13px", color: "#f1f5f9" }}>
+                        {visit.visit_date
+                          ? new Date(visit.visit_date).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short", year: "numeric" })
+                          : "—"}
+                      </div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: "10px", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "2px" }}>Agent</div>
+                      <div style={{ fontSize: "13px", color: "#f1f5f9" }}>{agentName}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: "10px", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "2px" }}>Priority</div>
+                      <span style={{ padding: "2px 8px", borderRadius: "20px", fontSize: "11px", fontWeight: 500, background: pCfg.bg, color: pCfg.color }}>
+                        {pCfg.label}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* Count badge */}
+        <p className="text-sm text-slate-500">
+          Showing {filteredVisits.length} site visit{filteredVisits.length !== 1 ? "s" : ""}
+        </p>
+      </div>
+    );
+  }
+
+  // ── Default leads view ────────────────────────────────────────────────────
 
   return (
     <div className="space-y-4">
