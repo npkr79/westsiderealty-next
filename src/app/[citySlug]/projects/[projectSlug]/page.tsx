@@ -75,11 +75,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
         .replace(/\b(Bhk|Rk|Ii|Iii|Iv)\b/gi, (m) => m.toUpperCase());
 
     const cleanName = formatName(project.project_name || "Project");
-    const microMarket = project.micro_market_name || project.micro_market?.micro_market_name || "";
+    const microMarket = project.micro_market?.micro_market_name || "";
 
-    // Build a compact price string if available
-    const minPrice = project.min_price;
-    const maxPrice = project.max_price;
+    // Build a compact price string if available (fields exist at runtime but aren't in the interface)
+    const minPrice = (project as any).min_price as number | null | undefined;
+    const maxPrice = (project as any).max_price as number | null | undefined;
     let priceStr = "";
     if (minPrice && minPrice > 0) {
       const formatCr = (v: number) => {
