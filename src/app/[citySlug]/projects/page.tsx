@@ -43,8 +43,12 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
 
   return {
     ...buildMetadata({
-      title: `${city.seo_title || city.city_name} Projects - Premium Real Estate | RE/MAX Westside Realty`,
-      description: city.meta_description || `Explore premium residential projects in ${city.city_name}. Find luxury apartments, villas, and plots from top developers.`,
+      title: city.seo_title
+        ? `${city.seo_title} | Westside Realty`
+        : `All Projects in ${city.city_name} — RERA Verified | Westside Realty`,
+      description:
+        city.meta_description ||
+        `Browse RERA-verified residential & commercial projects in ${city.city_name}. Compare prices, floor plans & expert reviews. Advisory by Westside Realty.`,
       canonicalUrl,
     }),
     robots: robotsConfig,

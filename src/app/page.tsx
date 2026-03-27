@@ -4,9 +4,9 @@ import { createServiceClient } from "@/lib/supabase/serviceClient";
 import { JsonLd } from "@/components/common/SEO";
 
 export const metadata: Metadata = {
-  title: "Westside Realty | Hyderabad Real Estate Intelligence",
+  title: "Westside Realty — Premium Real Estate in Hyderabad, Goa & Dubai | Expert Advisory",
   description:
-    "Live RERA data, AI market signals, and honest project analysis across 19 micro-markets in Hyderabad.",
+    "Hyderabad's trusted real estate advisors. RERA-verified apartments, villas & plots in Kokapet, Gachibowli, Financial District & Goa. Compare prices, floor plans & market intelligence.",
 };
 
 export const revalidate = 300;

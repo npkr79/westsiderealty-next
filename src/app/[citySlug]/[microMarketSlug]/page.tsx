@@ -52,11 +52,18 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const cityName = city?.city_name || citySlug;
   const marketName = cache.micro_market_name || microMarketSlug;
 
+  const priceMin = cache.price_per_sqft_min;
+  const priceMax = cache.price_per_sqft_max;
+  const priceRange =
+    priceMin && priceMax
+      ? ` — ₹${priceMin.toLocaleString()}-${priceMax.toLocaleString()}/sqft`
+      : "";
+
   return buildMetadata({
-    title: `${marketName} Real Estate Investment Guide | ${cityName} | RE/MAX Westside Realty`,
+    title: `${marketName} Real Estate${priceRange} | ${cityName} | Westside Realty`,
     description:
       cache.hero_hook ||
-      `Explore ${marketName} - property prices, growth trends, and investment potential in ${cityName}.`,
+      `Discover projects in ${marketName}, ${cityName}. Price trends, growth analysis & RERA-verified listings. Expert market intelligence by Westside Realty.`,
     canonicalUrl: `https://www.westsiderealty.in/${citySlug}/${microMarketSlug}`,
   });
 }

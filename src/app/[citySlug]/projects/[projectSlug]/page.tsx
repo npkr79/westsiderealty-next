@@ -67,8 +67,37 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
     const canonicalUrl = buildProjectAbsoluteUrl(citySlug, projectSlug);
     const cityName = project.city?.city_name || citySlug;
-    const seoTitle = project.seo_title || `${project.project_name} ${cityName}: Price, Floor Plans & Reviews | RE/MAX`;
-    const seoDescription = project.meta_description || `Explore ${project.project_name} - Premium residential project in ${cityName}`;
+
+    // Helper: normalise ALL-CAPS RERA project names to title case
+    const formatName = (name: string) =>
+      name
+        .replace(/\b\w+/g, (w) => w[0].toUpperCase() + w.slice(1).toLowerCase())
+        .replace(/\b(Bhk|Rk|Ii|Iii|Iv)\b/gi, (m) => m.toUpperCase());
+
+    const cleanName = formatName(project.project_name || "Project");
+    const microMarket = project.micro_market_name || project.micro_market?.micro_market_name || "";
+
+    // Build a compact price string if available
+    const minPrice = project.min_price;
+    const maxPrice = project.max_price;
+    let priceStr = "";
+    if (minPrice && minPrice > 0) {
+      const formatCr = (v: number) => {
+        const cr = v / 10_000_000;
+        return cr >= 1 ? `₹${cr.toFixed(cr % 1 === 0 ? 0 : 1)}Cr` : `₹${(v / 100_000).toFixed(0)}L`;
+      };
+      priceStr =
+        maxPrice && maxPrice > minPrice
+          ? ` — ${formatCr(minPrice)}-${formatCr(maxPrice)}`
+          : ` — From ${formatCr(minPrice)}`;
+    }
+
+    const seoTitle =
+      project.seo_title ||
+      `${cleanName}${microMarket ? " " + microMarket : ""}${priceStr} | Westside Realty`;
+    const seoDescription =
+      project.meta_description ||
+      `Explore ${cleanName} in ${microMarket || cityName}.${project.developer_name ? ` By ${project.developer_name}.` : ""} RERA verified project with expert advisory by Westside Realty.`;
 
     // Safe image URL - use getHeroImageUrl which handles relative paths
     let optimizedOgImage = "https://www.westsiderealty.in/placeholder.svg";
