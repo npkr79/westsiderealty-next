@@ -744,10 +744,10 @@ export default function ProjectPageV2({ project, insights, context, citySlug, pr
                 })()}
               </div>
 
-              {/* Project name */}
+              {/* Project name — uses h1_title from DB when set (SEO override), else project_name */}
               <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: "clamp(2rem, 5vw, 3.25rem)", fontWeight: 900, color: "#ffffff", lineHeight: 1.1, letterSpacing: "-0.02em" }}
                 className="mb-3">
-                {project.project_name}
+                {(project as any).h1_title || project.project_name}
               </h1>
 
               {/* One-liner / BHK line */}
