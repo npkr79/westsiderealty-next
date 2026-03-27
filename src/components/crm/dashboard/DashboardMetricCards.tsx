@@ -604,7 +604,12 @@ export default function DashboardMetricCards({ scope, userId }: DashboardMetricC
                   {/* Visit date chip */}
                   {visit.visit_date && (
                     <span className="flex-none rounded-md border border-slate-700 bg-slate-800 px-2 py-0.5 text-[11px] text-slate-400">
-                      {toIST(visit.visit_date)}
+                      {new Date(visit.visit_date).toLocaleDateString("en-IN", {
+                        timeZone: "Asia/Kolkata",
+                        day: "2-digit",
+                        month: "short",
+                        year: "numeric",
+                      })}
                     </span>
                   )}
                 </button>
