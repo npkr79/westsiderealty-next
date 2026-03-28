@@ -492,7 +492,11 @@ export async function POST(request: NextRequest) {
       else if (isWebsite)  welcomeCampaign = 'lead_welcome_residential';
       // else: manual / unknown source — skip
 
-      if (welcomeCampaign && fullLead.phone) {
+      if (welcomeCampaign && fullLead.phone && !fullLead.assigned_to) {
+        console.log('[lead-welcome] Skipped — no agent assigned yet. Welcome will be sent on assignment (UPDATE path).');
+      }
+
+      if (welcomeCampaign && fullLead.phone && fullLead.assigned_to) {
         // Resolve assigned agent
         let welcomeAgent: { full_name: string | null; whatsapp_number: string | null } | null = null;
         if (fullLead.assigned_to) {
