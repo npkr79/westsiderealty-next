@@ -421,16 +421,29 @@ export async function POST(request: NextRequest) {
     // Assign 99acres lead to matched agent (Srinivas or Krishna only — not Praveen)
     if (is99acres && agentWhatsappForAssignment) {
       try {
-        const { data: agentUser } = await supabase
-          .from('crm_users')
-          .select('id')
-          .eq('whatsapp_number', agentWhatsappForAssignment)
-          .maybeSingle();
+        const digits = agentWhatsappForAssignment.replace(/\D/g, '');
+        const withoutPrefix = digits.startsWith('91') && digits.length === 12 ? digits.slice(2) : digits;
+        const withPrefix = digits.startsWith('91') ? digits : '91' + digits;
+
+        let agentUser: { id: string } | null = null;
+        for (const num of [agentWhatsappForAssignment, withoutPrefix, withPrefix]) {
+          const { data } = await supabase
+            .from('crm_users')
+            .select('id')
+            .eq('whatsapp_number', num)
+            .maybeSingle();
+          if (data) { agentUser = data; break; }
+        }
+
         if (agentUser) {
           await supabase
             .from('crm_leads')
             .update({ assigned_to: agentUser.id, assignment_status: 'assigned' })
             .eq('id', record.id);
+          fullLead.assigned_to = agentUser.id; // refresh so welcome message uses correct agent
+          console.log('[PushDebug] 99acres auto-assignment success:', agentUser.id);
+        } else {
+          console.error('[PushDebug] 99acres auto-assignment FAILED: no crm_users match for', agentWhatsappForAssignment);
         }
       } catch (err) {
         console.error('[Push/new-lead] 99acres assignment failed:', err);
@@ -551,22 +564,7 @@ export async function POST(request: NextRequest) {
 
         let conversationId = existingConv?.id as string | undefined;
 
-        if (!conversationId) {
-          const { data: newConv, error: convInsertErr } = await supabase
-            .from('crm_conversations')
-            .insert({
-              lead_id:         record.id,
-              channel:         'whatsapp',
-              recipient_phone: leadPhone,
-              status:          'open',
-              last_message_at: new Date().toISOString(),
-            })
-            .select('id')
-            .maybeSingle();
-          if (convInsertErr) console.error('[lead-welcome] crm_conversations insert failed:', convInsertErr);
-          conversationId = newConv?.id as string | undefined;
-        }
-
+        // crm_conversations is a VIEW — cannot insert directly; update only if it already exists
         if (conversationId) {
           const { error: convUpdateErr } = await supabase
             .from('crm_conversations')
@@ -662,23 +660,8 @@ export async function POST(request: NextRequest) {
               .maybeSingle();
             if (convFetchErr) console.error('[lead-welcome] crm_conversations fetch failed:', convFetchErr);
 
-            let conversationId = existingConv?.id as string | undefined;
-            if (!conversationId) {
-              const { data: newConv, error: convInsertErr } = await supabase
-                .from('crm_conversations')
-                .insert({
-                  lead_id:         record.id,
-                  channel:         'whatsapp',
-                  recipient_phone: leadPhone,
-                  status:          'open',
-                  last_message_at: new Date().toISOString(),
-                })
-                .select('id')
-                .maybeSingle();
-              if (convInsertErr) console.error('[lead-welcome] crm_conversations insert failed:', convInsertErr);
-              conversationId = newConv?.id as string | undefined;
-            }
-
+            // crm_conversations is a VIEW — cannot insert directly; update only if it already exists
+            const conversationId = existingConv?.id as string | undefined;
             if (conversationId) {
               const { error: convUpdateErr } = await supabase
                 .from('crm_conversations')
