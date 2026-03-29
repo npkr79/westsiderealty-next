@@ -182,9 +182,13 @@ interface SiteVisitActivity {
   notes?: string | null;
   metadata?: {
     visit_date?: string;
-    location?: string;
-    outcome?: string;
-    notes?: string;
+    location?: string;      // legacy field
+    project_name?: string;  // new field
+    outcome?: string;       // legacy field
+    status?: string;        // new field
+    notes?: string;         // legacy field
+    feedback?: string;      // new field
+    postponed_date?: string;
   } | null;
   created_at?: string;
 }
@@ -314,6 +318,12 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
   const [visitOutcome, setVisitOutcome] = useState("Scheduled");
   const [visitNotes, setVisitNotes] = useState("");
   const [savingSiteVisit, setSavingSiteVisit] = useState(false);
+  // Site visit update panel
+  const [updatingSiteVisitId, setUpdatingSiteVisitId] = useState<string | null>(null);
+  const [updateStatus, setUpdateStatus] = useState("Completed");
+  const [updateFeedback, setUpdateFeedback] = useState("");
+  const [updatePostponedDate, setUpdatePostponedDate] = useState("");
+  const [savingUpdate, setSavingUpdate] = useState(false);
 
   // Call logging
   const [callLogs, setCallLogs] = useState<CallActivity[]>([]);
@@ -620,6 +630,60 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
     visitDate, visitLocation, visitOutcome, visitNotes,
     currentUser.id, leadId, lead?.assigned_to,
     supabase, loadSiteVisits, loadLeadTasks,
+  ]);
+
+  const updateSiteVisit = useCallback(async (sv: SiteVisitActivity) => {
+    if (!updateStatus) return;
+    setSavingUpdate(true);
+    const projectName = sv.metadata?.project_name || sv.metadata?.location || "site";
+    const newDescription = `Site visit at ${projectName} — ${updateStatus}`;
+    const updatedMetadata = {
+      ...sv.metadata,
+      status: updateStatus,
+      outcome: updateStatus,
+      feedback: updateFeedback.trim() || null,
+      ...(updateStatus === "Postponed" ? { postponed_date: updatePostponedDate } : {}),
+    };
+
+    const ops: Promise<unknown>[] = [
+      supabase.from("crm_lead_activities").update({
+        description: newDescription,
+        notes: updateFeedback.trim() || null,
+        metadata: updatedMetadata,
+      }).eq("id", sv.id),
+      supabase.from("crm_lead_activities").insert({
+        lead_id: leadId,
+        activity_type: "site_visit_update",
+        description: `Site visit at ${projectName} updated to ${updateStatus}`,
+        notes: updateFeedback.trim() || null,
+        created_by: currentUser.id,
+        metadata: { previous_status: sv.metadata?.status || sv.metadata?.outcome || "Scheduled" },
+      }),
+    ];
+
+    if (updateStatus === "Postponed" && updatePostponedDate) {
+      ops.push(
+        supabase.from("crm_lead_activities").insert({
+          lead_id: leadId,
+          activity_type: "site_visit",
+          description: `Site visit at ${projectName} — Scheduled`,
+          notes: null,
+          created_by: currentUser.id,
+          metadata: { status: "Scheduled", project_name: projectName, visit_date: updatePostponedDate },
+        })
+      );
+    }
+
+    await Promise.all(ops);
+    setSavingUpdate(false);
+    setUpdatingSiteVisitId(null);
+    setUpdateStatus("Completed");
+    setUpdateFeedback("");
+    setUpdatePostponedDate("");
+    void loadSiteVisits();
+  }, [
+    updateStatus, updateFeedback, updatePostponedDate,
+    leadId, currentUser.id, supabase, loadSiteVisits,
   ]);
 
   const createDeal = useCallback(async () => {
@@ -1638,27 +1702,134 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
               ) : (
                 <div className="space-y-3">
                   {siteVisits.map((sv) => {
-                    const outcome = sv.metadata?.outcome ?? "Scheduled";
-                    const outcomeBadgeClass =
-                      outcome === "Completed"
-                        ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
-                        : outcome === "Scheduled"
-                          ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300"
-                          : "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300";
+                    const status = sv.metadata?.status || sv.metadata?.outcome || "Scheduled";
+                    const projectName = sv.metadata?.project_name || sv.metadata?.location || "—";
+                    const feedback = sv.metadata?.feedback || sv.metadata?.notes || sv.notes;
+                    const postponedDate = sv.metadata?.postponed_date;
                     const visitDateStr = sv.metadata?.visit_date
                       ? toIST(sv.metadata.visit_date)
                       : toIST(sv.created_at);
+                    const isUpdatable = status === "Scheduled" || status === "Postponed";
+                    const isOpen = updatingSiteVisitId === sv.id;
+
+                    const badgeClass =
+                      status === "Completed"  ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300" :
+                      status === "Scheduled"  ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" :
+                      status === "Postponed"  ? "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" :
+                      status === "No Show"    ? "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300" :
+                      "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400";
+
                     return (
-                      <div key={sv.id} className="rounded-md border p-3 space-y-1.5">
-                        <div className="flex items-center justify-between gap-2">
-                          <p className="text-sm font-medium">{sv.metadata?.location ?? "—"}</p>
-                          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${outcomeBadgeClass}`}>
-                            {outcome}
-                          </span>
+                      <div key={sv.id} className="rounded-md border border-slate-200 dark:border-slate-700 overflow-hidden">
+                        <div className="p-3 space-y-1.5">
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-sm font-medium">{projectName}</p>
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${badgeClass}`}>
+                                {status}
+                              </span>
+                              {isUpdatable && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (isOpen) {
+                                      setUpdatingSiteVisitId(null);
+                                    } else {
+                                      setUpdatingSiteVisitId(sv.id);
+                                      setUpdateStatus("Completed");
+                                      setUpdateFeedback("");
+                                      setUpdatePostponedDate("");
+                                    }
+                                  }}
+                                  className="text-xs px-2 py-0.5 rounded border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                                >
+                                  {isOpen ? "Cancel" : "Update"}
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">{visitDateStr}</p>
+                          {postponedDate && (
+                            <p className="text-xs text-amber-600 dark:text-amber-400">
+                              Postponed → {toIST(postponedDate)}
+                            </p>
+                          )}
+                          {feedback && !isOpen && (
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{feedback}</p>
+                          )}
                         </div>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">{visitDateStr}</p>
-                        {sv.metadata?.notes && (
-                          <p className="text-sm text-slate-600 dark:text-slate-300">{sv.metadata.notes}</p>
+
+                        {/* Inline update panel */}
+                        {isOpen && (
+                          <div className="border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 p-3 space-y-3">
+                            {/* Status buttons */}
+                            <div className="space-y-1.5">
+                              <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">New Status</p>
+                              <div className="flex flex-wrap gap-2">
+                                {(["Completed", "No Show", "Postponed", "Cancelled"] as const).map((s) => (
+                                  <button
+                                    key={s}
+                                    type="button"
+                                    onClick={() => setUpdateStatus(s)}
+                                    className={`text-xs px-3 py-1.5 rounded-md font-medium border transition-colors ${
+                                      updateStatus === s
+                                        ? s === "Completed"  ? "bg-emerald-600 border-emerald-600 text-white"
+                                        : s === "No Show"   ? "bg-red-600 border-red-600 text-white"
+                                        : s === "Postponed" ? "bg-amber-500 border-amber-500 text-white"
+                                        : "bg-slate-500 border-slate-500 text-white"
+                                        : "border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+                                    }`}
+                                  >
+                                    {s}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Postponed date picker */}
+                            {updateStatus === "Postponed" && (
+                              <div className="space-y-1.5">
+                                <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">New Visit Date</p>
+                                <Input
+                                  type="datetime-local"
+                                  value={updatePostponedDate}
+                                  onChange={(e) => setUpdatePostponedDate(e.target.value)}
+                                  className="text-sm dark:bg-slate-900"
+                                />
+                              </div>
+                            )}
+
+                            {/* Feedback */}
+                            <div className="space-y-1.5">
+                              <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">Feedback</p>
+                              <Textarea
+                                rows={3}
+                                value={updateFeedback}
+                                onChange={(e) => setUpdateFeedback(e.target.value)}
+                                placeholder="Add feedback or notes about the site visit..."
+                                className="text-sm resize-none dark:bg-slate-900"
+                              />
+                            </div>
+
+                            <div className="flex gap-2">
+                              <Button
+                                type="button"
+                                size="sm"
+                                disabled={savingUpdate || (updateStatus === "Postponed" && !updatePostponedDate)}
+                                onClick={() => void updateSiteVisit(sv)}
+                              >
+                                {savingUpdate ? "Saving..." : "Save Update"}
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => setUpdatingSiteVisitId(null)}
+                              >
+                                Cancel
+                              </Button>
+                            </div>
+                          </div>
                         )}
                       </div>
                     );
