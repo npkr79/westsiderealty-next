@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/serviceClient";
 
 const CONCURRENCY = 3;
-const TIMEOUT_MS = 5_000;
+const TIMEOUT_MS = 15_000;
 const DEFAULT_LIMIT = 150;
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.westsiderealty.in";
 
@@ -42,12 +42,13 @@ async function checkUrl(entry: UrlEntry): Promise<CheckResult> {
       error_message: null,
     };
   } catch (err) {
+    const isTimeout = err instanceof Error && (err.name === "TimeoutError" || err.name === "AbortError");
     return {
       ...entry,
       http_status: 0,
-      is_broken: true,
+      is_broken: !isTimeout, // timeouts = slow page, not a broken link
       response_time_ms: Date.now() - start,
-      error_message: err instanceof Error ? err.message : "Network error",
+      error_message: isTimeout ? "timeout" : (err instanceof Error ? err.message : "Network error"),
     };
   }
 }
@@ -158,6 +159,7 @@ async function handler(request: NextRequest) {
     }
 
     const broken = results.filter((r) => r.is_broken);
+    const timedOut = results.filter((r) => r.error_message === "timeout");
 
     return NextResponse.json({
       run_id,
@@ -168,7 +170,9 @@ async function handler(request: NextRequest) {
       has_more: effectiveOffset + limit < allEntries.length,
       next_offset: effectiveOffset + limit < allEntries.length ? effectiveOffset + limit : null,
       broken_count: broken.length,
+      timeout_count: timedOut.length,
       broken: broken.map((r) => ({ type: r.type, slug: r.slug, status: r.http_status, url: r.url })),
+      timed_out: timedOut.map((r) => ({ type: r.type, slug: r.slug, url: r.url })),
     });
   } catch (err) {
     return NextResponse.json(
