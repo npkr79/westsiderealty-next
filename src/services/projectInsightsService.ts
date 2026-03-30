@@ -442,43 +442,71 @@ const getCachedProjectInsights = unstable_cache(
 
 export const projectInsightsService = {
   async getProjectInsights(project: ProjectWithRelations): Promise<ProjectInsights> {
-    const propertyTypesRaw = Array.isArray((project as any).property_types)
-      ? (project as any).property_types
-      : typeof (project as any).property_types === "string"
-        ? [(project as any).property_types]
-        : [];
+    try {
+      const propertyTypesRaw = Array.isArray((project as any).property_types)
+        ? (project as any).property_types
+        : typeof (project as any).property_types === "string"
+          ? [(project as any).property_types]
+          : [];
 
-    const input = {
-      projectId: String(project.id ?? ""),
-      updatedAt: String(project.updated_at ?? ""),
-      totalUnits: toNumber((project as any).total_units),
-      totalTowers: toNumber((project as any).total_towers),
-      totalFloors: toNumber((project as any).total_floors),
-      hasLocationAdvantages: Boolean((project as any).location_advantages_json),
-      hasAmenities: Boolean((project as any).amenities_json),
-      status: String((project as any).status ?? ""),
-      completionStatus: String((project as any).completion_status ?? ""),
-      possessionDateText: String((project as any).possession_date_text ?? ""),
-      priceRangeText: String(project.price_range_text ?? ""),
-      propertyTypes: propertyTypesRaw.map((item: unknown) => String(item)),
-      bhkConfig: String((project as any).bhk_config ?? (project as any).configuration_display ?? ""),
-      microMarketId: String(project.micro_market_id ?? ""),
-      cityId: String(project.city_id ?? ""),
-      projectName: String(project.project_name ?? ""),
-      developerName: String(project.developer?.developer_name ?? project.developer_name ?? ""),
-      microMarketName: String(project.micro_market?.micro_market_name ?? (project as any).micro_market_name ?? ""),
-    };
+      const input = {
+        projectId: String(project.id ?? ""),
+        updatedAt: String(project.updated_at ?? ""),
+        totalUnits: toNumber((project as any).total_units),
+        totalTowers: toNumber((project as any).total_towers),
+        totalFloors: toNumber((project as any).total_floors),
+        hasLocationAdvantages: Boolean((project as any).location_advantages_json),
+        hasAmenities: Boolean((project as any).amenities_json),
+        status: String((project as any).status ?? ""),
+        completionStatus: String((project as any).completion_status ?? ""),
+        possessionDateText: String((project as any).possession_date_text ?? ""),
+        priceRangeText: String(project.price_range_text ?? ""),
+        propertyTypes: propertyTypesRaw.map((item: unknown) => String(item)),
+        bhkConfig: String((project as any).bhk_config ?? (project as any).configuration_display ?? ""),
+        microMarketId: String(project.micro_market_id ?? ""),
+        cityId: String(project.city_id ?? ""),
+        projectName: String(project.project_name ?? ""),
+        developerName: String(project.developer?.developer_name ?? project.developer_name ?? ""),
+        microMarketName: String(project.micro_market?.micro_market_name ?? (project as any).micro_market_name ?? ""),
+      };
 
-    const baseline =
-      input.microMarketId
-        ? await microMarketAnalyticsService.getMicroMarketBaseline(input.microMarketId, input.cityId || undefined)
-        : null;
+      const baseline =
+        input.microMarketId
+          ? await microMarketAnalyticsService.getMicroMarketBaseline(input.microMarketId, input.cityId || undefined).catch(() => null)
+          : null;
 
-    const baselineVersion = baseline
-      ? `${baseline.sampleSize}:${baseline.generatedAt}:${baseline.confidence.overall}`
-      : "none";
-    const cacheVersion = `${input.projectId}:${input.updatedAt}:${baselineVersion}`;
+      const baselineVersion = baseline
+        ? `${baseline.sampleSize}:${baseline.generatedAt}:${baseline.confidence.overall}`
+        : "none";
+      const cacheVersion = `${input.projectId}:${input.updatedAt}:${baselineVersion}`;
 
-    return getCachedProjectInsights(cacheVersion, input, baseline);
+      return await getCachedProjectInsights(cacheVersion, input, baseline);
+    } catch (err) {
+      console.error("[projectInsightsService] getProjectInsights failed, returning minimal insights:", err);
+      // Return a minimal safe default so the page can still render
+      return deriveInsights(
+        {
+          projectId: String(project.id ?? ""),
+          updatedAt: "",
+          totalUnits: toNumber((project as any).total_units),
+          totalTowers: toNumber((project as any).total_towers),
+          totalFloors: toNumber((project as any).total_floors),
+          hasLocationAdvantages: false,
+          hasAmenities: false,
+          status: String((project as any).status ?? ""),
+          completionStatus: String((project as any).completion_status ?? ""),
+          possessionDateText: "",
+          priceRangeText: String(project.price_range_text ?? ""),
+          propertyTypes: [],
+          bhkConfig: String((project as any).bhk_config ?? (project as any).configuration_display ?? ""),
+          microMarketId: "",
+          cityId: "",
+          projectName: String(project.project_name ?? ""),
+          developerName: "",
+          microMarketName: "",
+        },
+        null
+      );
+    }
   },
 };

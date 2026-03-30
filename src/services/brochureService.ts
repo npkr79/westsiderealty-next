@@ -1,6 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
-const supabase = await createClient();
-
+import { createServiceClient } from '@/lib/supabase/serviceClient';
 
 /**
  * Search for brochure file in storage bucket by project name
@@ -9,6 +7,8 @@ const supabase = await createClient();
  */
 export async function findBrochureByProjectName(projectName: string): Promise<string | null> {
   try {
+    const supabase = createServiceClient();
+
     // List all files in the brochures bucket
     const { data: files, error } = await supabase.storage
       .from('brochures')
@@ -37,7 +37,6 @@ export async function findBrochureByProjectName(projectName: string): Promise<st
     });
 
     if (!matchingFile) {
-      console.log('No brochure found for project:', projectName);
       return null;
     }
 

@@ -138,13 +138,10 @@ const isPermissionError = (error: any) => {
 const runWithServiceFallback = async <T>(
   queryFn: (client: any) => Promise<{ data: T | null; error: any }>
 ) => {
-  const supabase = await createClient();
-  let result = await queryFn(supabase);
-  if (result.error && isPermissionError(result.error)) {
-    const serviceClient = createServiceClient();
-    result = await queryFn(serviceClient);
-  }
-  return result;
+  // Use service client directly for public listing pages — avoids calling cookies()
+  // which can fail during static generation or ISR revalidation.
+  const supabase = createServiceClient();
+  return queryFn(supabase);
 };
 
 const toStringOrNull = (value: unknown): string | null => {

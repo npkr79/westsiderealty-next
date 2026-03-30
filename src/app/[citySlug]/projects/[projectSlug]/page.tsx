@@ -342,7 +342,9 @@ export default async function ProjectDetailPage({ params }: PageProps) {
     })(),
   ]);
 
-  const insights = insightsResult.status === "fulfilled" ? insightsResult.value : await projectInsightsService.getProjectInsights(project);
+  const insights = insightsResult.status === "fulfilled"
+    ? insightsResult.value
+    : await projectInsightsService.getProjectInsights(project);
   const developerProjects = developerProjectsResult.status === "fulfilled" ? (developerProjectsResult.value as any[]) : [];
   const liveIntelligence = liveIntelligenceResult.status === "fulfilled" ? liveIntelligenceResult.value : null;
   const microMarketDetail = microMarketDetailResult.status === "fulfilled" ? (microMarketDetailResult.value as any) : null;
