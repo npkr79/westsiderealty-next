@@ -57,19 +57,14 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const supabase = await createClient();
   const { data } = await supabase
     .from("developer_brands")
-    .select("brand_name, total_projects, years_in_business")
+    .select("brand_name, about_developer")
     .eq("url_slug", slug)
     .maybeSingle();
   const name = (data as any)?.brand_name ?? "Developer";
-  const totalProjects = (data as any)?.total_projects as number | null | undefined;
-  const years = (data as any)?.years_in_business as number | null | undefined;
-
-  const projectsStr = totalProjects ? `${totalProjects} Projects` : "Projects";
-  const yearsStr = years ? `${years}+ Years` : "";
 
   return buildMetadata({
-    title: `${name} — ${projectsStr} in Hyderabad | Westside Realty`,
-    description: `${name}${yearsStr ? `: ${yearsStr} in real estate. ` : ": "}RERA-verified project portfolio, delivery track record & buyer insights. Expert reviews by Westside Realty.`,
+    title: `${name} — Projects in Hyderabad | Westside Realty`,
+    description: `${name}: RERA-verified project portfolio, delivery track record & buyer insights. Expert reviews by Westside Realty.`,
     canonicalUrl: `https://www.westsiderealty.in/developers/${slug}`,
   });
 }
@@ -83,7 +78,7 @@ export default async function DeveloperDetailPage({ params }: { params: Promise<
   // 1. Brand
   const { data: brandRow } = await supabase
     .from("developer_brands")
-    .select("id, brand_name, url_slug, is_premium, institutional_grade, asset_focus, about_developer, logo_url, total_projects, years_in_business")
+    .select("id, brand_name, url_slug, is_premium, institutional_grade, asset_focus, about_developer")
     .eq("url_slug", slug)
     .maybeSingle();
 
