@@ -4,7 +4,6 @@ import { safeJsonParse, computeProjectStatus, toSqft } from '@/lib/project-utils
 import { parseJsonb, asArray } from '@/lib/parse-jsonb';
 import { generateUnifiedSchema } from '@/lib/seo-utils';
 import { buildProjectAbsoluteUrl, buildProjectUrl } from '@/lib/routes';
-import { unstable_noStore as noStore } from "next/cache";
 
 export interface ProjectInfo {
   id: string;
@@ -763,7 +762,6 @@ export const projectService = {
         radius_km,
       });
 
-      noStore();
       const { data: nearbyData, error: nearbyError } = await runWithServiceFallback<any>((client) =>
         client.rpc("nearby_projects_count", {
           current_project_id,
@@ -789,7 +787,6 @@ export const projectService = {
     }
 
     if (projectId) {
-      noStore();
       let { data: inventoryData, error: inventoryError } = await runWithServiceFallback<any>((client) =>
         client
           .from("project_inventory_intelligence_v")

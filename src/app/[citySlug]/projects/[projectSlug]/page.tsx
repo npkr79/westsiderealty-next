@@ -7,7 +7,6 @@ import { buildProjectAbsoluteUrl, buildProjectUrl } from "@/lib/routes";
 import ProjectPageV2 from "@/components/project-details/ProjectPageV2";
 import { createServiceClient } from "@/lib/supabase/serviceClient";
 
-export const dynamic = "force-dynamic";
 
 interface PageProps {
   params: Promise<{ citySlug: string | string[]; projectSlug: string | string[] }>;
