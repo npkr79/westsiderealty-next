@@ -104,8 +104,6 @@ export async function generateStaticParams() {
   return cities?.map((city) => ({ citySlug: city.url_slug })) || [];
 }
 
-export const dynamic = "force-dynamic";
-
 export default async function CityPage({ params }: PageProps) {
   const { citySlug: citySlugParam } = await params;
   const citySlug = Array.isArray(citySlugParam) ? citySlugParam[0] : citySlugParam;
