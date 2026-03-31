@@ -162,6 +162,7 @@ export interface ParsedIntent {
   budget_max_cr?: number;
   bhk?: string;
   project_name?: string;
+  project_names?: string[];
   developer_name?: string;
   market_slug?: "kokapet" | "neopolis";
   ready_to_move?: boolean;
@@ -178,7 +179,8 @@ Respond with ONLY a JSON object (no markdown, no explanation):
   "budget_min_cr": <number or null>,
   "budget_max_cr": <number or null>,
   "bhk": "<e.g. '3 BHK' or null>",
-  "project_name": "<project name or null>",
+  "project_name": "<single project name or null>",
+  "project_names": ["<array of project names when comparing multiple, else null>"],
   "developer_name": "<developer name or null>",
   "market_slug": "<'kokapet' or 'neopolis' or null>",
   "ready_to_move": <true|false|null>
@@ -189,5 +191,7 @@ Rules:
 - bhk: normalise to "2 BHK", "3 BHK", "4 BHK", "5 BHK"
 - neopolis: any mention of neopolis → market_slug="neopolis"
 - kokapet: mention of kokapet (not neopolis) → market_slug="kokapet"
-- ready_to_move: "ready", "immediate possession", "move in now" → true; "under construction", "upcoming" → false`;
+- ready_to_move: "ready", "immediate possession", "move in now" → true; "under construction", "upcoming" → false
+- project names: extract exactly as the user says them. For "Compare Sattva Lakeridge vs My Home Grava" → project_names: ["Sattva Lakeridge", "My Home Grava"], intent: "comparison"
+- when multiple projects are mentioned, use project_names (array); when one project, use project_name (string)`;
 }

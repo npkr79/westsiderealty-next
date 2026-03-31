@@ -74,6 +74,32 @@ function safeParseJson<T>(raw: string): T | null {
   }
 }
 
+// ─── Merge multiple AdvisorQueryResults, deduplicating by slug ───────────────
+
+function mergeResults(...results: AdvisorQueryResult[]): AdvisorQueryResult {
+  const seenProjects = new Set<string>();
+  const seenMarkets = new Set<string>();
+  const projects: AdvisorQueryResult["projects"] = [];
+  const configs: AdvisorQueryResult["configs"] = [];
+  const markets: AdvisorQueryResult["markets"] = [];
+  for (const r of results) {
+    for (const p of r.projects) {
+      if (!seenProjects.has(p.project_slug)) {
+        seenProjects.add(p.project_slug);
+        projects.push(p);
+      }
+    }
+    configs.push(...r.configs.filter((c) => !seenProjects.has("cfg:" + c.project_slug + c.config_type) && seenProjects.add("cfg:" + c.project_slug + c.config_type)));
+    for (const m of r.markets) {
+      if (!seenMarkets.has(m.market_slug)) {
+        seenMarkets.add(m.market_slug);
+        markets.push(m);
+      }
+    }
+  }
+  return { projects, configs, markets };
+}
+
 // ─── Intent → Data fetcher ────────────────────────────────────────────────────
 
 async function fetchDataForIntent(
@@ -94,8 +120,10 @@ async function fetchDataForIntent(
     }
 
     case "project_inquiry": {
-      if (!intent.project_name) return fetchAllForGeneral();
-      return fetchByProjectName(intent.project_name);
+      const names = intent.project_names?.length ? intent.project_names : intent.project_name ? [intent.project_name] : [];
+      if (!names.length) return fetchAllForGeneral();
+      const results = await Promise.all(names.map(fetchByProjectName));
+      return mergeResults(...results);
     }
 
     case "market_overview": {
@@ -113,7 +141,12 @@ async function fetchDataForIntent(
     }
 
     case "comparison": {
-      // If market specified, get all projects for that market; else get top projects
+      // If specific projects named, fetch each; else fall back to market/general
+      const names = intent.project_names?.length ? intent.project_names : intent.project_name ? [intent.project_name] : [];
+      if (names.length) {
+        const results = await Promise.all(names.map(fetchByProjectName));
+        return mergeResults(...results);
+      }
       if (market) return fetchByMarket(market);
       return fetchAllForGeneral();
     }

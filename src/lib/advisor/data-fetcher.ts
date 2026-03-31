@@ -221,20 +221,43 @@ export async function fetchByProjectName(
 ): Promise<AdvisorQueryResult> {
   const supabase = createServiceClient();
 
-  // Try slug match first, then fuzzy name match
-  const { data: slugMatch } = await supabase
-    .from("advisor_project_intelligence")
-    .select(PROJECT_SELECT)
-    .ilike("project_slug", `%${projectNameOrSlug.toLowerCase().replace(/\s+/g, "-")}%`);
+  const slug = projectNameOrSlug.toLowerCase().replace(/\s+/g, "-");
+  // Significant words only (≥4 chars) to avoid noise from "My", "The", etc.
+  const words = projectNameOrSlug
+    .split(/\s+/)
+    .map((w) => w.toLowerCase())
+    .filter((w) => w.length >= 4);
 
-  let projects = (slugMatch ?? []) as unknown as ProjectSummary[];
-
-  if (!projects.length) {
-    const { data: nameMatch } = await supabase
+  // Run all three searches in parallel
+  const [slugRes, nameRes, ...wordResults] = await Promise.all([
+    supabase
       .from("advisor_project_intelligence")
       .select(PROJECT_SELECT)
-      .ilike("project_name", `%${projectNameOrSlug}%`);
-    projects = (nameMatch ?? []) as unknown as ProjectSummary[];
+      .ilike("project_slug", `%${slug}%`),
+    supabase
+      .from("advisor_project_intelligence")
+      .select(PROJECT_SELECT)
+      .ilike("project_name", `%${projectNameOrSlug}%`),
+    ...words.map((word) =>
+      supabase
+        .from("advisor_project_intelligence")
+        .select(PROJECT_SELECT)
+        .or(`project_slug.ilike.%${word}%,project_name.ilike.%${word}%`)
+    ),
+  ]);
+
+  // Combine and deduplicate by project_slug (slug match takes priority)
+  const seen = new Set<string>();
+  const projects: ProjectSummary[] = [];
+  for (const row of [
+    ...(slugRes.data ?? []),
+    ...(nameRes.data ?? []),
+    ...wordResults.flatMap((r) => r.data ?? []),
+  ] as unknown as ProjectSummary[]) {
+    if (!seen.has(row.project_slug)) {
+      seen.add(row.project_slug);
+      projects.push(row);
+    }
   }
 
   if (!projects.length) return { projects: [], configs: [], markets: [] };
