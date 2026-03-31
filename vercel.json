@@ -1,5 +1,8 @@
 {
   "functions": {
+    "src/app/api/advisor/chat/route.ts": {
+      "maxDuration": 30
+    },
     "src/app/api/cron/link-checker/route.ts": {
       "maxDuration": 300
     },
