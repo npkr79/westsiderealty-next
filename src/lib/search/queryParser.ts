@@ -49,11 +49,18 @@ const NEW_PROJECT_INDICATORS = [
   'recent project',
 ];
 
-// Property type keywords
+// Property type keywords — order matters: longer/more-specific phrases first
 const PROPERTY_TYPES = [
+  // Villa variants (must come before generic "villa")
+  'sky villas', 'sky villa',
+  'independent villa', 'gated villa',
+  'bungalow', 'bungalows',
+  // Apartment variants
   'apartment', 'apartments', 'flat', 'flats',
-  'villa', 'villas', 
-  'plot', 'plots', 
+  // Generic villa
+  'villa', 'villas',
+  // Other
+  'plot', 'plots',
   'penthouse', 'duplex',
   'independent house', 'independent',
   'standalone', 'standalone apartment',
@@ -192,19 +199,23 @@ export async function parseSearchQuery(
     // Use word boundaries for property type matching
     const propTypeRegex = new RegExp(`\\b${propType.replace(/\s+/g, '\\s+')}\\b`, 'i');
     if (propTypeRegex.test(normalizedQuery)) {
-      // Normalize to singular and handle special cases
-      if (propType.includes('apartment') || propType.includes('flat')) {
+      // Normalize to canonical project_type values
+      if (propType === 'sky villa' || propType === 'sky villas' || propType.includes('penthouse')) {
+        result.propertyType = 'apartment'; // high-rise units, not ground villas
+      } else if (propType === 'independent villa' || propType === 'gated villa' || propType === 'bungalow' || propType === 'bungalows' || propType === 'villa' || propType === 'villas') {
+        result.propertyType = 'villa';
+      } else if (propType.includes('apartment') || propType.includes('flat')) {
         result.propertyType = 'apartment';
       } else if (propType.includes('independent')) {
-        result.propertyType = 'independent-house'; // Match the checkbox value format
+        result.propertyType = 'independent-house';
       } else if (propType.includes('standalone')) {
         result.propertyType = 'standalone';
-      } else if (propType.includes('penthouse')) {
-        result.propertyType = 'penthouse';
       } else if (propType.includes('plot')) {
-        result.propertyType = 'residential-plot'; // Default to residential plot
+        result.propertyType = 'residential-plot';
+      } else if (propType.includes('commercial') || propType.includes('office')) {
+        result.propertyType = 'commercial';
       } else {
-        result.propertyType = propType.replace(/s$/, ''); // Remove plural
+        result.propertyType = propType.replace(/s$/, '');
       }
       remainingQuery = remainingQuery.replace(propTypeRegex, '').trim();
       break;

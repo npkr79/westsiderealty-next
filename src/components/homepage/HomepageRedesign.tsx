@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { buildProjectUrl } from "@/lib/routes";
+import { AISearchOverview } from "@/components/search/AISearchOverview";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -417,6 +418,10 @@ export default function HomepageRedesign() {
       if (parsed?.completionStatus) params.set("completionStatus", parsed.completionStatus);
       if (parsed?.isNewProject) params.set("isNewProject", "true");
       if (parsed?.remainingQuery) params.set("q", parsed.remainingQuery);
+      if (parsed?.propertyType) {
+        params.set("project_type", parsed.propertyType);
+        params.set("propertyTypes", parsed.propertyType);
+      }
 
       // Step 3: execute search
       const searchRes = await fetch(`/api/search?${params}`);
@@ -431,7 +436,7 @@ export default function HomepageRedesign() {
         return;
       }
 
-      setSearchResults((results as any[]).slice(0, 6));
+      setSearchResults((results as any[]).slice(0, 9));
       setTimeout(() => searchResultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 100);
     } catch {
       setSearchError("Something went wrong. Try asking the AI Advisor instead.");
@@ -849,20 +854,32 @@ export default function HomepageRedesign() {
             )}
             {searchResults && searchResults.length > 0 && (
               <>
+                <AISearchOverview
+                  query={searchQuery}
+                  results={searchResults}
+                  totalCount={searchResults.length}
+                  isLoading={searchLoading}
+                />
                 <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: 13, color: C.textMuted, marginBottom: 20, letterSpacing: "0.06em", textTransform: "uppercase" }}>
                   {searchResults.length} project{searchResults.length !== 1 ? "s" : ""} found
                 </p>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
-                  {searchResults.map((p: any) => (
+                  {searchResults.map((p: any) => {
+                    const citySlug = p.city?.url_slug ?? p.city_slug ?? "hyderabad";
+                    const microMarketName = typeof p.micro_market === "string"
+                      ? p.micro_market
+                      : p.micro_market?.micro_market_name ?? "Hyderabad";
+                    const developerName = p.developer_brand ?? p.developer?.developer_name ?? null;
+                    return (
                     <Link
-                      key={p.id}
-                      href={buildProjectUrl(p.city?.url_slug ?? "hyderabad", p.url_slug)}
+                      key={p.url_slug ?? p.id}
+                      href={buildProjectUrl(citySlug, p.url_slug)}
                       style={{ textDecoration: "none", display: "block", background: C.bgCard, borderRadius: 12, border: `1px solid ${C.border}`, padding: "18px 20px", transition: "box-shadow 0.15s" }}
                     >
                       <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: 15, fontWeight: 600, color: C.text, marginBottom: 4 }}>{p.project_name}</p>
                       <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: 13, color: C.textMuted, marginBottom: 8 }}>
-                        {p.micro_market?.micro_market_name ?? "Hyderabad"}
-                        {p.developer?.developer_name ? ` · ${p.developer.developer_name}` : ""}
+                        {microMarketName}
+                        {developerName ? ` · ${developerName}` : ""}
                       </p>
                       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
                         {p.price_range_text && (
@@ -875,7 +892,8 @@ export default function HomepageRedesign() {
                         )}
                       </div>
                     </Link>
-                  ))}
+                    );
+                  })}
                 </div>
               </>
             )}
