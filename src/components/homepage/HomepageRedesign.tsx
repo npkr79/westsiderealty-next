@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { buildProjectUrl } from "@/lib/routes";
-import { AISearchOverview } from "@/components/search/AISearchOverview";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -387,6 +386,8 @@ export default function HomepageRedesign() {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchResults, setSearchResults] = useState<any[] | null>(null);
+  const [searchOverview, setSearchOverview] = useState<string | null>(null);
+  const [searchOverviewLoading, setSearchOverviewLoading] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const searchResultsRef = useRef<HTMLDivElement>(null);
 
@@ -396,6 +397,8 @@ export default function HomepageRedesign() {
     setActiveFilter(QUICK_FILTERS.includes(query) ? query : null);
     setSearchLoading(true);
     setSearchResults(null);
+    setSearchOverview(null);
+    setSearchOverviewLoading(false);
     setSearchError(null);
 
     // Detect conversational questions → route to Advisor
@@ -436,8 +439,20 @@ export default function HomepageRedesign() {
         return;
       }
 
-      setSearchResults((results as any[]).slice(0, 9));
+      const sliced = (results as any[]).slice(0, 9);
+      setSearchResults(sliced);
       setTimeout(() => searchResultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 100);
+
+      // Fetch expert summary in background (non-blocking)
+      setSearchOverviewLoading(true);
+      fetch("/api/search/ai-overview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query, results: sliced, totalCount: total }),
+      })
+        .then((r) => r.json())
+        .then((d) => { setSearchOverview(d.overview ?? null); setSearchOverviewLoading(false); })
+        .catch(() => setSearchOverviewLoading(false));
     } catch {
       setSearchError("Something went wrong. Try asking the AI Advisor instead.");
     } finally {
@@ -848,50 +863,82 @@ export default function HomepageRedesign() {
               <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: 14, color: C.textMuted }}>
                 {searchError}{" "}
                 <button onClick={() => window.dispatchEvent(new CustomEvent("westside:openAdvisor", { detail: { message: searchQuery } }))} style={{ background: "none", border: "none", color: C.gold, cursor: "pointer", fontFamily: "'Outfit', sans-serif", fontSize: 14, padding: 0 }}>
-                  Ask the AI Advisor →
+                  Ask our advisor →
                 </button>
               </p>
             )}
             {searchResults && searchResults.length > 0 && (
               <>
-                <AISearchOverview
-                  query={searchQuery}
-                  results={searchResults}
-                  totalCount={searchResults.length}
-                  isLoading={searchLoading}
-                />
-                <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: 13, color: C.textMuted, marginBottom: 20, letterSpacing: "0.06em", textTransform: "uppercase" }}>
+                {/* Expert summary paragraph */}
+                {searchOverviewLoading && !searchOverview && (
+                  <div style={{ marginBottom: 24, display: "flex", flexDirection: "column", gap: 6 }}>
+                    {[95, 75, 50].map((w) => (
+                      <div key={w} style={{ height: 13, width: `${w}%`, borderRadius: 6, background: C.border, animation: "pulse 1.5s ease-in-out infinite" }} />
+                    ))}
+                    <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}`}</style>
+                  </div>
+                )}
+                {searchOverview && (
+                  <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: 15, lineHeight: 1.7, color: C.text, marginBottom: 28, maxWidth: 720 }}>
+                    {searchOverview}
+                  </p>
+                )}
+
+                {/* Result count */}
+                <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: 12, color: C.textMuted, marginBottom: 20, letterSpacing: "0.06em", textTransform: "uppercase" }}>
                   {searchResults.length} project{searchResults.length !== 1 ? "s" : ""} found
                 </p>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
-                  {searchResults.map((p: any) => {
+
+                {/* Google-style project list */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+                  {searchResults.map((p: any, idx: number) => {
                     const citySlug = p.city?.url_slug ?? p.city_slug ?? "hyderabad";
                     const microMarketName = typeof p.micro_market === "string"
                       ? p.micro_market
-                      : p.micro_market?.micro_market_name ?? "Hyderabad";
+                      : p.micro_market?.micro_market_name ?? null;
                     const developerName = p.developer_brand ?? p.developer?.developer_name ?? null;
+                    const status = p.completion_status || p.status || null;
+                    const metaParts = [microMarketName, developerName].filter(Boolean);
                     return (
-                    <Link
-                      key={p.url_slug ?? p.id}
-                      href={buildProjectUrl(citySlug, p.url_slug)}
-                      style={{ textDecoration: "none", display: "block", background: C.bgCard, borderRadius: 12, border: `1px solid ${C.border}`, padding: "18px 20px", transition: "box-shadow 0.15s" }}
-                    >
-                      <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: 15, fontWeight: 600, color: C.text, marginBottom: 4 }}>{p.project_name}</p>
-                      <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: 13, color: C.textMuted, marginBottom: 8 }}>
-                        {microMarketName}
-                        {developerName ? ` · ${developerName}` : ""}
-                      </p>
-                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-                        {p.price_range_text && (
-                          <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 12, color: C.gold }}>{p.price_range_text}</span>
-                        )}
-                        {(p.completion_status || p.status) && (
-                          <span style={{ fontFamily: "'Outfit', sans-serif", fontSize: 11, background: C.bgWarm, color: C.textMuted, padding: "2px 8px", borderRadius: 100 }}>
-                            {p.completion_status || p.status}
-                          </span>
-                        )}
+                      <div
+                        key={p.url_slug ?? p.id}
+                        style={{
+                          padding: "14px 0",
+                          borderBottom: idx < searchResults.length - 1 ? `1px solid ${C.border}` : "none",
+                        }}
+                      >
+                        <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
+                          <Link
+                            href={buildProjectUrl(citySlug, p.url_slug)}
+                            style={{
+                              fontFamily: "'Outfit', sans-serif",
+                              fontSize: 16,
+                              fontWeight: 600,
+                              color: C.gold,
+                              textDecoration: "none",
+                              borderBottom: `1px solid transparent`,
+                              transition: "border-color 0.15s",
+                            }}
+                            onMouseEnter={(e) => (e.currentTarget.style.borderBottomColor = C.gold)}
+                            onMouseLeave={(e) => (e.currentTarget.style.borderBottomColor = "transparent")}
+                          >
+                            {p.project_name}
+                          </Link>
+                          {status && (
+                            <span style={{ fontFamily: "'Outfit', sans-serif", fontSize: 11, background: C.bgWarm, color: C.textMuted, padding: "2px 8px", borderRadius: 100, border: `1px solid ${C.border}` }}>
+                              {status}
+                            </span>
+                          )}
+                        </div>
+                        <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: 13, color: C.textMuted, marginTop: 3 }}>
+                          {metaParts.join(" · ")}
+                          {p.price_range_text && (
+                            <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 12, color: C.gold, marginLeft: metaParts.length ? 10 : 0 }}>
+                              {p.price_range_text}
+                            </span>
+                          )}
+                        </p>
                       </div>
-                    </Link>
                     );
                   })}
                 </div>
