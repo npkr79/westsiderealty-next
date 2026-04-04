@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { buildProjectUrl } from "@/lib/routes";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -322,6 +323,63 @@ export default function HomepageRedesign() {
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
   const [topCardIdx, setTopCardIdx] = useState(0);
 
+  // ── Natural language search ───────────────────────────────────────────────
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchResults, setSearchResults] = useState<any[] | null>(null);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const searchResultsRef = useRef<HTMLDivElement>(null);
+
+  async function handleSearch(q: string) {
+    const query = q.trim();
+    if (!query) return;
+    setSearchLoading(true);
+    setSearchResults(null);
+    setSearchError(null);
+
+    // Detect conversational questions → route to Advisor
+    const isQuestion =
+      /^(which|what|how|should|where|why|is|are|does|can)\b/i.test(query) ||
+      query.includes("?") ||
+      /\bvs\b|\bversus\b|\bbest\b|\bcompare\b/i.test(query);
+
+    try {
+      // Step 1: parse
+      const parseRes = await fetch(`/api/search/parse?q=${encodeURIComponent(query)}`);
+      const { parsed } = await parseRes.json();
+
+      // Step 2: build search params from parsed result
+      const params = new URLSearchParams({ city: "hyderabad" });
+      if (parsed?.microMarket) params.set("microMarket", parsed.microMarket);
+      if (parsed?.bhkConfig) params.set("bhk", parsed.bhkConfig);
+      if (parsed?.developer) params.set("developer", parsed.developer);
+      if (parsed?.projectName) params.set("projectName", parsed.projectName);
+      if (parsed?.completionStatus) params.set("completionStatus", parsed.completionStatus);
+      if (parsed?.isNewProject) params.set("isNewProject", "true");
+      if (parsed?.remainingQuery) params.set("q", parsed.remainingQuery);
+
+      // Step 3: execute search
+      const searchRes = await fetch(`/api/search?${params}`);
+      const { results, total } = await searchRes.json();
+
+      // Step 4: no results or it's a question → open Advisor with pre-filled query
+      if (!total || isQuestion) {
+        window.dispatchEvent(
+          new CustomEvent("westside:openAdvisor", { detail: { message: query } })
+        );
+        setSearchLoading(false);
+        return;
+      }
+
+      setSearchResults((results as any[]).slice(0, 6));
+      setTimeout(() => searchResultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 100);
+    } catch {
+      setSearchError("Something went wrong. Try asking the AI Advisor instead.");
+    } finally {
+      setSearchLoading(false);
+    }
+  }
+
   // Cycle hero cards every 3.5s
   useEffect(() => {
     const t = setInterval(
@@ -527,66 +585,79 @@ export default function HomepageRedesign() {
               Goa beach markets. We don&apos;t just list properties — we decode them.
             </p>
 
-            {/* Search bar */}
-            <div style={{ position: "relative", marginBottom: 18 }}>
-              <input
-                type="text"
-                placeholder='"3BHK in Kokapet under 3 Cr" or "villa in Goa under 5 Cr"'
-                className="hr-search"
-                style={{
-                  width: "100%",
-                  padding: "14px 52px 14px 20px",
-                  borderRadius: 14,
-                  border: `1.5px solid ${C.border}`,
-                  background: C.bgCard,
-                  fontSize: 15,
-                  color: C.text,
-                  boxSizing: "border-box",
-                  fontFamily: "'Outfit', sans-serif",
-                  boxShadow: "0 2px 12px rgba(0,0,0,0.04)",
-                }}
-              />
-              <span
-                style={{
-                  position: "absolute",
-                  right: 18,
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  color: C.textMuted,
-                  fontSize: 18,
-                  pointerEvents: "none",
-                  lineHeight: 1,
-                }}
-              >
-                ⌕
-              </span>
-            </div>
-
-            {/* Quick filter pills */}
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-              {QUICK_FILTERS.map((f) => (
+            {/* Natural language search */}
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <div style={{ position: "relative", flex: 1 }}>
+                  <span style={{ position: "absolute", left: 16, top: "50%", transform: "translateY(-50%)", color: C.textMuted, fontSize: 17, pointerEvents: "none", lineHeight: 1 }}>
+                    ⌕
+                  </span>
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleSearch(searchQuery)}
+                    placeholder="Search projects, markets, developers... e.g. '4 BHK in Kokapet under 8 Cr'"
+                    className="hr-search"
+                    style={{
+                      width: "100%",
+                      padding: "14px 20px 14px 44px",
+                      borderRadius: 14,
+                      border: `1.5px solid ${C.border}`,
+                      background: C.bgCard,
+                      fontSize: 15,
+                      color: C.text,
+                      boxSizing: "border-box",
+                      fontFamily: "'Outfit', sans-serif",
+                      boxShadow: "0 2px 12px rgba(0,0,0,0.04)",
+                      outline: "none",
+                    }}
+                  />
+                </div>
                 <button
-                  key={f}
-                  onClick={() =>
-                    setActiveFilter(activeFilter === f ? null : f)
-                  }
-                  className={`hr-pill${activeFilter === f ? " active" : ""}`}
+                  onClick={() => handleSearch(searchQuery)}
+                  disabled={searchLoading || !searchQuery.trim()}
                   style={{
-                    padding: "7px 15px",
-                    borderRadius: 100,
-                    border: `1px solid ${
-                      activeFilter === f ? C.gold : C.border
-                    }`,
-                    background: "transparent",
-                    fontSize: 13,
-                    color: activeFilter === f ? C.gold : C.textMuted,
-                    cursor: "pointer",
+                    padding: "14px 20px",
+                    borderRadius: 14,
+                    border: "none",
+                    background: C.bgDark,
+                    color: "#fff",
+                    fontSize: 14,
+                    fontWeight: 600,
                     fontFamily: "'Outfit', sans-serif",
+                    cursor: searchLoading || !searchQuery.trim() ? "not-allowed" : "pointer",
+                    opacity: searchLoading || !searchQuery.trim() ? 0.5 : 1,
+                    whiteSpace: "nowrap",
+                    transition: "opacity 0.15s",
+                    flexShrink: 0,
                   }}
                 >
-                  {f}
+                  {searchLoading ? "…" : "Search"}
                 </button>
-              ))}
+              </div>
+
+              {/* Hint chips — static, non-clickable */}
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 10 }}>
+                {["4 BHK Kokapet under 8 Cr", "Ready to move Gachibowli", "Best appreciation in West Hyderabad"].map((hint) => (
+                  <span
+                    key={hint}
+                    onClick={() => { setSearchQuery(hint); handleSearch(hint); }}
+                    style={{
+                      padding: "5px 12px",
+                      borderRadius: 100,
+                      border: `1px solid ${C.border}`,
+                      fontSize: 12,
+                      color: C.textMuted,
+                      fontFamily: "'Outfit', sans-serif",
+                      cursor: "pointer",
+                      background: "transparent",
+                    }}
+                  >
+                    {hint}
+                  </span>
+                ))}
+              </div>
             </div>
           </div>
 
@@ -700,6 +771,61 @@ export default function HomepageRedesign() {
           </div>
         </div>
       </section>
+
+      {/* ── Search results ──────────────────────────────────────── */}
+      {(searchLoading || searchResults !== null || searchError) && (
+        <section ref={searchResultsRef} style={{ background: C.bgWarm, borderTop: `1px solid ${C.border}`, padding: "40px 24px" }}>
+          <div style={{ maxWidth: 960, margin: "0 auto" }}>
+            {searchLoading && (
+              <div style={{ display: "flex", alignItems: "center", gap: 12, color: C.textMuted, fontFamily: "'Outfit', sans-serif", fontSize: 15 }}>
+                <span style={{ display: "inline-block", width: 18, height: 18, border: `2px solid ${C.gold}`, borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+                Searching…
+                <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+              </div>
+            )}
+            {searchError && (
+              <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: 14, color: C.textMuted }}>
+                {searchError}{" "}
+                <button onClick={() => window.dispatchEvent(new CustomEvent("westside:openAdvisor", { detail: { message: searchQuery } }))} style={{ background: "none", border: "none", color: C.gold, cursor: "pointer", fontFamily: "'Outfit', sans-serif", fontSize: 14, padding: 0 }}>
+                  Ask the AI Advisor →
+                </button>
+              </p>
+            )}
+            {searchResults && searchResults.length > 0 && (
+              <>
+                <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: 13, color: C.textMuted, marginBottom: 20, letterSpacing: "0.06em", textTransform: "uppercase" }}>
+                  {searchResults.length} project{searchResults.length !== 1 ? "s" : ""} found
+                </p>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
+                  {searchResults.map((p: any) => (
+                    <Link
+                      key={p.id}
+                      href={buildProjectUrl(p.city?.url_slug ?? "hyderabad", p.url_slug)}
+                      style={{ textDecoration: "none", display: "block", background: C.bgCard, borderRadius: 12, border: `1px solid ${C.border}`, padding: "18px 20px", transition: "box-shadow 0.15s" }}
+                    >
+                      <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: 15, fontWeight: 600, color: C.text, marginBottom: 4 }}>{p.project_name}</p>
+                      <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: 13, color: C.textMuted, marginBottom: 8 }}>
+                        {p.micro_market?.micro_market_name ?? "Hyderabad"}
+                        {p.developer?.developer_name ? ` · ${p.developer.developer_name}` : ""}
+                      </p>
+                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                        {p.price_range_text && (
+                          <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 12, color: C.gold }}>{p.price_range_text}</span>
+                        )}
+                        {(p.completion_status || p.status) && (
+                          <span style={{ fontFamily: "'Outfit', sans-serif", fontSize: 11, background: C.bgWarm, color: C.textMuted, padding: "2px 8px", borderRadius: 100 }}>
+                            {p.completion_status || p.status}
+                          </span>
+                        )}
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        </section>
+      )}
 
       {/* ─────────────────────────────────────────────────────── */}
       {/* 3. STATS BAR                                            */}

@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createServiceClient } from '@/lib/supabase/serviceClient';
 import { parseSearchQuery } from '@/lib/search/queryParser';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
   const textQuery = searchParams.get('q');
 
   try {
-    const supabase = await createClient();
+    const supabase = createServiceClient();
 
     // Get city ID
     const { data: cityData } = await supabase
