@@ -392,12 +392,22 @@ export default function AdvisorChat() {
         <div className="fixed inset-0 z-50 flex flex-col overflow-hidden bg-white sm:inset-auto sm:bottom-24 sm:right-6 sm:w-[400px] sm:rounded-2xl sm:border sm:border-zinc-200 sm:shadow-2xl">
           {/* Header */}
           <div className="flex items-center gap-3 border-b border-zinc-100 bg-zinc-900 px-4 py-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-xs font-semibold text-white">
+            {/* Mobile back button — hidden on sm+ where the floating X button handles close */}
+            <button
+              onClick={() => setOpen(false)}
+              aria-label="Close chat"
+              className="flex sm:hidden h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-zinc-400 hover:text-white transition-colors"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-white/10 text-xs font-semibold text-white">
               AI
             </div>
             <div>
-              <p className="text-sm font-semibold text-white">Westside AI Advisor</p>
-              <p className="text-xs text-zinc-400">Kokapet, Neopolis &amp; Financial District specialist</p>
+              <p className="text-sm font-semibold text-white">Westside Advisor</p>
+              <p className="text-xs text-zinc-400">Hyderabad Real Estate Expert</p>
             </div>
           </div>
 
