@@ -1308,16 +1308,24 @@ export default function HomepageRedesign() {
                 {[
                   "4BHK under 8 Cr in Kokapet",
                   "FD vs Kokapet?",
-                  "Villa in Goa under 5 Cr",
+                  "4 BHK in Puppalaguda under 10 Cr",
                 ].map((q) => (
                   <div
                     key={q}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => window.dispatchEvent(new CustomEvent("westside:openAdvisor", { detail: { message: q } }))}
+                    onKeyDown={(e) => e.key === "Enter" && window.dispatchEvent(new CustomEvent("westside:openAdvisor", { detail: { message: q } }))}
                     style={{
                       background: "rgba(255,255,255,0.05)",
                       border: "1px solid rgba(255,255,255,0.08)",
                       borderRadius: 10,
                       padding: "9px 14px",
+                      cursor: "pointer",
+                      transition: "background 0.15s, border-color 0.15s",
                     }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = "rgba(176,141,87,0.12)"; (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(176,141,87,0.4)"; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = "rgba(255,255,255,0.05)"; (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(255,255,255,0.08)"; }}
                   >
                     <span
                       style={{
@@ -1346,6 +1354,7 @@ export default function HomepageRedesign() {
                   letterSpacing: "0.02em",
                   transition: "opacity 0.18s",
                 }}
+                onClick={() => window.dispatchEvent(new CustomEvent("westside:openAdvisor", { detail: {} }))}
                 onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.opacity = "0.85")}
                 onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.opacity = "1")}
               >
