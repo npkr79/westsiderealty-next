@@ -728,7 +728,11 @@ export default function HomepageRedesign() {
               .reverse()
               .map(({ card, idx }) => {
                 const isTop = idx === topCardIdx;
-                const stackOffset = HERO_CARDS.length - 1 - idx; // 0 for top
+                // How far behind the top card is this card (0 = top)
+                const rawOffset = (idx - topCardIdx + HERO_CARDS.length) % HERO_CARDS.length;
+                // Cap visual depth at 2 — cards deeper than that hide silently behind
+                const visualOffset = Math.min(rawOffset, 2);
+                const isHidden = rawOffset > 2;
                 return (
                   <div
                     key={card.name}
@@ -743,11 +747,13 @@ export default function HomepageRedesign() {
                       }`,
                       boxShadow: isTop
                         ? "0 24px 60px rgba(0,0,0,0.15)"
-                        : `0 ${4 + stackOffset * 4}px 20px rgba(0,0,0,0.06)`,
+                        : `0 ${4 + visualOffset * 4}px 20px rgba(0,0,0,0.06)`,
                       transform: `rotate(${card.rotate}) translateY(${
-                        isTop ? "-8px" : `${stackOffset * 20}px`
+                        isTop ? "-8px" : `${visualOffset * 20}px`
                       })`,
-                      zIndex: isTop ? 10 : card.z,
+                      zIndex: isTop ? 10 : 3 - visualOffset,
+                      opacity: isHidden ? 0 : 1,
+                      pointerEvents: isHidden ? "none" : "auto",
                       transition: "all 0.65s cubic-bezier(0.34,1.56,0.64,1)",
                     }}
                   >
