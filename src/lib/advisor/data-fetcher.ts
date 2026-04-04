@@ -1,4 +1,7 @@
+import OpenAI from "openai";
 import { createServiceClient } from "@/lib/supabase/serviceClient";
+
+const RAG_SIMILARITY_THRESHOLD = 0.20; // raise as corpus grows: 0.25 at 200 chunks, 0.30 at 500 chunks
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -182,6 +185,48 @@ export async function fetchByBHK(
   return { projects, configs, markets: (marketRows ?? []) as unknown as MarketSummary[] };
 }
 
+export async function fetchByBHKAndBudget(
+  bhk: string,
+  budgetMinCr: number,
+  budgetMaxCr: number,
+  microMarketSlug?: string
+): Promise<AdvisorQueryResult> {
+  const supabase = createServiceClient();
+
+  const normalised = bhk.replace(/\s+/g, " ").toUpperCase();
+
+  let configQuery = supabase
+    .from("advisor_project_configurations")
+    .select(CONFIG_SELECT_WITH_NAME)
+    .ilike("config_type", `%${normalised}%`)
+    .lte("price_min_cr", budgetMaxCr)
+    .gte("price_max_cr", budgetMinCr)
+    .order("price_min_cr");
+
+  const { data: configRows } = await configQuery;
+  const configs = (configRows ?? []) as unknown as ConfigSummary[];
+
+  const slugs = [...new Set(configs.map((c) => c.project_slug))];
+  if (!slugs.length) return { projects: [], configs: [], markets: [] };
+
+  let projectQuery = supabase
+    .from("advisor_project_intelligence")
+    .select(PROJECT_SELECT)
+    .in("project_slug", slugs);
+  if (microMarketSlug) projectQuery = projectQuery.eq("micro_market_slug", microMarketSlug);
+
+  const { data: projectRows } = await projectQuery;
+  const projects = (projectRows ?? []) as unknown as ProjectSummary[];
+
+  const marketSlugs = [...new Set(projects.map((p) => p.micro_market_slug))];
+  const { data: marketRows } = await supabase
+    .from("advisor_market_intelligence")
+    .select(MARKET_SELECT)
+    .in("market_slug", marketSlugs);
+
+  return { projects, configs, markets: (marketRows ?? []) as unknown as MarketSummary[] };
+}
+
 export async function fetchByMarket(
   marketSlug: "kokapet" | "neopolis" | string
 ): Promise<AdvisorQueryResult> {
@@ -222,43 +267,76 @@ export async function fetchByProjectName(
   const supabase = createServiceClient();
 
   const slug = projectNameOrSlug.toLowerCase().replace(/\s+/g, "-");
-  // Significant words only (≥4 chars) to avoid noise from "My", "The", etc.
+  // Significant words only (≥3 chars) — catches "My Home Grava" etc.
   const words = projectNameOrSlug
     .split(/\s+/)
     .map((w) => w.toLowerCase())
-    .filter((w) => w.length >= 4);
+    .filter((w) => w.length >= 3);
+  const lastWord = words[words.length - 1]; // most distinctive (e.g. "Grande", "Skyra")
 
-  // Run all three searches in parallel
-  const [slugRes, nameRes, ...wordResults] = await Promise.all([
-    supabase
+  console.log(`[advisor:search] name="${projectNameOrSlug}" slug="${slug}" words=${JSON.stringify(words)}`);
+
+  // ── Strategy 1: full slug / full name match (highest precision)
+  const [slugRes, nameRes] = await Promise.all([
+    supabase.from("advisor_project_intelligence").select(PROJECT_SELECT).ilike("project_slug", `%${slug}%`),
+    supabase.from("advisor_project_intelligence").select(PROJECT_SELECT).ilike("project_name", `%${projectNameOrSlug}%`),
+  ]);
+  console.log(`[advisor:search] slug match: ${slugRes.data?.length ?? 0}, name match: ${nameRes.data?.length ?? 0}`);
+
+  // ── Strategy 2: AND across all words (chained .ilike = AND in Supabase)
+  let andRes: { data: unknown[] | null } = { data: [] };
+  if (words.length >= 2) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let q: any = supabase.from("advisor_project_intelligence").select(PROJECT_SELECT);
+    for (const word of words) {
+      q = q.ilike("project_name", `%${word}%`);
+    }
+    andRes = await q;
+    console.log(`[advisor:search] AND-all-words match: ${andRes.data?.length ?? 0}`);
+  }
+
+  // ── Strategy 3: last word only (e.g. "grande", "skyra", "lakeridge")
+  let lastWordRes: { data: unknown[] | null } = { data: [] };
+  if (lastWord && lastWord !== words[0]) {
+    lastWordRes = await supabase
       .from("advisor_project_intelligence")
       .select(PROJECT_SELECT)
-      .ilike("project_slug", `%${slug}%`),
-    supabase
-      .from("advisor_project_intelligence")
-      .select(PROJECT_SELECT)
-      .ilike("project_name", `%${projectNameOrSlug}%`),
-    ...words.map((word) =>
+      .ilike("project_name", `%${lastWord}%`);
+    console.log(`[advisor:search] last-word "${lastWord}" match: ${lastWordRes.data?.length ?? 0}`);
+  }
+
+  // ── Strategy 4: each word individually (fallback, may return broad results)
+  const wordResults = await Promise.all(
+    words.map((word) =>
       supabase
         .from("advisor_project_intelligence")
         .select(PROJECT_SELECT)
-        .or(`project_slug.ilike.%${word}%,project_name.ilike.%${word}%`)
-    ),
-  ]);
+        .ilike("project_slug", `%${word}%`)
+    )
+  );
+  wordResults.forEach((r, i) =>
+    console.log(`[advisor:search] word["${words[i]}"] slug match: ${r.data?.length ?? 0}`)
+  );
 
-  // Combine and deduplicate by project_slug (slug match takes priority)
+  // ── Merge: precision-first ordering so exact matches appear first
   const seen = new Set<string>();
   const projects: ProjectSummary[] = [];
-  for (const row of [
+  const allRows = [
     ...(slugRes.data ?? []),
     ...(nameRes.data ?? []),
+    ...(andRes.data ?? []),
+    ...(lastWordRes.data ?? []),
     ...wordResults.flatMap((r) => r.data ?? []),
-  ] as unknown as ProjectSummary[]) {
+  ] as unknown as ProjectSummary[];
+
+  for (const row of allRows) {
     if (!seen.has(row.project_slug)) {
       seen.add(row.project_slug);
       projects.push(row);
     }
   }
+
+  console.log(`[advisor:search] final deduplicated projects: ${JSON.stringify(projects.map((p) => p.project_name))}`);
 
   if (!projects.length) return { projects: [], configs: [], markets: [] };
 
@@ -362,6 +440,47 @@ export async function fetchForPossessionTimeline(
   };
 }
 
+export async function fetchBySuperlative(
+  column: string,
+  direction: "asc" | "desc",
+  microMarketSlug?: string
+): Promise<AdvisorQueryResult> {
+  const supabase = createServiceClient();
+
+  let query = supabase
+    .from("advisor_project_intelligence")
+    .select(PROJECT_SELECT)
+    .not(column, "is", null)
+    .order(column, { ascending: direction === "asc" })
+    .limit(10);
+
+  if (microMarketSlug) query = query.eq("micro_market_slug", microMarketSlug);
+
+  const { data: projectRows } = await query;
+  const projects = (projectRows ?? []) as unknown as ProjectSummary[];
+  if (!projects.length) return { projects: [], configs: [], markets: [] };
+
+  const slugs = projects.map((p) => p.project_slug);
+  const marketSlugs = [...new Set(projects.map((p) => p.micro_market_slug))];
+
+  const [configRes, marketRes] = await Promise.all([
+    supabase
+      .from("advisor_project_configurations")
+      .select(CONFIG_SELECT_WITH_NAME)
+      .in("project_slug", slugs),
+    supabase
+      .from("advisor_market_intelligence")
+      .select(MARKET_SELECT)
+      .in("market_slug", marketSlugs),
+  ]);
+
+  return {
+    projects,
+    configs: (configRes.data ?? []) as unknown as ConfigSummary[],
+    markets: (marketRes.data ?? []) as unknown as MarketSummary[],
+  };
+}
+
 export async function fetchAllForGeneral(): Promise<AdvisorQueryResult> {
   const supabase = createServiceClient();
 
@@ -391,4 +510,63 @@ export async function fetchAllForGeneral(): Promise<AdvisorQueryResult> {
     configs: (configRows ?? []) as unknown as ConfigSummary[],
     markets: (marketRes.data ?? []) as unknown as MarketSummary[],
   };
+}
+
+// ─── RAG Vector Search ────────────────────────────────────────────────────────
+
+export interface RAGChunk {
+  chunk_id: string;
+  content: string;
+  city: string;
+  asset_class: string;
+  market_slugs: string[] | null;
+  content_type: string;
+  source_name: string;
+  source_type: string;
+  credibility_tier: number;
+  published_date: string | null;
+  metadata: Record<string, unknown>;
+  similarity: number;
+}
+
+export async function fetchRAGChunks(
+  query: string,
+  options?: {
+    city?: string;        // e.g. 'hyderabad', 'goa'
+    asset_class?: string; // e.g. 'residential', 'office'
+    limit?: number;       // defaults to 5
+  }
+): Promise<RAGChunk[]> {
+  try {
+    // Step 1: Generate embedding via OpenAI
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const embeddingRes = await openai.embeddings.create({
+      model: "text-embedding-3-small",
+      input: query,
+      dimensions: 1536,
+    });
+    const queryEmbedding = embeddingRes.data[0].embedding;
+
+    // Step 2: Call Supabase RPC for similarity search
+    const supabase = createServiceClient();
+    const { data, error } = await supabase.rpc("match_rag_chunks", {
+      query_embedding: queryEmbedding,
+      match_threshold: RAG_SIMILARITY_THRESHOLD,
+      match_count: options?.limit ?? 5,
+      filter_cities: options?.city ? [options.city] : null,
+      filter_asset_class: options?.asset_class ?? null,
+      min_credibility: null,
+      published_after: null,
+    });
+
+    if (error) {
+      console.error("[advisor:rag] RPC error:", error);
+      return [];
+    }
+
+    return (data ?? []) as RAGChunk[];
+  } catch (err) {
+    console.error("[advisor:rag] fetchRAGChunks failed:", err);
+    return [];
+  }
 }

@@ -4,10 +4,26 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/serviceClient";
 import { buildMetadata } from "@/components/common/SEO";
-import { ProjectsTable } from "./ProjectsTable";
+import { DeveloperProfileProjects } from "./DeveloperProfileProjects";
+import type { ProfileProject } from "./DeveloperProfileProjects";
 import { FaqAccordion } from "./FaqAccordion";
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// ─── Design System ────────────────────────────────────────────────────────────
+
+const C = {
+  bg: "#FAFAF7",
+  bgWarm: "#F5F3EE",
+  bgCard: "#FFFFFF",
+  bgDark: "#1A1A1F",
+  gold: "#B08D57",
+  goldLight: "#C9A96E",
+  accent: "#2D6A4F",
+  text: "#1A1A1F",
+  textMuted: "#7A7A7E",
+  border: "rgba(0,0,0,0.07)",
+} as const;
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function toTitleCase(str: string | null): string {
   if (!str) return "";
@@ -50,7 +66,156 @@ function priceRange(projects: { developer_price_min: number | null; developer_pr
   return `${f(Math.min(...prices))}–${f(Math.max(...prices))}/sqft`;
 }
 
-// ─── Metadata ────────────────────────────────────────────────────────────────
+// ─── MetricPill ───────────────────────────────────────────────────────────────
+
+function MetricPill({
+  value,
+  label,
+  color,
+}: {
+  value: string;
+  label: string;
+  color?: string;
+}) {
+  return (
+    <div style={{ textAlign: "center", minWidth: 80 }}>
+      <p
+        style={{
+          fontFamily: "'Cormorant Garamond', Georgia, serif",
+          fontSize: "clamp(28px, 3vw, 40px)",
+          fontWeight: 600,
+          color: color ?? C.goldLight,
+          margin: 0,
+          lineHeight: 1.1,
+        }}
+      >
+        {value}
+      </p>
+      <p
+        style={{
+          fontFamily: "'Outfit', sans-serif",
+          fontSize: 11,
+          textTransform: "uppercase",
+          letterSpacing: "0.16em",
+          color: "rgba(255,255,255,0.45)",
+          marginTop: 6,
+          margin: "6px 0 0",
+        }}
+      >
+        {label}
+      </p>
+    </div>
+  );
+}
+
+// ─── SectionHeading ───────────────────────────────────────────────────────────
+
+function SectionHeading({
+  eyebrow,
+  title,
+  dark = false,
+}: {
+  eyebrow: string;
+  title: string;
+  dark?: boolean;
+}) {
+  return (
+    <div style={{ marginBottom: 36 }}>
+      <p
+        style={{
+          fontFamily: "'Outfit', sans-serif",
+          fontSize: 10,
+          fontWeight: 700,
+          textTransform: "uppercase",
+          letterSpacing: "0.2em",
+          color: C.gold,
+          marginBottom: 10,
+        }}
+      >
+        {eyebrow}
+      </p>
+      <h2
+        style={{
+          fontFamily: "'Cormorant Garamond', Georgia, serif",
+          fontSize: "clamp(26px, 3vw, 36px)",
+          fontWeight: 600,
+          color: dark ? "#fff" : C.text,
+          margin: 0,
+          lineHeight: 1.25,
+        }}
+      >
+        {title}
+      </h2>
+    </div>
+  );
+}
+
+// ─── SignalCard ───────────────────────────────────────────────────────────────
+
+function SignalCard({
+  icon,
+  label,
+  value,
+  sub,
+}: {
+  icon: string;
+  label: string;
+  value: string;
+  sub?: string;
+}) {
+  return (
+    <div
+      style={{
+        background: C.bgCard,
+        border: `1px solid ${C.border}`,
+        borderRadius: 16,
+        padding: "24px 22px",
+        flex: "1 1 180px",
+      }}
+    >
+      <p style={{ fontSize: 22, marginBottom: 12, lineHeight: 1 }}>{icon}</p>
+      <p
+        style={{
+          fontFamily: "'Outfit', sans-serif",
+          fontSize: 11,
+          fontWeight: 700,
+          textTransform: "uppercase",
+          letterSpacing: "0.14em",
+          color: C.textMuted,
+          marginBottom: 6,
+        }}
+      >
+        {label}
+      </p>
+      <p
+        style={{
+          fontFamily: "'Cormorant Garamond', Georgia, serif",
+          fontSize: 28,
+          fontWeight: 600,
+          color: C.gold,
+          lineHeight: 1.1,
+          marginBottom: sub ? 4 : 0,
+        }}
+      >
+        {value}
+      </p>
+      {sub && (
+        <p
+          style={{
+            fontFamily: "'Outfit', sans-serif",
+            fontSize: 12,
+            color: C.textMuted,
+            lineHeight: 1.5,
+          }}
+        >
+          {sub}
+        </p>
+      )}
+    </div>
+  );
+}
+
+// ─── Metadata ─────────────────────────────────────────────────────────────────
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
@@ -60,7 +225,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     .select("brand_name, about_developer")
     .eq("url_slug", slug)
     .maybeSingle();
-  const name = (data as any)?.brand_name ?? "Developer";
+  const name = (data as { brand_name?: string } | null)?.brand_name ?? "Developer";
 
   return buildMetadata({
     title: `${name} — Projects in Hyderabad | Westside Realty`,
@@ -83,7 +248,15 @@ export default async function DeveloperDetailPage({ params }: { params: Promise<
     .maybeSingle();
 
   if (!brandRow) notFound();
-  const brand = brandRow as any;
+  const brand = brandRow as {
+    id: string;
+    brand_name: string;
+    url_slug: string;
+    is_premium: boolean | null;
+    institutional_grade: boolean | null;
+    asset_focus: string | null;
+    about_developer: string | null;
+  };
 
   // 2. Projects from brand map
   const { data: mapRows } = await supabase
@@ -91,7 +264,12 @@ export default async function DeveloperDetailPage({ params }: { params: Promise<
     .select("project_id, project_name, current_status, proposed_completion_date")
     .eq("brand_id", brand.id);
 
-  const mapData = (mapRows as any[]) ?? [];
+  const mapData = (mapRows as Array<{
+    project_id: string;
+    project_name: string | null;
+    current_status: string | null;
+    proposed_completion_date: string | null;
+  }>) ?? [];
   const projectIds = mapData.map((r) => r.project_id).filter(Boolean);
 
   // 3. rera_projects for url_slug + approved_date
@@ -101,7 +279,7 @@ export default async function DeveloperDetailPage({ params }: { params: Promise<
       .from("rera_projects")
       .select("id, url_slug, approved_date")
       .in("id", projectIds.slice(0, 100));
-    ((reraRows as any[]) ?? []).forEach((r) =>
+    ((reraRows as Array<{ id: string; url_slug: string | null; approved_date: string | null }>) ?? []).forEach((r) =>
       reraMap.set(r.id, { url_slug: r.url_slug ?? null, approved_date: r.approved_date ?? null })
     );
   }
@@ -113,7 +291,7 @@ export default async function DeveloperDetailPage({ params }: { params: Promise<
       .from("project_micro_market_classification")
       .select("project_id, micro_market_slug")
       .in("project_id", projectIds.slice(0, 100));
-    ((mmcRows as any[]) ?? []).forEach((r: any) => {
+    ((mmcRows as Array<{ project_id: string; micro_market_slug: string | null }>) ?? []).forEach((r) => {
       if (r.micro_market_slug) mmcMap.set(r.project_id, r.micro_market_slug);
     });
   }
@@ -125,21 +303,34 @@ export default async function DeveloperDetailPage({ params }: { params: Promise<
       .from("micro_markets")
       .select("url_slug, micro_market_name")
       .in("url_slug", marketSlugs);
-    ((mmRows as any[]) ?? []).forEach((r: any) => mmNameMap.set(r.url_slug, r.micro_market_name));
+    ((mmRows as Array<{ url_slug: string; micro_market_name: string }>) ?? []).forEach((r) =>
+      mmNameMap.set(r.url_slug, r.micro_market_name)
+    );
   }
 
-  // 5. PLI (rera_project_id = rera_projects.id = brand_map.project_id)
-  const pliMap = new Map<string, any>();
+  // 5. PLI
+  const pliMap = new Map<string, {
+    developer_price_min: number | null;
+    developer_price_max: number | null;
+    actual_status: string | null;
+    handover_started: boolean | null;
+  }>();
   if (projectIds.length) {
     const { data: pliRows } = await supabase
       .from("project_live_intelligence")
       .select("rera_project_id, developer_price_min, developer_price_max, actual_status, handover_started")
       .in("rera_project_id", projectIds.slice(0, 100));
-    ((pliRows as any[]) ?? []).forEach((r: any) => pliMap.set(r.rera_project_id, r));
+    ((pliRows as Array<{
+      rera_project_id: string;
+      developer_price_min: number | null;
+      developer_price_max: number | null;
+      actual_status: string | null;
+      handover_started: boolean | null;
+    }>) ?? []).forEach((r) => pliMap.set(r.rera_project_id, r));
   }
 
   // 6. Build projects with computed status
-  const projects = mapData.map((row: any) => {
+  const projects: ProfileProject[] = mapData.map((row) => {
     const pid = row.project_id;
     const marketSlug = mmcMap.get(pid) ?? null;
     const pli = pliMap.get(pid);
@@ -172,7 +363,7 @@ export default async function DeveloperDetailPage({ params }: { params: Promise<
     return a.project_name.localeCompare(b.project_name);
   });
 
-  // 7. Detect developer's city via service client (bypasses RLS on rera_promoters)
+  // 7. Detect developer's city
   const serviceSupabase = createServiceClient();
 
   const { data: brandEntityRows } = await serviceSupabase
@@ -180,9 +371,9 @@ export default async function DeveloperDetailPage({ params }: { params: Promise<
     .select("legal_entity_name_normalized")
     .eq("brand_id", brand.id)
     .limit(5);
-  const entityNames = ((brandEntityRows as any[]) ?? [])
-    .map((e: any) => e.legal_entity_name_normalized)
-    .filter(Boolean);
+  const entityNames = ((brandEntityRows as Array<{ legal_entity_name_normalized: string | null }>) ?? [])
+    .map((e) => e.legal_entity_name_normalized)
+    .filter(Boolean) as string[];
 
   let developerCity = "hyderabad";
   if (entityNames.length) {
@@ -196,22 +387,21 @@ export default async function DeveloperDetailPage({ params }: { params: Promise<
       const { data: projectSample } = await serviceSupabase
         .from("rera_projects")
         .select("city_slug")
-        .eq("id", (promoterSample as any).rera_project_id)
+        .eq("id", (promoterSample as { rera_project_id: string }).rera_project_id)
         .maybeSingle();
-      developerCity = (projectSample as any)?.city_slug ?? "hyderabad";
+      developerCity = (projectSample as { city_slug?: string } | null)?.city_slug ?? "hyderabad";
     }
   }
 
   // 8. Other developers — same city only
-  let otherDevs: any[] = [];
+  let otherDevs: Array<{ brand_name: string; url_slug: string | null; total_projects: number | null }> = [];
   if (developerCity === "goa") {
-    // Sample 50 Goa projects → promoters → entity names → brands
     const { data: goaProjs } = await serviceSupabase
       .from("rera_projects")
       .select("id")
       .eq("city_slug", "goa")
       .limit(50);
-    const sampleGoaIds = ((goaProjs as any[]) ?? []).map((r: any) => r.id);
+    const sampleGoaIds = ((goaProjs as Array<{ id: string }>) ?? []).map((r) => r.id);
     if (sampleGoaIds.length) {
       const { data: promRows } = await serviceSupabase
         .from("rera_promoters")
@@ -219,14 +409,16 @@ export default async function DeveloperDetailPage({ params }: { params: Promise<
         .in("rera_project_id", sampleGoaIds)
         .not("promoter_type", "in", '("Individual","Individual Registration Certificate")')
         .not("organization_name_normalized", "is", null);
-      const goaOrgNames = [...new Set(((promRows as any[]) ?? []).map((r: any) => r.organization_name_normalized))];
+      const goaOrgNames = [...new Set(((promRows as Array<{ organization_name_normalized: string }>) ?? []).map((r) => r.organization_name_normalized))];
       if (goaOrgNames.length) {
         const { data: entityRows } = await serviceSupabase
           .from("developer_brand_entities")
           .select("brand_id")
           .in("legal_entity_name_normalized", goaOrgNames);
         const goaBrandIds = [...new Set(
-          ((entityRows as any[]) ?? []).map((r: any) => r.brand_id).filter((id: any) => id && id !== brand.id)
+          ((entityRows as Array<{ brand_id: string | null }>) ?? [])
+            .map((r) => r.brand_id)
+            .filter((id): id is string => !!id && id !== brand.id)
         )];
         if (goaBrandIds.length) {
           const { data: brandRows } = await serviceSupabase
@@ -235,7 +427,10 @@ export default async function DeveloperDetailPage({ params }: { params: Promise<
             .in("id", goaBrandIds)
             .neq("url_slug", slug)
             .limit(4);
-          otherDevs = ((brandRows as any[]) ?? []).map((b: any) => ({ ...b, total_projects: null }));
+          otherDevs = ((brandRows as Array<{ brand_name: string; url_slug: string | null }>) ?? []).map((b) => ({
+            ...b,
+            total_projects: null,
+          }));
         }
       }
     }
@@ -246,11 +441,11 @@ export default async function DeveloperDetailPage({ params }: { params: Promise<
       .neq("url_slug", slug)
       .order("total_projects", { ascending: false })
       .limit(4);
-    otherDevs = (otherDevRows as any[]) ?? [];
+    otherDevs = (otherDevRows as Array<{ brand_name: string; url_slug: string | null; total_projects: number | null }>) ?? [];
   }
 
-  // 8. Similar projects from same markets
-  let similarProjects: any[] = [];
+  // 9. Similar projects from same markets
+  let similarProjects: Array<{ project_name: string; url_slug: string | null; micro_market: string | null }> = [];
   if (marketSlugs.length) {
     const marketNames = marketSlugs.map((s) => mmNameMap.get(s) ?? "").filter(Boolean);
     if (marketNames.length) {
@@ -261,7 +456,7 @@ export default async function DeveloperDetailPage({ params }: { params: Promise<
         .in("micro_market", marketNames)
         .eq("city_slug", "hyderabad")
         .limit(8);
-      similarProjects = ((simRows as any[]) ?? [])
+      similarProjects = ((simRows as Array<{ project_name: string; url_slug: string | null; micro_market: string | null }>) ?? [])
         .filter((r) => r.url_slug && !ownSlugs.has(r.url_slug))
         .slice(0, 4);
     }
@@ -278,7 +473,7 @@ export default async function DeveloperDetailPage({ params }: { params: Promise<
     if (p.market_slug && p.micro_market_name) marketSet.set(p.market_slug, p.micro_market_name);
   });
 
-  const marketList = [...new Set(projects.map((p) => p.micro_market_name).filter(Boolean))];
+  const marketList = [...new Set(projects.map((p) => p.micro_market_name).filter(Boolean))] as string[];
   const priceRangeStr = priceRange(projects);
   const activeProjectNames = projects
     .filter((p) => isActive(p.computed_status))
@@ -330,20 +525,26 @@ export default async function DeveloperDetailPage({ params }: { params: Promise<
     name: brand.brand_name,
     url: `https://www.westsiderealty.in/developers/${slug}`,
     ...(brand.about_developer ? { description: brand.about_developer } : {}),
-    ...(brand.logo_url ? { logo: brand.logo_url } : {}),
-    areaServed: {
-      "@type": "City",
-      name: "Hyderabad",
-    },
-    ...(brand.total_projects ? {
-      numberOfEmployees: {
-        "@type": "QuantitativeValue",
-        value: `${brand.total_projects} projects delivered`,
-      },
-    } : {}),
+    areaServed: { "@type": "City", name: "Hyderabad" },
   };
 
-  // ─── Render ───────────────────────────────────────────────────────────────
+  const isGoa = developerCity === "goa";
+  const cityLabel = isGoa ? "Goa" : "Hyderabad";
+
+  // Possession buckets for Goa
+  const goaBuckets: Record<string, number> = {};
+  if (isGoa) {
+    const now = new Date().getFullYear();
+    projects.filter((p) => isActive(p.computed_status)).forEach((p) => {
+      const yr = p.proposed_completion_date ? new Date(p.proposed_completion_date).getFullYear() : null;
+      if (!yr) return;
+      const key = yr <= now + 1 ? String(yr) : `${now + 2}+`;
+      goaBuckets[key] = (goaBuckets[key] ?? 0) + 1;
+    });
+  }
+  const goaBucketEntries = Object.entries(goaBuckets).sort(([a], [b]) => a.localeCompare(b));
+
+  // ─── Render ─────────────────────────────────────────────────────────────────
   return (
     <>
       <script
@@ -354,216 +555,656 @@ export default async function DeveloperDetailPage({ params }: { params: Promise<
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
       />
-      <main style={{ background: "#080808", minHeight: "100vh" }}>
 
-        {/* ── Hero ────────────────────────────────────────────── */}
-        <section className="pb-16 px-4" style={{ paddingTop: 88, background: "linear-gradient(to bottom, #0d0d0d, #080808)" }}>
-          <div className="container mx-auto max-w-5xl">
-            <Link href={developerCity === "goa" ? "/developers?city=goa" : "/developers"} className="text-xs text-slate-500 hover:text-slate-300 transition-colors mb-6 inline-block">
+      <style>{`
+        .dev-profile-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 5px 14px;
+          border-radius: 999px;
+          font-family: 'Outfit', sans-serif;
+          font-size: 11px;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.12em;
+        }
+        .dev-other-card {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 14px 18px;
+          border-radius: 14px;
+          background: ${C.bgCard};
+          border: 1px solid ${C.border};
+          text-decoration: none;
+          transition: all 0.16s ease;
+        }
+        .dev-other-card:hover {
+          border-color: rgba(176,141,87,0.3);
+          transform: translateY(-1px);
+          box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+        }
+        .dev-sim-project-card {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 14px 18px;
+          border-radius: 14px;
+          background: ${C.bgCard};
+          border: 1px solid ${C.border};
+          text-decoration: none;
+          transition: all 0.16s ease;
+        }
+        .dev-sim-project-card:hover {
+          border-color: rgba(176,141,87,0.3);
+          transform: translateY(-1px);
+          box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+        }
+      `}</style>
+
+      <main style={{ background: C.bg, fontFamily: "'Outfit', sans-serif", color: C.text }}>
+
+        {/* ── Section 1: Hero (Dark) ─────────────────────────────────────────── */}
+        <section
+          style={{
+            background: C.bgDark,
+            paddingTop: 96,
+            paddingBottom: 72,
+            paddingLeft: 24,
+            paddingRight: 24,
+          }}
+        >
+          <div style={{ maxWidth: 960, margin: "0 auto" }}>
+
+            {/* Back link */}
+            <Link
+              href={isGoa ? "/developers?city=goa" : "/developers"}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                fontFamily: "'Outfit', sans-serif",
+                fontSize: 12,
+                color: "rgba(255,255,255,0.4)",
+                textDecoration: "none",
+                marginBottom: 32,
+                letterSpacing: "0.06em",
+                transition: "color 0.15s",
+              }}
+            >
               ← All Developers
             </Link>
 
-            <div className="flex flex-col lg:flex-row gap-8 items-start">
-              {/* Left */}
-              <div className="flex-1">
-                <p className="text-xs font-bold uppercase tracking-[0.2em] mb-3" style={{ color: "#c8a96e" }}>
-                  {developerCity === "goa" ? "Goa" : "Hyderabad"} · Developer Profile
-                </p>
-                <h1 className="text-4xl sm:text-5xl font-bold text-white mb-4">{brand.brand_name}</h1>
+            {/* Eyebrow */}
+            <p
+              style={{
+                fontFamily: "'Outfit', sans-serif",
+                fontSize: 11,
+                fontWeight: 700,
+                textTransform: "uppercase",
+                letterSpacing: "0.22em",
+                color: C.gold,
+                marginBottom: 14,
+              }}
+            >
+              {cityLabel} · Developer Profile
+            </p>
 
-                <div className="flex flex-wrap gap-2 mb-8">
-                  {brand.institutional_grade ? (
-                    <span className="inline-block rounded-full border px-3 py-1 text-xs font-bold uppercase" style={{ background: "rgba(34,197,94,0.12)", color: "#4ade80", borderColor: "rgba(34,197,94,0.3)" }}>
-                      Established Builder
-                    </span>
-                  ) : brand.is_premium ? (
-                    <span className="inline-block rounded-full border px-3 py-1 text-xs font-bold uppercase" style={{ background: "rgba(200,169,110,0.12)", color: "#c8a96e", borderColor: "rgba(200,169,110,0.3)" }}>
-                      Premium Builder
-                    </span>
-                  ) : developerCity !== "goa" ? (
-                    <span className="inline-block rounded-full border px-3 py-1 text-xs font-bold uppercase" style={{ background: "rgba(255,255,255,0.06)", color: "#94a3b8", borderColor: "rgba(255,255,255,0.12)" }}>
-                      Growing Track Record
-                    </span>
-                  ) : null}
-                </div>
+            {/* H1 */}
+            <h1
+              style={{
+                fontFamily: "'Cormorant Garamond', Georgia, serif",
+                fontSize: "clamp(36px, 6vw, 60px)",
+                fontWeight: 600,
+                color: "#fff",
+                margin: "0 0 20px",
+                lineHeight: 1.1,
+              }}
+            >
+              {brand.brand_name}
+            </h1>
 
-                <div className="flex flex-wrap gap-8">
-                  {total > 0 && (
-                    <div>
-                      <p className="text-2xl font-bold text-white">{total}</p>
-                      <p className="text-xs text-slate-500 uppercase tracking-wide mt-1">Total Projects</p>
-                    </div>
-                  )}
-                  {activeCount > 0 && (
-                    <div>
-                      <p className="text-2xl font-bold text-amber-400">{activeCount}</p>
-                      <p className="text-xs text-slate-500 uppercase tracking-wide mt-1">Active</p>
-                    </div>
-                  )}
-                </div>
-
-                {brand.about_developer && (
-                  <p className="mt-6 text-slate-400 text-sm leading-relaxed max-w-lg">
-                    {brand.about_developer}
-                  </p>
-                )}
-              </div>
-
-              {/* Right — CTA */}
-              <div className="w-full lg:w-72 rounded-2xl border border-white/10 p-6" style={{ background: "rgba(255,255,255,0.04)" }}>
-                <p className="text-white font-semibold mb-2">Buying from {brand.brand_name}?</p>
-                <p className="text-slate-400 text-sm mb-5">
-                  Our advisors have walked every project in this portfolio. Get an honest, data-backed take — free.
-                </p>
-                <Link
-                  href="/contact"
-                  className="block text-center rounded-full px-5 py-2.5 text-sm font-bold uppercase tracking-[0.1em] transition-all hover:-translate-y-0.5"
-                  style={{ background: "linear-gradient(135deg, #c8a96e, #a8843e)", color: "#0a0a0a", boxShadow: "0 4px 16px rgba(200,169,110,0.25)" }}
+            {/* Trust Badge */}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 44 }}>
+              {brand.institutional_grade ? (
+                <span
+                  className="dev-profile-badge"
+                  style={{ background: "rgba(45,106,79,0.15)", color: "#4ADE80", border: "1px solid rgba(45,106,79,0.4)" }}
                 >
-                  Get Expert Advice — Free
-                </Link>
-                <p className="text-slate-600 text-xs text-center mt-3">No obligation · 12+ years in Hyderabad</p>
-              </div>
+                  ◉ Established Builder
+                </span>
+              ) : brand.is_premium ? (
+                <span
+                  className="dev-profile-badge"
+                  style={{ background: "rgba(176,141,87,0.15)", color: C.goldLight, border: "1px solid rgba(176,141,87,0.4)" }}
+                >
+                  ◈ Premium Builder
+                </span>
+              ) : !isGoa ? (
+                <span
+                  className="dev-profile-badge"
+                  style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.15)" }}
+                >
+                  Growing Track Record
+                </span>
+              ) : null}
             </div>
-          </div>
-        </section>
 
-        {/* ── Delivery Track Record / Project Pipeline ───────── */}
-        {total > 0 && (
-          <section className="px-4 py-10 border-t border-white/5">
-            <div className="container mx-auto max-w-5xl">
-              {developerCity === "goa" ? (
-                <>
-                  <p className="text-xs font-bold uppercase tracking-[0.18em] mb-2" style={{ color: "#c8a96e" }}>Project Pipeline</p>
-                  <h2 className="text-xl font-bold text-white mb-6">Active Projects</h2>
-                  <div className="rounded-2xl border border-white/8 p-6" style={{ background: "rgba(255,255,255,0.03)" }}>
-                    <div className="mb-5">
-                      <p className="text-3xl font-bold text-amber-400">{activeCount}</p>
-                      <p className="text-xs text-slate-500 uppercase tracking-wide mt-1">Active projects</p>
-                    </div>
-                    {(() => {
-                      const now = new Date().getFullYear();
-                      const buckets: Record<string, number> = {};
-                      projects.filter(p => isActive(p.computed_status)).forEach(p => {
-                        const yr = p.proposed_completion_date ? new Date(p.proposed_completion_date).getFullYear() : null;
-                        if (!yr) return;
-                        const key = yr <= now + 1 ? String(yr) : `${now + 2}+`;
-                        buckets[key] = (buckets[key] ?? 0) + 1;
-                      });
-                      const entries = Object.entries(buckets).sort(([a], [b]) => a.localeCompare(b));
-                      if (!entries.length) return null;
-                      return (
-                        <div className="flex flex-wrap gap-6 mt-4 pt-4 border-t border-white/8">
-                          {entries.map(([yr, count]) => (
-                            <div key={yr}>
-                              <p className="text-white font-bold text-xl">{count}</p>
-                              <p className="text-xs text-slate-500 mt-0.5">Possession {yr}</p>
-                            </div>
-                          ))}
-                        </div>
-                      );
-                    })()}
-                  </div>
-                </>
-              ) : (
-                <>
-                  <p className="text-xs font-bold uppercase tracking-[0.18em] mb-2" style={{ color: "#c8a96e" }}>Track Record</p>
-                  <h2 className="text-xl font-bold text-white mb-6">Delivery History</h2>
-                  <div className="rounded-2xl border border-white/8 p-6" style={{ background: "rgba(255,255,255,0.03)" }}>
-                    <div className="mb-5">
-                      <div className="flex justify-between text-xs text-slate-500 mb-2">
-                        <span>0</span>
-                        <span>{total} projects total</span>
-                      </div>
-                      <div className="h-3 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
-                        <div className="h-full rounded-full" style={{ width: `${deliveryRate ?? 0}%`, background: "linear-gradient(90deg, #22c55e, #4ade80)" }} />
-                      </div>
-                    </div>
-                    <div className="flex gap-8">
-                      <div className="flex items-center gap-2">
-                        <span className="w-3 h-3 rounded-full bg-emerald-400 flex-shrink-0" />
-                        <div>
-                          <p className="text-emerald-400 font-bold text-xl">{delivered}</p>
-                          <p className="text-xs text-slate-500">Delivered</p>
-                        </div>
-                      </div>
-                      {activeCount > 0 && (
-                        <div className="flex items-center gap-2">
-                          <span className="w-3 h-3 rounded-full bg-amber-400 flex-shrink-0" />
-                          <div>
-                            <p className="text-amber-400 font-bold text-xl">{activeCount}</p>
-                            <p className="text-xs text-slate-500">Active</p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </>
+            {/* MetricPills */}
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 40,
+                paddingTop: 28,
+                borderTop: "1px solid rgba(255,255,255,0.07)",
+              }}
+            >
+              {total > 0 && (
+                <MetricPill value={String(total)} label="Total Projects" />
+              )}
+              {deliveryRate !== null && !isGoa && (
+                <MetricPill value={`${deliveryRate}%`} label="Delivery Rate" color="#4ADE80" />
+              )}
+              {activeCount > 0 && (
+                <MetricPill value={String(activeCount)} label="Active Now" color={C.goldLight} />
+              )}
+              {marketList.length > 0 && (
+                <MetricPill value={String(marketList.length)} label={marketList.length === 1 ? "Market" : "Markets"} />
               )}
             </div>
-          </section>
-        )}
+          </div>
+        </section>
 
-        {/* ── Projects Table (client component for tab interaction) ── */}
-        {projects.length > 0 && (
-          <section className="px-4 py-10 border-t border-white/5">
-            <div className="container mx-auto max-w-5xl">
-              <p className="text-xs font-bold uppercase tracking-[0.18em] mb-2" style={{ color: "#c8a96e" }}>Portfolio</p>
-              <h2 className="text-xl font-bold text-white mb-5">Projects by {brand.brand_name}</h2>
-              <ProjectsTable projects={projects} citySlug={developerCity} />
-            </div>
-          </section>
-        )}
+        {/* ── Section 2: About + Track Record (Warm) ────────────────────────── */}
+        {(brand.about_developer || total > 0 || marketSet.size > 0) && (
+          <section
+            style={{
+              background: C.bgWarm,
+              padding: "72px 24px",
+            }}
+          >
+            <div style={{ maxWidth: 960, margin: "0 auto" }}>
+              <SectionHeading eyebrow="Developer Intel" title="Track Record" />
 
-        {/* ── Markets Active In ──────────────────────────────── */}
-        {marketSet.size > 0 && (
-          <section className="px-4 py-10 border-t border-white/5">
-            <div className="container mx-auto max-w-5xl">
-              <p className="text-xs font-bold uppercase tracking-[0.18em] mb-2" style={{ color: "#c8a96e" }}>Footprint</p>
-              <h2 className="text-xl font-bold text-white mb-5">Markets Active In</h2>
-              <div className="flex flex-wrap gap-2">
-                {Array.from(marketSet.entries()).map(([mSlug, mName]) => (
-                  <Link
-                    key={mSlug}
-                    href={`/${developerCity}/${mSlug}`}
-                    className="rounded-full border px-4 py-2 text-sm font-medium transition-all hover:border-white/30 hover:bg-white/8"
-                    style={{ background: "rgba(255,255,255,0.04)", borderColor: "rgba(255,255,255,0.12)", color: "#cbd5e1" }}
-                  >
-                    {mName}
-                  </Link>
-                ))}
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: 48,
+                  alignItems: "start",
+                }}
+              >
+                {/* Left: About */}
+                <div>
+                  {brand.about_developer && (
+                    <p
+                      style={{
+                        fontFamily: "'Outfit', sans-serif",
+                        fontSize: 15,
+                        color: C.textMuted,
+                        lineHeight: 1.75,
+                        marginBottom: 28,
+                      }}
+                    >
+                      {brand.about_developer}
+                    </p>
+                  )}
+
+                  {/* Delivery bar (Hyderabad only) */}
+                  {!isGoa && total > 0 && (
+                    <div>
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          marginBottom: 8,
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontFamily: "'Outfit', sans-serif",
+                            fontSize: 11,
+                            fontWeight: 700,
+                            textTransform: "uppercase",
+                            letterSpacing: "0.12em",
+                            color: C.textMuted,
+                          }}
+                        >
+                          Delivery Rate
+                        </span>
+                        <span
+                          style={{
+                            fontFamily: "'DM Mono', monospace",
+                            fontSize: 13,
+                            fontWeight: 600,
+                            color: C.accent,
+                          }}
+                        >
+                          {deliveryRate ?? 0}% ({delivered}/{total})
+                        </span>
+                      </div>
+                      <div
+                        style={{
+                          height: 8,
+                          borderRadius: 999,
+                          background: "rgba(0,0,0,0.08)",
+                          overflow: "hidden",
+                          marginBottom: 20,
+                        }}
+                      >
+                        <div
+                          style={{
+                            height: "100%",
+                            width: `${deliveryRate ?? 0}%`,
+                            borderRadius: 999,
+                            background: `linear-gradient(90deg, ${C.accent}, #4ADE80)`,
+                            transition: "width 0.8s ease",
+                          }}
+                        />
+                      </div>
+
+                      <div style={{ display: "flex", gap: 28 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <span
+                            style={{
+                              width: 10,
+                              height: 10,
+                              borderRadius: "50%",
+                              background: C.accent,
+                              display: "inline-block",
+                              flexShrink: 0,
+                            }}
+                          />
+                          <div>
+                            <p
+                              style={{
+                                fontFamily: "'Cormorant Garamond', serif",
+                                fontSize: 22,
+                                fontWeight: 600,
+                                color: C.accent,
+                                margin: 0,
+                              }}
+                            >
+                              {delivered}
+                            </p>
+                            <p
+                              style={{
+                                fontFamily: "'Outfit', sans-serif",
+                                fontSize: 11,
+                                color: C.textMuted,
+                                margin: 0,
+                              }}
+                            >
+                              Delivered
+                            </p>
+                          </div>
+                        </div>
+                        {activeCount > 0 && (
+                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <span
+                              style={{
+                                width: 10,
+                                height: 10,
+                                borderRadius: "50%",
+                                background: C.gold,
+                                display: "inline-block",
+                                flexShrink: 0,
+                              }}
+                            />
+                            <div>
+                              <p
+                                style={{
+                                  fontFamily: "'Cormorant Garamond', serif",
+                                  fontSize: 22,
+                                  fontWeight: 600,
+                                  color: C.gold,
+                                  margin: 0,
+                                }}
+                              >
+                                {activeCount}
+                              </p>
+                              <p
+                                style={{
+                                  fontFamily: "'Outfit', sans-serif",
+                                  fontSize: 11,
+                                  color: C.textMuted,
+                                  margin: 0,
+                                }}
+                              >
+                                Active
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Goa: possession buckets */}
+                  {isGoa && activeCount > 0 && goaBucketEntries.length > 0 && (
+                    <div>
+                      <p
+                        style={{
+                          fontFamily: "'Outfit', sans-serif",
+                          fontSize: 11,
+                          fontWeight: 700,
+                          textTransform: "uppercase",
+                          letterSpacing: "0.12em",
+                          color: C.textMuted,
+                          marginBottom: 16,
+                        }}
+                      >
+                        Possession Timeline
+                      </p>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 20 }}>
+                        {goaBucketEntries.map(([yr, count]) => (
+                          <div key={yr} style={{ textAlign: "center" }}>
+                            <p
+                              style={{
+                                fontFamily: "'Cormorant Garamond', serif",
+                                fontSize: 26,
+                                fontWeight: 600,
+                                color: C.gold,
+                                margin: 0,
+                              }}
+                            >
+                              {count}
+                            </p>
+                            <p
+                              style={{
+                                fontFamily: "'Outfit', sans-serif",
+                                fontSize: 11,
+                                color: C.textMuted,
+                                margin: "4px 0 0",
+                              }}
+                            >
+                              Possession {yr}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Right: Market footprint */}
+                {marketSet.size > 0 && (
+                  <div>
+                    <p
+                      style={{
+                        fontFamily: "'Outfit', sans-serif",
+                        fontSize: 11,
+                        fontWeight: 700,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.14em",
+                        color: C.textMuted,
+                        marginBottom: 16,
+                      }}
+                    >
+                      Markets Active In
+                    </p>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                      {Array.from(marketSet.entries()).map(([mSlug, mName]) => (
+                        <Link
+                          key={mSlug}
+                          href={`/${developerCity}/${mSlug}`}
+                          style={{
+                            display: "inline-block",
+                            padding: "7px 16px",
+                            borderRadius: 999,
+                            background: C.bgCard,
+                            border: `1px solid ${C.border}`,
+                            fontFamily: "'Outfit', sans-serif",
+                            fontSize: 13,
+                            fontWeight: 500,
+                            color: C.text,
+                            textDecoration: "none",
+                            transition: "all 0.15s",
+                          }}
+                        >
+                          {mName}
+                        </Link>
+                      ))}
+                    </div>
+
+                    {priceRangeStr && (
+                      <div style={{ marginTop: 28 }}>
+                        <p
+                          style={{
+                            fontFamily: "'Outfit', sans-serif",
+                            fontSize: 11,
+                            fontWeight: 700,
+                            textTransform: "uppercase",
+                            letterSpacing: "0.14em",
+                            color: C.textMuted,
+                            marginBottom: 8,
+                          }}
+                        >
+                          Price Range
+                        </p>
+                        <p
+                          style={{
+                            fontFamily: "'DM Mono', monospace",
+                            fontSize: 18,
+                            fontWeight: 600,
+                            color: C.gold,
+                          }}
+                        >
+                          {priceRangeStr}
+                        </p>
+                        <p
+                          style={{
+                            fontFamily: "'Outfit', sans-serif",
+                            fontSize: 12,
+                            color: C.textMuted,
+                            marginTop: 4,
+                          }}
+                        >
+                          Across active projects
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </section>
         )}
 
-        {/* ── FAQs ──────────────────────────────────────────── */}
-        <section className="px-4 py-10 border-t border-white/5">
-          <div className="container mx-auto max-w-5xl">
-            <p className="text-xs font-bold uppercase tracking-[0.18em] mb-2" style={{ color: "#c8a96e" }}>Common Questions</p>
-            <h2 className="text-xl font-bold text-white mb-6">About {brand.brand_name}</h2>
-            <FaqAccordion items={faqItems} />
+        {/* ── Section 3: Projects Portfolio (Light) ─────────────────────────── */}
+        {projects.length > 0 && (
+          <section style={{ background: C.bg, padding: "72px 24px" }}>
+            <div style={{ maxWidth: 960, margin: "0 auto" }}>
+              <SectionHeading
+                eyebrow="Portfolio"
+                title={`Projects by ${brand.brand_name}`}
+              />
+              <DeveloperProfileProjects projects={projects} citySlug={developerCity} />
+            </div>
+          </section>
+        )}
+
+        {/* ── Section 4: Developer Intelligence Signals (Warm) ──────────────── */}
+        <section style={{ background: C.bgWarm, padding: "72px 24px" }}>
+          <div style={{ maxWidth: 960, margin: "0 auto" }}>
+            <SectionHeading eyebrow="Why This Developer" title="Key Signals" />
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 20 }}>
+              {deliveryRate !== null && !isGoa && (
+                <SignalCard
+                  icon="◉"
+                  label="Delivery Rate"
+                  value={`${deliveryRate}%`}
+                  sub={`${delivered} of ${total} projects delivered on RERA record`}
+                />
+              )}
+              {activeCount > 0 && (
+                <SignalCard
+                  icon="⬡"
+                  label="Active Projects"
+                  value={String(activeCount)}
+                  sub="Currently under construction or near completion"
+                />
+              )}
+              {marketList.length > 0 && (
+                <SignalCard
+                  icon="◈"
+                  label="Markets Footprint"
+                  value={String(marketList.length)}
+                  sub={
+                    marketList.length > 0
+                      ? marketList.slice(0, 3).join(", ") + (marketList.length > 3 ? " & more" : "")
+                      : undefined
+                  }
+                />
+              )}
+            </div>
           </div>
         </section>
 
-        {/* ── Smart Links ───────────────────────────────────── */}
-        {(otherDevs.length > 0 || marketSet.size > 0 || similarProjects.length > 0) && (
-          <section className="px-4 py-10 border-t border-white/5">
-            <div className="container mx-auto max-w-5xl">
-              <p className="text-xs font-bold uppercase tracking-[0.18em] mb-2" style={{ color: "#c8a96e" }}>Explore More</p>
-              <h2 className="text-xl font-bold text-white mb-6">Related</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+        {/* ── Section 5: Advisor CTA (Dark) ─────────────────────────────────── */}
+        <section
+          style={{
+            background: C.bgDark,
+            padding: "80px 24px",
+            textAlign: "center",
+          }}
+        >
+          <div style={{ maxWidth: 560, margin: "0 auto" }}>
+            <p
+              style={{
+                fontFamily: "'Outfit', sans-serif",
+                fontSize: 11,
+                fontWeight: 700,
+                textTransform: "uppercase",
+                letterSpacing: "0.2em",
+                color: C.gold,
+                marginBottom: 16,
+              }}
+            >
+              Westside Advisor
+            </p>
+            <h2
+              style={{
+                fontFamily: "'Cormorant Garamond', Georgia, serif",
+                fontSize: "clamp(26px, 3vw, 38px)",
+                fontWeight: 600,
+                color: "#fff",
+                margin: "0 0 16px",
+                lineHeight: 1.2,
+              }}
+            >
+              Planning to buy from {brand.brand_name}?
+            </h2>
+            <p
+              style={{
+                fontFamily: "'Outfit', sans-serif",
+                fontSize: 15,
+                color: "rgba(255,255,255,0.5)",
+                margin: "0 0 36px",
+                lineHeight: 1.65,
+              }}
+            >
+              Our advisors have walked every project in this portfolio. Get an honest,
+              data-backed take — free.
+            </p>
+            <Link
+              href="/contact"
+              style={{
+                display: "inline-block",
+                padding: "14px 36px",
+                borderRadius: 999,
+                background: `linear-gradient(135deg, ${C.goldLight}, #A88040)`,
+                color: "#0a0a0a",
+                fontFamily: "'Outfit', sans-serif",
+                fontSize: 13,
+                fontWeight: 700,
+                letterSpacing: "0.12em",
+                textTransform: "uppercase",
+                textDecoration: "none",
+                boxShadow: "0 4px 24px rgba(176,141,87,0.3)",
+                transition: "transform 0.15s, box-shadow 0.15s",
+              }}
+            >
+              Get Expert Advice — Free
+            </Link>
+            <p
+              style={{
+                fontFamily: "'Outfit', sans-serif",
+                fontSize: 12,
+                color: "rgba(255,255,255,0.2)",
+                marginTop: 16,
+              }}
+            >
+              No obligation · RERA experts · 12+ years in {cityLabel}
+            </p>
+          </div>
+        </section>
 
+        {/* ── Section 6: FAQs (Light) ───────────────────────────────────────── */}
+        <section style={{ background: C.bg, padding: "72px 24px" }}>
+          <div style={{ maxWidth: 960, margin: "0 auto" }}>
+            <SectionHeading eyebrow="Common Questions" title={`About ${brand.brand_name}`} />
+            <FaqAccordion items={faqItems} theme="light" />
+          </div>
+        </section>
+
+        {/* ── Section 7: Related Links (Warm) ──────────────────────────────── */}
+        {(otherDevs.length > 0 || marketSet.size > 0 || similarProjects.length > 0) && (
+          <section style={{ background: C.bgWarm, padding: "72px 24px" }}>
+            <div style={{ maxWidth: 960, margin: "0 auto" }}>
+              <SectionHeading eyebrow="Explore More" title="Related" />
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+                  gap: 36,
+                }}
+              >
                 {otherDevs.length > 0 && (
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-3">Other Top Developers</p>
-                    <div className="space-y-2">
-                      {otherDevs.map((d: any) => (
-                        <Link key={d.url_slug} href={`/developers/${d.url_slug}`}
-                          className="flex items-center justify-between rounded-xl border border-white/8 px-4 py-3 transition-all hover:border-white/20 hover:bg-white/4"
-                          style={{ background: "rgba(255,255,255,0.03)" }}>
-                          <span className="text-white text-sm font-medium">{d.brand_name}</span>
-                          {d.total_projects > 0 && <span className="text-slate-500 text-xs">{d.total_projects} projects</span>}
+                    <p
+                      style={{
+                        fontFamily: "'Outfit', sans-serif",
+                        fontSize: 11,
+                        fontWeight: 700,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.14em",
+                        color: C.textMuted,
+                        marginBottom: 12,
+                      }}
+                    >
+                      Other Top Developers
+                    </p>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      {otherDevs.map((d) => (
+                        <Link
+                          key={d.url_slug ?? d.brand_name}
+                          href={d.url_slug ? `/developers/${d.url_slug}` : "/developers"}
+                          className="dev-other-card"
+                        >
+                          <span
+                            style={{
+                              fontFamily: "'Outfit', sans-serif",
+                              fontSize: 14,
+                              fontWeight: 500,
+                              color: C.text,
+                            }}
+                          >
+                            {d.brand_name}
+                          </span>
+                          {d.total_projects != null && d.total_projects > 0 && (
+                            <span
+                              style={{
+                                fontFamily: "'DM Mono', monospace",
+                                fontSize: 12,
+                                color: C.textMuted,
+                              }}
+                            >
+                              {d.total_projects} projects
+                            </span>
+                          )}
                         </Link>
                       ))}
                     </div>
@@ -572,31 +1213,103 @@ export default async function DeveloperDetailPage({ params }: { params: Promise<
 
                 {marketSet.size > 0 && (
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-3">Markets Active In</p>
-                    <div className="space-y-2">
-                      {Array.from(marketSet.entries()).slice(0, 4).map(([mSlug, mName]) => (
-                        <Link key={mSlug} href={`/${developerCity}/${mSlug}`}
-                          className="flex items-center justify-between rounded-xl border border-white/8 px-4 py-3 transition-all hover:border-white/20 hover:bg-white/4"
-                          style={{ background: "rgba(255,255,255,0.03)" }}>
-                          <span className="text-white text-sm font-medium">{mName}</span>
-                          <span className="text-slate-600 text-xs">View market →</span>
-                        </Link>
-                      ))}
+                    <p
+                      style={{
+                        fontFamily: "'Outfit', sans-serif",
+                        fontSize: 11,
+                        fontWeight: 700,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.14em",
+                        color: C.textMuted,
+                        marginBottom: 12,
+                      }}
+                    >
+                      Markets Active In
+                    </p>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      {Array.from(marketSet.entries())
+                        .slice(0, 4)
+                        .map(([mSlug, mName]) => (
+                          <Link
+                            key={mSlug}
+                            href={`/${developerCity}/${mSlug}`}
+                            className="dev-other-card"
+                          >
+                            <span
+                              style={{
+                                fontFamily: "'Outfit', sans-serif",
+                                fontSize: 14,
+                                fontWeight: 500,
+                                color: C.text,
+                              }}
+                            >
+                              {mName}
+                            </span>
+                            <span
+                              style={{
+                                fontFamily: "'Outfit', sans-serif",
+                                fontSize: 12,
+                                color: C.textMuted,
+                              }}
+                            >
+                              View market →
+                            </span>
+                          </Link>
+                        ))}
                     </div>
                   </div>
                 )}
 
                 {similarProjects.length > 0 && (
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-3">Similar Projects Nearby</p>
-                    <div className="space-y-2">
-                      {similarProjects.map((p: any) => (
-                        <Link key={p.url_slug ?? p.project_name}
-                          href={p.url_slug ? `/hyderabad/projects/${p.url_slug}` : "/hyderabad/projects"}
-                          className="flex items-center justify-between rounded-xl border border-white/8 px-4 py-3 transition-all hover:border-white/20 hover:bg-white/4"
-                          style={{ background: "rgba(255,255,255,0.03)" }}>
-                          <span className="text-white text-sm font-medium leading-snug">{p.project_name}</span>
-                          {p.micro_market && <span className="text-slate-500 text-xs ml-2 flex-shrink-0">{toTitleCase(p.micro_market)}</span>}
+                    <p
+                      style={{
+                        fontFamily: "'Outfit', sans-serif",
+                        fontSize: 11,
+                        fontWeight: 700,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.14em",
+                        color: C.textMuted,
+                        marginBottom: 12,
+                      }}
+                    >
+                      Similar Projects Nearby
+                    </p>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      {similarProjects.map((p) => (
+                        <Link
+                          key={p.url_slug ?? p.project_name}
+                          href={
+                            p.url_slug
+                              ? `/${developerCity}/projects/${p.url_slug}`
+                              : `/${developerCity}/projects`
+                          }
+                          className="dev-sim-project-card"
+                        >
+                          <span
+                            style={{
+                              fontFamily: "'Outfit', sans-serif",
+                              fontSize: 14,
+                              fontWeight: 500,
+                              color: C.text,
+                              lineHeight: 1.4,
+                            }}
+                          >
+                            {p.project_name}
+                          </span>
+                          {p.micro_market && (
+                            <span
+                              style={{
+                                fontFamily: "'Outfit', sans-serif",
+                                fontSize: 11,
+                                color: C.textMuted,
+                                marginLeft: 8,
+                                flexShrink: 0,
+                              }}
+                            >
+                              {toTitleCase(p.micro_market)}
+                            </span>
+                          )}
                         </Link>
                       ))}
                     </div>
@@ -606,24 +1319,6 @@ export default async function DeveloperDetailPage({ params }: { params: Promise<
             </div>
           </section>
         )}
-
-        {/* ── CTA ──────────────────────────────────────────── */}
-        <section className="px-4 py-16 text-center border-t border-white/5" style={{ background: "linear-gradient(to bottom, #080808, #0d0d0d)" }}>
-          <div className="container mx-auto max-w-xl">
-            <h2 className="text-2xl font-bold text-white mb-3">Planning to buy from {brand.brand_name}?</h2>
-            <p className="text-slate-400 mb-7">
-              Talk to a Hyderabad expert first. Our advisors know this portfolio inside out — honest take, no obligation.
-            </p>
-            <Link
-              href="/contact"
-              className="inline-block rounded-full px-8 py-3.5 text-sm font-bold uppercase tracking-[0.14em] transition-all hover:-translate-y-0.5"
-              style={{ background: "linear-gradient(135deg, #c8a96e, #a8843e)", color: "#0a0a0a", boxShadow: "0 4px 20px rgba(200,169,110,0.3)" }}
-            >
-              Get Expert Advice — Free
-            </Link>
-            <p className="text-slate-600 text-xs mt-4">No obligation · RERA experts · 12+ years in Hyderabad</p>
-          </div>
-        </section>
 
       </main>
     </>

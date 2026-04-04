@@ -3,13 +3,14 @@ import type { Metadata } from "next";
 import { createServiceClient } from "@/lib/supabase/serviceClient";
 import { getMicroMarketFromCache, getMicroMarketMapCenter } from "@/services/microMarketCacheService";
 // Keep import to satisfy any stale references; projects are fetched by ProjectsInMarketAsync
-import { getProjectsFromView } from "@/services/microMarketProjectsService";
+import { getProjectsFromView, getTopPicks } from "@/services/microMarketProjectsService";
 import { buildMicroMarketViewModel } from "@/services/microMarketViewModel";
-import MicroMarketPageContent from "@/components/micro-market/MicroMarketPageContent";
+import MicroMarketRedesign, { type FeaturedProject } from "@/components/micro-market/MicroMarketRedesign";
 import { buildMetadata } from "@/components/common/SEO";
 import type { GoaMarketProject } from "@/components/micro-market/GoaProjectsInMarket";
 
 export const revalidate = 600;
+
 
 type RentalIntelligenceData = {
   intelligence: Array<{
@@ -90,7 +91,7 @@ export default async function MicroMarketPage({ params }: PageProps) {
   const cityName = city?.city_name || citySlug;
 
   // Run all independent fetches in parallel
-  const [mapCenter, mmData, nearbyMarketsData, metricsData, aiEnrichmentRaw, classRowsData] = await Promise.all([
+  const [mapCenter, mmData, nearbyMarketsData, metricsData, aiEnrichmentRaw, classRowsData, advisorMarketRaw] = await Promise.all([
     getMicroMarketMapCenter(cache.id),
     supabase
       .from("micro_markets")
@@ -126,6 +127,13 @@ export default async function MicroMarketPage({ params }: PageProps) {
           .eq("resolved_micro_market", cache.micro_market_name)
           .then(({ data }) => (data ?? []) as Array<{ project_id: string | null }>)
       : Promise.resolve([] as Array<{ project_id: string | null }>),
+    // Fetch advisor market intelligence (has investment_verdict, outlook_base_case, growth_catalysts, risk_factors)
+    supabase
+      .from("advisor_market_intelligence" as never)
+      .select("market_name, market_slug, investment_verdict, outlook_base_case, growth_catalysts, risk_factors, appreciation_1yr_pct, appreciation_cagr_5yr, rental_yield_avg_pct, price_per_sqft_min, price_per_sqft_max, market_velocity_score, description")
+      .eq("market_slug", microMarketSlug)
+      .maybeSingle()
+      .then(({ data }: { data: Record<string, unknown> | null }) => data),
   ]);
 
   // Derive projectIds from classification table
@@ -269,7 +277,7 @@ export default async function MicroMarketPage({ params }: PageProps) {
               result.push(inner.trim());
             }
           } catch {
-            const clean = trimmed.replace(/^["\\]+|["\\]+$/g, "").trim();
+            const clean = trimmed.replace(/^[\["\\]+|[\]"\\]+$/g, "").trim();
             if (clean) result.push(clean);
           }
         } else if (trimmed) {
@@ -333,6 +341,23 @@ export default async function MicroMarketPage({ params }: PageProps) {
     commercial_rental_yield_max: number | null;
     commercial_rental_yield_detail: string | null;
     fetched_at: string | null;
+  } | null;
+
+  // Type the advisor market intelligence result
+  const advisorMarket = advisorMarketRaw as {
+    market_name: string | null;
+    market_slug: string | null;
+    investment_verdict: string | null;
+    outlook_base_case: string | null;
+    growth_catalysts: unknown;
+    risk_factors: unknown;
+    appreciation_1yr_pct: number | null;
+    appreciation_cagr_5yr: number | null;
+    rental_yield_avg_pct: number | null;
+    price_per_sqft_min: number | null;
+    price_per_sqft_max: number | null;
+    market_velocity_score: number | null;
+    description: string | null;
   } | null;
 
   // Process nearby markets for cross-linking
@@ -426,22 +451,151 @@ export default async function MicroMarketPage({ params }: PageProps) {
     }
   }
 
+  // New-design only: fetch featured projects using the proven microMarketProjectsService
+  // getTopPicks queries the projects table directly (avoids MV schema mismatches),
+  // sorts by strong_developer → near_completion → completion_proximity,
+  // and returns developer_url_slug for direct linking.
+  let featuredProjects: FeaturedProject[] = [];
+  let featuredProjectCount = 0;
+  const developerBrandSlugs: Record<string, string> = {};
+  {
+    const picks = await getTopPicks(
+      citySlug,
+      microMarketSlug,
+      8,
+      cache.micro_market_name ?? undefined
+    );
+
+    // Batch-lookup correct developer_brands.url_slug for each project.
+    // Strategy 1: rera_projects.url_slug → developer_project_brand_map → developer_brands.url_slug
+    // Strategy 2 (fallback): fuzzy-match developer_name against developer_brands.brand_name
+    // Never fall back to developers.url_slug — that table uses different slug formats.
+    const brandSlugByProjectSlug = new Map<string, string>();
+    try {
+      const brandSvc = createServiceClient();
+
+      // Strategy 1: via rera_projects → brand map
+      const projectSlugsForBrand = picks.map((p) => p.url_slug).filter(Boolean);
+      if (projectSlugsForBrand.length > 0) {
+        const { data: reraRows } = await brandSvc
+          .from("rera_projects")
+          .select("id, url_slug")
+          .in("url_slug", projectSlugsForBrand);
+        if (reraRows?.length) {
+          const reraIds = (reraRows as Array<{ id: string }>).map((r) => r.id);
+          const { data: brandMapRows } = await brandSvc
+            .from("developer_project_brand_map")
+            .select("project_id, brand_id")
+            .in("project_id", reraIds);
+          if (brandMapRows?.length) {
+            const projectIdToBrandId = new Map(
+              (brandMapRows as Array<{ project_id: string; brand_id: string }>).map((r) => [r.project_id, r.brand_id])
+            );
+            const brandIds = (brandMapRows as Array<{ brand_id: string }>).map((r) => r.brand_id).filter(Boolean);
+            const { data: brandRows } = await brandSvc
+              .from("developer_brands")
+              .select("id, url_slug")
+              .in("id", brandIds);
+            if (brandRows?.length) {
+              const brandIdToSlug = new Map(
+                (brandRows as Array<{ id: string; url_slug: string | null }>).map((r) => [r.id, r.url_slug ?? ""])
+              );
+              for (const reraRow of reraRows as Array<{ id: string; url_slug: string | null }>) {
+                const brandId = projectIdToBrandId.get(reraRow.id);
+                if (brandId && reraRow.url_slug) {
+                  const brandSlug = brandIdToSlug.get(brandId);
+                  if (brandSlug) brandSlugByProjectSlug.set(reraRow.url_slug, brandSlug);
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // Strategy 2: fetch all developer_brands and match by name prefix.
+      // This covers both project developer names AND aiEnrichment.top_developers chip names.
+      const { data: allBrands } = await brandSvc
+        .from("developer_brands")
+        .select("brand_name, url_slug");
+      if (allBrands?.length) {
+        const brands = allBrands as Array<{ brand_name: string; url_slug: string | null }>;
+
+        // Helper: resolve a developer display name to a brand slug
+        function resolveBrandSlug(devName: string): string | null {
+          const devLower = devName.toLowerCase();
+          const words = devLower.split(/[\s-]+/);
+          const twoWordPrefix = words.slice(0, 2).join(" ");
+          // Two-word prefix match first (e.g. "my home" → "My Home Group")
+          let found = brands.find((b) => b.url_slug && b.brand_name.toLowerCase().startsWith(twoWordPrefix));
+          // One-word prefix for distinctive words (≥ 5 chars)
+          if (!found && words[0].length >= 5) {
+            found = brands.find((b) => b.url_slug && b.brand_name.toLowerCase().startsWith(words[0]));
+          }
+          return found?.url_slug ?? null;
+        }
+
+        // Fill project brand slugs for any still unmatched
+        for (const pick of picks) {
+          if (!brandSlugByProjectSlug.has(pick.url_slug) && pick.developer_name) {
+            const slug = resolveBrandSlug(pick.developer_name);
+            if (slug) brandSlugByProjectSlug.set(pick.url_slug, slug);
+          }
+        }
+
+        // Also build name→slug map for developer chip names (aiEnrichment.top_developers)
+        const chipNames: string[] = Array.isArray(aiEnrichment?.top_developers)
+          ? (aiEnrichment.top_developers as string[])
+          : [];
+        for (const name of chipNames) {
+          if (name && !developerBrandSlugs[name]) {
+            const slug = resolveBrandSlug(name);
+            if (slug) developerBrandSlugs[name] = slug;
+          }
+        }
+      }
+    } catch {
+      // Non-critical — developer links will simply be hidden if lookup fails
+    }
+
+    featuredProjects = picks.map((p) => ({
+      url_slug: p.url_slug,
+      project_name: p.project_name,
+      developer_name: p.developer_name ?? null,
+      // Use confirmed brand slug only — never fall back to developers.url_slug (wrong format)
+      developer_url_slug: brandSlugByProjectSlug.get(p.url_slug) ?? null,
+      micro_market_name: p.micro_market_name ?? null,
+      hero_image_url: p.hero_image_url ?? null,
+      price_per_sqft_min: null,
+      price_per_sqft_max: null,
+      min_area: null,
+      max_area: null,
+      price_range_text: p.price_range_text ?? null,
+    }));
+    featuredProjectCount = picks.length;
+    // Get actual total count from the classification table (already fetched above)
+    if (projectIds.length > featuredProjectCount) featuredProjectCount = projectIds.length;
+  }
+
   return (
-    <MicroMarketPageContent
-      viewModel={viewModel}
-      citySlug={citySlug}
-      cityName={cityName}
-      mapCenter={mapCenter}
-      faqs={faqs}
-      faqSchemaJson={faqSchemaJson}
-      availableBhkTypes={availableBhkTypes}
-      nearbyMarkets={nearbyMarkets}
-      amenities={marketAmenities}
-      locationData={locationData}
-      marketMetrics={marketMetrics}
-      aiEnrichment={aiEnrichment}
-      goaProjects={goaProjects}
-      rentalIntelligence={rentalIntelligence}
-    />
-  );
+      <MicroMarketRedesign
+        viewModel={viewModel}
+        citySlug={citySlug}
+        cityName={cityName}
+        mapCenter={mapCenter}
+        faqs={faqs}
+        faqSchemaJson={faqSchemaJson}
+        availableBhkTypes={availableBhkTypes}
+        nearbyMarkets={nearbyMarkets}
+        amenities={marketAmenities}
+        locationData={locationData}
+        marketMetrics={marketMetrics}
+        aiEnrichment={aiEnrichment}
+        advisorMarket={advisorMarket}
+        goaProjects={goaProjects}
+        rentalIntelligence={rentalIntelligence}
+        projects={featuredProjects}
+        projectCount={featuredProjectCount}
+        developerBrandSlugs={developerBrandSlugs}
+      />
+    );
 }

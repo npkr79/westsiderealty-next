@@ -1802,3 +1802,203 @@ export const projectService = {
     };
   }
 };
+
+// ─── Advisor Enrichment Types & Fetcher ────────────────────────────────────────
+
+export interface AdvisorProject {
+  id: string;
+  project_name: string;
+  project_slug: string;
+  rera_id: string | null;
+  rera_verified: boolean;
+  developer_legal_entity: string | null;
+  developer_brand: string | null;
+  developer_brand_slug: string | null;
+  project_segment: string | null;
+  project_type: string | null;
+  current_status: string | null;
+  launch_date: string | null;
+  possession_date: string | null;
+  possession_date_source: string | null;
+  total_towers: number | null;
+  total_floors_max: number | null;
+  total_units: number | null;
+  land_area_acres: number | null;
+  open_space_pct: number | null;
+  city: string | null;
+  city_slug: string | null;
+  micro_market: string | null;
+  micro_market_slug: string | null;
+  clubhouse_sqft: number | null;
+  special_amenities: unknown;
+  sports_amenities: unknown;
+  current_price_per_sqft_min: number | null;
+  current_price_per_sqft_max: number | null;
+  launch_price_per_sqft: number | null;
+  price_per_sqft_source: string | null;
+  price_per_sqft_as_of: string | null;
+  density_units_per_acre: number | null;
+  primary_differentiator: string | null;
+  target_buyer_segment: string | null;
+  investment_verdict: string | null;
+  enrichment_source: string | null;
+  enrichment_batch: string | null;
+  quality_score: number | null;
+  needs_review: boolean;
+}
+
+export interface AdvisorConfig {
+  id: string;
+  project_id: string | null;
+  project_slug: string;
+  config_type: string;
+  config_subtype: string | null;
+  sba_sqft_min: number | null;
+  sba_sqft_max: number | null;
+  price_min_cr: number | null;
+  price_max_cr: number | null;
+  price_per_sqft: number | null;
+}
+
+export interface AdvisorMarket {
+  id: string;
+  market_name: string;
+  market_slug: string;
+  market_type: string | null;
+  parent_market_slug: string | null;
+  city: string | null;
+  city_slug: string | null;
+  description: string | null;
+  price_per_sqft_min: number | null;
+  price_per_sqft_max: number | null;
+  price_per_sqft_avg: number | null;
+  price_trajectory: string | null;
+  appreciation_1yr_pct: number | null;
+  appreciation_3yr_pct: number | null;
+  appreciation_5yr_pct: number | null;
+  appreciation_cagr_5yr: number | null;
+  market_velocity_score: number | null;
+  total_active_projects: number | null;
+  most_popular_configs: unknown;
+  rental_rates: unknown;
+  rental_yield_avg_pct: number | null;
+  tenant_profile: string | null;
+  risk_factors: unknown;
+  growth_catalysts: unknown;
+  outlook_bull_case: string | null;
+  outlook_base_case: string | null;
+  outlook_bear_case: string | null;
+  investment_verdict: string | null;
+  comparison_markets: unknown;
+  dist_financial_district_km: number | null;
+  dist_hitec_city_km: number | null;
+  dist_airport_km: number | null;
+  metro_status: string | null;
+  key_roads: string | null;
+  orr_exits: string | null;
+  infra_highlights: string | null;
+  hero_hook: string | null;
+  growth_story: string | null;
+  data_as_of: string | null;
+  needs_review: boolean | null;
+}
+
+export interface ReraUnit {
+  unit_type: string;
+  carpet_area_sqm: number;
+  total_units: number;
+  booked_units: number;
+}
+
+export interface ReraBuilding {
+  building_name: string;
+  num_floors: number;
+}
+
+export interface AdvisorProjectEnrichment {
+  project: AdvisorProject | null;
+  configurations: AdvisorConfig[];
+  market: AdvisorMarket | null;
+  reraUnits: ReraUnit[];
+  reraBuildings: ReraBuilding[];
+}
+
+export async function fetchAdvisorProjectEnrichment(
+  projectSlug: string,
+  microMarketSlug?: string
+): Promise<AdvisorProjectEnrichment> {
+  const empty: AdvisorProjectEnrichment = { project: null, configurations: [], market: null, reraUnits: [], reraBuildings: [] };
+  try {
+    const supabase = createServiceClient();
+
+    // 1. Fetch advisor project intelligence
+    const { data: projectData, error: projectError } = await supabase
+      .from("advisor_project_intelligence")
+      .select("*")
+      .eq("project_slug", projectSlug)
+      .maybeSingle();
+
+    if (projectError || !projectData) return empty;
+    const project = projectData as AdvisorProject;
+
+    // 2. Fetch advisor configurations
+    const { data: configData } = await supabase
+      .from("advisor_project_configurations")
+      .select("*")
+      .eq("project_slug", projectSlug)
+      .order("config_type", { ascending: true });
+    const configurations = (configData ?? []) as AdvisorConfig[];
+
+    // 3. Fetch advisor market intelligence
+    const resolvedMarketSlug = microMarketSlug ?? project.micro_market_slug ?? null;
+    let market: AdvisorMarket | null = null;
+    if (resolvedMarketSlug) {
+      const { data: marketData } = await supabase
+        .from("advisor_market_intelligence")
+        .select("*")
+        .eq("market_slug", resolvedMarketSlug)
+        .maybeSingle();
+      market = (marketData as AdvisorMarket | null) ?? null;
+    }
+
+    // 4. Fetch RERA internal UUID from rera_id
+    let reraUnits: ReraUnit[] = [];
+    let reraBuildings: ReraBuilding[] = [];
+
+    if (project.rera_id) {
+      const { data: reraProjectRow } = await supabase
+        .from("rera_projects")
+        .select("id")
+        .eq("rera_id", project.rera_id)
+        .limit(1)
+        .maybeSingle();
+
+      if (reraProjectRow?.id) {
+        const reraProjectId = reraProjectRow.id as string;
+        const [unitsRes, buildingsRes] = await Promise.all([
+          supabase
+            .from("rera_units")
+            .select("unit_type, carpet_area_sqm, total_units, booked_units")
+            .eq("project_id", reraProjectId)
+            .not("unit_type", "ilike", "%club%")
+            .not("unit_type", "ilike", "%amenit%")
+            .not("unit_type", "ilike", "%gym%")
+            .gt("carpet_area_sqm", 0)
+            .order("carpet_area_sqm", { ascending: true }),
+          supabase
+            .from("rera_buildings")
+            .select("building_name, num_floors")
+            .eq("rera_project_id", reraProjectId)
+            .not("building_name", "ilike", "%club%")
+            .not("building_name", "ilike", "%amenit%"),
+        ]);
+        reraUnits = (unitsRes.data ?? []) as ReraUnit[];
+        reraBuildings = (buildingsRes.data ?? []) as ReraBuilding[];
+      }
+    }
+
+    return { project, configurations, market, reraUnits, reraBuildings };
+  } catch {
+    return empty;
+  }
+}

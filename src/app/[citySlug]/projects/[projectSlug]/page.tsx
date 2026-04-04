@@ -1,10 +1,12 @@
 import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
-import { projectService } from "@/services/projectService";
+import { projectService, fetchAdvisorProjectEnrichment } from "@/services/projectService";
+import type { AdvisorProjectEnrichment } from "@/services/projectService";
 import { projectInsightsService } from "@/services/projectInsightsService";
 import { optimizeSupabaseImage, getHeroImageUrl } from "@/utils/imageOptimization";
 import { buildProjectAbsoluteUrl, buildProjectUrl } from "@/lib/routes";
 import ProjectPageV2 from "@/components/project-details/ProjectPageV2";
+import ProjectPageRedesign from "@/components/project-details/ProjectPageRedesign";
 import { createServiceClient } from "@/lib/supabase/serviceClient";
 
 
@@ -145,6 +147,9 @@ export default async function ProjectDetailPage({ params }: PageProps) {
   const citySlug = Array.isArray(citySlugParam) ? citySlugParam[0] : citySlugParam;
   const projectSlug = Array.isArray(projectSlugParam) ? projectSlugParam[0] : projectSlugParam;
 
+  // New design is now the default for all project pages
+  const useNewProjectDesign = true;
+
   if (!citySlug || !projectSlug) {
     notFound();
   }
@@ -162,7 +167,8 @@ export default async function ProjectDetailPage({ params }: PageProps) {
     if (resolvedCity && resolvedCity !== citySlug) {
       redirect(buildProjectUrl(resolvedCity, projectSlug));
     }
-    notFound();
+    // Fall back to the city's projects index rather than a bare 404
+    redirect(`/${citySlug}/projects`);
   }
 
   // Fetch developer RERA projects in parallel with other data
@@ -172,7 +178,7 @@ export default async function ProjectDetailPage({ params }: PageProps) {
   const cityId = (project as any).city_id || (project.city as any)?.id || null;
   const currentMicroMarketSlug = project.micro_market?.url_slug || null;
 
-  const [brochureResult, insightsResult, developerProjectsResult, liveIntelligenceResult, microMarketDetailResult, relatedProjectsResult, nearbyMarketsResult, configDistributionResult, otherProjectsInMarketResult, developerBrandSlugResult] = await Promise.allSettled([
+  const [brochureResult, insightsResult, developerProjectsResult, liveIntelligenceResult, microMarketDetailResult, relatedProjectsResult, nearbyMarketsResult, configDistributionResult, otherProjectsInMarketResult, developerBrandSlugResult, advisorEnrichmentResult] = await Promise.allSettled([
     (async () => {
       try {
         const { findBrochureByProjectName } = await import('@/services/brochureService');
@@ -322,24 +328,57 @@ export default async function ProjectDetailPage({ params }: PageProps) {
         return [];
       }
     })(),
-    // Fetch developer brand (name + slug) via project→brand map
+    // Fetch developer brand (name + slug).
+    // Strategy 1: rera_id → rera_projects.id → developer_project_brand_map → developer_brands
+    // Strategy 2: fuzzy match developer_name against developer_brands.brand_name
     (async () => {
-      if (!projectId) return null;
       try {
         const supabase = createServiceClient();
-        const { data } = await supabase
-          .from("developer_project_brand_map")
-          .select("brand_id, developer_brands(brand_name, url_slug)")
-          .eq("project_id", projectId)
-          .limit(1)
-          .maybeSingle();
-        const brand = (data as any)?.developer_brands;
-        if (!brand) return null;
-        return { brandName: brand.brand_name ?? null, brandSlug: brand.url_slug ?? null };
+        const reraId = (project as any).rera_id as string | null;
+
+        // Strategy 1: via rera_projects
+        if (reraId) {
+          const { data: reraRow } = await supabase
+            .from("rera_projects")
+            .select("id")
+            .eq("rera_id", reraId)
+            .maybeSingle();
+          if (reraRow?.id) {
+            const { data } = await supabase
+              .from("developer_project_brand_map")
+              .select("brand_id, developer_brands(brand_name, url_slug)")
+              .eq("project_id", reraRow.id)
+              .limit(1)
+              .maybeSingle();
+            const brand = (data as any)?.developer_brands;
+            if (brand?.url_slug) return { brandName: brand.brand_name ?? null, brandSlug: brand.url_slug };
+          }
+        }
+
+        // Strategy 2: fuzzy match developer_name against brand_name
+        const devName = developerName;
+        if (!devName) return null;
+        const { data: allBrands } = await supabase
+          .from("developer_brands")
+          .select("brand_name, url_slug");
+        if (allBrands?.length) {
+          const brands = allBrands as Array<{ brand_name: string; url_slug: string | null }>;
+          const devLower = devName.toLowerCase();
+          const words = devLower.split(/[\s-]+/);
+          const twoWordPrefix = words.slice(0, 2).join(" ");
+          let found = brands.find((b) => b.url_slug && b.brand_name.toLowerCase().startsWith(twoWordPrefix));
+          if (!found && words[0].length >= 5) {
+            found = brands.find((b) => b.url_slug && b.brand_name.toLowerCase().startsWith(words[0]));
+          }
+          if (found?.url_slug) return { brandName: found.brand_name, brandSlug: found.url_slug };
+        }
+        return null;
       } catch {
         return null;
       }
     })(),
+    // Fetch advisor project enrichment (new intelligence tables)
+    fetchAdvisorProjectEnrichment(projectSlug, currentMicroMarketSlug ?? undefined),
   ]);
 
   const insights = insightsResult.status === "fulfilled"
@@ -355,6 +394,9 @@ export default async function ProjectDetailPage({ params }: PageProps) {
   const developerBrandResult = developerBrandSlugResult.status === "fulfilled" ? (developerBrandSlugResult.value as { brandName: string | null; brandSlug: string | null } | null) : null;
   const developerBrandSlug = developerBrandResult?.brandSlug ?? null;
   const developerBrandName = developerBrandResult?.brandName ?? null;
+  const advisorEnrichment: AdvisorProjectEnrichment = advisorEnrichmentResult.status === "fulfilled"
+    ? (advisorEnrichmentResult.value as AdvisorProjectEnrichment)
+    : { project: null, configurations: [], market: null, reraUnits: [], reraBuildings: [] };
 
   const context = projectService.buildProjectPageContext(project, citySlug, projectSlug);
 
@@ -369,6 +411,29 @@ export default async function ProjectDetailPage({ params }: PageProps) {
     microMarket: (project.micro_market as any)?.micro_market_name ?? "",
     landingPage: `/${citySlug}/projects/${projectSlug}`,
   };
+
+  if (useNewProjectDesign) {
+    return (
+      <ProjectPageRedesign
+        citySlug={citySlug}
+        projectSlug={projectSlug}
+        project={project}
+        insights={insights}
+        context={context}
+        developerProjects={developerProjects}
+        liveIntelligence={liveIntelligence}
+        microMarketDetail={microMarketDetail}
+        relatedProjects={relatedProjects}
+        nearbyMarkets={nearbyMarkets}
+        configDistribution={configDistribution}
+        otherProjectsInMarket={otherProjectsInMarket}
+        developerBrandSlug={developerBrandSlug}
+        developerBrandName={developerBrandName}
+        leadContext={leadContext}
+        advisorData={advisorEnrichment}
+      />
+    );
+  }
 
   return (
     <ProjectPageV2
@@ -387,6 +452,7 @@ export default async function ProjectDetailPage({ params }: PageProps) {
       developerBrandSlug={developerBrandSlug}
       developerBrandName={developerBrandName}
       leadContext={leadContext}
+      advisorData={advisorEnrichment}
     />
   );
 }

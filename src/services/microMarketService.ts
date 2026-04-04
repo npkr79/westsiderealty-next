@@ -1,5 +1,5 @@
-import { createClient } from '@/lib/supabase/server';
-const supabase = await createClient();
+import { createServiceClient } from '@/lib/supabase/serviceClient';
+const supabase = createServiceClient();
 
 
 export interface MicroMarketInfo {
@@ -109,11 +109,6 @@ export const microMarketService = {
       .maybeSingle();
 
     if (cityError) {
-      // Handle PGRST116 (0 rows) gracefully
-      if (cityError.code === 'PGRST116' && cityError.details?.includes('0 rows')) {
-        console.warn('⚠️ [MicroMarketService] City not found:', citySlug);
-        return [];
-      }
       console.error('❌ [MicroMarketService] Error fetching city:', cityError);
       return [];
     }

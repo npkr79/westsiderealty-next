@@ -6,6 +6,7 @@ import "./globals.css";
 import Layout from "@/components/layout/Layout";
 import HeaderServer from "@/components/layout/HeaderServer";
 import ClientProviders from "@/components/providers/ClientProviders";
+import AdvisorChat from "@/components/advisor/AdvisorChat";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -91,6 +92,13 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        {/* Google Fonts — Cormorant Garamond, Outfit, DM Mono */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Outfit:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap"
+          rel="stylesheet"
+        />
         {/* Meta Pixel Code */}
         <script
           dangerouslySetInnerHTML={{
@@ -125,6 +133,7 @@ fbq('track', 'PageView');
         <ClientProviders>
           <Layout header={<HeaderServer />}>{children}</Layout>
         </ClientProviders>
+        <AdvisorChat />
         <GoogleAnalytics gaId="G-GYG41B6D00" />
         <Analytics />
       </body>

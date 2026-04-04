@@ -5,6 +5,7 @@ const nextConfig: NextConfig = {
     return [
       // Slug aliases — add more as needed when DB slug ≠ expected URL
       { source: "/developers/rajapushpa", destination: "/developers/rajapushpa-group", permanent: true },
+      { source: "/developers/my-home-constructions", destination: "/developers/my-home-group", permanent: true },
       { source: "/developers/lansum", destination: "/developers", permanent: false },
       { source: "/admin", destination: "/crm/login", permanent: true },
       { source: "/admin/:path*", destination: "/crm/login", permanent: true },

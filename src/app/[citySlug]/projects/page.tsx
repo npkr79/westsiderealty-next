@@ -1,45 +1,45 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { Suspense } from "react";
+import { createServiceClient } from "@/lib/supabase/serviceClient";
 import { buildMetadata } from "@/components/common/SEO";
 import { JsonLd } from "@/components/common/SEO";
-import { PageHeader } from "@/components/common/PageHeader";
-import ProjectCard from "@/components/properties/ProjectCard";
-import { Building2 } from "lucide-react";
+import CityProjectsContent, { type ProjectItem, type MicroMarketOption } from "./CityProjectsContent";
+
+export const revalidate = 300;
 
 interface PageProps {
   params: Promise<{ citySlug: string }>;
-  searchParams: Promise<{ search?: string; status?: string; microMarket?: string; page?: string }>;
+  searchParams: Promise<{ search?: string; status?: string; microMarket?: string }>;
 }
+
+// Map URL status param → completion_status DB values
+const STATUS_MAP: Record<string, string[]> = {
+  new_launch:         ["new_launch", "pre_launch"],
+  under_construction: ["under_construction"],
+  near_completion:    ["near_completion"],
+  ready_to_move:      ["ready_to_move", "completed", "possession", "possession_started"],
+  // legacy aliases
+  ready:              ["ready_to_move", "completed", "possession", "possession_started"],
+  published:          ["ready_to_move", "completed"],
+  "under-construction": ["under_construction"],
+};
 
 export async function generateMetadata({ params, searchParams }: PageProps): Promise<Metadata> {
   const { citySlug } = await params;
-  const resolvedSearchParams = await searchParams;
-  const supabase = await createClient();
-  
+  const sp = await searchParams;
+  const supabase = createServiceClient();
+
   const { data: city } = await supabase
     .from("cities")
     .select("city_name, seo_title, meta_description")
     .eq("url_slug", citySlug)
-    .single();
+    .maybeSingle();
 
-  if (!city) {
-    return {
-      title: "Projects Not Found",
-    };
-  }
+  if (!city) return { title: "Projects Not Found" };
 
-  // Check if filters are applied (excluding page parameter)
-  const hasFilters = !!(resolvedSearchParams.status || resolvedSearchParams.search || resolvedSearchParams.microMarket);
-
-  // Canonical should be base URL (no filters)
+  const hasFilters = !!(sp.status || sp.search || sp.microMarket);
   const canonicalUrl = `https://www.westsiderealty.in/${citySlug}/projects`;
-
-  // If filters are applied, add noindex to prevent duplicate content
-  const robotsConfig = hasFilters
-    ? { index: false, follow: true }
-    : { index: true, follow: true };
 
   return {
     ...buildMetadata({
@@ -48,122 +48,127 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
         : `All Projects in ${city.city_name} — RERA Verified | Westside Realty`,
       description:
         city.meta_description ||
-        `Browse RERA-verified residential & commercial projects in ${city.city_name}. Compare prices, floor plans & expert reviews. Advisory by Westside Realty.`,
+        `Browse RERA-verified residential & commercial projects in ${city.city_name}. Compare prices, floor plans & expert advisory by Westside Realty.`,
       canonicalUrl,
     }),
-    robots: robotsConfig,
+    robots: hasFilters ? { index: false, follow: true } : { index: true, follow: true },
   };
 }
 
 export async function generateStaticParams() {
-  const { createBuildClient } = await import('@/lib/supabase/buildClient');
+  const { createBuildClient } = await import("@/lib/supabase/buildClient");
   const supabase = createBuildClient();
-  const { data: cities } = await supabase
-    .from("cities")
-    .select("url_slug")
-    .eq("page_status", "published");
-
-  return cities?.map((city) => ({ citySlug: city.url_slug })) || [];
-}
-
-interface Project {
-  id: string;
-  project_name: string;
-  url_slug: string;
-  hero_image_url: string | null;
-  price_range_text: string | null;
-  status: string | null;
-  micro_market: { micro_market_name: string; url_slug: string } | null;
-  developer: { developer_name: string; url_slug: string } | null;
+  const { data: cities } = await supabase.from("cities").select("url_slug").eq("page_status", "published");
+  return cities?.map((city) => ({ citySlug: city.url_slug })) ?? [];
 }
 
 export default async function CityProjectsPage({ params, searchParams }: PageProps) {
   const { citySlug } = await params;
-  const resolvedSearchParams = await searchParams;
-  const supabase = await createClient();
+  const sp = await searchParams;
+  const supabase = createServiceClient();
 
-  // Get city info
+  // City lookup
   const { data: city } = await supabase
     .from("cities")
     .select("id, city_name, url_slug")
     .eq("url_slug", citySlug)
-    .single();
+    .maybeSingle();
 
-  if (!city) {
-    notFound();
-  }
+  if (!city) notFound();
 
-  // Build query for projects in this city
-  let query = supabase
-    .from("projects")
-    .select(`
-      id, project_name, url_slug, hero_image_url, price_range_text, status,
-      micro_market:micro_markets!projects_micromarket_id_fkey(micro_market_name, url_slug),
-      developer:developers(developer_name, url_slug)
-    `)
-    .eq("city_id", city.id)
-    .or("status.ilike.published,status.ilike.%under construction%")
-    .order("created_at", { ascending: false });
+  const activeStatus = sp.status ?? "";
+  const activeMicroMarket = sp.microMarket ?? "";
+  const searchQuery = sp.search ?? "";
 
-  // Apply status filter
-  if (resolvedSearchParams.status) {
-    if (resolvedSearchParams.status === "published") {
-      query = query.eq("status", "published");
-    } else if (resolvedSearchParams.status === "under-construction") {
-      query = query.ilike("status", "%under construction%");
-    }
-  }
-
-  // Apply search filter
-  if (resolvedSearchParams.search) {
-    query = query.ilike("project_name", `%${resolvedSearchParams.search}%`);
-  }
-
-  // Apply micro-market filter
-  if (resolvedSearchParams.microMarket) {
+  // Resolve micro market ID if filter active
+  let microMarketId: string | null = null;
+  if (activeMicroMarket) {
     const { data: mm } = await supabase
       .from("micro_markets")
       .select("id")
-      .eq("url_slug", resolvedSearchParams.microMarket)
+      .eq("url_slug", activeMicroMarket)
       .eq("city_id", city.id)
       .maybeSingle();
-    if (mm?.id) {
-      query = query.eq("micro_market_id", mm.id);
-    }
+    microMarketId = mm?.id ?? null;
   }
 
-  const { data: projects, error } = await query;
+  // Build project query
+  let query = supabase
+    .from("projects")
+    .select(`
+      id,
+      project_name,
+      url_slug,
+      hero_image_url,
+      price_range_text,
+      completion_status,
+      micro_market:micro_markets!projects_micromarket_id_fkey(micro_market_name, url_slug),
+      developer:developers(developer_name)
+    `)
+    .eq("city_id", city.id)
+    .eq("page_status", "published")
+    .order("created_at", { ascending: false })
+    .limit(120);
 
-  if (error) {
-    console.error("Error fetching projects:", error);
+  // Apply status filter
+  const statusValues = STATUS_MAP[activeStatus];
+  if (statusValues?.length) {
+    query = query.in("completion_status", statusValues);
   }
 
-  // Normalize the data
-  const projectsList: Project[] = (projects || []).map((p: any) => ({
-    id: p.id,
-    project_name: p.project_name,
-    url_slug: p.url_slug,
-    hero_image_url: p.hero_image_url,
-    price_range_text: p.price_range_text,
-    status: p.status,
-    micro_market: Array.isArray(p.micro_market) 
-      ? (p.micro_market[0] || null)
-      : (p.micro_market || null),
-    developer: Array.isArray(p.developer)
-      ? (p.developer[0] || null)
-      : (p.developer || null),
+  // Apply micro-market filter
+  if (microMarketId) {
+    query = query.eq("micro_market_id", microMarketId);
+  }
+
+  // Apply search filter server-side
+  if (searchQuery) {
+    query = query.ilike("project_name", `%${searchQuery}%`);
+  }
+
+  // Fetch micro-markets for dropdown
+  const [{ data: rawProjects }, { data: rawMicroMarkets }] = await Promise.all([
+    query,
+    supabase
+      .from("micro_markets")
+      .select("id, micro_market_name, url_slug")
+      .eq("city_id", city.id)
+      .order("micro_market_name"),
+  ]);
+
+  // Normalize projects
+  const projects: ProjectItem[] = (rawProjects ?? []).map((p: any) => {
+    const mm = Array.isArray(p.micro_market) ? p.micro_market[0] : p.micro_market;
+    const dev = Array.isArray(p.developer) ? p.developer[0] : p.developer;
+    return {
+      id: p.id,
+      project_name: p.project_name,
+      url_slug: p.url_slug,
+      hero_image_url: p.hero_image_url ?? null,
+      price_range_text: p.price_range_text ?? null,
+      completion_status: p.completion_status ?? null,
+      micro_market_name: mm?.micro_market_name ?? null,
+      micro_market_slug: mm?.url_slug ?? null,
+      developer_name: dev?.developer_name ?? null,
+    };
+  });
+
+  const microMarkets: MicroMarketOption[] = (rawMicroMarkets ?? []).map((m: any) => ({
+    id: m.id,
+    micro_market_name: m.micro_market_name,
+    url_slug: m.url_slug,
   }));
 
-  // JSON-LD structured data
+  // JSON-LD
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "CollectionPage",
     name: `${city.city_name} Real Estate Projects`,
-    description: `Premium residential projects in ${city.city_name}`,
+    description: `Premium RERA-verified residential projects in ${city.city_name}`,
     url: `https://www.westsiderealty.in/${citySlug}/projects`,
     mainEntity: {
       "@type": "ItemList",
-      itemListElement: projectsList.slice(0, 10).map((p, i) => ({
+      itemListElement: projects.slice(0, 10).map((p, i) => ({
         "@type": "ListItem",
         position: i + 1,
         name: p.project_name,
@@ -172,63 +177,20 @@ export default async function CityProjectsPage({ params, searchParams }: PagePro
     },
   };
 
-  const breadcrumbItems = [
-    { label: "Home", href: "/" },
-    { label: city.city_name, href: `/${citySlug}` },
-    { label: "Projects", href: `/${citySlug}/projects` },
-  ];
-
   return (
     <>
-      <JsonLd jsonLd={[jsonLd]} />
-      <PageHeader
-        title={`New Projects in ${city.city_name}`}
-        subtitle={`${projectsList.length} projects available`}
-        breadcrumbs={breadcrumbItems}
-      />
-
-      <main className="min-h-screen bg-background">
-        <section className="container mx-auto px-4 py-12">
-          {/* City nav links */}
-          <div className="flex flex-wrap gap-3 mb-8">
-            <Link href={`/${citySlug}`} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-              ← {city.city_name} Home
-            </Link>
-            <span className="text-muted-foreground/40">·</span>
-            <Link href={`/${citySlug}/micro-markets`} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-              Explore Markets
-            </Link>
-          </div>
-
-          {projectsList.length === 0 ? (
-            <div className="text-center py-12">
-              <Building2 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-medium">No projects found</h3>
-              <p className="text-muted-foreground">Try adjusting your search filters</p>
-            </div>
-          ) : (
-            <>
-              <div className="mb-6">
-                <p className="text-muted-foreground">
-                  Found {projectsList.length} project{projectsList.length !== 1 ? "s" : ""}
-                </p>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {projectsList.map((project) => (
-                  <ProjectCard
-                    key={project.id}
-                    project={{
-                      ...project,
-                      city: { city_name: city.city_name, url_slug: city.url_slug },
-                    }}
-                    citySlug={citySlug}
-                  />
-                ))}
-              </div>
-            </>
-          )}
-        </section>
-      </main>
+      <JsonLd jsonLd={jsonLd} />
+      <Suspense>
+        <CityProjectsContent
+          projects={projects}
+          microMarkets={microMarkets}
+          citySlug={citySlug}
+          cityName={city.city_name}
+          activeStatus={activeStatus}
+          activeMicroMarket={activeMicroMarket}
+          searchQuery={searchQuery}
+        />
+      </Suspense>
     </>
   );
 }

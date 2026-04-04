@@ -101,9 +101,19 @@ export function ProjectsTable({ projects, citySlug = "hyderabad" }: { projects: 
                 </p>
 
                 {/* Market */}
-                <p className="text-slate-500 text-xs mb-3">
-                  {p.micro_market_name ?? "Hyderabad"}
-                </p>
+                {p.market_slug ? (
+                  <Link
+                    href={`/${citySlug}/${p.market_slug}`}
+                    onClick={(e) => e.stopPropagation()}
+                    className="text-slate-500 text-xs mb-3 block hover:text-amber-400 transition-colors"
+                  >
+                    {p.micro_market_name ?? "Hyderabad"}
+                  </Link>
+                ) : (
+                  <p className="text-slate-500 text-xs mb-3">
+                    {p.micro_market_name ?? "Hyderabad"}
+                  </p>
+                )}
 
                 {/* Price */}
                 {price && (
