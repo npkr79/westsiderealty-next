@@ -38,30 +38,89 @@ const TICKER_MARKETS = [
 ];
 
 const HERO_CARDS = [
+  // Neopolis
   {
     name: "Rajapushpa Skyra",
     location: "Neopolis, Kokapet",
-    price: "₹10,800–13,000/sqft",
+    price: "₹3.35 Cr – ₹5.72 Cr",
     tag: "1.15L sqft Clubhouse",
     img: `${SUPABASE_IMG}/skyra_hero.png`,
     rotate: "-3deg",
+    z: 9,
+  },
+  {
+    name: "Brigade Gateway",
+    location: "Neopolis, Kokapet",
+    price: "₹4.60 Cr – ₹15.77 Cr",
+    tag: "New Launch · Neopolis",
+    img: "https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/project-hero-images/Brigade_Gateway_Hero_Image.jpg",
+    rotate: "2deg",
+    z: 8,
+  },
+  // Kokapet
+  {
+    name: "Ramky One Astra",
+    location: "Kokapet",
+    price: "Price on Request",
+    tag: "Under Construction · Kokapet",
+    img: "https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/project-hero-images/ramky_one_astra_hero_image.png",
+    rotate: "-2deg",
+    z: 7,
+  },
+  {
+    name: "Rajapushpa Casa Luxura",
+    location: "Kokapet",
+    price: "₹4.5 Cr – ₹6.5 Cr",
+    tag: "Ultra Luxury Villas",
+    img: "https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/project-hero-images/Rajapushpa_Casa_Luxura_Hero_Image.jpg",
+    rotate: "1deg",
+    z: 6,
+  },
+  // Gachibowli
+  {
+    name: "Prestige High Fields",
+    location: "Gachibowli",
+    price: "₹1.5 Cr – ₹3.5 Cr",
+    tag: "Ready to Move · Resale",
+    img: "https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/project-hero-images/Prestige_High_Fields_Hero_Image.jpg",
+    rotate: "-1deg",
+    z: 5,
+  },
+  {
+    name: "My Home Bhooja",
+    location: "Gachibowli",
+    price: "₹3.5 Cr – ₹6.0 Cr",
+    tag: "Iconic Tower · Resale",
+    img: "https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/project-images/projects/my_home_vipina/My_Home_Vipina_Main.png",
+    rotate: "3deg",
+    z: 4,
+  },
+  // Tellapur
+  {
+    name: "My Home Sayuk",
+    location: "Tellapur",
+    price: "Price on Request",
+    tag: "Under Construction · Tellapur",
+    img: "https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/project-hero-images/My_Home_Sayuk_Hero_Image.jpg",
+    rotate: "-2deg",
     z: 3,
   },
   {
-    name: "ASBL Broadway",
-    location: "Financial District",
-    price: "₹10,683/sqft",
-    tag: "G+50 · ₹1000 Cr Launch Day",
-    img: `${SUPABASE_IMG}/ASBL-Broadway_hero.png`,
-    rotate: "2deg",
+    name: "My Home Avali",
+    location: "Tellapur",
+    price: "₹3.5 Cr – ₹5.8 Cr",
+    tag: "3 & 4 BHK · Tellapur",
+    img: "https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/project-hero-images/My_Home_Avali_Hero_Image.jpg",
+    rotate: "1deg",
     z: 2,
   },
+  // Financial District
   {
-    name: "Myscape Songs of the Sun",
+    name: "ASBL Broadway",
     location: "Financial District",
-    price: "₹10,000–11,100/sqft",
-    tag: "20 Shades · All Corner Units",
-    img: `${SUPABASE_IMG}/myscape-songs-of-the-sun_hero.png`,
+    price: "₹2.2 Cr – ₹3.5 Cr",
+    tag: "G+50 · ₹1000 Cr Launch Day",
+    img: `${SUPABASE_IMG}/ASBL-Broadway_hero.png`,
     rotate: "-1deg",
     z: 1,
   },
@@ -237,7 +296,7 @@ const QUICK_FILTERS = [
   "Under ₹2 Cr",
   "₹5 Cr+",
   "Villa",
-  "Goa Holiday Homes",
+  "Best in Hyderabad",
   "Top appreciation",
 ];
 
@@ -333,6 +392,7 @@ export default function HomepageRedesign() {
   async function handleSearch(q: string) {
     const query = q.trim();
     if (!query) return;
+    setActiveFilter(QUICK_FILTERS.includes(query) ? query : null);
     setSearchLoading(true);
     setSearchResults(null);
     setSearchError(null);
@@ -585,79 +645,69 @@ export default function HomepageRedesign() {
               Goa beach markets. We don&apos;t just list properties — we decode them.
             </p>
 
-            {/* Natural language search */}
-            <div style={{ marginBottom: 14 }}>
-              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                <div style={{ position: "relative", flex: 1 }}>
-                  <span style={{ position: "absolute", left: 16, top: "50%", transform: "translateY(-50%)", color: C.textMuted, fontSize: 17, pointerEvents: "none", lineHeight: 1 }}>
-                    ⌕
-                  </span>
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleSearch(searchQuery)}
-                    placeholder="Search projects, markets, developers... e.g. '4 BHK in Kokapet under 8 Cr'"
-                    className="hr-search"
-                    style={{
-                      width: "100%",
-                      padding: "14px 20px 14px 44px",
-                      borderRadius: 14,
-                      border: `1.5px solid ${C.border}`,
-                      background: C.bgCard,
-                      fontSize: 15,
-                      color: C.text,
-                      boxSizing: "border-box",
-                      fontFamily: "'Outfit', sans-serif",
-                      boxShadow: "0 2px 12px rgba(0,0,0,0.04)",
-                      outline: "none",
-                    }}
-                  />
-                </div>
+            {/* Search bar */}
+            <div style={{ position: "relative", marginBottom: 18 }}>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSearch(searchQuery)}
+                disabled={searchLoading}
+                placeholder='"3BHK in Kokapet under 3 Cr" or "villa in Goa under 5 Cr"'
+                className="hr-search"
+                style={{
+                  width: "100%",
+                  padding: "14px 52px 14px 20px",
+                  borderRadius: 14,
+                  border: `1.5px solid ${C.border}`,
+                  background: C.bgCard,
+                  fontSize: 15,
+                  color: C.text,
+                  boxSizing: "border-box",
+                  fontFamily: "'Outfit', sans-serif",
+                  boxShadow: "0 2px 12px rgba(0,0,0,0.04)",
+                  opacity: searchLoading ? 0.6 : 1,
+                }}
+              />
+              <span
+                onClick={() => handleSearch(searchQuery)}
+                style={{
+                  position: "absolute",
+                  right: 18,
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  color: searchLoading ? C.gold : C.textMuted,
+                  fontSize: 18,
+                  cursor: searchLoading ? "default" : "pointer",
+                  lineHeight: 1,
+                  userSelect: "none",
+                }}
+              >
+                {searchLoading ? "…" : "⌕"}
+              </span>
+            </div>
+
+            {/* Quick filter chips */}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              {QUICK_FILTERS.map((f) => (
                 <button
-                  onClick={() => handleSearch(searchQuery)}
-                  disabled={searchLoading || !searchQuery.trim()}
+                  key={f}
+                  onClick={() => { setSearchQuery(f); handleSearch(f); }}
+                  className={`hr-pill${activeFilter === f ? " active" : ""}`}
                   style={{
-                    padding: "14px 20px",
-                    borderRadius: 14,
-                    border: "none",
-                    background: C.bgDark,
-                    color: "#fff",
-                    fontSize: 14,
-                    fontWeight: 600,
+                    padding: "7px 15px",
+                    borderRadius: 100,
+                    border: `1px solid ${activeFilter === f ? C.gold : C.border}`,
+                    background: "transparent",
+                    fontSize: 13,
+                    color: activeFilter === f ? C.gold : C.textMuted,
+                    cursor: "pointer",
                     fontFamily: "'Outfit', sans-serif",
-                    cursor: searchLoading || !searchQuery.trim() ? "not-allowed" : "pointer",
-                    opacity: searchLoading || !searchQuery.trim() ? 0.5 : 1,
-                    whiteSpace: "nowrap",
-                    transition: "opacity 0.15s",
-                    flexShrink: 0,
                   }}
                 >
-                  {searchLoading ? "…" : "Search"}
+                  {f}
                 </button>
-              </div>
-
-              {/* Hint chips — static, non-clickable */}
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 10 }}>
-                {["4 BHK Kokapet under 8 Cr", "Ready to move Gachibowli", "Best appreciation in West Hyderabad"].map((hint) => (
-                  <span
-                    key={hint}
-                    onClick={() => { setSearchQuery(hint); handleSearch(hint); }}
-                    style={{
-                      padding: "5px 12px",
-                      borderRadius: 100,
-                      border: `1px solid ${C.border}`,
-                      fontSize: 12,
-                      color: C.textMuted,
-                      fontFamily: "'Outfit', sans-serif",
-                      cursor: "pointer",
-                      background: "transparent",
-                    }}
-                  >
-                    {hint}
-                  </span>
-                ))}
-              </div>
+              ))}
             </div>
           </div>
 
