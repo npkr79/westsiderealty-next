@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { InsightsAdvisorCTA } from "../InsightsAdvisorCTA";
 
 export const metadata: Metadata = {
   title: "Hyderabad Real Estate Market Report Q1 2026 | Westside Realty",
@@ -9,193 +10,160 @@ export const metadata: Metadata = {
 
 const REPORT_DATE = "March 2026";
 
+const C = {
+  bg: "#FAFAF7",
+  bgCard: "#FFFFFF",
+  bgWarm: "#F5F3EE",
+  bgDark: "#1A1A1F",
+  gold: "#B08D57",
+  goldLight: "#C9A96E",
+  text: "#1A1A1F",
+  textMuted: "#7A7A7E",
+  border: "rgba(0,0,0,0.07)",
+} as const;
+
 export default function MarketReportsPage() {
   return (
-    <main style={{ background: "#080808", minHeight: "100vh" }}>
-      <section className="px-4 pb-16" style={{ paddingTop: 88, background: "linear-gradient(to bottom, #0d0d0d, #080808)" }}>
-        <div className="container mx-auto max-w-3xl">
-          <Link href="/insights" className="text-xs text-slate-500 hover:text-slate-300 transition-colors mb-6 inline-block">
-            ← Back to Insights
-          </Link>
+    <>
+      <style>{`
+        .rp-body h2 { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 26px; font-weight: 600; color: #1A1A1F; margin: 40px 0 16px; }
+        .rp-body h3 { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 18px; font-weight: 600; color: #1A1A1F; margin: 0 0 10px; }
+        .rp-body p { font-family: 'Outfit', sans-serif; font-size: 15px; color: #1A1A1F; line-height: 1.8; margin: 0 0 14px; }
+        .rp-kf-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+        @media (max-width: 768px) {
+          .rp-kf-grid { grid-template-columns: repeat(2, 1fr) !important; }
+          .rp-risk-grid { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
 
-          <p className="text-xs font-bold uppercase tracking-[0.2em] mb-4" style={{ color: "#c8a96e" }}>
-            Market Intelligence · {REPORT_DATE}
-          </p>
-          <h1 className="text-4xl sm:text-5xl font-bold text-white mb-4">
+      {/* Hero */}
+      <section style={{ background: C.bgDark, position: "relative", overflow: "hidden" }}>
+        <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 65% 60% at 65% 40%, rgba(176,141,87,0.10) 0%, transparent 70%)", pointerEvents: "none" }} />
+        <div style={{ maxWidth: 800, margin: "0 auto", padding: "100px 24px 64px", position: "relative" }}>
+          <Link href="/insights" style={{ fontFamily: "'Outfit', sans-serif", fontSize: 13, color: "rgba(255,255,255,0.4)", textDecoration: "none", display: "inline-block", marginBottom: 24 }}>
+            ← Back to Research
+          </Link>
+          <div style={{ marginBottom: 16 }}>
+            <span style={{ fontFamily: "'Outfit', sans-serif", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.18em", color: C.gold }}>Research Report · {REPORT_DATE}</span>
+          </div>
+          <h1 style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: "clamp(36px,5vw,56px)", fontWeight: 600, color: "#fff", lineHeight: 1.15, margin: "0 0 20px" }}>
             Hyderabad Real Estate<br />Q1 2026 Report
           </h1>
-          <p className="text-slate-400 text-lg mb-12 max-w-xl">
+          <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: 18, color: "rgba(255,255,255,0.6)", lineHeight: 1.6, maxWidth: 580, margin: 0 }}>
             West corridor analysis, price trends, and demand signals across 19 micro-markets. Updated quarterly.
           </p>
+        </div>
+      </section>
 
-          {/* Executive Summary */}
-          <div className="rounded-2xl border p-6 mb-8" style={{ background: "rgba(200,169,110,0.06)", borderColor: "rgba(200,169,110,0.25)" }}>
-            <p className="text-xs font-bold uppercase tracking-[0.15em] mb-3" style={{ color: "#c8a96e" }}>Executive Summary</p>
-            <p className="text-slate-300 text-sm leading-relaxed">
-              Hyderabad's residential market entered 2026 with strong fundamentals: stable absorption, limited speculative inventory, and employer demand from the HITEC City belt showing no signs of cooling. Q1 new launches were up 14% YoY, with the premium segment (₹2Cr+) accounting for 38% of launches — a record. Financial District and Kokapet continue to lead price appreciation. Emerging corridors (Kollur, Mokila, Tellapur) are seeing the first serious institutional buyer interest. Risks: state election uncertainty, elevated construction costs, and a softening of NRI demand post-Fed rate cuts.
+      {/* Executive Summary */}
+      <section style={{ background: C.bg, padding: "48px 24px 0" }}>
+        <div style={{ maxWidth: 800, margin: "0 auto" }}>
+          <div style={{ background: C.bgCard, borderLeft: `4px solid ${C.gold}`, padding: "24px 28px", borderRadius: "0 12px 12px 0" }}>
+            <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", color: C.gold, margin: "0 0 12px" }}>Executive Summary</p>
+            <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: 15, color: C.text, lineHeight: 1.7, margin: 0 }}>
+              Hyderabad&apos;s residential market entered 2026 with strong fundamentals: stable absorption, limited speculative inventory, and employer demand from the HITEC City belt showing no signs of cooling. Q1 new launches were up 14% YoY, with the premium segment (₹2Cr+) accounting for 38% of launches — a record. Financial District and Kokapet continue to lead price appreciation.
             </p>
           </div>
+        </div>
+      </section>
+
+      {/* Body */}
+      <section style={{ background: C.bg, padding: "40px 24px 80px" }}>
+        <div style={{ maxWidth: 800, margin: "0 auto" }} className="rp-body">
 
           {/* Key findings */}
-          <h2 className="text-2xl font-bold text-white mb-6">Key Findings</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-10">
+          <h2>Key Findings</h2>
+          <div className="rp-kf-grid" style={{ marginBottom: 48 }}>
             {[
               { stat: "+14%", label: "New launches YoY", sub: "Premium segment leads" },
-              { stat: "₹10,200", label: "Average launch price/sqft", sub: "West corridor, all segments" },
-              { stat: "4.2 months", label: "Average inventory absorption", sub: "Down from 5.8 months in Q4 2025" },
+              { stat: "₹10,200", label: "Avg. launch price/sqft", sub: "West corridor, all segments" },
+              { stat: "4.2 months", label: "Avg. inventory absorption", sub: "Down from 5.8 months in Q4 2025" },
               { stat: "38%", label: "₹2Cr+ share of launches", sub: "Highest ever recorded" },
               { stat: "+19%", label: "Kokapet appreciation YoY", sub: "Top performing micro-market" },
               { stat: "68%", label: "End-use buyer share", sub: "vs 58% two years ago" },
             ].map((s) => (
-              <div key={s.label} className="rounded-2xl border border-white/8 p-5" style={{ background: "rgba(255,255,255,0.03)" }}>
-                <p className="text-2xl font-bold mb-1" style={{ color: "#c8a96e" }}>{s.stat}</p>
-                <p className="text-white text-sm font-medium">{s.label}</p>
-                <p className="text-slate-500 text-xs mt-1">{s.sub}</p>
+              <div key={s.label} style={{ background: C.bgCard, border: `1px solid ${C.border}`, borderRadius: 14, padding: 20 }}>
+                <p style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: 28, fontWeight: 600, color: C.gold, margin: "0 0 4px", lineHeight: 1 }}>{s.stat}</p>
+                <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: 13, fontWeight: 600, color: C.text, margin: "0 0 2px" }}>{s.label}</p>
+                <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: 11, color: C.textMuted, margin: 0 }}>{s.sub}</p>
               </div>
             ))}
           </div>
 
           {/* Corridor analysis */}
-          <h2 className="text-2xl font-bold text-white mb-6">Corridor Analysis</h2>
-
-          {[
-            {
-              name: "Financial District — Gachibowli",
-              badge: "PREMIUM CORE",
-              badgeColor: "#c8a96e",
-              price: "₹11,000–14,000/sqft",
-              trend: "↑ 10–12% YoY",
-              body: "The undisputed premium core. Q1 saw three major launches — Prestige Gachibowli, My Home Avatar, and Aparna Constructions One — all priced above ₹12,500/sqft with 80%+ booking rates within 30 days of launch. The area's 150,000+ tech workforce and 0% vacancy on Grade A commercial space makes it one of India's strongest residential demand drivers. Supply is constrained: very few large land parcels remain. Premium will widen further vs. other micro-markets.",
-              bullets: ["Low inventory risk", "Strong rental yield (4.2–4.8%)", "High NRI demand", "Limited new supply pipeline post-2026"],
-            },
-            {
-              name: "Kokapet — Narsingi",
-              badge: "TOP VALUE",
-              badgeColor: "#4ade80",
-              price: "₹9,500–12,500/sqft",
-              trend: "↑ 18–22% YoY",
-              body: "The best risk-reward in Hyderabad right now. Kokapet was the story of 2025 and the narrative is still running. The Kokapet SEZ approval (22 million sqft, anchored by Tata and Infosys) is the structural catalyst that will take this corridor to Financial District-level pricing by 2028–29. Narsingi, immediately adjacent, trades at a 15% discount to Kokapet but shares the same fundamentals. New launches are coming in fast — Godrej, Sattva, and Fortune Group all launched in Q1.",
-              bullets: ["Highest appreciation trajectory in city", "Direct ORR access", "SEZ employment catalyst", "Some execution risk on infrastructure timelines"],
-            },
-            {
-              name: "Kondapur — Raidurgam",
-              badge: "ESTABLISHED",
-              badgeColor: "#60a5fa",
-              price: "₹8,500–11,000/sqft",
-              trend: "↑ 8–10% YoY",
-              body: "The most liveable corridor in Hyderabad. Kondapur has mature social infrastructure — international schools, hospitals, supermarkets, restaurants — that buyers in newer corridors have to wait years for. Projects here have the best tenant profiles for rental investors. Price appreciation is slower than Kokapet but much more predictable. A safe choice for end-use buyers who want to move in within 2–3 years.",
-              bullets: ["Best schools catchment (ISH, Oakridge)", "Strong rental demand", "Good Metro connectivity", "Moderate appreciation upside"],
-            },
-            {
-              name: "Tellapur — Gopanpally — Neopolis",
-              badge: "GROWTH",
-              badgeColor: "#a78bfa",
-              price: "₹6,500–9,000/sqft",
-              trend: "↑ 12–15% YoY",
-              body: "The growth belt between the premium core and the outer ring. These three micro-markets are the beneficiaries of spillover from Kondapur and Gachibowli as pricing there has moved beyond many end-use budgets. Large-format township developments (Aparna Sarovar, My Home Tarkashyam) have created self-sufficient mini-markets here. Infrastructure is still catching up — travel times to the tech belt are 20–35 minutes — but this is improving.",
-              bullets: ["Better value than inner belt", "Large township projects with amenities", "Infrastructure improving steadily", "End-use + investment suitable"],
-            },
-            {
-              name: "Kollur — Mokila — Budwel",
-              badge: "EMERGING",
-              badgeColor: "#34d399",
-              price: "₹4,800–7,000/sqft",
-              trend: "↑ 10–14% YoY",
-              body: "For the patient investor with a 5+ year horizon. These corridors sit at the outer ring where today's prices are 50–60% below the premium core. The bull case: the same infrastructure expansion that drove Narsingi from ₹4,200 to ₹8,500/sqft over seven years is now being repeated here. ORR access is already in place. Metro Phase 2 (pending approval) would be transformative. The bear case: slower employment growth, oversupply risk from too many plotted layouts, and basic amenities still years away.",
-              bullets: ["Lowest entry price in the city", "High risk, high upside", "5–7 year horizon required", "Not suitable for immediate end-use"],
-            },
-          ].map((c) => (
-            <div key={c.name} className="rounded-2xl border border-white/8 p-6 mb-5" style={{ background: "rgba(255,255,255,0.03)" }}>
-              <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
-                <div>
-                  <h3 className="text-white font-bold text-lg">{c.name}</h3>
-                  <div className="flex flex-wrap items-center gap-3 mt-1">
-                    <span className="font-bold text-sm" style={{ color: "#c8a96e" }}>{c.price}</span>
-                    <span className="text-emerald-400 text-sm">{c.trend}</span>
-                  </div>
-                </div>
-                <span className="rounded-full px-3 py-1 text-[10px] font-bold uppercase"
-                  style={{ background: c.badgeColor + "20", color: c.badgeColor }}>
-                  {c.badge}
-                </span>
-              </div>
-              <p className="text-slate-400 text-sm leading-relaxed mb-4">{c.body}</p>
-              <div className="flex flex-wrap gap-2">
-                {c.bullets.map((b) => (
-                  <span key={b} className="rounded-full border border-white/10 px-3 py-1 text-xs text-slate-400" style={{ background: "rgba(255,255,255,0.04)" }}>
-                    {b}
-                  </span>
-                ))}
-              </div>
-            </div>
-          ))}
-
-          {/* Demand / Supply */}
-          <h2 className="text-2xl font-bold text-white mt-10 mb-6">Demand & Supply Signals</h2>
-          <div className="space-y-4 mb-10">
+          <h2>Corridor Analysis</h2>
+          <div style={{ display: "flex", flexDirection: "column", gap: 16, marginBottom: 48 }}>
             {[
-              {
-                title: "End-use demand is at a decade high",
-                body: "68% of buyers in Q1 2026 are owner-occupiers — the highest share since 2015. This is structurally positive: end-use buyers are less likely to cancel bookings, more likely to complete purchase, and create genuine rental demand as they move in. Speculative flipping (the risk that collapsed many other city markets) is structurally lower in Hyderabad because stamp duty reform and RERA penalties make quick exits expensive.",
-              },
-              {
-                title: "NRI demand softening but still significant",
-                body: "NRI buyers accounted for 22% of premium segment sales in Q1, down from 28% in Q1 2025. The reason: the Fed rate cut cycle means USD-denominated savings earn less, reducing the rupee-equivalent deployed into Indian real estate. This is a 12–18 month headwind for the very top of the market (₹3Cr+) but has no meaningful impact on the ₹1–2.5Cr segment where domestic demand dominates.",
-              },
-              {
-                title: "Construction costs stabilising",
-                body: "After two years of 15–20% YoY inflation in construction costs (driven by steel and cement prices), Q1 2026 saw stabilisation. Steel prices are flat at ₹58,000–60,000/tonne; cement at ₹370–390/bag. This is positive for developer margins and should translate to fewer project delays. The risk: labour costs are still rising 8–10% annually as construction workers migrate toward better-paying metro projects.",
-              },
-              {
-                title: "Inventory health is good",
-                body: "Total unsold inventory in Hyderabad stands at approximately 48,000 units (Anarock Q1 estimate). At current absorption rates, this represents 14–16 months of supply — healthy territory. Compare this to Mumbai (38 months) or Bengaluru (22 months). The relative scarcity keeps price floors firm.",
-              },
+              { name: "Financial District — Gachibowli", badge: "PREMIUM CORE", badgeColor: C.gold, price: "₹11,000–14,000/sqft", trend: "↑ 10–12% YoY", body: "The undisputed premium core. Q1 saw three major launches — all priced above ₹12,500/sqft with 80%+ booking rates within 30 days. The area's 150,000+ tech workforce and 0% vacancy on Grade A commercial space makes it one of India's strongest residential demand drivers. Supply is constrained: very few large land parcels remain.", bullets: ["Low inventory risk", "Strong rental yield (4.2–4.8%)", "High NRI demand", "Limited new supply pipeline post-2026"] },
+              { name: "Kokapet — Narsingi", badge: "TOP VALUE", badgeColor: "#4ade80", price: "₹9,500–12,500/sqft", trend: "↑ 18–22% YoY", body: "The best risk-reward in Hyderabad right now. Kokapet was the story of 2025 and the narrative is still running. The Kokapet SEZ approval (22 million sqft) is the structural catalyst that will take this corridor to Financial District-level pricing by 2028–29. Narsingi trades at a 15% discount to Kokapet but shares the same fundamentals.", bullets: ["Highest appreciation trajectory in city", "Direct ORR access", "SEZ employment catalyst", "Some infrastructure timeline risk"] },
+              { name: "Kondapur — Raidurgam", badge: "ESTABLISHED", badgeColor: "#60a5fa", price: "₹8,500–11,000/sqft", trend: "↑ 8–10% YoY", body: "The most liveable corridor in Hyderabad. Kondapur has mature social infrastructure — international schools, hospitals, supermarkets — that buyers in newer corridors wait years for. Projects here have the best tenant profiles for rental investors. Price appreciation is slower than Kokapet but much more predictable.", bullets: ["Best schools catchment (ISH, Oakridge)", "Strong rental demand", "Good Metro connectivity", "Moderate appreciation upside"] },
+              { name: "Tellapur — Gopanpally — Neopolis", badge: "GROWTH", badgeColor: "#a78bfa", price: "₹6,500–9,000/sqft", trend: "↑ 12–15% YoY", body: "The growth belt between the premium core and the outer ring. These micro-markets are beneficiaries of spillover from Kondapur and Gachibowli as pricing there has moved beyond many end-use budgets. Large-format township developments have created self-sufficient mini-markets here.", bullets: ["Better value than inner belt", "Large township projects with amenities", "Infrastructure improving steadily", "End-use + investment suitable"] },
+              { name: "Kollur — Mokila — Budwel", badge: "EMERGING", badgeColor: "#34d399", price: "₹4,800–7,000/sqft", trend: "↑ 10–14% YoY", body: "For the patient investor with a 5+ year horizon. These corridors sit at the outer ring where today's prices are 50–60% below the premium core. The bull case: the same infrastructure expansion that drove Narsingi from ₹4,200 to ₹8,500/sqft over seven years is now being repeated here.", bullets: ["Lowest entry price in the city", "High risk, high upside", "5–7 year horizon required", "Not suitable for immediate end-use"] },
+            ].map((c) => (
+              <div key={c.name} style={{ background: C.bgCard, border: `1px solid ${C.border}`, borderRadius: 16, padding: 28 }}>
+                <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 12 }}>
+                  <div>
+                    <h3>{c.name}</h3>
+                    <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 12, marginTop: 4 }}>
+                      <span style={{ fontFamily: "'Outfit', sans-serif", fontSize: 13, fontWeight: 600, color: C.gold }}>{c.price}</span>
+                      <span style={{ fontFamily: "'Outfit', sans-serif", fontSize: 13, color: "#4ade80" }}>{c.trend}</span>
+                    </div>
+                  </div>
+                  <span style={{ background: c.badgeColor + "20", color: c.badgeColor, fontFamily: "'Outfit', sans-serif", fontSize: 10, fontWeight: 700, textTransform: "uppercase", borderRadius: 20, padding: "4px 12px" }}>{c.badge}</span>
+                </div>
+                <p style={{ margin: "0 0 14px", color: C.textMuted }}>{c.body}</p>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                  {c.bullets.map((b) => (
+                    <span key={b} style={{ background: C.bgWarm, border: `1px solid ${C.border}`, borderRadius: 20, fontFamily: "'Outfit', sans-serif", fontSize: 12, color: C.textMuted, padding: "4px 12px" }}>{b}</span>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Demand & Supply */}
+          <h2>Demand &amp; Supply Signals</h2>
+          <div style={{ display: "flex", flexDirection: "column", gap: 16, marginBottom: 48 }}>
+            {[
+              { title: "End-use demand is at a decade high", body: "68% of buyers in Q1 2026 are owner-occupiers — the highest share since 2015. End-use buyers are less likely to cancel bookings and create genuine rental demand as they move in. Speculative flipping is structurally lower in Hyderabad because stamp duty reform and RERA penalties make quick exits expensive." },
+              { title: "NRI demand softening but still significant", body: "NRI buyers accounted for 22% of premium segment sales in Q1, down from 28% in Q1 2025. The Fed rate cut cycle means USD-denominated savings earn less. This is a 12–18 month headwind for the very top of the market (₹3Cr+) but has no meaningful impact on the ₹1–2.5Cr segment." },
+              { title: "Construction costs stabilising", body: "After two years of 15–20% YoY inflation in construction costs, Q1 2026 saw stabilisation. Steel prices are flat at ₹58,000–60,000/tonne; cement at ₹370–390/bag. This is positive for developer margins and should translate to fewer project delays." },
+              { title: "Inventory health is good", body: "Total unsold inventory in Hyderabad stands at approximately 48,000 units. At current absorption rates, this represents 14–16 months of supply — healthy territory. Compare this to Mumbai (38 months) or Bengaluru (22 months). The relative scarcity keeps price floors firm." },
             ].map((s) => (
-              <div key={s.title} className="rounded-2xl border border-white/8 p-6" style={{ background: "rgba(255,255,255,0.03)" }}>
-                <h3 className="text-white font-semibold mb-2">{s.title}</h3>
-                <p className="text-slate-400 text-sm leading-relaxed">{s.body}</p>
+              <div key={s.title} style={{ background: C.bgCard, border: `1px solid ${C.border}`, borderRadius: 16, padding: 24 }}>
+                <h3>{s.title}</h3>
+                <p style={{ margin: 0, color: C.textMuted }}>{s.body}</p>
               </div>
             ))}
           </div>
 
           {/* Risks */}
-          <h2 className="text-2xl font-bold text-white mb-6">Key Risks to Watch</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-10">
+          <h2>Key Risks to Watch</h2>
+          <div className="rp-risk-grid" style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 14, marginBottom: 48 }}>
             {[
               { risk: "State election uncertainty", detail: "Telangana elections expected in late 2026. Infrastructure approvals tend to slow 6–9 months pre-election." },
               { risk: "Tech sector hiring slowdown", detail: "A US recession or AI-driven workforce reduction at major employers would hit Hyderabad residential demand disproportionately." },
               { risk: "Oversupply in emerging corridors", detail: "Plotted layout approvals in Kollur/Mokila have been aggressive. If absorption lags, early investors could face price pressure." },
               { risk: "Delayed infrastructure delivery", detail: "Metro Phase 2 and several ORR extensions are behind schedule. Micro-markets that priced in this infrastructure carry downside risk." },
             ].map((r) => (
-              <div key={r.risk} className="rounded-2xl border border-red-500/15 p-5" style={{ background: "rgba(239,68,68,0.04)" }}>
-                <p className="text-red-300 font-semibold text-sm mb-2">⚠ {r.risk}</p>
-                <p className="text-slate-400 text-xs leading-relaxed">{r.detail}</p>
+              <div key={r.risk} style={{ background: "rgba(239,68,68,0.04)", border: "1px solid rgba(239,68,68,0.15)", borderRadius: 14, padding: "16px 20px" }}>
+                <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: 13, fontWeight: 600, color: "#f87171", margin: "0 0 6px" }}>⚠ {r.risk}</p>
+                <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: 13, color: C.textMuted, lineHeight: 1.65, margin: 0 }}>{r.detail}</p>
               </div>
             ))}
           </div>
 
           {/* Disclaimer */}
-          <div className="rounded-2xl border border-white/8 p-5 mb-10" style={{ background: "rgba(255,255,255,0.02)" }}>
-            <p className="text-xs font-bold uppercase tracking-[0.15em] mb-2 text-slate-500">Disclaimer</p>
-            <p className="text-slate-600 text-xs leading-relaxed">
-              This report is for informational purposes only and does not constitute investment advice. Price data is sourced from RERA filings, developer declarations, and our advisors' on-ground observations. Appreciation figures are historical and do not guarantee future performance. Always conduct independent due diligence before any real estate transaction.
+          <div style={{ background: C.bgWarm, border: `1px solid ${C.border}`, borderRadius: 14, padding: 20 }}>
+            <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.14em", color: C.textMuted, margin: "0 0 8px" }}>Disclaimer</p>
+            <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: 12, color: C.textMuted, lineHeight: 1.7, margin: 0 }}>
+              This report is for informational purposes only and does not constitute investment advice. Price data is sourced from RERA filings, developer declarations, and our advisors&apos; on-ground observations. Appreciation figures are historical and do not guarantee future performance. Always conduct independent due diligence before any real estate transaction.
             </p>
-          </div>
-
-          {/* CTA */}
-          <div className="rounded-2xl border border-white/8 p-6 text-center" style={{ background: "rgba(200,169,110,0.05)", borderColor: "rgba(200,169,110,0.2)" }}>
-            <p className="text-white font-semibold mb-2">Want this analysis for your specific requirement?</p>
-            <p className="text-slate-400 text-sm mb-4">Our advisors can walk you through the corridor and project shortlist that fits your budget and timeline.</p>
-            <Link
-              href="/contact"
-              className="inline-block rounded-full px-6 py-2.5 text-sm font-bold uppercase tracking-[0.1em]"
-              style={{ background: "linear-gradient(135deg, #c8a96e, #a8843e)", color: "#0a0a0a" }}
-            >
-              Get a Personalised Report — Free
-            </Link>
           </div>
         </div>
       </section>
-    </main>
+
+      <InsightsAdvisorCTA />
+    </>
   );
 }

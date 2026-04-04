@@ -2,39 +2,22 @@
 
 import { useState } from "react";
 
-// ─── Theme config ─────────────────────────────────────────────────────────────
-
-const DARK = {
-  cardBg: "rgba(255,255,255,0.03)",
-  border: "rgba(255,255,255,0.08)",
-  heading: "#ffffff",
-  body: "#94a3b8",
-  hover: "rgba(255,255,255,0.04)",
-  divider: "rgba(255,255,255,0.05)",
-  icon: "#94a3b8",
-} as const;
-
-const LIGHT = {
-  cardBg: "#FFFFFF",
+const C = {
+  bgCard: "#FFFFFF",
+  gold: "#B08D57",
+  text: "#1A1A1F",
+  textMuted: "#7A7A7E",
   border: "rgba(0,0,0,0.07)",
-  heading: "#1A1A1F",
-  body: "#7A7A7E",
-  hover: "rgba(0,0,0,0.02)",
-  divider: "rgba(0,0,0,0.06)",
-  icon: "#B08D57",
 } as const;
 
-// ─── Component ────────────────────────────────────────────────────────────────
-
-export function FaqAccordion({
+export function CityFaqAccordion({
   items,
-  theme = "dark",
 }: {
-  items: { q: string; a: string }[];
-  theme?: "dark" | "light";
+  items: { question: string; answer: string }[];
 }) {
   const [open, setOpen] = useState<number | null>(null);
-  const t = theme === "light" ? LIGHT : DARK;
+
+  if (!items.length) return null;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -42,10 +25,10 @@ export function FaqAccordion({
         <div
           key={i}
           style={{
+            background: C.bgCard,
+            border: `1px solid ${C.border}`,
             borderRadius: 12,
-            border: `1px solid ${t.border}`,
             overflow: "hidden",
-            background: t.cardBg,
           }}
         >
           <button
@@ -57,23 +40,23 @@ export function FaqAccordion({
               justifyContent: "space-between",
               padding: "16px 20px",
               textAlign: "left",
-              fontSize: 14,
               fontFamily: "'Outfit', sans-serif",
+              fontSize: 14,
               fontWeight: 600,
-              color: t.heading,
+              color: C.text,
               background: "transparent",
               border: "none",
               cursor: "pointer",
               lineHeight: 1.5,
+              gap: 12,
             }}
           >
-            <span>{item.q}</span>
+            <span>{item.question}</span>
             <span
               style={{
-                color: t.icon,
+                color: C.gold,
                 fontSize: 20,
                 flexShrink: 0,
-                marginLeft: 16,
                 display: "inline-block",
                 transition: "transform 0.2s ease",
                 transform: open === i ? "rotate(45deg)" : "none",
@@ -85,16 +68,16 @@ export function FaqAccordion({
           {open === i && (
             <div
               style={{
-                padding: "0 20px 20px",
+                padding: "0 20px 18px",
                 paddingTop: 14,
-                fontSize: 14,
                 fontFamily: "'Outfit', sans-serif",
-                color: t.body,
+                fontSize: 14,
+                color: C.textMuted,
                 lineHeight: 1.75,
-                borderTop: `1px solid ${t.divider}`,
+                borderTop: `1px solid ${C.border}`,
               }}
             >
-              {item.a}
+              {item.answer}
             </div>
           )}
         </div>

@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createServiceClient } from '@/lib/supabase/serviceClient';
 import { parseSearchQuery } from '@/lib/search/queryParser';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const supabase = await createClient();
+    const supabase = createServiceClient();
     const parsed = await parseSearchQuery(query.trim(), supabase);
 
     return NextResponse.json({

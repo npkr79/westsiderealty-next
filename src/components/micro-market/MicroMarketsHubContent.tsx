@@ -2,227 +2,216 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowRight, ChevronDown, ChevronUp } from "lucide-react";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
 import type { MicroMarketCacheRow } from "@/services/microMarketViewModel";
 
-type MicroMarketHubItem = MicroMarketCacheRow;
+// ─── Design System ─────────────────────────────────────────────────────────────
+const C = {
+  bg: "#FAFAF7",
+  bgCard: "#FFFFFF",
+  bgWarm: "#F5F3EE",
+  bgDark: "#1A1A1F",
+  gold: "#B08D57",
+  goldLight: "#C9A96E",
+  text: "#1A1A1F",
+  textMuted: "#7A7A7E",
+  border: "rgba(0,0,0,0.07)",
+} as const;
+
 type TabKey = "all" | "high-growth" | "luxury" | "affordable";
+type MicroMarketHubItem = MicroMarketCacheRow;
 
-const GOLD = "#c9a96e";
-const NAVY = "#0a0f1e";
-
-// ─── Filter helpers ────────────────────────────────────────────────────────────
-
-const getAvgPrice = (m: MicroMarketHubItem) => {
+// ─── Helpers ───────────────────────────────────────────────────────────────────
+function getAvgPrice(m: MicroMarketHubItem) {
   const min = m.price_per_sqft_min ?? 0;
   const max = m.price_per_sqft_max ?? 0;
   return min && max ? (min + max) / 2 : min || max || 0;
-};
-
+}
 const isHighGrowth = (m: MicroMarketHubItem) =>
   (m.annual_appreciation_min != null && m.annual_appreciation_min > 12) ||
   (m.rental_yield_min != null && m.rental_yield_min >= 7);
-
 const isLuxury = (m: MicroMarketHubItem) => getAvgPrice(m) > 10000;
-
 const isAffordable = (m: MicroMarketHubItem) =>
   getAvgPrice(m) < 8000 && getAvgPrice(m) > 0;
 
-function getBadges(m: MicroMarketHubItem) {
-  const badges: { label: string; cls: string }[] = [];
-  if ((m.annual_appreciation_min ?? 0) >= 15 || (m.rental_yield_min ?? 0) >= 8)
-    badges.push({ label: "Top Pick", cls: "bg-amber-500 text-white" });
-  if ((m.rental_yield_min ?? 0) >= 5)
-    badges.push({ label: "High Yield", cls: "bg-emerald-600 text-white" });
-  if (isLuxury(m))
-    badges.push({ label: "Luxury", cls: "bg-purple-600 text-white" });
-  return badges;
-}
-
-function getSignal(m: MicroMarketHubItem) {
-  const a = m.annual_appreciation_min ?? 0;
-  const y = m.rental_yield_min ?? 0;
-  if (a >= 15 || y >= 7)
-    return { label: "Buy", cls: "bg-green-100 text-green-700 border border-green-200" };
-  if (a >= 10 || y >= 5)
-    return { label: "Watch", cls: "bg-amber-100 text-amber-700 border border-amber-200" };
-  return { label: "Hold", cls: "bg-slate-100 text-slate-600 border border-slate-200" };
-}
-
-function fmtINR(val: number | null | undefined) {
-  if (val == null) return null;
-  return `₹${val.toLocaleString("en-IN")}`;
+function fmtPrice(v: number | null | undefined) {
+  if (!v) return null;
+  if (v >= 100000) return `₹${(v / 100000).toFixed(1)}L`;
+  return `₹${v.toLocaleString("en-IN")}`;
 }
 
 function stripHtml(html: string | null | undefined) {
   if (!html) return "";
-  return html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+  return html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 120);
 }
 
-// ─── Sub-components ────────────────────────────────────────────────────────────
-
-function StatPill({ label, value }: { label: string; value: string }) {
-  return (
-    <div
-      className="rounded-full px-5 py-2.5 text-center"
-      style={{
-        backgroundColor: "rgba(255,255,255,0.08)",
-        border: `1px solid rgba(201,169,110,0.35)`,
-      }}
-    >
-      <p className="text-sm font-semibold text-white">{value}</p>
-      <p className="text-xs" style={{ color: "rgba(255,255,255,0.5)" }}>
-        {label}
-      </p>
-    </div>
-  );
+function getSignalBadge(m: MicroMarketHubItem): { label: string; color: string; bg: string; border: string } {
+  const a = m.annual_appreciation_min ?? 0;
+  const y = m.rental_yield_min ?? 0;
+  if (a >= 15 || y >= 7)
+    return { label: "High Growth", color: "#15803d", bg: "rgba(21,128,61,0.08)", border: "rgba(21,128,61,0.2)" };
+  if (a >= 10 || y >= 5)
+    return { label: "Steady", color: C.gold, bg: "rgba(176,141,87,0.08)", border: "rgba(176,141,87,0.25)" };
+  return { label: "Stable", color: C.textMuted, bg: "rgba(122,122,126,0.08)", border: "rgba(122,122,126,0.2)" };
 }
 
-function Stat({
-  label,
-  value,
-  valueClass = "text-slate-800",
-  bgClass = "bg-slate-50",
-}: {
-  label: string;
-  value: string;
-  valueClass?: string;
-  bgClass?: string;
-}) {
-  return (
-    <div className={`rounded-lg p-2 text-center ${bgClass}`}>
-      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-        {label}
-      </p>
-      <p className={`mt-0.5 text-sm font-semibold ${valueClass}`}>{value}</p>
-    </div>
-  );
-}
-
-function MarketCard({
-  market,
-  citySlug,
-}: {
-  market: MicroMarketHubItem;
-  citySlug: string;
-}) {
-  const badges = getBadges(market);
+// ─── MarketCard ────────────────────────────────────────────────────────────────
+function MarketCard({ market, citySlug }: { market: MicroMarketHubItem; citySlug: string }) {
   const href = `/${citySlug}/${market.url_slug ?? market.id}`;
-  const initial = (market.micro_market_name ?? "M").charAt(0).toUpperCase();
-
-  const priceDisplay =
-    market.price_per_sqft_min && market.price_per_sqft_max
-      ? `${fmtINR(market.price_per_sqft_min)} – ${fmtINR(market.price_per_sqft_max)}`
-      : fmtINR(market.price_per_sqft_min ?? market.price_per_sqft_max) ?? "—";
-
-  const yieldDisplay =
-    market.rental_yield_min && market.rental_yield_max
-      ? `${market.rental_yield_min}–${market.rental_yield_max}%`
-      : market.rental_yield_min
-        ? `${market.rental_yield_min}%+`
-        : "—";
-
-  const growthDisplay = market.annual_appreciation_min
-    ? `${market.annual_appreciation_min}%+`
-    : "—";
-
   const hook = stripHtml(market.hero_hook);
+  const badge = getSignalBadge(market);
+
+  const priceDisplay = market.price_per_sqft_min && market.price_per_sqft_max
+    ? `${fmtPrice(market.price_per_sqft_min)} – ${fmtPrice(market.price_per_sqft_max)}/sqft`
+    : fmtPrice(market.price_per_sqft_min ?? market.price_per_sqft_max)
+      ? `${fmtPrice(market.price_per_sqft_min ?? market.price_per_sqft_max)}/sqft`
+      : null;
+
+  const growthDisplay = market.annual_appreciation_min ? `${market.annual_appreciation_min}%+` : null;
+  const yieldDisplay = market.rental_yield_min
+    ? market.rental_yield_max
+      ? `${market.rental_yield_min}–${market.rental_yield_max}%`
+      : `${market.rental_yield_min}%+`
+    : null;
 
   return (
-    <div
-      className="group relative flex flex-col overflow-hidden rounded-xl border bg-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl"
-      style={{ borderColor: "#e8e4dc" }}
+    <Link
+      href={href}
+      style={{ textDecoration: "none", display: "block" }}
     >
-      {/* Gold left border — expands on hover */}
       <div
-        className="absolute left-0 top-0 h-full w-0 transition-all duration-200 group-hover:w-1"
-        style={{ backgroundColor: GOLD }}
-      />
-
-      <div className="flex flex-1 flex-col gap-4 p-5">
-        {/* Header row */}
-        <div className="flex items-start gap-3">
-          <div
-            className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full text-lg font-bold text-white"
-            style={{ backgroundColor: NAVY }}
-          >
-            {initial}
-          </div>
-          <div className="min-w-0 flex-1">
-            <h3 className="truncate text-lg font-bold leading-snug text-slate-900">
-              {market.micro_market_name ?? "Market"}
-            </h3>
-            {badges.length > 0 && (
-              <div className="mt-1.5 flex flex-wrap gap-1">
-                {badges.map((b) => (
-                  <span
-                    key={b.label}
-                    className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold ${b.cls}`}
-                  >
-                    {b.label}
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
+        style={{
+          background: C.bgCard,
+          border: `1px solid ${C.border}`,
+          borderRadius: 16,
+          padding: "24px",
+          transition: "box-shadow 0.2s, border-color 0.2s, transform 0.2s",
+          cursor: "pointer",
+          height: "100%",
+          display: "flex",
+          flexDirection: "column",
+          gap: 16,
+        }}
+        onMouseEnter={(e) => {
+          const el = e.currentTarget as HTMLElement;
+          el.style.boxShadow = "0 8px 32px rgba(0,0,0,0.08)";
+          el.style.borderColor = `rgba(176,141,87,0.35)`;
+          el.style.transform = "translateY(-2px)";
+        }}
+        onMouseLeave={(e) => {
+          const el = e.currentTarget as HTMLElement;
+          el.style.boxShadow = "none";
+          el.style.borderColor = C.border;
+          el.style.transform = "translateY(0)";
+        }}
+      >
+        {/* Header */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+          <h3 style={{
+            fontFamily: "'Cormorant Garamond', Georgia, serif",
+            fontSize: 20,
+            fontWeight: 600,
+            color: C.text,
+            lineHeight: 1.2,
+            margin: 0,
+            flex: 1,
+          }}>
+            {market.micro_market_name ?? "Market"}
+          </h3>
+          <span style={{
+            flexShrink: 0,
+            fontFamily: "'Outfit', sans-serif",
+            fontSize: 10,
+            fontWeight: 700,
+            textTransform: "uppercase",
+            letterSpacing: "0.08em",
+            color: badge.color,
+            background: badge.bg,
+            border: `1px solid ${badge.border}`,
+            borderRadius: 20,
+            padding: "3px 10px",
+            whiteSpace: "nowrap",
+          }}>
+            {badge.label}
+          </span>
         </div>
 
-        {/* Stats row */}
-        <div className="grid grid-cols-3 gap-2">
-          <Stat label="Price/sqft" value={priceDisplay} />
-          <Stat
-            label="Growth"
-            value={growthDisplay}
-            valueClass="text-emerald-700"
-            bgClass="bg-emerald-50"
-          />
-          <Stat
-            label="Yield"
-            value={yieldDisplay}
-            valueClass="text-blue-700"
-            bgClass="bg-blue-50"
-          />
-        </div>
-
-        {/* Hero hook */}
+        {/* Hook */}
         {hook && (
-          <p className="line-clamp-2 text-sm leading-relaxed text-slate-500">
+          <p style={{
+            fontFamily: "'Outfit', sans-serif",
+            fontSize: 13,
+            color: C.textMuted,
+            lineHeight: 1.65,
+            margin: 0,
+          }}>
             {hook}
           </p>
         )}
 
-        {/* CTA */}
-        <Link
-          href={href}
-          className="mt-auto flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold text-white transition-all duration-150 hover:opacity-80"
-          style={{ backgroundColor: NAVY }}
-        >
-          View Market <ArrowRight className="h-4 w-4" />
-        </Link>
+        {/* Stats */}
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: "auto" }}>
+          {priceDisplay && (
+            <div style={{
+              flex: "1 1 auto",
+              background: C.bgWarm,
+              borderRadius: 10,
+              padding: "10px 14px",
+            }}>
+              <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: 10, color: C.textMuted, textTransform: "uppercase", letterSpacing: "0.1em", margin: "0 0 3px" }}>Price</p>
+              <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: 13, fontWeight: 600, color: C.text, margin: 0 }}>{priceDisplay}</p>
+            </div>
+          )}
+          {growthDisplay && (
+            <div style={{
+              flex: "1 1 auto",
+              background: "rgba(21,128,61,0.06)",
+              borderRadius: 10,
+              padding: "10px 14px",
+            }}>
+              <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: 10, color: C.textMuted, textTransform: "uppercase", letterSpacing: "0.1em", margin: "0 0 3px" }}>Growth</p>
+              <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: 13, fontWeight: 600, color: "#15803d", margin: 0 }}>{growthDisplay}</p>
+            </div>
+          )}
+          {yieldDisplay && (
+            <div style={{
+              flex: "1 1 auto",
+              background: "rgba(59,130,246,0.06)",
+              borderRadius: 10,
+              padding: "10px 14px",
+            }}>
+              <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: 10, color: C.textMuted, textTransform: "uppercase", letterSpacing: "0.1em", margin: "0 0 3px" }}>Yield</p>
+              <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: 13, fontWeight: 600, color: "#2563eb", margin: 0 }}>{yieldDisplay}</p>
+            </div>
+          )}
+        </div>
+
+        {/* Arrow */}
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+          fontFamily: "'Outfit', sans-serif",
+          fontSize: 12,
+          fontWeight: 600,
+          color: C.gold,
+          textTransform: "uppercase",
+          letterSpacing: "0.08em",
+        }}>
+          View Market <span style={{ fontSize: 14 }}>→</span>
+        </div>
       </div>
-    </div>
+    </Link>
   );
 }
 
 // ─── Main Component ────────────────────────────────────────────────────────────
-
 interface MicroMarketsHubContentProps {
   markets: MicroMarketCacheRow[];
   citySlug: string;
   cityName: string;
 }
 
-export default function MicroMarketsHubContent({
-  markets,
-  citySlug,
-  cityName,
-}: MicroMarketsHubContentProps) {
+export default function MicroMarketsHubContent({ markets, citySlug, cityName }: MicroMarketsHubContentProps) {
   const [activeTab, setActiveTab] = useState<TabKey>("all");
   const [showComparison, setShowComparison] = useState(false);
 
@@ -238,178 +227,134 @@ export default function MicroMarketsHubContent({
   };
   const visibleMarkets = filtered[activeTab];
 
-  // Hero aggregate stats
-  const allPrices = markets
-    .flatMap((m) => [m.price_per_sqft_min, m.price_per_sqft_max])
-    .filter((v): v is number => v != null);
-  const allYields = markets
-    .map((m) => m.rental_yield_min)
-    .filter((v): v is number => v != null);
+  // Aggregate stats
+  const allPrices = markets.flatMap((m) => [m.price_per_sqft_min, m.price_per_sqft_max]).filter((v): v is number => v != null);
+  const allYields = markets.map((m) => m.rental_yield_min).filter((v): v is number => v != null);
   const minPrice = allPrices.length > 0 ? Math.min(...allPrices) : null;
   const maxPrice = allPrices.length > 0 ? Math.max(...allPrices) : null;
-  const avgYield =
-    allYields.length > 0
-      ? (allYields.reduce((a, b) => a + b, 0) / allYields.length).toFixed(1)
-      : null;
+  const avgYield = allYields.length > 0 ? (allYields.reduce((a, b) => a + b, 0) / allYields.length).toFixed(1) : null;
 
-  const tabs: { key: TabKey; label: string; count: number }[] = [
-    { key: "all", label: "All", count: markets.length },
-    { key: "high-growth", label: "High Growth", count: highGrowthMarkets.length },
-    { key: "luxury", label: "Luxury", count: luxuryMarkets.length },
-    { key: "affordable", label: "Affordable", count: affordableMarkets.length },
+  const tabs = [
+    { key: "all" as TabKey, label: "All Markets", count: markets.length },
+    { key: "high-growth" as TabKey, label: "High Growth", count: highGrowthMarkets.length },
+    { key: "luxury" as TabKey, label: "Luxury", count: luxuryMarkets.length },
+    { key: "affordable" as TabKey, label: "Value", count: affordableMarkets.length },
   ];
 
   const faqs = [
     {
-      question: `Which micro-market in ${cityName} offers the best ROI?`,
-      answer: `Markets with 15%+ annual appreciation show the strongest growth. ROI depends on your investment timeline and risk appetite. The High Growth tab surfaces markets with above-average appreciation or rental yield.`,
+      q: `Which micro-market in ${cityName} offers the best ROI?`,
+      a: `Markets with 15%+ annual appreciation show the strongest growth. ROI depends on your investment timeline and risk appetite. The High Growth filter surfaces markets with above-average appreciation or rental yield.`,
     },
     {
-      question: `What is the average price per sq.ft in ${cityName} micro-markets?`,
-      answer: `Prices vary significantly by corridor and property type. Use the comparison table to compare price ranges across all markets side-by-side.`,
+      q: `What is the average price per sq.ft in ${cityName}?`,
+      a: `Prices vary significantly by corridor. The Financial District and Kokapet command ₹8,000–14,000/sqft for premium projects. Value markets in the outer ring start from ₹5,000/sqft.`,
     },
     {
-      question: `How do I choose between luxury and affordable micro-markets?`,
-      answer: `Luxury markets typically offer stronger capital appreciation and premium tenant profiles. Affordable markets provide better rental yield ratios and lower entry capital. Your investment horizon and liquidity needs should guide this choice.`,
+      q: `How do I choose between luxury and value micro-markets?`,
+      a: `Luxury markets offer stronger capital appreciation and premium tenant profiles. Value markets provide better rental yield ratios and lower entry capital. Your investment horizon and liquidity needs should guide this.`,
     },
     {
-      question: `How often is this data updated?`,
-      answer: `Price intelligence is refreshed regularly from RERA filings and developer data. Each market page shows the data freshness timestamp.`,
+      q: `How often is this data updated?`,
+      a: `Price intelligence is refreshed regularly from RERA filings and developer data. Each market page shows data freshness.`,
     },
   ];
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "#f8f7f4" }}>
+    <div style={{ background: C.bg, minHeight: "100vh" }}>
+      <style>{`
+        .mm-hub-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+        .mm-hub-stats { display: flex; gap: 40px; flex-wrap: wrap; }
+        .mm-hub-compare-grid { display: grid; grid-template-columns: repeat(5, 1fr); }
+        @media (max-width: 900px) { .mm-hub-grid { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 580px) { .mm-hub-grid { grid-template-columns: 1fr !important; } .mm-hub-stats { gap: 20px; } }
+      `}</style>
 
-      {/* ── HERO ─────────────────────────────────────────────────────────────── */}
-      <section
-        className="relative overflow-hidden py-20"
-        style={{ backgroundColor: NAVY }}
-      >
-        {/* Dot grid overlay */}
-        <div
-          className="pointer-events-none absolute inset-0"
-          style={{
-            backgroundImage: `radial-gradient(circle, rgba(201,169,110,0.12) 1px, transparent 1px)`,
-            backgroundSize: "28px 28px",
-          }}
-        />
+      {/* ── Hero ──────────────────────────────────────────────────────────────── */}
+      <section style={{ background: C.bgDark, position: "relative", overflow: "hidden" }}>
+        <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 60% 50% at 50% 60%, rgba(176,141,87,0.12) 0%, transparent 70%)", pointerEvents: "none" }} />
+        <div style={{ maxWidth: 1160, margin: "0 auto", padding: "100px 24px 72px", position: "relative" }}>
 
-        <div className="relative z-10 container mx-auto max-w-5xl px-4 text-center">
           {/* Breadcrumb */}
-          <nav
-            className="mb-6 flex items-center justify-center gap-2 text-xs"
-            style={{ color: "rgba(255,255,255,0.4)" }}
-          >
-            <Link href="/" className="transition-colors hover:text-white">
-              Home
-            </Link>
-            <span>/</span>
-            <Link
-              href={`/${citySlug}`}
-              className="transition-colors hover:text-white"
-            >
-              {cityName}
-            </Link>
-            <span>/</span>
-            <span className="text-white">Investment Areas</span>
+          <nav style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 32, fontFamily: "'Outfit', sans-serif", fontSize: 12, color: "rgba(255,255,255,0.35)" }}>
+            <Link href="/" style={{ color: "rgba(255,255,255,0.35)", textDecoration: "none", transition: "color 0.15s" }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = "rgba(255,255,255,0.7)")}
+              onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(255,255,255,0.35)")}
+            >Home</Link>
+            <span>›</span>
+            <Link href={`/${citySlug}`} style={{ color: "rgba(255,255,255,0.35)", textDecoration: "none", transition: "color 0.15s" }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = "rgba(255,255,255,0.7)")}
+              onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(255,255,255,0.35)")}
+            >{cityName}</Link>
+            <span>›</span>
+            <span style={{ color: "rgba(255,255,255,0.6)" }}>Markets</span>
           </nav>
 
-          {/* Eyebrow */}
-          <p
-            className="mb-4 text-xs font-semibold uppercase tracking-[0.25em]"
-            style={{ color: GOLD }}
-          >
-            {cityName} · Real Estate Intelligence
+          <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.2em", color: C.gold, marginBottom: 16 }}>
+            {cityName} · Market Intelligence
           </p>
-
-          {/* H1 */}
-          <h1 className="text-4xl font-bold tracking-tight text-white md:text-5xl">
-            {cityName} Real Estate
-            <br />
-            Micro-Market Insights
+          <h1 style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: "clamp(36px, 5vw, 60px)", fontWeight: 600, color: "#fff", lineHeight: 1.12, margin: "0 0 20px", maxWidth: 700 }}>
+            {cityName} Real Estate<br />Micro-Market Guide
           </h1>
-
-          {/* Subtitle */}
-          <p
-            className="mx-auto mt-5 max-w-2xl text-lg"
-            style={{ color: "rgba(255,255,255,0.65)" }}
-          >
-            Compare property trends, prices, and investment potential across{" "}
-            <span className="font-semibold text-white">
-              {markets.length} micro-markets
-            </span>
+          <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: 17, color: "rgba(255,255,255,0.55)", lineHeight: 1.65, maxWidth: 560, margin: "0 0 48px" }}>
+            Compare prices, growth rates, and rental yields across {markets.length} micro-markets. Identify the right corridor for your investment profile.
           </p>
 
-          {/* Stat pills */}
-          <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
-            {minPrice != null && maxPrice != null && (
-              <StatPill
-                label="Price Range"
-                value={`${fmtINR(minPrice)} – ${fmtINR(maxPrice)}`}
-              />
-            )}
-            <StatPill label="Micro-Markets" value={String(markets.length)} />
-            {avgYield && <StatPill label="Avg Yield" value={`${avgYield}%`} />}
+          {/* Stats row */}
+          <div className="mm-hub-stats">
+            {[
+              { label: "Micro-Markets", value: String(markets.length) },
+              ...(minPrice && maxPrice ? [{ label: "Price Range", value: `${fmtPrice(minPrice)} – ${fmtPrice(maxPrice)}/sqft` }] : []),
+              ...(avgYield ? [{ label: "Avg Rental Yield", value: `${avgYield}%` }] : []),
+              { label: "High Growth Markets", value: String(highGrowthMarkets.length) },
+            ].map((s) => (
+              <div key={s.label}>
+                <p style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: 28, fontWeight: 600, color: C.goldLight, margin: "0 0 4px", lineHeight: 1 }}>{s.value}</p>
+                <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: 11, color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: "0.1em", margin: 0 }}>{s.label}</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* ── STICKY FILTER TABS ───────────────────────────────────────────────── */}
-      <div className="sticky top-16 z-20 border-b bg-white/95 shadow-sm backdrop-blur-sm">
-        <div className="container mx-auto max-w-5xl px-4">
-          <div className="flex items-center gap-1.5 overflow-x-auto py-3">
+      {/* ── Sticky Filter Tabs ────────────────────────────────────────────────── */}
+      <div style={{ position: "sticky", top: 64, zIndex: 30, background: "rgba(250,250,247,0.96)", backdropFilter: "blur(8px)", borderBottom: `1px solid ${C.border}` }}>
+        <div style={{ maxWidth: 1160, margin: "0 auto", padding: "0 24px" }}>
+          <div style={{ display: "flex", gap: 8, padding: "12px 0", overflowX: "auto" }}>
             {tabs.map((tab) => (
               <button
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
-                className="flex flex-shrink-0 items-center gap-1.5 rounded-full border px-4 py-1.5 text-sm font-medium transition-all duration-150"
-                style={
-                  activeTab === tab.key
-                    ? { backgroundColor: GOLD, borderColor: GOLD, color: "#1a1a1a" }
-                    : {
-                        backgroundColor: "transparent",
-                        borderColor: "#e8e4dc",
-                        color: "#6b7280",
-                      }
-                }
+                style={{
+                  flexShrink: 0,
+                  fontFamily: "'Outfit', sans-serif",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  padding: "8px 18px",
+                  borderRadius: 24,
+                  border: "1px solid transparent",
+                  cursor: "pointer",
+                  transition: "all 0.15s",
+                  ...(activeTab === tab.key
+                    ? { background: C.gold, color: "#fff", borderColor: C.gold }
+                    : { background: "transparent", color: C.textMuted, borderColor: C.border }),
+                }}
               >
-                {tab.label}
-                <span
-                  className="rounded-full px-1.5 py-0.5 text-xs font-semibold"
-                  style={
-                    activeTab === tab.key
-                      ? { backgroundColor: "rgba(0,0,0,0.15)", color: "#1a1a1a" }
-                      : { backgroundColor: "#f3f4f6", color: "#9ca3af" }
-                  }
-                >
-                  {tab.count}
-                </span>
+                {tab.label} <span style={{ opacity: 0.7, fontSize: 11 }}>({tab.count})</span>
               </button>
             ))}
           </div>
         </div>
       </div>
 
-      {/* ── MARKETS GRID ─────────────────────────────────────────────────────── */}
-      <section className="container mx-auto max-w-6xl px-4 py-12">
+      {/* ── Markets Grid ──────────────────────────────────────────────────────── */}
+      <section style={{ maxWidth: 1160, margin: "0 auto", padding: "48px 24px" }}>
         {visibleMarkets.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 text-center">
-            <div
-              className="mb-4 flex h-16 w-16 items-center justify-center rounded-full text-2xl font-bold text-white"
-              style={{ backgroundColor: NAVY }}
-            >
-              0
-            </div>
-            <h3 className="text-lg font-semibold text-slate-700">
-              No markets in this category
-            </h3>
-            <p className="mt-1 text-sm text-slate-500">
-              Try a different filter or view all markets.
-            </p>
+          <div style={{ textAlign: "center", padding: "80px 0" }}>
+            <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: 15, color: C.textMuted }}>No markets in this category.</p>
           </div>
         ) : (
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mm-hub-grid">
             {visibleMarkets.map((market) => (
               <MarketCard key={market.id} market={market} citySlug={citySlug} />
             ))}
@@ -417,255 +362,137 @@ export default function MicroMarketsHubContent({
         )}
       </section>
 
-      {/* ── COMPARISON TABLE ─────────────────────────────────────────────────── */}
+      {/* ── Comparison Table ──────────────────────────────────────────────────── */}
       {markets.length > 0 && (
-        <section className="border-t bg-white py-12">
-          <div className="container mx-auto max-w-5xl px-4">
+        <section style={{ background: C.bgCard, borderTop: `1px solid ${C.border}`, padding: "0 0 48px" }}>
+          <div style={{ maxWidth: 1160, margin: "0 auto", padding: "0 24px" }}>
             <button
               onClick={() => setShowComparison(!showComparison)}
-              className="flex w-full items-center justify-between rounded-xl border px-6 py-4 text-left transition-colors hover:bg-slate-50"
-              style={{ borderColor: "#e8e4dc" }}
+              style={{
+                display: "flex",
+                width: "100%",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "28px 0",
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                borderBottom: showComparison ? `1px solid ${C.border}` : "none",
+              }}
             >
-              <div>
-                <h2 className="text-xl font-bold text-slate-900">
-                  Market Comparison
+              <div style={{ textAlign: "left" }}>
+                <h2 style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: 24, fontWeight: 600, color: C.text, margin: "0 0 4px" }}>
+                  Side-by-Side Comparison
                 </h2>
-                <p className="mt-0.5 text-sm text-slate-500">
-                  Side-by-side view of all {markets.length} markets
+                <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: 13, color: C.textMuted, margin: 0 }}>
+                  All {markets.length} markets at a glance
                 </p>
               </div>
-              {showComparison ? (
-                <ChevronUp className="h-5 w-5 text-slate-400" />
-              ) : (
-                <ChevronDown className="h-5 w-5 text-slate-400" />
-              )}
+              <span style={{ fontFamily: "'Outfit', sans-serif", fontSize: 12, color: C.gold, fontWeight: 600 }}>
+                {showComparison ? "Hide ↑" : "Show ↓"}
+              </span>
             </button>
 
             {showComparison && (
-              <div
-                className="mt-4 overflow-hidden rounded-xl border"
-                style={{ borderColor: "#e8e4dc" }}
-              >
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr style={{ backgroundColor: NAVY }}>
-                        {[
-                          "Market",
-                          "Price Range",
-                          "Growth",
-                          "Yield",
-                          "Signal",
-                          "Action",
-                        ].map((h) => (
-                          <th
-                            key={h}
-                            className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider"
-                            style={{ color: "rgba(255,255,255,0.65)" }}
-                          >
-                            {h}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {markets.map((m, i) => {
-                        const signal = getSignal(m);
-                        const priceRange =
-                          m.price_per_sqft_min && m.price_per_sqft_max
-                            ? `${fmtINR(m.price_per_sqft_min)} – ${fmtINR(m.price_per_sqft_max)}/sqft`
-                            : fmtINR(m.price_per_sqft_min ?? m.price_per_sqft_max)
-                              ? `${fmtINR(m.price_per_sqft_min ?? m.price_per_sqft_max)}/sqft`
-                              : "—";
-                        const href = `/${citySlug}/${m.url_slug ?? m.id}`;
-                        const rowBg = i % 2 === 0 ? "#ffffff" : "#fafaf8";
-
-                        return (
-                          <tr
-                            key={m.id}
-                            className="border-t transition-colors hover:bg-amber-50/40"
-                            style={{ borderColor: "#f0ede8", backgroundColor: rowBg }}
-                          >
-                            <td
-                              className="px-4 py-3 font-medium"
-                              style={{ backgroundColor: rowBg }}
-                            >
-                              <Link
-                                href={href}
-                                className="hover:underline"
-                                style={{ color: NAVY }}
-                              >
-                                {m.micro_market_name ?? "—"}
-                              </Link>
-                            </td>
-                            <td className="whitespace-nowrap px-4 py-3 text-slate-600">
-                              {priceRange}
-                            </td>
-                            <td className="px-4 py-3 font-medium text-emerald-700">
-                              {m.annual_appreciation_min
-                                ? `${m.annual_appreciation_min}%+`
-                                : "—"}
-                            </td>
-                            <td className="px-4 py-3 text-blue-700">
-                              {m.rental_yield_min
-                                ? `${m.rental_yield_min}%+`
-                                : "—"}
-                            </td>
-                            <td className="px-4 py-3">
-                              <span
-                                className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold ${signal.cls}`}
-                              >
-                                {signal.label}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3">
-                              <Link
-                                href={href}
-                                className="inline-flex items-center gap-1 rounded-md border px-3 py-1 text-xs font-medium transition-colors hover:bg-slate-100"
-                                style={{ borderColor: "#e8e4dc", color: "#374151" }}
-                              >
-                                View <ArrowRight className="h-3 w-3" />
-                              </Link>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
+              <div style={{ overflowX: "auto", marginTop: 16 }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 640 }}>
+                  <thead>
+                    <tr style={{ background: C.bgDark }}>
+                      {["Market", "Price Range", "Growth", "Yield", "Signal"].map((h) => (
+                        <th key={h} style={{ padding: "12px 16px", fontFamily: "'Outfit', sans-serif", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: "rgba(255,255,255,0.5)", textAlign: "left" }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {markets.map((m, i) => {
+                      const badge = getSignalBadge(m);
+                      const priceRange = m.price_per_sqft_min && m.price_per_sqft_max
+                        ? `${fmtPrice(m.price_per_sqft_min)} – ${fmtPrice(m.price_per_sqft_max)}/sqft`
+                        : fmtPrice(m.price_per_sqft_min ?? m.price_per_sqft_max)
+                          ? `${fmtPrice(m.price_per_sqft_min ?? m.price_per_sqft_max)}/sqft`
+                          : "—";
+                      return (
+                        <tr key={m.id} style={{ background: i % 2 === 0 ? C.bgCard : C.bg, borderTop: `1px solid ${C.border}` }}>
+                          <td style={{ padding: "12px 16px" }}>
+                            <Link href={`/${citySlug}/${m.url_slug ?? m.id}`} style={{ fontFamily: "'Outfit', sans-serif", fontSize: 13, fontWeight: 600, color: C.text, textDecoration: "none" }}
+                              onMouseEnter={(e) => (e.currentTarget.style.color = C.gold)}
+                              onMouseLeave={(e) => (e.currentTarget.style.color = C.text)}
+                            >{m.micro_market_name ?? "—"}</Link>
+                          </td>
+                          <td style={{ padding: "12px 16px", fontFamily: "'Outfit', sans-serif", fontSize: 12, color: C.textMuted, whiteSpace: "nowrap" }}>{priceRange}</td>
+                          <td style={{ padding: "12px 16px", fontFamily: "'Outfit', sans-serif", fontSize: 12, fontWeight: 600, color: "#15803d" }}>{m.annual_appreciation_min ? `${m.annual_appreciation_min}%+` : "—"}</td>
+                          <td style={{ padding: "12px 16px", fontFamily: "'Outfit', sans-serif", fontSize: 12, color: "#2563eb" }}>{m.rental_yield_min ? `${m.rental_yield_min}%+` : "—"}</td>
+                          <td style={{ padding: "12px 16px" }}>
+                            <span style={{ fontFamily: "'Outfit', sans-serif", fontSize: 10, fontWeight: 700, textTransform: "uppercase", color: badge.color, background: badge.bg, border: `1px solid ${badge.border}`, borderRadius: 20, padding: "3px 10px" }}>
+                              {badge.label}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             )}
           </div>
         </section>
       )}
 
-      {/* ── CTA SECTION ──────────────────────────────────────────────────────── */}
-      <section className="py-16" style={{ backgroundColor: NAVY }}>
-        <div className="container mx-auto max-w-2xl px-4 text-center">
-          <p
-            className="mb-2 text-xs font-semibold uppercase tracking-[0.2em]"
-            style={{ color: GOLD }}
-          >
-            Expert Advisory
-          </p>
-          <h2 className="text-3xl font-bold text-white">
-            Talk to a {cityName} Specialist
+      {/* ── CTA ───────────────────────────────────────────────────────────────── */}
+      <section style={{ background: C.bgDark, padding: "72px 24px" }}>
+        <div style={{ maxWidth: 600, margin: "0 auto", textAlign: "center" }}>
+          <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.2em", color: C.gold, marginBottom: 16 }}>Expert Advisory</p>
+          <h2 style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: "clamp(28px, 4vw, 42px)", fontWeight: 600, color: "#fff", lineHeight: 1.2, margin: "0 0 16px" }}>
+            Not sure which market fits your goals?
           </h2>
-          <p
-            className="mx-auto mt-4 max-w-lg text-base"
-            style={{ color: "rgba(255,255,255,0.65)" }}
-          >
-            Get personalised investment guidance across {cityName}&apos;s top
-            micro-markets. Our advisors have deep local knowledge and live
-            transaction data.
+          <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: 15, color: "rgba(255,255,255,0.5)", lineHeight: 1.7, margin: "0 0 40px" }}>
+            Our advisors have deep knowledge across every {cityName} corridor — with live transaction data and buyer insights you won't find on portals.
           </p>
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
-            <Link
-              href="/contact"
-              className="rounded-lg px-7 py-3 text-sm font-semibold transition-opacity hover:opacity-90"
-              style={{ backgroundColor: GOLD, color: NAVY }}
-            >
-              Book a Free Consultation
+          <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
+            <Link href="/contact" style={{ fontFamily: "'Outfit', sans-serif", fontSize: 13, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", background: C.gold, color: "#fff", textDecoration: "none", padding: "14px 32px", borderRadius: 4 }}>
+              Book a Free Call
             </Link>
-            <Link
-              href={`/${citySlug}/projects`}
-              className="rounded-lg border px-7 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/10"
-              style={{ borderColor: "rgba(255,255,255,0.3)" }}
-            >
-              Browse {cityName} Projects
+            <Link href={`/${citySlug}/projects`} style={{ fontFamily: "'Outfit', sans-serif", fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.7)", textDecoration: "none", padding: "14px 28px", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 4 }}>
+              Browse Projects →
             </Link>
           </div>
         </div>
       </section>
 
-      {/* ── Explore by Region (Goa only) ─────────────────────────────────────── */}
-      {citySlug === "goa" && (
-        <section className="container mx-auto max-w-4xl px-4 py-14 border-t border-slate-100">
-          <h2 className="mb-1 text-lg font-semibold text-slate-800">Explore by Region</h2>
-          <p className="mb-8 text-sm text-slate-500">Browse Goa real estate by region — North Goa and South Goa offer distinct lifestyle and investment profiles.</p>
-          <div className="grid sm:grid-cols-2 gap-10">
-            <div>
-              <h3 className="mb-4 text-xs font-semibold uppercase tracking-[0.15em] text-slate-400">North Goa Markets</h3>
-              <ul className="space-y-2">
-                {[
-                  { name: "Calangute", slug: "calangute" },
-                  { name: "Baga", slug: "baga" },
-                  { name: "Anjuna", slug: "anjuna" },
-                  { name: "Assagao", slug: "assagao" },
-                  { name: "Vagator", slug: "vagator" },
-                  { name: "Siolim", slug: "siolim" },
-                  { name: "Candolim", slug: "candolim" },
-                  { name: "Morjim", slug: "morjim" },
-                  { name: "Arpora", slug: "arpora" },
-                  { name: "Mapusa", slug: "mapusa" },
-                  { name: "Porvorim", slug: "porvorim" },
-                ].map((m) => (
-                  <li key={m.slug}>
-                    <Link
-                      href={`/goa/${m.slug}`}
-                      className="text-sm text-slate-600 hover:text-slate-900 hover:underline underline-offset-2 transition-colors"
-                    >
-                      {m.name} Real Estate
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div>
-              <h3 className="mb-4 text-xs font-semibold uppercase tracking-[0.15em] text-slate-400">South Goa Markets</h3>
-              <ul className="space-y-2">
-                {[
-                  { name: "Margao", slug: "margao" },
-                  { name: "Colva", slug: "colva" },
-                  { name: "Benaulim", slug: "benaulim" },
-                  { name: "Cavelossim", slug: "cavelossim" },
-                  { name: "Varca", slug: "varca" },
-                  { name: "Bogmalo", slug: "bogmalo" },
-                  { name: "Vasco da Gama", slug: "vasco-da-gama" },
-                  { name: "Dabolim", slug: "dabolim" },
-                  { name: "Ponda", slug: "ponda" },
-                ].map((m) => (
-                  <li key={m.slug}>
-                    <Link
-                      href={`/goa/${m.slug}`}
-                      className="text-sm text-slate-600 hover:text-slate-900 hover:underline underline-offset-2 transition-colors"
-                    >
-                      {m.name} Real Estate
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
+      {/* ── FAQs ──────────────────────────────────────────────────────────────── */}
+      <section style={{ background: C.bg, padding: "72px 24px" }}>
+        <div style={{ maxWidth: 720, margin: "0 auto" }}>
+          <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.2em", color: C.textMuted, textAlign: "center", marginBottom: 12 }}>Common Questions</p>
+          <h2 style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: "clamp(24px, 3vw, 34px)", fontWeight: 600, color: C.text, textAlign: "center", margin: "0 0 40px" }}>
+            Frequently Asked
+          </h2>
+          <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+            {faqs.map((faq, i) => (
+              <FaqItem key={i} q={faq.q} a={faq.a} />
+            ))}
           </div>
-        </section>
-      )}
-
-      {/* ── FAQs ─────────────────────────────────────────────────────────────── */}
-      <section className="container mx-auto max-w-2xl px-4 py-16">
-        <p className="mb-2 text-center text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
-          Common Questions
-        </p>
-        <h2 className="mb-8 text-center text-2xl font-bold text-slate-900">
-          Frequently Asked Questions
-        </h2>
-        <Accordion type="single" collapsible className="w-full">
-          {faqs.map((faq, i) => (
-            <AccordionItem
-              key={i}
-              value={`faq-${i}`}
-              className="border-b"
-              style={{ borderColor: "#e8e4dc" }}
-            >
-              <AccordionTrigger className="py-4 text-left font-medium text-slate-800 hover:no-underline">
-                {faq.question}
-              </AccordionTrigger>
-              <AccordionContent className="pb-4 leading-relaxed text-slate-500">
-                {faq.answer}
-              </AccordionContent>
-            </AccordionItem>
-          ))}
-        </Accordion>
+        </div>
       </section>
+    </div>
+  );
+}
+
+function FaqItem({ q, a }: { q: string; a: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div style={{ background: "#fff", border: `1px solid ${C.border}`, borderRadius: open ? "12px" : "8px", overflow: "hidden", marginBottom: 8, transition: "border-radius 0.2s" }}>
+      <button
+        onClick={() => setOpen(!open)}
+        style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", padding: "18px 22px", background: "none", border: "none", cursor: "pointer", textAlign: "left", gap: 16 }}
+      >
+        <span style={{ fontFamily: "'Outfit', sans-serif", fontSize: 14, fontWeight: 600, color: C.text, lineHeight: 1.4 }}>{q}</span>
+        <span style={{ flexShrink: 0, fontFamily: "'Outfit', sans-serif", fontSize: 18, color: C.gold, lineHeight: 1 }}>{open ? "−" : "+"}</span>
+      </button>
+      {open && (
+        <div style={{ padding: "0 22px 18px" }}>
+          <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: 13, color: C.textMuted, lineHeight: 1.75, margin: 0 }}>{a}</p>
+        </div>
+      )}
     </div>
   );
 }

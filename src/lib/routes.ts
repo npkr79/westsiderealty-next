@@ -21,3 +21,17 @@ export const buildMicroMarketProjectsUrl = (citySlug: string, microMarketSlug: s
 
 export const buildProjectAbsoluteUrl = (citySlug: string, projectSlug: string): string =>
   `${SITE_URL}${buildProjectUrl(citySlug, projectSlug)}`;
+
+export const buildCityUrl = (citySlug: string): string => {
+  return `/${normalizeSegment(citySlug)}`;
+};
+
+export const buildMicroMarketUrl = (citySlug: string, microMarketSlug: string): string => {
+  const city = normalizeSegment(citySlug);
+  const mm = normalizeSegment(microMarketSlug);
+  return `/${city}/${mm}`;
+};
+
+export const buildDeveloperUrl = (slug: string): string => {
+  return `/developers/${normalizeSegment(slug)}`;
+};

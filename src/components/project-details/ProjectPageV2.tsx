@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useCallback, type ReactNode } from "react"
 import Image from "next/image";
 import Link from "next/link";
 import { Copy, Check, ChevronRight, Home, ChevronDown } from "lucide-react";
-import type { ProjectWithRelations } from "@/services/projectService";
+import type { ProjectWithRelations, AdvisorProjectEnrichment } from "@/services/projectService";
 import type { ProjectInsights } from "@/services/projectInsightsService";
 import type { ProjectPageContext } from "@/services/projectService";
 import { computeProjectStatus } from "@/lib/project-utils";
@@ -546,6 +546,7 @@ interface ProjectPageV2Props {
   developerBrandSlug?: string | null;
   developerBrandName?: string | null;
   leadContext?: LeadContext;
+  advisorData?: AdvisorProjectEnrichment;
 }
 
 // ─── Handover notes parser ────────────────────────────────────────────────────
@@ -651,9 +652,21 @@ export default function ProjectPageV2({ project, insights, context, citySlug, pr
 
   const heroImageUrl = (() => {
     const raw = project.hero_image_url || project.main_image_url || null;
-    if (!raw) return null;
+    const bucketUrl = (() => {
+      const name = project.project_name;
+      if (!name) return null;
+      const fileName = name
+        .trim()
+        .split(/\s+/)
+        .map((w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+        .join("_") + "_Hero_Image.jpg";
+      return `https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/project-hero-images/${fileName}`;
+    })();
+    const src = raw || bucketUrl;
+    if (!src) return null;
+    if (!raw && bucketUrl) return bucketUrl;
     try {
-      const base = getHeroImageUrl(raw);
+      const base = getHeroImageUrl(raw!);
       if (!base) return null;
       return optimizeSupabaseImage(base, { width: 1600, height: 900, quality: 85, format: "webp" });
     } catch {
@@ -1444,7 +1457,7 @@ export default function ProjectPageV2({ project, insights, context, citySlug, pr
                   developer.total_projects != null
                     ? { label: "Track Record", value: developer.total_projects >= 10 ? "Established" : developer.total_projects >= 5 ? "Growing" : "Limited" }
                     : null,
-                ].filter((c): c is { label: string; value: ReactNode } => c !== null);
+                ].filter((c): c is NonNullable<typeof c> => c !== null);
                 return (
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
                     {statCards.map(({ label, value }) => (

@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createServiceClient } from '@/lib/supabase/serviceClient';
 import { parseSearchQuery } from '@/lib/search/queryParser';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -18,9 +18,10 @@ export async function GET(request: NextRequest) {
   const completionStatus = searchParams.get('completionStatus');
   const isNewProject = searchParams.get('isNewProject') === 'true';
   const textQuery = searchParams.get('q');
+  const projectTypeFilter = searchParams.get('project_type'); // 'villa' | 'apartment' | 'commercial' etc.
 
   try {
-    const supabase = await createClient();
+    const supabase = createServiceClient();
 
     // Get city ID
     const { data: cityData } = await supabase
@@ -244,8 +245,68 @@ export async function GET(request: NextRequest) {
     // Limit final results
     filteredProjects = filteredProjects.slice(0, 50);
 
+    // ── Advisor table query (villa searches + fallback for empty results) ──────
+    const shouldQueryAdvisor = projectTypeFilter === 'villa' || filteredProjects.length === 0;
+    let advisorResults: any[] = [];
+
+    if (shouldQueryAdvisor) {
+      let advisorQuery = supabase
+        .from('advisor_project_intelligence')
+        .select('project_name, project_slug, rera_id, project_type, current_status, developer_brand, micro_market, city_slug, current_price_per_sqft_min, current_price_per_sqft_max, total_units, land_area_acres, primary_differentiator, investment_verdict, quality_score')
+        .eq('city_slug', 'hyderabad')
+        .order('quality_score', { ascending: false })
+        .limit(10);
+
+      if (projectTypeFilter === 'villa') {
+        advisorQuery = advisorQuery.eq('project_type', 'villa');
+      }
+      if (microMarket) {
+        advisorQuery = advisorQuery.ilike('micro_market', `%${microMarket}%`);
+      }
+
+      const { data: advisorData } = await advisorQuery;
+
+      if (advisorData?.length) {
+        // Map advisor records to a shape compatible with the projects table results
+        const existingSlugs = new Set(filteredProjects.map((p: any) => p.url_slug));
+        advisorResults = advisorData
+          .filter((a: any) => !existingSlugs.has(a.project_slug))
+          .map((a: any) => ({
+            id: a.rera_id || a.project_slug,
+            project_name: a.project_name,
+            url_slug: a.project_slug,
+            hero_image_url: null,
+            price_range_text: a.current_price_per_sqft_min
+              ? `₹${Math.round(a.current_price_per_sqft_min / 1000)}K–${Math.round((a.current_price_per_sqft_max || a.current_price_per_sqft_min) / 1000)}K psft`
+              : null,
+            status: a.current_status,
+            completion_status: a.current_status,
+            property_types: [a.project_type],
+            micro_market: { micro_market_name: a.micro_market, url_slug: null },
+            developer: { developer_name: a.developer_brand, url_slug: null },
+            city: { city_name: 'Hyderabad', url_slug: 'hyderabad' },
+            // Advisor-specific fields for AI overview
+            developer_brand: a.developer_brand,
+            primary_differentiator: a.primary_differentiator,
+            investment_verdict: a.investment_verdict,
+            quality_score: a.quality_score,
+            price_min: a.current_price_per_sqft_min,
+            price_max: a.current_price_per_sqft_max,
+            _source: 'advisor',
+          }));
+      }
+    }
+
+    // Merge: if villa search, advisor records (sorted by quality_score) come first
+    let combinedResults: any[];
+    if (projectTypeFilter === 'villa') {
+      combinedResults = [...advisorResults, ...filteredProjects];
+    } else {
+      combinedResults = [...filteredProjects, ...advisorResults];
+    }
+
     return NextResponse.json({
-      results: filteredProjects,
+      results: combinedResults,
       appliedFilters: {
         city,
         category,
@@ -257,9 +318,10 @@ export async function GET(request: NextRequest) {
         developer,
         completionStatus,
         isNewProject,
-        textQuery
+        textQuery,
+        projectTypeFilter,
       },
-      total: filteredProjects.length,
+      total: combinedResults.length,
     });
   } catch (error: any) {
     console.error('[SearchAPI] Unexpected error:', error);

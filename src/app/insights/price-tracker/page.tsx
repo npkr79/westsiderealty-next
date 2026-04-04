@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { createServiceClient } from "@/lib/supabase/serviceClient";
+import { InsightsAdvisorCTA } from "../InsightsAdvisorCTA";
 
 export const metadata: Metadata = {
   title: "Hyderabad Price Tracker — Live Rates by Micro-Market | Westside Realty",
@@ -9,6 +10,18 @@ export const metadata: Metadata = {
 };
 
 export const revalidate = 3600;
+
+const C = {
+  bg: "#FAFAF7",
+  bgCard: "#FFFFFF",
+  bgWarm: "#F5F3EE",
+  bgDark: "#1A1A1F",
+  gold: "#B08D57",
+  goldLight: "#C9A96E",
+  text: "#1A1A1F",
+  textMuted: "#7A7A7E",
+  border: "rgba(0,0,0,0.07)",
+} as const;
 
 const TIER_ORDER = [
   "financial-district", "gachibowli", "kokapet", "nanakramguda",
@@ -19,7 +32,7 @@ const TIER_ORDER = [
 
 function tier(slug: string) {
   const idx = TIER_ORDER.indexOf(slug);
-  if (idx < 4) return { label: "Premium", color: "#c8a96e" };
+  if (idx < 4) return { label: "Premium", color: C.gold };
   if (idx < 9) return { label: "Mid-Premium", color: "#60a5fa" };
   return { label: "Emerging", color: "#4ade80" };
 }
@@ -37,60 +50,88 @@ export default async function PriceTrackerPage() {
     .eq("city_slug", "hyderabad")
     .order("price_per_sqft_max", { ascending: false });
 
-  const markets = (data ?? []) as any[];
+  const markets = (data ?? []) as Array<{
+    micro_market_name: string;
+    url_slug: string;
+    price_per_sqft_min: number | null;
+    price_per_sqft_max: number | null;
+    annual_appreciation_min: number | null;
+    annual_appreciation_max: number | null;
+  }>;
 
   const updatedDate = new Date().toLocaleDateString("en-IN", {
     day: "numeric", month: "long", year: "numeric",
   });
 
   return (
-    <main style={{ background: "#080808", minHeight: "100vh" }}>
-      <section className="px-4 pb-16" style={{ paddingTop: 88, background: "linear-gradient(to bottom, #0d0d0d, #080808)" }}>
-        <div className="container mx-auto max-w-4xl">
-          <Link href="/insights" className="text-xs text-slate-500 hover:text-slate-300 transition-colors mb-6 inline-block">
-            ← Back to Insights
+    <>
+      <style>{`
+        .pt-table-row:hover { background: #F5F3EE !important; }
+        .pt-summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+        @media (max-width: 768px) {
+          .pt-summary-grid { grid-template-columns: 1fr !important; }
+          .pt-table-head span:nth-child(3), .pt-table-row span:nth-child(3) { display: none !important; }
+        }
+      `}</style>
+
+      {/* Hero */}
+      <section style={{ background: C.bgDark, position: "relative", overflow: "hidden" }}>
+        <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 65% 60% at 65% 40%, rgba(176,141,87,0.10) 0%, transparent 70%)", pointerEvents: "none" }} />
+        <div style={{ maxWidth: 900, margin: "0 auto", padding: "100px 24px 64px", position: "relative" }}>
+          <Link href="/insights" style={{ fontFamily: "'Outfit', sans-serif", fontSize: 13, color: "rgba(255,255,255,0.4)", textDecoration: "none", display: "inline-block", marginBottom: 24 }}>
+            ← Back to Research
           </Link>
-
-          <div className="flex items-center gap-3 mb-4">
-            <p className="text-xs font-bold uppercase tracking-[0.2em]" style={{ color: "#c8a96e" }}>
-              Market Intelligence
-            </p>
-            <span className="rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase" style={{ background: "rgba(34,197,94,0.15)", color: "#86efac", borderColor: "rgba(34,197,94,0.3)" }}>
-              LIVE
-            </span>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+            <span style={{ fontFamily: "'Outfit', sans-serif", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.18em", color: C.gold }}>Research Report</span>
+            <span style={{ fontFamily: "'Outfit', sans-serif", fontSize: 9, fontWeight: 700, textTransform: "uppercase", background: "rgba(34,197,94,0.15)", color: "#4ade80", border: "1px solid rgba(34,197,94,0.3)", borderRadius: 20, padding: "3px 10px" }}>LIVE</span>
           </div>
-
-          <h1 className="text-4xl sm:text-5xl font-bold text-white mb-3">Price Tracker</h1>
-          <p className="text-slate-400 text-lg mb-2 max-w-xl">
+          <h1 style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: "clamp(36px,5vw,56px)", fontWeight: 600, color: "#fff", lineHeight: 1.15, margin: "0 0 16px" }}>Price Tracker</h1>
+          <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: 18, color: "rgba(255,255,255,0.6)", lineHeight: 1.6, maxWidth: 580, margin: "0 0 8px" }}>
             Live price-per-sqft rates across 19 Hyderabad micro-markets, sourced from RERA filings and developer launches.
           </p>
-          <p className="text-slate-600 text-xs mb-12">Last updated: {updatedDate}</p>
+          <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: 12, color: "rgba(255,255,255,0.25)", margin: 0 }}>Last updated: {updatedDate}</p>
+        </div>
+      </section>
+
+      {/* Executive Summary */}
+      <section style={{ background: C.bg, padding: "48px 24px 0" }}>
+        <div style={{ maxWidth: 900, margin: "0 auto" }}>
+          <div style={{ background: C.bgCard, borderLeft: `4px solid ${C.gold}`, padding: "24px 28px", borderRadius: "0 12px 12px 0" }}>
+            <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", color: C.gold, margin: "0 0 12px" }}>Executive Summary</p>
+            <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: 15, color: C.text, lineHeight: 1.7, margin: 0 }}>
+              Hyderabad&apos;s west corridor currently ranges from ₹5.2K/sqft in emerging areas to ₹14K+ in the premium Financial District belt. Kokapet and Narsingi are leading YoY appreciation at 18–22%, while the premium core (Financial District, Gachibowli) sustains 8–12% compounding with very low vacancy risk.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Body */}
+      <section style={{ background: C.bg, padding: "40px 24px 80px" }}>
+        <div style={{ maxWidth: 900, margin: "0 auto" }}>
 
           {/* Summary tiles */}
-          <div className="grid grid-cols-3 gap-4 mb-12">
+          <div className="pt-summary-grid" style={{ marginBottom: 40 }}>
             {[
               { label: "Lowest entry", value: "₹5.2K/sqft", sub: "Emerging corridors" },
               { label: "Premium belt", value: "₹11K–₹14K", sub: "Financial District & Gachibowli" },
               { label: "Fastest YoY growth", value: "18–22%", sub: "Kokapet & Narsingi" },
             ].map((s) => (
-              <div key={s.label} className="rounded-2xl border border-white/8 p-5" style={{ background: "rgba(255,255,255,0.03)" }}>
-                <p className="text-xs text-slate-500 uppercase tracking-wide mb-1">{s.label}</p>
-                <p className="text-xl font-bold text-white">{s.value}</p>
-                <p className="text-xs text-slate-600 mt-1">{s.sub}</p>
+              <div key={s.label} style={{ background: C.bgCard, border: `1px solid ${C.border}`, borderRadius: 16, padding: 24 }}>
+                <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.1em", color: C.textMuted, margin: "0 0 8px" }}>{s.label}</p>
+                <p style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: 28, fontWeight: 600, color: C.gold, margin: "0 0 4px", lineHeight: 1 }}>{s.value}</p>
+                <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: 12, color: C.textMuted, margin: 0 }}>{s.sub}</p>
               </div>
             ))}
           </div>
 
           {/* Price table */}
-          <div className="rounded-2xl border border-white/8 overflow-hidden mb-12">
-            <div className="grid grid-cols-[2fr_1fr_1fr_1fr] gap-4 px-5 py-3 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500 border-b border-white/8"
-              style={{ background: "rgba(255,255,255,0.03)" }}>
-              <span>Micro-Market</span>
-              <span>Price Range</span>
-              <span className="hidden sm:block">YoY Growth</span>
-              <span>Tier</span>
+          <div style={{ background: C.bgCard, border: `1px solid ${C.border}`, borderRadius: 16, overflow: "hidden", marginBottom: 48 }}>
+            <div className="pt-table-head" style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", gap: 8, padding: "12px 20px", background: C.bgWarm, borderBottom: `1px solid ${C.border}` }}>
+              {["Micro-Market", "Price Range", "YoY Growth", "Tier"].map((h) => (
+                <span key={h} style={{ fontFamily: "'Outfit', sans-serif", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: C.textMuted }}>{h}</span>
+              ))}
             </div>
-            {markets.map((m) => {
+            {markets.map((m, i) => {
               const t = tier(m.url_slug);
               const min = fmtPrice(m.price_per_sqft_min);
               const max = fmtPrice(m.price_per_sqft_max);
@@ -102,77 +143,44 @@ export default async function PriceTrackerPage() {
                 <Link
                   key={m.url_slug}
                   href={`/hyderabad/${m.url_slug}`}
-                  className="grid grid-cols-[2fr_1fr_1fr_1fr] gap-4 items-center px-5 py-4 border-b border-white/5 transition-colors hover:bg-white/4 last:border-0"
+                  className="pt-table-row"
+                  style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", gap: 8, alignItems: "center", padding: "14px 20px", borderBottom: i < markets.length - 1 ? `1px solid ${C.border}` : "none", textDecoration: "none", transition: "background 0.15s" }}
                 >
-                  <span className="text-white font-medium text-sm">{m.micro_market_name}</span>
-                  <span className="font-bold text-sm" style={{ color: "#c8a96e" }}>{price}</span>
-                  <span className="hidden sm:block text-emerald-400 text-sm font-medium">{yoy !== "—" ? `↑ ${yoy}` : "—"}</span>
-                  <span>
-                    <span className="inline-block rounded-full px-2 py-0.5 text-[9px] font-bold uppercase"
-                      style={{ background: t.color + "20", color: t.color }}>
-                      {t.label}
-                    </span>
-                  </span>
+                  <span style={{ fontFamily: "'Outfit', sans-serif", fontSize: 14, fontWeight: 500, color: C.text }}>{m.micro_market_name}</span>
+                  <span style={{ fontFamily: "'Outfit', sans-serif", fontSize: 13, fontWeight: 600, color: C.gold }}>{price}</span>
+                  <span style={{ fontFamily: "'Outfit', sans-serif", fontSize: 13, fontWeight: 500, color: "#4ade80" }}>{yoy !== "—" ? `↑ ${yoy}` : "—"}</span>
+                  <span style={{ background: t.color + "18", color: t.color, fontFamily: "'Outfit', sans-serif", fontSize: 10, fontWeight: 700, textTransform: "uppercase", borderRadius: 20, padding: "3px 10px", display: "inline-block", width: "fit-content" }}>{t.label}</span>
                 </Link>
               );
             })}
           </div>
 
           {/* Context */}
-          <div className="space-y-6 mb-12">
-            <h2 className="text-2xl font-bold text-white">Reading the Data</h2>
-
-            <div className="rounded-2xl border border-white/8 p-6" style={{ background: "rgba(255,255,255,0.03)" }}>
-              <h3 className="text-white font-semibold mb-3">What drives these prices?</h3>
-              <p className="text-slate-400 text-sm leading-relaxed">
-                Hyderabad's west corridor pricing is primarily driven by proximity to the HITEC City–Financial District–Gachibowli tech employment belt. Projects within 5 km of this belt command a 25–40% premium over comparable projects at the outer ring. Secondary drivers include Metro connectivity (Phase 1 stations added 8–12% to prices along the Miyapur–LB Nagar corridor), school catchment areas (international schools add ₹800–1,200/sqft to nearby projects), and developer brand (established builders command 10–15% over comparable projects from growing builders).
-              </p>
-            </div>
-
-            <div className="rounded-2xl border border-white/8 p-6" style={{ background: "rgba(255,255,255,0.03)" }}>
-              <h3 className="text-white font-semibold mb-3">Why Financial District prices are where they are</h3>
-              <p className="text-slate-400 text-sm leading-relaxed">
-                At ₹12,000–14,000/sqft, Financial District commands Hyderabad's highest residential prices — a function of constrained land supply, proximity to 150,000+ tech jobs, and the concentration of MNC campuses (Google, Meta, Amazon, Apple all have large offices here). The area has absorbed a decade of NRI and HNI investment, making it the most liquid real estate market in the city. Expect 8–12% annual appreciation with limited downside risk.
-              </p>
-            </div>
-
-            <div className="rounded-2xl border border-white/8 p-6" style={{ background: "rgba(255,255,255,0.03)" }}>
-              <h3 className="text-white font-semibold mb-3">The Kokapet value case</h3>
-              <p className="text-slate-400 text-sm leading-relaxed">
-                Kokapet is the most discussed micro-market in Hyderabad right now — and for good reason. At ₹10,500–12,500/sqft for new launches, it sits 15–20% below Financial District pricing while sharing the same employment catchment. The Kokapet SEZ (22 million sqft approved), direct ORR access, and new luxury project launches (Prestige, My Home) have driven 18–22% YoY appreciation in 2024–25. Our view: a 3–5 year hold here likely outperforms almost any other Hyderabad micro-market.
-              </p>
-            </div>
-
-            <div className="rounded-2xl border border-white/8 p-6" style={{ background: "rgba(255,255,255,0.03)" }}>
-              <h3 className="text-white font-semibold mb-3">The emerging corridor play</h3>
-              <p className="text-slate-400 text-sm leading-relaxed">
-                Kollur, Mokila, and Tellapur sit at ₹5,500–7,500/sqft — roughly half the price of the premium belt. The thesis here is simple: these corridors are the 2018 version of Narsingi (which was ₹4,200/sqft then, now ₹8,500+). Infrastructure investment — ORR extensions, the proposed Metro Phase 2 corridor, and IT park approvals — is the catalyst. Higher risk, significantly higher upside. Not suitable for end-use buyers who need ready possession.
-              </p>
-            </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 16, marginBottom: 48 }}>
+            {[
+              { title: "What drives these prices?", body: "Hyderabad's west corridor pricing is primarily driven by proximity to the HITEC City–Financial District–Gachibowli tech employment belt. Projects within 5 km of this belt command a 25–40% premium over comparable projects at the outer ring. Secondary drivers include Metro connectivity, school catchment areas, and developer brand (established builders command 10–15% premium)." },
+              { title: "Why Financial District prices are where they are", body: "At ₹12,000–14,000/sqft, Financial District commands Hyderabad's highest residential prices — a function of constrained land supply, proximity to 150,000+ tech jobs, and the concentration of MNC campuses (Google, Meta, Amazon, Apple). The area has absorbed a decade of NRI and HNI investment, making it the most liquid real estate market in the city." },
+              { title: "The Kokapet value case", body: "Kokapet was the story of 2025 and the narrative is still running. At ₹10,500–12,500/sqft for new launches, it sits 15–20% below Financial District pricing while sharing the same employment catchment. The Kokapet SEZ approval (22 million sqft) has driven 18–22% YoY appreciation in 2024–25." },
+              { title: "The emerging corridor play", body: "Kollur, Mokila, and Tellapur sit at ₹5,500–7,500/sqft — roughly half the price of the premium belt. The thesis: these corridors are the 2018 version of Narsingi (which was ₹4,200/sqft then, now ₹8,500+). Infrastructure investment is the catalyst. Higher risk, significantly higher upside." },
+            ].map((s) => (
+              <div key={s.title} style={{ background: C.bgCard, border: `1px solid ${C.border}`, borderRadius: 16, padding: 24 }}>
+                <h3 style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: 20, fontWeight: 600, color: C.text, margin: "0 0 10px" }}>{s.title}</h3>
+                <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: 15, color: C.textMuted, lineHeight: 1.75, margin: 0 }}>{s.body}</p>
+              </div>
+            ))}
           </div>
 
-          {/* Methodology note */}
-          <div className="rounded-2xl border border-white/8 p-5 mb-10" style={{ background: "rgba(200,169,110,0.04)", borderColor: "rgba(200,169,110,0.15)" }}>
-            <p className="text-xs font-bold uppercase tracking-[0.15em] mb-2" style={{ color: "#c8a96e" }}>Data Methodology</p>
-            <p className="text-slate-500 text-xs leading-relaxed">
-              Price ranges are derived from RERA project filings (developer-declared prices), recent transaction data, and our advisors' on-ground checks. Prices represent new-launch / primary market rates and may differ from resale prices. Appreciation figures are trailing 12-month estimates and are not guarantees of future performance.
+          {/* Methodology */}
+          <div style={{ background: "rgba(176,141,87,0.05)", border: `1px solid rgba(176,141,87,0.2)`, borderRadius: 16, padding: 24 }}>
+            <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.15em", color: C.gold, margin: "0 0 10px" }}>Data Methodology</p>
+            <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: 13, color: C.textMuted, lineHeight: 1.75, margin: 0 }}>
+              Price ranges are derived from RERA project filings, recent transaction data, and our advisors&apos; on-ground checks. Prices represent new-launch / primary market rates and may differ from resale prices. Appreciation figures are trailing 12-month estimates and are not guarantees of future performance.
             </p>
-          </div>
-
-          {/* CTA */}
-          <div className="rounded-2xl border border-white/8 p-6 text-center" style={{ background: "rgba(200,169,110,0.05)", borderColor: "rgba(200,169,110,0.2)" }}>
-            <p className="text-white font-semibold mb-2">Want a micro-market walkthrough?</p>
-            <p className="text-slate-400 text-sm mb-4">Our advisors have visited every project in this table. Get a personalised comparison for your budget and timeline.</p>
-            <Link
-              href="/contact"
-              className="inline-block rounded-full px-6 py-2.5 text-sm font-bold uppercase tracking-[0.1em]"
-              style={{ background: "linear-gradient(135deg, #c8a96e, #a8843e)", color: "#0a0a0a" }}
-            >
-              Talk to an Advisor — Free
-            </Link>
           </div>
         </div>
       </section>
-    </main>
+
+      <InsightsAdvisorCTA />
+    </>
   );
 }
