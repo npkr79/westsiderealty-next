@@ -175,18 +175,19 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       }
     });
 
-    // Smart Links (Programmatic SEO) - Generate valid filter URLs for each micro-market
-    // Note: This could be heavy with many micro-markets. Consider caching or splitting if > 50,000 URLs
+    // Smart Links (Programmatic SEO) - Generate valid filter URLs for top micro-markets only
+    // Capped at 30 to avoid O(n) DB calls adding 30-60s to every deploy
+    const topMarkets = microMarketsResult.data?.slice(0, 30) || [];
     console.log("[sitemap] Generating Smart Links for micro-markets...");
-    console.log(`[sitemap] Micro-markets count: ${microMarketsResult.data?.length || 0}`);
+    console.log(`[sitemap] Micro-markets count (capped): ${topMarkets.length}`);
     const smartLinkUrls: MetadataRoute.Sitemap = [];
     const smartLinkSet = new Set<string>();
-    
-    if (microMarketsResult.data && microMarketsResult.data.length > 0) {
+
+    if (topMarkets.length > 0) {
       // Process micro-markets in batches to avoid overwhelming the database
       const batchSize = 10;
-      for (let i = 0; i < microMarketsResult.data.length; i += batchSize) {
-        const batch = microMarketsResult.data.slice(i, i + batchSize);
+      for (let i = 0; i < topMarkets.length; i += batchSize) {
+        const batch = topMarkets.slice(i, i + batchSize);
         
         await Promise.all(
           batch.map(async (mm: any) => {

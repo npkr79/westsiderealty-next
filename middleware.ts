@@ -4,6 +4,11 @@ import type { CrmRole } from "@/lib/crm/types";
 import { getDashboardPathForRole, mapRoleNameToCrmRole } from "@/lib/crm/roles";
 import { CRM_TEST_ADMIN_COOKIE, isCrmTestLoginEnabled } from "@/lib/crm/test-login";
 
+// Role is cached in a short-lived cookie to avoid a DB round-trip on every request
+const ROLE_COOKIE = "crm_cached_role";
+const ROLE_COOKIE_TTL = 5 * 60; // 5 minutes
+const VALID_ROLES: CrmRole[] = ["admin", "sales_head", "team_lead", "agent", "marketing", "channel_partner", "analyst"];
+
 const rolePathMap: Record<string, CrmRole> = {
   "/dashboard/admin": "admin",
   "/dashboard/sales": "sales_head",
@@ -70,31 +75,47 @@ export async function middleware(request: NextRequest) {
 
   let resolvedRole = activeRole;
   if (!resolvedRole && user) {
-    const crmUser = await supabase
-      .from("crm_users")
-      .select("id, is_active, crm_roles(name)")
-      .eq("id", user.id)
-      .maybeSingle();
+    // Check cached role cookie to skip the DB query on repeat visits
+    const cachedRole = request.cookies.get(ROLE_COOKIE)?.value as CrmRole | undefined;
+    if (cachedRole && VALID_ROLES.includes(cachedRole)) {
+      resolvedRole = cachedRole;
+    } else {
+      // Cache miss — fetch role from DB and store in cookie
+      const crmUser = await supabase
+        .from("crm_users")
+        .select("id, is_active, crm_roles(name)")
+        .eq("id", user.id)
+        .maybeSingle();
 
-    if (crmUser.error || !crmUser.data) {
-      const loginUrl = new URL("/crm/login", request.url);
-      loginUrl.searchParams.set("error", "not_authorized");
-      return NextResponse.redirect(loginUrl);
-    }
-    if (!crmUser.data.is_active) {
-      const loginUrl = new URL("/crm/login", request.url);
-      loginUrl.searchParams.set("error", "inactive_user");
-      return NextResponse.redirect(loginUrl);
-    }
+      if (crmUser.error || !crmUser.data) {
+        const loginUrl = new URL("/crm/login", request.url);
+        loginUrl.searchParams.set("error", "not_authorized");
+        return NextResponse.redirect(loginUrl);
+      }
+      if (!crmUser.data.is_active) {
+        const loginUrl = new URL("/crm/login", request.url);
+        loginUrl.searchParams.set("error", "inactive_user");
+        return NextResponse.redirect(loginUrl);
+      }
 
-    const roleName = Array.isArray(crmUser.data.crm_roles) ? crmUser.data.crm_roles[0]?.name : crmUser.data.crm_roles?.name;
-    const role = mapRoleNameToCrmRole(roleName);
-    if (!role) {
-      const loginUrl = new URL("/crm/login", request.url);
-      loginUrl.searchParams.set("error", "invalid_role");
-      return NextResponse.redirect(loginUrl);
+      const roleName = Array.isArray(crmUser.data.crm_roles) ? crmUser.data.crm_roles[0]?.name : crmUser.data.crm_roles?.name;
+      const role = mapRoleNameToCrmRole(roleName);
+      if (!role) {
+        const loginUrl = new URL("/crm/login", request.url);
+        loginUrl.searchParams.set("error", "invalid_role");
+        return NextResponse.redirect(loginUrl);
+      }
+      resolvedRole = role;
+
+      // Cache the resolved role for 5 minutes to skip this query on future requests
+      response.cookies.set(ROLE_COOKIE, resolvedRole, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "strict",
+        maxAge: ROLE_COOKIE_TTL,
+        path: "/",
+      });
     }
-    resolvedRole = role;
   }
 
   const requiredRole = getRequiredRoleForPath(pathname);
