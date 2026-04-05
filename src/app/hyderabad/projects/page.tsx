@@ -4,9 +4,6 @@ import { useEffect, useState, useRef, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { createBrowserClient } from "@supabase/ssr";
-
-export const revalidate = 3600;
-
 const FILTERS = [
   { label: "All", param: "" },
   { label: "New Launches", param: "new" },

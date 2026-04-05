@@ -3,9 +3,6 @@
 import { useEffect, useState, useRef, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
-
-export const revalidate = 3600;
-
 type ComputedStatus = "New Launch" | "Near Completion" | "Under Construction" | "Completed" | "Unknown";
 
 type Project = {
