@@ -8,6 +8,8 @@ import BreadcrumbNav from "@/components/layout/BreadcrumbNav";
 import { JsonLd } from "@/components/common/SEO";
 import { buildMetadata } from "@/components/common/SEO";
 
+export const revalidate = 3600;
+
 interface PageProps {
   params: Promise<{ citySlug: string }>;
 }

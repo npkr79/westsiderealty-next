@@ -12,6 +12,8 @@ import { Building2, TrendingUp, Shield } from "lucide-react";
 import { projectService } from "@/services/projectService";
 import { UnifiedPropertyService } from "@/services/unifiedPropertyService";
 
+export const revalidate = 3600;
+
 export const metadata: Metadata = buildMetadata({
   title: "Dubai Real Estate | RE/MAX Westside Realty",
   description: "Explore premium properties, luxury apartments, and investment opportunities in Dubai with RE/MAX Westside Realty.",

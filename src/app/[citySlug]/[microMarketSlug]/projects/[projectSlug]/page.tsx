@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import { buildProjectUrl } from "@/lib/routes";
 
+export const revalidate = 3600;
+
 interface PageProps {
   params: Promise<{ citySlug: string; microMarketSlug: string; projectSlug: string }>;
 }

@@ -3,6 +3,8 @@ import { JsonLd, buildMetadata } from "@/components/common/SEO";
 import AboutPage from "@/components/pages/AboutPage";
 import { supabaseTestimonialService } from "@/services/admin/supabaseTestimonialService";
 
+export const revalidate = 3600;
+
 const ABOUT_PAGE_SCHEMA = {
   "@context": "https://schema.org",
   "@type": "AboutPage",

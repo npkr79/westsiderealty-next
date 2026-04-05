@@ -7,6 +7,8 @@ import AboutWestsideProblem from "@/components/about-westside/Problem";
 import AboutWestsideRealtyLayer from "@/components/about-westside/RealtyLayer";
 import AboutWestsideSystems from "@/components/about-westside/Systems";
 
+export const revalidate = 3600;
+
 export default function AboutWestsidePage() {
   return (
     <main className="bg-slate-50 text-slate-900">

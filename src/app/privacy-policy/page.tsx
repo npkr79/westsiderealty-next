@@ -4,6 +4,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { buildMetadata } from "@/components/common/SEO";
 import Link from "next/link";
 
+export const revalidate = 3600;
+
 export const metadata: Metadata = buildMetadata({
   title: "Privacy Policy | RE/MAX Westside Realty",
   description:

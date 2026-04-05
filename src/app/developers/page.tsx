@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { createBrowserClient } from "@supabase/ssr";
 
+export const revalidate = 3600;
+
 // ─── Design System ────────────────────────────────────────────────────────────
 
 const C = {

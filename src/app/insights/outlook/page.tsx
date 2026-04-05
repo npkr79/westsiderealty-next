@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { InsightsAdvisorCTA } from "../InsightsAdvisorCTA";
 
+export const revalidate = 3600;
+
 export const metadata: Metadata = {
   title: "Hyderabad Real Estate 5-Year Outlook 2026–2031 | Westside Realty",
   description:

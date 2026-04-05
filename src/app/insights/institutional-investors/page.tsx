@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { InsightsAdvisorCTA } from "../InsightsAdvisorCTA";
 
+export const revalidate = 3600;
+
 export const metadata: Metadata = {
   title: "Why Institutional Investors Are Choosing Hyderabad for Commercial Real Estate | Westside Realty",
   description:

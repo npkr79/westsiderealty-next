@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { InsightsAdvisorCTA } from "../InsightsAdvisorCTA";
 
+export const revalidate = 3600;
+
 export const metadata: Metadata = {
   title: "RERA Updates — Hyderabad Real Estate Regulatory News 2026 | Westside Realty",
   description:

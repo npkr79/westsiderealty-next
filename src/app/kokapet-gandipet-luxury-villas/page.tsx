@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import VillaEnquiryForm from "./VillaEnquiryForm";
 
+export const revalidate = 3600;
+
 export const metadata: Metadata = {
   title: "Luxury Villas in Kokapet & Gandipet | ₹10 Cr – ₹20 Cr+ | RE/MAX Westside Realty",
   description: "Rare luxury villa resales in Kokapet and Gandipet, Hyderabad. Prices from ₹10 Cr to ₹20 Cr+. No new villa communities being built — only resale inventory available.",

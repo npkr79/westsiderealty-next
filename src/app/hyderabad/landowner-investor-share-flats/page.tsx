@@ -13,6 +13,8 @@ import { FAQSection } from "./components/FAQSection";
 import { SEOContent } from "./components/SEOContent";
 import { CTASection } from "./components/CTASection";
 
+export const revalidate = 3600;
+
 const LANDOWNER_CANONICAL_URL =
   "https://www.westsiderealty.in/hyderabad/landowner-investor-share-flats";
 

@@ -2,6 +2,8 @@ import { redirect } from 'next/navigation';
 import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 
+export const revalidate = 3600;
+
 type PageProps = {
   params: Promise<{ citySlug: string; listingSlug: string }>;
 };

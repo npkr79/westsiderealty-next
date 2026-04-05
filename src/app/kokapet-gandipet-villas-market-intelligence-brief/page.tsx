@@ -3,6 +3,8 @@ import type { Metadata } from "next";
 import { Playfair_Display, Inter, Montserrat } from "next/font/google";
 import LuxuryLeadForm from "@/components/landing/LuxuryLeadForm";
 
+export const revalidate = 3600;
+
 const playfair = Playfair_Display({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],

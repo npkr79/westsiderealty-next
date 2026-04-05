@@ -8,6 +8,8 @@ import { DeveloperProfileProjects } from "./DeveloperProfileProjects";
 import type { ProfileProject } from "./DeveloperProfileProjects";
 import { FaqAccordion } from "./FaqAccordion";
 
+export const revalidate = 3600;
+
 // ─── Design System ────────────────────────────────────────────────────────────
 
 const C = {

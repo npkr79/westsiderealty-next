@@ -6,6 +6,8 @@ import WhoItsFor from "@/components/intelligence-home/WhoItsFor";
 import WestsideAdvisory from "@/components/intelligence-home/WestsideAdvisory";
 import IntelligenceFooter from "@/components/intelligence-home/IntelligenceFooter";
 
+export const revalidate = 3600;
+
 export default function IntelligenceHomePage() {
   return (
     <main className="bg-slate-50 text-slate-900">

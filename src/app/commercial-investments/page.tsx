@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import CommercialEnquiryForm from "./CommercialEnquiryForm";
 import { JsonLd } from "@/components/common/SEO";
 
+export const revalidate = 3600;
+
 export const metadata: Metadata = {
   title: "Commercial Real Estate Investment | Grade A Offices | West Hyderabad | Westside Realty",
   description:

@@ -2,6 +2,8 @@ import { redirect } from 'next/navigation';
 import { requireCrmUser } from '@/lib/crm/auth';
 import SocialMediaDashboard from '@/components/crm/social/SocialMediaDashboard';
 
+export const revalidate = 3600;
+
 export default async function SocialPage() {
   const user = await requireCrmUser();
   if (user.role !== 'admin') {

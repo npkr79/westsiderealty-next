@@ -10,6 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { CheckCircle, Mail, MapPin, ShieldCheck } from "lucide-react";
 
+export const revalidate = 3600;
+
 interface AgentProfileRow {
   agent_id: string;
   name: string | null;

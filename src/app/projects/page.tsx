@@ -10,6 +10,8 @@ import CityTabs from "@/components/projects/CityTabs";
 import { Building2, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
+export const revalidate = 3600;
+
 interface PageProps {
   searchParams: Promise<{ search?: string; city?: string; microMarket?: string; status?: string; debug?: string }>;
 }

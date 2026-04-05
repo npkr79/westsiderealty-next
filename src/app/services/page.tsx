@@ -2,6 +2,8 @@ import { Metadata } from "next";
 import { JsonLd, buildMetadata } from "@/components/common/SEO";
 import ServicesPage from "@/components/pages/ServicesPage";
 
+export const revalidate = 3600;
+
 const SERVICE_SCHEMA = {
   "@context": "https://schema.org",
   "@type": "Service",

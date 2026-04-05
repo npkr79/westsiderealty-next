@@ -11,6 +11,8 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { submitLead } from "@/app/actions/submit-lead";
 
+export const revalidate = 3600;
+
 type PropertyType = "apartment" | "villa" | "commercial" | "plot";
 
 interface BuyingRequirementFormData {

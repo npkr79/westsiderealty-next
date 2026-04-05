@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import SectionShell from "@/components/institutional-investment-commercial/SectionShell";
 import InstitutionalLeadForm from "@/components/institutional-investment-commercial/InstitutionalLeadForm";
 import {
+
+export const revalidate = 3600;
   GCCShareChart,
   InflowGrowthChart,
   NetAbsorptionChart,

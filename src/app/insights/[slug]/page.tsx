@@ -3,6 +3,8 @@ import Link from "next/link";
 import { JsonLd } from "@/components/common/SEO";
 import { InsightsAdvisorCTA } from "../InsightsAdvisorCTA";
 
+export const revalidate = 3600;
+
 // ─── Design constants ─────────────────────────────────────────────────────────
 
 const C = {

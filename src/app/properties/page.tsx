@@ -4,6 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Building2, MapPin, Waves, Landmark } from "lucide-react";
 import { JsonLd, buildMetadata } from "@/components/common/SEO";
 
+export const revalidate = 3600;
+
 export const metadata: Metadata = buildMetadata({
   title: "Properties - Browse All Real Estate Listings | RE/MAX Westside Realty",
   description:

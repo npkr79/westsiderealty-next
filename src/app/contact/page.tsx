@@ -6,6 +6,8 @@ import { MapPin, Clock, Phone, MessageCircle, Mail, Send, CheckCircle, Loader2 }
 import { JsonLd } from "@/components/common/SEO";
 import { submitLead } from "@/app/actions/submit-lead";
 
+export const revalidate = 3600;
+
 // ─── Design tokens (matches HomepageRedesign / MicroMarketRedesign) ──────────
 const C = {
   bg: "#FAFAF7",
