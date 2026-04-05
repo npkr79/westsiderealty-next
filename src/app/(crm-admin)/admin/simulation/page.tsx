@@ -2,6 +2,8 @@ import CrmShell from "@/components/crm/CrmShell";
 import SimulationEngineConsole from "@/components/crm/simulation/SimulationEngineConsole";
 import { requireCrmUser } from "@/lib/crm/auth";
 
+export const dynamic = "force-dynamic";
+
 export default async function AdminSimulationPage() {
   const user = await requireCrmUser(["admin"]);
 

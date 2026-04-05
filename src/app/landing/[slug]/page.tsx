@@ -196,8 +196,8 @@ export const revalidate = 60;
 
 export async function generateStaticParams() {
   try {
-    const { createBuildClient } = await import('@/lib/supabase/buildClient');
-    const supabase = createBuildClient();
+    const { createServiceClient } = await import('@/lib/supabase/serviceClient');
+    const supabase = createServiceClient();
     const { data: pages, error } = await supabase
       .from("landing_pages")
       .select("uri")
