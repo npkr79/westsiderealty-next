@@ -8,7 +8,7 @@ export const metadata: Metadata = {
     "Market analysis, investment guides, and property intelligence from the Westside Realty team.",
 };
 
-export const revalidate = 0;
+export const revalidate = 3600; // ISR: cache for 1 hour
 
 // ─── Design constants ─────────────────────────────────────────────────────────
 
