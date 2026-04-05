@@ -21,8 +21,8 @@ export async function GET(request: NextRequest) {
     const supabase = createServiceClient();
     const parsed = await parseSearchQuery(query.trim(), supabase);
 
-    return NextResponse.json({
-      parsed,
+    return NextResponse.json({ parsed }, {
+      headers: { 'Cache-Control': 'public, max-age=300, stale-while-revalidate=3600' },
     });
   } catch (error: any) {
     console.error('[SearchParseAPI] Error:', error);

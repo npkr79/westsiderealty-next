@@ -322,6 +322,8 @@ export async function GET(request: NextRequest) {
         projectTypeFilter,
       },
       total: combinedResults.length,
+    }, {
+      headers: { 'Cache-Control': 'public, max-age=60, stale-while-revalidate=300' },
     });
   } catch (error: any) {
     console.error('[SearchAPI] Unexpected error:', error);

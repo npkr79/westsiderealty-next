@@ -789,7 +789,7 @@ function QueueTab() {
                 {post.image_url && (
                   <div className="w-full overflow-hidden rounded-lg">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={post.image_url} alt="" className="w-full h-40 object-cover rounded-lg" />
+                    <img src={post.image_url} alt="" loading="lazy" decoding="async" className="w-full h-40 object-cover rounded-lg" />
                   </div>
                 )}
 
@@ -984,7 +984,7 @@ function HistoryTab() {
           {post.image_url && (
             <div className="w-16 h-16 overflow-hidden rounded-lg flex-shrink-0">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={post.image_url} alt="" className="w-full h-full object-cover" />
+              <img src={post.image_url} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover" />
             </div>
           )}
           <div className="flex-1 min-w-0">

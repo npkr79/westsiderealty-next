@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
+import Image from "next/image";
 import { sanitizeHTML } from "@/lib/utils/htmlSanitizer";
 
 interface AboutDeveloperSectionProps {
@@ -39,7 +40,7 @@ export default function AboutDeveloperSection({
         <CardContent className="space-y-4">
           {logoUrl && (
             <div className="mb-4">
-              <img src={logoUrl} alt={`${developerName} logo`} className="h-16 w-auto" />
+              <Image src={logoUrl} alt={`${developerName} logo`} width={120} height={64} className="h-16 w-auto object-contain" />
             </div>
           )}
           {tagline && <p className="text-lg font-semibold text-foreground">{tagline}</p>}
