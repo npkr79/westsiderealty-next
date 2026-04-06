@@ -40,8 +40,8 @@ const values = [
 
 const achievements = [
   { icon: Award, title: "Global Network", value: "140,000+", sub: "agents worldwide" },
-  { icon: Users, title: "Happy Clients", value: "500+", sub: "families served" },
-  { icon: Star, title: "Years in Business", value: "10+", sub: "years of expertise" },
+  { icon: MapPin, title: "Offices Worldwide", value: "9,000+", sub: "offices globally" },
+  { icon: Star, title: "Years in Business", value: "53", sub: "years of expertise" },
 ];
 
 const officeHighlights = [
