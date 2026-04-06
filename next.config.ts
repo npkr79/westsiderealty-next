@@ -1,4 +1,21 @@
 import type { NextConfig } from 'next'
+import path from 'path'
+import fs from 'fs'
+
+// When running from a git worktree nested inside the main project,
+// node_modules lives in the parent. Walk up to find it so Turbopack
+// can resolve packages within its filesystem root.
+function findTurbopackRoot(start: string): string {
+  let dir = start
+  while (dir !== path.dirname(dir)) {
+    if (fs.existsSync(path.join(dir, 'node_modules', 'next', 'package.json'))) {
+      return dir
+    }
+    dir = path.dirname(dir)
+  }
+  return start
+}
+const turbopackRoot = findTurbopackRoot(process.cwd())
 
 const SECURITY_HEADERS = [
   { key: 'X-Content-Type-Options',  value: 'nosniff' },
@@ -56,7 +73,7 @@ const nextConfig: NextConfig = {
     ];
   },
   turbopack: {
-    root: process.cwd(),
+    root: turbopackRoot,
   },
   typescript: {
     // Temporary: allow production deploy while legacy route typing is stabilized.
