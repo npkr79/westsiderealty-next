@@ -1,5 +1,5 @@
 import { Metadata } from "next";
-import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/serviceClient";
 import { buildMetadata } from "@/components/common/SEO";
 import { JsonLd } from "@/components/common/SEO";
 import { PageHeader } from "@/components/common/PageHeader";
@@ -171,7 +171,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
   let isNewProject = resolved.isNewProject === "true";
   const currentPage = parseInt(resolved.page || "1", 10);
   
-  const supabase = await createClient();
+  const supabase = createServiceClient();
 
   // OPTIONAL HARDENING: If q exists and is non-empty, re-parse and treat as source of truth
   // This ensures that text-derived params override any conflicting URL params

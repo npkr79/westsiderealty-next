@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/serviceClient";
 import { buildMetadata } from "@/components/common/SEO";
 import { JsonLd } from "@/components/common/SEO";
 import { PageHeader } from "@/components/common/PageHeader";
@@ -20,7 +20,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function HyderabadPropertiesPage() {
-  const supabase = await createClient();
+  const supabase = createServiceClient();
   
   // Fetch properties using UnifiedPropertyService (which handles hyderabad_properties)
   const properties = await UnifiedPropertyService.getProperties('hyderabad');

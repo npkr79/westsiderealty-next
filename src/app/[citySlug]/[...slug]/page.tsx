@@ -33,7 +33,7 @@ export default async function OldPropertyRedirectPage({ params }: PageProps) {
     notFound();
   }
 
-  const supabase = await createClient();
+  const supabase = createServiceClient();
 
   // FIRST: Check if it's a micro-market page (to avoid conflicts with micro-market route)
   // Micro-market routes are more specific, so we should not handle them here

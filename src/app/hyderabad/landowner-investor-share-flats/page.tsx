@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/serviceClient";
 import { JsonLd } from "@/components/common/SEO";
 import { Breadcrumbs } from "@/components/seo/Breadcrumbs";
 import { getLandownerInvestorProjects } from "@/lib/supabase/landowner-projects";
@@ -84,7 +84,7 @@ interface PageContent {
 }
 
 export default async function LandownerInvestorSharePage() {
-  const supabase = await createClient();
+  const supabase = createServiceClient();
 
   // Fetch projects from projects table with has_landowner_investor_share = true
   const projects = await getLandownerInvestorProjects();

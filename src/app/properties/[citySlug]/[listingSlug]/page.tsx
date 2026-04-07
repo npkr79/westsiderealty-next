@@ -10,7 +10,7 @@ type PageProps = {
 
 // Fetch property data to verify it exists and get the correct slug
 async function getProperty(citySlug: string, listingSlug: string) {
-  const supabase = await createClient();
+  const supabase = createServiceClient();
   
   // Normalize citySlug
   const normalizedCitySlug = Array.isArray(citySlug) ? citySlug[0] : citySlug;

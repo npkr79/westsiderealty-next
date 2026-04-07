@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/serviceClient";
 import { buildMetadata } from "@/components/common/SEO";
 import { JsonLd } from "@/components/common/SEO";
 import { PageHeader } from "@/components/common/PageHeader";
@@ -21,7 +21,7 @@ export const metadata: Metadata = buildMetadata({
 });
 
 export default async function DubaiPage() {
-  const supabase = await createClient();
+  const supabase = createServiceClient();
   
   // Get Dubai city entry
   const { data: city } = await supabase

@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/serviceClient";
 import { parseFilterSlug } from "@/lib/utils/localityStats";
 import { parseJsonb, asArray } from "@/lib/parse-jsonb";
 import BreadcrumbNav from "@/components/layout/BreadcrumbNav";
@@ -153,7 +153,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   }
 
   const { filterType, filterValue, microMarketSlug } = parsed;
-  const supabase = await createClient();
+  const supabase = createServiceClient();
 
   // Fetch micro-market
   const { data: microMarket } = await supabase
@@ -291,7 +291,7 @@ export default async function HomesFilterPage({ params, searchParams }: PageProp
   }
 
   const { filterType, filterValue, microMarketSlug } = parsed;
-  const supabase = await createClient();
+  const supabase = createServiceClient();
 
   // Get current page number
   const currentPage = Math.max(1, parseInt(resolvedSearchParams.page || "1", 10));

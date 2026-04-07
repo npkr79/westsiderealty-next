@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
-import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/serviceClient";
 import { cityService, CityInfo } from "@/services/cityService";
 import { buildMetadata } from "@/components/common/SEO";
 import { JsonLd } from "@/components/common/SEO";
@@ -63,7 +63,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function CityDevelopersPage({ params }: PageProps) {
   const { citySlug } = await params;
-  const supabase = await createClient();
+  const supabase = createServiceClient();
 
   // Fetch city data
   const city = await cityService.getCityBySlug(citySlug);

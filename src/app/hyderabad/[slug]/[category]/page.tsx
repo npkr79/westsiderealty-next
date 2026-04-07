@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/serviceClient";
 import { parseJsonb, safeCapitalize } from "@/lib/parse-jsonb";
 import BreadcrumbNav from "@/components/layout/BreadcrumbNav";
 import ProjectCard from "@/components/properties/ProjectCard";
@@ -99,7 +99,7 @@ export default async function CategoryComparisonPage({ params }: PageProps) {
   const categoryConfig = CATEGORY_FILTERS[category];
   if (!categoryConfig) notFound();
 
-  const supabase = await createClient();
+  const supabase = createServiceClient();
 
   // 1. Get City ID
   const { data: city } = await supabase

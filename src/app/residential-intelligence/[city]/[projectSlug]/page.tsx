@@ -1,6 +1,5 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/serviceClient";
 import { reraIntelligenceService } from "@/services/reraIntelligenceService";
 import { computeProjectDNA } from "@/intelligence/projectDNA";
@@ -127,7 +126,7 @@ export async function generateMetadata({
   params: Promise<{ city: string; projectSlug: string }>;
 }): Promise<Metadata> {
   const { city, projectSlug } = await params;
-  const supabase = await createClient();
+  const supabase = createServiceClient();
   const { data } = await supabase
     .from("rera_projects")
     .select("project_name")

@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { createClient } from "@/lib/supabase/server";
+
+import { createServiceClient } from "@/lib/supabase/serviceClient";
 import LandingPageComponent from "./LandingPageComponent";
 import { JsonLd } from "@/components/common/SEO";
 import { optimizeSupabaseImage } from "@/utils/imageOptimization";
@@ -17,7 +18,7 @@ interface PageProps {
 async function fetchLandingPageData(slug: string) {
   try {
     const { createClient } = await import('@/lib/supabase/server');
-    const supabase = await createClient();
+    const supabase = createServiceClient();
     const { supabaseLandingPagesService } = await import('@/services/admin/supabaseLandingPagesService');
 
     // Fetch main landing page

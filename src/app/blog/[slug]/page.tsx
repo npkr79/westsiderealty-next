@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/serviceClient";
 import { JsonLd } from "@/components/common/SEO";
 import { generateUnifiedSchema } from "@/lib/seo-utils";
 import { optimizeSupabaseImage } from "@/utils/imageOptimization";
@@ -43,7 +43,7 @@ function calcReadTime(content: string | null | undefined): number {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
-  const supabase = await createClient();
+  const supabase = createServiceClient();
 
   const { data: article } = await supabase
     .from("blog_articles")
@@ -109,7 +109,7 @@ export async function generateStaticParams() {
 
 export default async function BlogArticlePage({ params }: PageProps) {
   const { slug } = await params;
-  const supabase = await createClient();
+  const supabase = createServiceClient();
 
   const { data: article, error } = await supabase
     .from("blog_articles")

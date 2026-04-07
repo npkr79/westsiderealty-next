@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/serviceClient";
 import { buildMetadata } from "@/components/common/SEO";
 import { JsonLd } from "@/components/common/SEO";
 import ProjectCard from "@/components/properties/ProjectCard";
@@ -42,7 +42,7 @@ export default async function ProjectsHubPage({ searchParams }: PageProps) {
   const resolvedSearchParams = await searchParams;
   const debug = resolvedSearchParams?.debug === "1";
   
-  const supabase = await createClient();
+  const supabase = createServiceClient();
 
   // ===== TEST QUERY: Check if projects table has any data =====
   const { data: testData, error: testError } = await supabase

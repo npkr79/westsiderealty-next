@@ -1,7 +1,6 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/serviceClient";
 import { buildMetadata } from "@/components/common/SEO";
 import { DeveloperProfileProjects } from "./DeveloperProfileProjects";
@@ -221,7 +220,7 @@ function SignalCard({
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
-  const supabase = await createClient();
+  const supabase = createServiceClient();
   const { data } = await supabase
     .from("developer_brands")
     .select("brand_name, about_developer")
@@ -240,7 +239,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
 export default async function DeveloperDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const supabase = await createClient();
+  const supabase = createServiceClient();
 
   // 1. Brand
   const { data: brandRow } = await supabase
