@@ -116,9 +116,20 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       console.warn("[generateMetadata] Image optimization failed:", imgErr);
     }
 
+    const keywords = [
+      cleanName,
+      microMarket && `${cleanName} ${microMarket}`,
+      microMarket && `${microMarket} real estate`,
+      cityName && `${cleanName} ${cityName}`,
+      project.developer_name && `${project.developer_name} projects`,
+      `RERA verified projects ${microMarket || cityName}`,
+      `buy apartment ${microMarket || cityName}`,
+    ].filter(Boolean).join(", ");
+
     return {
       title: seoTitle,
       description: seoDescription,
+      keywords,
       alternates: { canonical: canonicalUrl },
       openGraph: {
         title: seoTitle,

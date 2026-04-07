@@ -3,9 +3,18 @@ import Link from "next/link";
 import { createServiceClient } from "@/lib/supabase/serviceClient";
 
 export const metadata: Metadata = {
-  title: "Insights & Research | Westside Realty",
+  title: "Real Estate Insights & Research | Westside Realty",
   description:
-    "Market analysis, investment guides, and property intelligence from the Westside Realty team.",
+    "Market analysis, investment guides, and property intelligence from the Westside Realty team. Hyderabad and Goa real estate trends, RERA updates, and buyer guides.",
+  alternates: { canonical: "https://www.westsiderealty.in/blog" },
+  keywords: "hyderabad real estate insights, goa property investment guide, real estate market analysis india",
+  openGraph: {
+    title: "Real Estate Insights & Research | Westside Realty",
+    description: "Market analysis, investment guides, and property intelligence from the Westside Realty team.",
+    url: "https://www.westsiderealty.in/blog",
+    siteName: "RE/MAX Westside Realty",
+    type: "website",
+  },
 };
 
 export const revalidate = 3600; // ISR: cache for 1 hour

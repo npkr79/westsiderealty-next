@@ -8,6 +8,15 @@ export const metadata: Metadata = {
   title: "Commercial Real Estate Investment | Grade A Offices | West Hyderabad | Westside Realty",
   description:
     "Curated Grade A commercial office investments in Banjara Hills, HITEC City, Financial District and Kokapet. Four investment stages from early entry to rental-ready.",
+  alternates: { canonical: "https://www.westsiderealty.in/commercial-investments" },
+  keywords: "commercial real estate hyderabad, grade a office space hyderabad, hitec city commercial investment, financial district office space",
+  openGraph: {
+    title: "Commercial Real Estate Investment | Grade A Offices | West Hyderabad | Westside Realty",
+    description: "Curated Grade A commercial office investments in HITEC City, Financial District and Kokapet.",
+    url: "https://www.westsiderealty.in/commercial-investments",
+    siteName: "RE/MAX Westside Realty",
+    type: "website",
+  },
 };
 
 const faqSchema = {

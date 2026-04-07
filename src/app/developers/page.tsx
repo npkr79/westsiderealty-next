@@ -5,9 +5,18 @@ import { DevelopersClient, type Developer } from "./DevelopersClient";
 export const revalidate = 3600;
 
 export const metadata: Metadata = {
-  title: "Developer Intelligence | Westside Realty",
+  title: "Real Estate Developers in Hyderabad & Goa | Track Record & Reviews | Westside Realty",
   description:
     "Delivery history and portfolio data for every major developer in Hyderabad and Goa. Know your builder before you sign.",
+  alternates: { canonical: "https://www.westsiderealty.in/developers" },
+  keywords: "real estate developers hyderabad, top builders hyderabad, goa property developers, rera registered builders",
+  openGraph: {
+    title: "Real Estate Developers in Hyderabad & Goa | Westside Realty",
+    description: "Delivery history and portfolio data for every major developer. Know your builder before you sign.",
+    url: "https://www.westsiderealty.in/developers",
+    siteName: "RE/MAX Westside Realty",
+    type: "website",
+  },
 };
 
 // ─── Server-side data fetch (runs at build / ISR, not in browser) ─────────────

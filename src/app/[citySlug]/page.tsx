@@ -159,9 +159,16 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     format: "webp",
   });
 
+  const cityKeywords = citySlug === "hyderabad"
+    ? "real estate hyderabad, apartments hyderabad, buy flat hyderabad, kokapet real estate, gachibowli apartments, financial district hyderabad, rera projects hyderabad, luxury villas hyderabad"
+    : citySlug === "goa"
+    ? "goa real estate, buy villa goa, north goa apartments, holiday homes goa, goa property investment, goa luxury villas"
+    : `real estate ${city.city_name}, buy property ${city.city_name}, apartments ${city.city_name}`;
+
   return {
     title: seoTitle,
     description: seoDescription,
+    keywords: cityKeywords,
     alternates: { canonical: canonicalUrl },
     openGraph: {
       title: seoTitle,

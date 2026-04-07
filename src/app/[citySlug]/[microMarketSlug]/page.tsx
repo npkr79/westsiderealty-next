@@ -66,6 +66,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       cache.hero_hook ||
       `Discover projects in ${marketName}, ${cityName}. Price trends, growth analysis & RERA-verified listings. Expert market intelligence by Westside Realty.`,
     canonicalUrl: `https://www.westsiderealty.in/${citySlug}/${microMarketSlug}`,
+    keywords: `${marketName} real estate, ${marketName} apartments, buy flat ${marketName}, ${marketName} property price, ${marketName} ${cityName}, rera projects ${marketName}`,
   });
 }
 
