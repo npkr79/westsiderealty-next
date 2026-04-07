@@ -35,13 +35,15 @@ function rtBadge(ms: number): string {
 // ── Static SEO checklist ──────────────────────────────────────────────────────
 
 const SEO_CHECKLIST = [
-  { done: true,  label: "robots.txt configured" },
-  { done: true,  label: "sitemap.xml live", link: "https://www.westsiderealty.in/sitemap.xml" },
+  { done: true,  label: "robots.txt configured — /landing/ and /residential-intelligence/ blocked" },
+  { done: true,  label: "sitemap.xml live (100+ URLs, stable dates)", link: "https://www.westsiderealty.in/sitemap.xml" },
   { done: true,  label: "Google Search Console connected" },
-  { done: true,  label: "All images have alt tags" },
-  { done: true,  label: "12 public pages have metadata" },
+  { done: true,  label: "Canonical URLs on all public pages" },
+  { done: true,  label: "Keywords on all key pages (homepage, blog, developers, commercial)" },
+  { done: true,  label: "JSON-LD schema: Organization, LocalBusiness, BreadcrumbList, RealEstateListing" },
+  { done: true,  label: "ISR pages use createServiceClient() — no cookie-based 500s" },
+  { done: true,  label: "Weekly automated audit + auto-fix PR (.github/workflows/seo-audit.yml)" },
   { done: false, label: "Core Web Vitals — check in GSC" },
-  { done: false, label: "Schema markup — not yet implemented" },
 ];
 
 // ── Summary card ─────────────────────────────────────────────────────────────

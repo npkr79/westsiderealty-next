@@ -16,7 +16,10 @@
     "generate-favicons": "tsx scripts/generate-favicons.ts",
     "generate-favicons-sharp": "node scripts/favicon-with-sharp.js",
     "validate-favicons": "tsx scripts/validate-favicons.ts",
-    "validate-favicon-implementation": "node scripts/validate-favicon-implementation.js"
+    "validate-favicon-implementation": "node scripts/validate-favicon-implementation.js",
+    "seo:audit": "node scripts/seo-audit/audit.mjs",
+    "seo:fix": "node scripts/seo-audit/audit.mjs | node scripts/seo-audit/fix.mjs",
+    "seo:audit:save": "node scripts/seo-audit/audit.mjs > /tmp/seo-findings.json && echo 'Findings saved to /tmp/seo-findings.json'"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",
