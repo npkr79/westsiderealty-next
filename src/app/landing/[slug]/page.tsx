@@ -17,8 +17,6 @@ interface PageProps {
 // Fetch all landing page data server-side
 async function fetchLandingPageData(slug: string) {
   try {
-    const { createClient } = await import('@/lib/supabase/server');
-    const supabase = createServiceClient();
     const { supabaseLandingPagesService } = await import('@/services/admin/supabaseLandingPagesService');
 
     // Fetch main landing page

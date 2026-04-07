@@ -16,8 +16,8 @@ type PageProps = {
 
 // Fetch property data server-side
 async function getProperty(listingSlug: string) {
-  const { createClient } = await import('@/lib/supabase/server');
-  const supabase = await createClient();
+  const { createServiceClient } = await import('@/lib/supabase/serviceClient');
+  const supabase = createServiceClient();
   
   const tableName = 'hyderabad_properties';
   const statusFilter = 'active';
@@ -252,8 +252,8 @@ async function fetchDeveloperSlug(developerName: string | null | undefined): Pro
   if (!developerName) return undefined;
   
   try {
-    const { createClient } = await import('@/lib/supabase/server');
-    const supabase = await createClient();
+    const { createServiceClient } = await import('@/lib/supabase/serviceClient');
+    const supabase = createServiceClient();
     const { data } = await supabase
       .from('developers')
       .select('url_slug')
@@ -272,8 +272,8 @@ async function fetchFullDeveloperData(developerName: string | null | undefined, 
   if (!developerName && !developerSlug) return null;
   
   try {
-    const { createClient } = await import('@/lib/supabase/server');
-    const supabase = await createClient();
+    const { createServiceClient } = await import('@/lib/supabase/serviceClient');
+    const supabase = createServiceClient();
     
     let query = supabase.from('developers').select('*');
     
