@@ -129,7 +129,20 @@ async function fetchDataForIntent(
 
     case "market_overview": {
       if (market) return fetchByMarket(market);
-      // Return both markets
+      // Goa city-level overview: return top Goa markets
+      if (intent.city === "goa") {
+        const [calangute, benaulim, vagator] = await Promise.all([
+          fetchByMarket("calangute"),
+          fetchByMarket("benaulim"),
+          fetchByMarket("vagator"),
+        ]);
+        return {
+          projects: [...calangute.projects.slice(0, 4), ...benaulim.projects.slice(0, 4), ...vagator.projects.slice(0, 4)],
+          configs: [...calangute.configs.slice(0, 10), ...benaulim.configs.slice(0, 8), ...vagator.configs.slice(0, 8)],
+          markets: [...calangute.markets, ...benaulim.markets, ...vagator.markets],
+        };
+      }
+      // Default: Hyderabad top markets
       const [kokapet, neopolis] = await Promise.all([
         fetchByMarket("kokapet"),
         fetchByMarket("neopolis"),
@@ -154,7 +167,20 @@ async function fetchDataForIntent(
 
     case "investment_advice": {
       if (market) return fetchByMarket(market);
-      // Return both markets with investment-focused data
+      // Goa investment advice: show top 3 yield markets
+      if (intent.city === "goa") {
+        const [calangute, benaulim, morjim] = await Promise.all([
+          fetchByMarket("calangute"),
+          fetchByMarket("benaulim"),
+          fetchByMarket("morjim"),
+        ]);
+        return {
+          projects: [...calangute.projects.slice(0, 5), ...benaulim.projects.slice(0, 4), ...morjim.projects.slice(0, 3)],
+          configs: [...calangute.configs.slice(0, 12), ...benaulim.configs.slice(0, 8), ...morjim.configs.slice(0, 6)],
+          markets: [...calangute.markets, ...benaulim.markets, ...morjim.markets],
+        };
+      }
+      // Default: Hyderabad investment overview
       const [k, n] = await Promise.all([
         fetchByMarket("kokapet"),
         fetchByMarket("neopolis"),
