@@ -18,6 +18,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import CallBriefPanel from "@/components/crm/leads/CallBriefPanel";
 import LeadWhatsAppPanel from "@/components/crm/leads/LeadWhatsAppPanel";
 import LeadBehaviorIntelligencePanel from "@/components/crm/leads/LeadBehaviorIntelligencePanel";
+import LeadAdvisorChatPanel from "@/components/crm/leads/LeadAdvisorChatPanel";
 import LeadProjectActivityTab from "@/components/crm/leads/LeadProjectActivityTab";
 import LeadSmartShortlistTab from "@/components/crm/leads/LeadSmartShortlistTab";
 import LeadWhatsAppLogsTab from "@/components/crm/leads/LeadWhatsAppLogsTab";
@@ -1297,7 +1298,14 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
                 <div className="grid gap-3 md:grid-cols-2">
                   <div>
                     <p className="text-slate-500 dark:text-slate-400 text-xs mb-1">Source</p>
-                    <p className="font-medium">{formatSourceName(lead.source_type || lead.source_channel || lead.source)}</p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-medium">{formatSourceName(lead.source_type || lead.source_channel || lead.source)}</p>
+                      {lead.attribution_metadata?.lead_source === "ai_advisor_chat" && (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 dark:bg-violet-900/50 dark:text-violet-300 border border-violet-200 dark:border-violet-700/40">
+                          🤖 AI Advisor Chat
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <div>
                     <p className="text-slate-500 dark:text-slate-400 text-xs mb-1">Pipeline Status</p>
@@ -1459,6 +1467,9 @@ export default function LeadDetailView({ leadId, currentUser }: LeadDetailViewPr
                 </Card>
               );
             })()}
+
+            {/* AI Advisor Chat — shows projects, intent signals, and full transcript */}
+            <LeadAdvisorChatPanel attributionMetadata={lead.attribution_metadata} />
 
             <LeadBehaviorIntelligencePanel leadId={leadId} />
           </div>
