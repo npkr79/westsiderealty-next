@@ -201,39 +201,21 @@ export default async function CityPage({ params }: PageProps) {
   const slug = citySlug || "hyderabad";
 
   // ── Landing page redirect check ────────────────────────────────────────────
-  const { createClient } = await import("@/lib/supabase/server");
-  const supabase = await createClient();
-  const { data: landingPage, error: landingPageError } = await supabase
-    .from("landing_pages")
-    .select("uri, status")
-    .eq("uri", slug)
-    .eq("status", "published")
-    .maybeSingle();
-
-  if (landingPageError) {
-    console.error("[CityPage] Error checking for landing page:", landingPageError);
-    try {
-      const serviceClient = createServiceClient();
-      const { data: fallbackLandingPage, error: fallbackError } = await serviceClient
-        .from("landing_pages")
-        .select("uri, status")
-        .eq("uri", slug)
-        .eq("status", "published")
-        .maybeSingle();
-      if (fallbackError) {
-        console.error("[CityPage] Service fallback error for landing page:", fallbackError);
-      } else if (fallbackLandingPage) {
-        const { redirect } = await import("next/navigation");
-        redirect(`/landing/${slug}`);
-      }
-    } catch (fallbackError) {
-      console.error("[CityPage] Service client failure for landing page:", fallbackError);
+  // Uses service client (no cookies) so this works during ISR/static generation.
+  try {
+    const landingCheckClient = createServiceClient();
+    const { data: landingPage } = await landingCheckClient
+      .from("landing_pages")
+      .select("uri, status")
+      .eq("uri", slug)
+      .eq("status", "published")
+      .maybeSingle();
+    if (landingPage) {
+      const { redirect } = await import("next/navigation");
+      redirect(`/landing/${slug}`);
     }
-  }
-
-  if (landingPage) {
-    const { redirect } = await import("next/navigation");
-    redirect(`/landing/${slug}`);
+  } catch (e) {
+    console.error("[CityPage] Landing page check failed:", e);
   }
 
   // ── City ───────────────────────────────────────────────────────────────────
@@ -267,12 +249,13 @@ export default async function CityPage({ params }: PageProps) {
   }
 
   // ── Additional data (new — rera count + top developers) ────────────────────
+  const pageDataClient = createServiceClient();
   const [reraCountResult, topDevsResult] = await Promise.all([
-    supabase
+    pageDataClient
       .from("rera_projects")
       .select("id", { count: "exact", head: true })
       .eq("city_slug", slug),
-    supabase
+    pageDataClient
       .from("v_developer_brand_profile")
       .select("brand_name, url_slug, total_projects, is_premium, institutional_grade")
       .order("total_projects", { ascending: false })

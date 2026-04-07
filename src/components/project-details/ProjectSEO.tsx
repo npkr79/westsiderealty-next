@@ -24,6 +24,12 @@ export default function ProjectSEO({
   // Use canonical project URL: /citySlug/projects/projectSlug
   const canonicalUrl = buildProjectAbsoluteUrl(citySlug, projectSlug);
 
+  const cityName = project.city?.city_name ?? citySlug;
+  const microMarketName = project.micro_market?.micro_market_name ?? microMarketSlug;
+  const microMarketUrl = microMarketSlug
+    ? `https://www.westsiderealty.in/${citySlug}/${microMarketSlug}`
+    : null;
+
   const schema = {
     "@context": "https://schema.org",
     "@type": "ApartmentComplex",
@@ -35,12 +41,12 @@ export default function ProjectSEO({
     url: canonicalUrl,
     address: {
       "@type": "PostalAddress",
-      addressLocality: project.micro_market?.micro_market_name,
-      addressRegion: project.city?.city_name,
+      addressLocality: microMarketName,
+      addressRegion: cityName,
       addressCountry: "IN",
     },
     // Add geo coordinates if available
-    ...(project.latitude && project.longitude && 
+    ...(project.latitude && project.longitude &&
         !isNaN(project.latitude) && !isNaN(project.longitude) && {
       geo: {
         "@type": "GeoCoordinates",
@@ -48,9 +54,27 @@ export default function ProjectSEO({
         longitude: project.longitude,
       },
     }),
+    // Price range from micro-market data if available
+    ...((project.micro_market as any)?.price_per_sqft_min && {
+      priceRange: `₹${(project.micro_market as any).price_per_sqft_min.toLocaleString("en-IN")} – ₹${((project.micro_market as any).price_per_sqft_max ?? (project.micro_market as any).price_per_sqft_min).toLocaleString("en-IN")} per sq ft`,
+    }),
   };
 
-  return <JsonLd jsonLd={schema} />;
+  // BreadcrumbList for rich results in Google
+  const breadcrumbSchema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: "https://www.westsiderealty.in" },
+      { "@type": "ListItem", position: 2, name: cityName, item: `https://www.westsiderealty.in/${citySlug}` },
+      ...(microMarketUrl && microMarketName
+        ? [{ "@type": "ListItem", position: 3, name: microMarketName, item: microMarketUrl },
+           { "@type": "ListItem", position: 4, name: project.project_name, item: canonicalUrl }]
+        : [{ "@type": "ListItem", position: 3, name: project.project_name, item: canonicalUrl }]),
+    ],
+  };
+
+  return <JsonLd jsonLd={[schema, breadcrumbSchema]} />;
 }
 
 

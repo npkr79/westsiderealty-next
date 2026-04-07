@@ -16,7 +16,7 @@ export interface SEOProps {
 const DEFAULT_TITLE = "RE/MAX Westside Realty - Premium Real Estate Advisory";
 const DEFAULT_DESCRIPTION =
   "RE/MAX Westside Realty, Hyderabad & Goa: Leading real estate agents offering expert advisory & exclusive listings for resale, investment & holiday homes. Buy, sell, or invest with confidence.";
-const DEFAULT_IMAGE = "https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/brand-assets//remax-favicon.png";
+const DEFAULT_IMAGE = "https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/brand-assets/remax-logo-banner-1200x630.jpg";
 const DEFAULT_SITE_NAME = "RE/MAX Westside Realty";
 const BASE_URL = "https://www.westsiderealty.in";
 

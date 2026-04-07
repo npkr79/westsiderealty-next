@@ -1,5 +1,5 @@
 import { MetadataRoute } from "next";
-import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/serviceClient";
 import { getLocalityStats, generateFilterSlug } from "@/lib/utils/localityStats";
 import { parseJsonb, asArray } from "@/lib/parse-jsonb";
 import { buildProjectAbsoluteUrl } from "@/lib/routes";
@@ -57,7 +57,7 @@ function normalizePropertyTypeForSlug(input: string): string | null {
  * Next.js App Router automatically makes this available at /sitemap.xml
  */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const supabase = await createClient();
+  const supabase = createServiceClient();
 
   try {
     // Fetch all data in parallel
@@ -83,6 +83,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         .select(
           "url_slug, updated_at, city:cities(url_slug), micro_market:micro_markets(url_slug)"
         )
+        .eq("page_status", "published")
         .not("url_slug", "is", null),
       supabase
         .from("landing_pages")
@@ -120,29 +121,30 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     const urls: MetadataRoute.Sitemap = [];
 
-    // Static pages
+    // Static pages — use a fixed date (avoids Googlebot thinking every page changed on every crawl)
+    const STATIC_DATE = new Date("2025-01-01");
     urls.push(
-      { url: baseUrl, lastModified: new Date(), changeFrequency: "daily", priority: 1 },
-      { url: `${baseUrl}/about`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.6 },
-      { url: `${baseUrl}/contact`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.6 },
-      { url: `${baseUrl}/services`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.7 },
-      { url: `${baseUrl}/projects`, lastModified: new Date(), changeFrequency: "daily", priority: 0.9 },
-      { url: `${baseUrl}/developers`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.7 },
-      { url: `${baseUrl}/blog`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.7 },
-      { url: `${baseUrl}/properties`, lastModified: new Date(), changeFrequency: "daily", priority: 0.9 },
-      { url: `${baseUrl}/hyderabad/properties`, lastModified: new Date(), changeFrequency: "daily", priority: 0.7 },
-      { url: `${baseUrl}/privacy-policy`, lastModified: new Date(), changeFrequency: "yearly", priority: 0.3 },
-      { url: `${baseUrl}/sell-property`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.8 },
-      { url: `${baseUrl}/buying-requirement`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.8 },
-      { url: `${baseUrl}/hyderabad/landowner-investor-share-flats`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.7 },
-      { url: `${baseUrl}/commercial-investments`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.9 },
-      { url: `${baseUrl}/kokapet-gandipet-luxury-villas`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.9 },
-      { url: `${baseUrl}/apartment-intelligence`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.8 },
-      { url: `${baseUrl}/villa-intelligence`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.8 },
-      { url: `${baseUrl}/residential-intelligence`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.8 },
-      { url: `${baseUrl}/hyderabad/buy`, lastModified: new Date(), changeFrequency: "daily", priority: 0.8 },
-      { url: `${baseUrl}/hyderabad/shares`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.7 },
-      { url: `${baseUrl}/insights`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.7 }
+      { url: baseUrl, lastModified: STATIC_DATE, changeFrequency: "daily", priority: 1 },
+      { url: `${baseUrl}/about`, lastModified: STATIC_DATE, changeFrequency: "monthly", priority: 0.6 },
+      { url: `${baseUrl}/contact`, lastModified: STATIC_DATE, changeFrequency: "monthly", priority: 0.6 },
+      { url: `${baseUrl}/services`, lastModified: STATIC_DATE, changeFrequency: "monthly", priority: 0.7 },
+      { url: `${baseUrl}/projects`, lastModified: STATIC_DATE, changeFrequency: "daily", priority: 0.9 },
+      { url: `${baseUrl}/developers`, lastModified: STATIC_DATE, changeFrequency: "weekly", priority: 0.7 },
+      { url: `${baseUrl}/blog`, lastModified: STATIC_DATE, changeFrequency: "weekly", priority: 0.7 },
+      { url: `${baseUrl}/properties`, lastModified: STATIC_DATE, changeFrequency: "daily", priority: 0.9 },
+      { url: `${baseUrl}/hyderabad/properties`, lastModified: STATIC_DATE, changeFrequency: "daily", priority: 0.7 },
+      { url: `${baseUrl}/privacy-policy`, lastModified: STATIC_DATE, changeFrequency: "yearly", priority: 0.3 },
+      { url: `${baseUrl}/sell-property`, lastModified: STATIC_DATE, changeFrequency: "monthly", priority: 0.8 },
+      { url: `${baseUrl}/buying-requirement`, lastModified: STATIC_DATE, changeFrequency: "monthly", priority: 0.8 },
+      { url: `${baseUrl}/hyderabad/landowner-investor-share-flats`, lastModified: STATIC_DATE, changeFrequency: "weekly", priority: 0.7 },
+      { url: `${baseUrl}/commercial-investments`, lastModified: STATIC_DATE, changeFrequency: "weekly", priority: 0.9 },
+      { url: `${baseUrl}/kokapet-gandipet-luxury-villas`, lastModified: STATIC_DATE, changeFrequency: "weekly", priority: 0.9 },
+      { url: `${baseUrl}/apartment-intelligence`, lastModified: STATIC_DATE, changeFrequency: "weekly", priority: 0.8 },
+      { url: `${baseUrl}/villa-intelligence`, lastModified: STATIC_DATE, changeFrequency: "weekly", priority: 0.8 },
+      { url: `${baseUrl}/residential-intelligence`, lastModified: STATIC_DATE, changeFrequency: "weekly", priority: 0.8 },
+      { url: `${baseUrl}/hyderabad/buy`, lastModified: STATIC_DATE, changeFrequency: "daily", priority: 0.8 },
+      { url: `${baseUrl}/hyderabad/shares`, lastModified: STATIC_DATE, changeFrequency: "weekly", priority: 0.7 },
+      { url: `${baseUrl}/insights`, lastModified: STATIC_DATE, changeFrequency: "weekly", priority: 0.7 }
     );
 
     // Cities and city-specific pages
@@ -411,17 +413,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       }
     });
 
-    // Residential Intelligence pages (RERA projects)
-    reraProjectsResult.data?.forEach((p) => {
-      if (p.url_slug && p.city_slug) {
-        urls.push({
-          url: `${baseUrl}/residential-intelligence/${p.city_slug}/${p.url_slug}`,
-          lastModified: p.updated_at ? new Date(p.updated_at) : new Date(),
-          changeFrequency: "weekly",
-          priority: 0.7,
-        });
-      }
-    });
+    // Note: /residential-intelligence/ URLs are excluded from sitemap — blocked in robots.txt
+    // to prevent duplicate content competing with canonical /{citySlug}/projects/{slug} URLs.
 
     return urls;
   } catch (error) {

@@ -6,7 +6,7 @@ import { getMicroMarketFromCache, getMicroMarketMapCenter } from "@/services/mic
 import { getProjectsFromView, getTopPicks } from "@/services/microMarketProjectsService";
 import { buildMicroMarketViewModel } from "@/services/microMarketViewModel";
 import MicroMarketRedesign, { type FeaturedProject } from "@/components/micro-market/MicroMarketRedesign";
-import { buildMetadata } from "@/components/common/SEO";
+import { buildMetadata, JsonLd } from "@/components/common/SEO";
 import type { GoaMarketProject } from "@/components/micro-market/GoaProjectsInMarket";
 
 export const revalidate = 600;
@@ -576,7 +576,21 @@ export default async function MicroMarketPage({ params }: PageProps) {
     if (projectIds.length > featuredProjectCount) featuredProjectCount = projectIds.length;
   }
 
+  const marketName = cache.micro_market_name ?? microMarketSlug;
+  const pageUrl = `https://www.westsiderealty.in/${citySlug}/${microMarketSlug}`;
+  const breadcrumbSchema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: "https://www.westsiderealty.in" },
+      { "@type": "ListItem", position: 2, name: cityName, item: `https://www.westsiderealty.in/${citySlug}` },
+      { "@type": "ListItem", position: 3, name: marketName, item: pageUrl },
+    ],
+  };
+
   return (
+    <>
+      <JsonLd jsonLd={breadcrumbSchema} />
       <MicroMarketRedesign
         viewModel={viewModel}
         citySlug={citySlug}
@@ -597,5 +611,6 @@ export default async function MicroMarketPage({ params }: PageProps) {
         projectCount={featuredProjectCount}
         developerBrandSlugs={developerBrandSlugs}
       />
+    </>
     );
 }
