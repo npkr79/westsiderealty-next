@@ -22,11 +22,7 @@
       "path": "/api/sitemap/regenerate",
       "schedule": "0 2 * * *"
     },
-    {
-      "path": "/api/admin/scraper/run",
-      "schedule": "0 6 * * *"
-    },
-    {
+{
       "path": "/api/cron/link-checker",
       "schedule": "0 3 * * *"
     },
