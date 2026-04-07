@@ -15,6 +15,7 @@ import {
   fetchAllForGeneral,
   type AdvisorQueryResult,
 } from "@/lib/advisor/data-fetcher";
+import { createServiceClient } from "@/lib/supabase/serviceClient";
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
@@ -180,6 +181,102 @@ async function fetchDataForIntent(
   }
 }
 
+// ─── Supabase conversation logging (fire-and-forget) ─────────────────────────
+
+/**
+ * Returns the UUID of the advisor_conversations row.
+ * Creates a new session row on first message; updates last_message_at on subsequent turns.
+ */
+async function upsertConversationSession(
+  conversationUuid: string | null,
+  {
+    sourcePage,
+    projectSlug,
+    marketSlug,
+  }: { sourcePage: string | null; projectSlug: string | null; marketSlug: string | null }
+): Promise<string | null> {
+  try {
+    const supabase = createServiceClient();
+
+    if (conversationUuid) {
+      await supabase
+        .from("advisor_conversations")
+        .update({ last_message_at: new Date().toISOString() })
+        .eq("id", conversationUuid);
+      return conversationUuid;
+    }
+
+    const sourcePageType = projectSlug ? "project" : marketSlug ? "market" : "general";
+
+    const { data, error } = await supabase
+      .from("advisor_conversations")
+      .insert({
+        channel: "web_chat",
+        source_page: sourcePage,
+        source_page_type: sourcePageType,
+        project_slug: projectSlug ?? null,
+        micro_market_slug: marketSlug ?? null,
+        status: "active",
+        message_count: 0,
+        started_at: new Date().toISOString(),
+        last_message_at: new Date().toISOString(),
+      })
+      .select("id")
+      .single();
+
+    if (error || !data) {
+      console.error("[advisor/chat] failed to create conversation session:", error?.message);
+      return null;
+    }
+    return data.id as string;
+  } catch (e) {
+    console.error("[advisor/chat] upsertConversationSession error:", e);
+    return null;
+  }
+}
+
+/**
+ * Logs the user message and AI response as two rows in advisor_messages.
+ * Also increments message_count on the parent conversation.
+ */
+async function logMessageTurn(
+  conversationUuid: string,
+  userMessage: string,
+  assistantResponse: string,
+  {
+    intent,
+    latencyMs,
+    suggestLeadCapture,
+  }: { intent: string; latencyMs: number; suggestLeadCapture: boolean }
+): Promise<void> {
+  try {
+    const supabase = createServiceClient();
+
+    await Promise.all([
+      // Log both turns
+      supabase.from("advisor_messages").insert([
+        {
+          conversation_id: conversationUuid,
+          role: "user",
+          content: userMessage,
+        },
+        {
+          conversation_id: conversationUuid,
+          role: "assistant",
+          content: assistantResponse,
+          model: SONNET,
+          show_lead_capture: suggestLeadCapture,
+          latency_ms: latencyMs,
+        },
+      ]),
+      // Increment message_count atomically
+      supabase.rpc("increment_advisor_message_count", { conv_id: conversationUuid }),
+    ]);
+  } catch (e) {
+    console.error("[advisor/chat] logMessageTurn error:", e);
+  }
+}
+
 // ─── Handler ──────────────────────────────────────────────────────────────────
 
 export async function POST(request: NextRequest) {
@@ -188,6 +285,10 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const userMessage = (body.message ?? "").trim();
+    const incomingConversationId: string | null = body.conversation_id ?? null;
+    const sourcePage: string | null = body.source_page ?? request.headers.get("referer") ?? null;
+    const projectSlug: string | null = body.projectSlug ?? null;
+    const marketSlug: string | null = body.marketSlug ?? null;
 
     if (!userMessage) {
       return NextResponse.json({ error: "message is required" }, { status: 400 });
@@ -223,8 +324,27 @@ export async function POST(request: NextRequest) {
 
     const responseText = await callClaude(SONNET, systemPrompt, promptWithContext, 1200);
 
+    const latencyMs = Date.now() - start;
+    const suggestLeadCapture = false; // extend here if needed
+
+    // Step 5: Log to Supabase (fire-and-forget — never blocks the response)
+    const conversationUuid = await upsertConversationSession(incomingConversationId, {
+      sourcePage,
+      projectSlug,
+      marketSlug,
+    });
+
+    if (conversationUuid) {
+      // Don't await — let it run in the background
+      logMessageTurn(conversationUuid, userMessage, responseText, {
+        intent: intent.intent,
+        latencyMs,
+        suggestLeadCapture,
+      }).catch(() => {}); // swallow errors, never break the chat
+    }
+
     return NextResponse.json({
-      conversation_id: `adv_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      conversation_id: conversationUuid ?? `adv_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
       message: responseText,
       intent: intent.intent,
       data_stats: {
@@ -232,7 +352,7 @@ export async function POST(request: NextRequest) {
         configs_loaded: data.configs.length,
         markets_loaded: data.markets.length,
       },
-      latency_ms: Date.now() - start,
+      latency_ms: latencyMs,
     });
   } catch (err) {
     console.error("[advisor/chat] error:", err);

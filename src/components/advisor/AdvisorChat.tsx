@@ -108,7 +108,11 @@ export default function AdvisorChat() {
         const res = await fetch("/api/advisor/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message: "__market_context__", marketSlug }),
+          body: JSON.stringify({
+          message: "__market_context__",
+          marketSlug,
+          source_page: typeof window !== "undefined" ? window.location.pathname : "/",
+        }),
         });
         const data: ApiResponse = await res.json();
         setMessages([{ role: "assistant", content: data.message || GENERIC_GREETING.content }]);
@@ -134,7 +138,11 @@ export default function AdvisorChat() {
       const res = await fetch("/api/advisor/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: "__context__", projectSlug: slug }),
+        body: JSON.stringify({
+          message: "__context__",
+          projectSlug: slug,
+          source_page: typeof window !== "undefined" ? window.location.pathname : "/",
+        }),
       });
       const data: ApiResponse = await res.json();
       setMessages([{ role: "assistant", content: data.message || GENERIC_GREETING.content }]);
@@ -200,8 +208,10 @@ export default function AdvisorChat() {
         body: JSON.stringify({
           message: text,
           history,
+          ...(conversationId ? { conversation_id: conversationId } : {}),
           ...(pageProjectSlug ? { projectSlug: pageProjectSlug } : {}),
           ...(pageMarketSlugRef.current ? { marketSlug: pageMarketSlugRef.current } : {}),
+          source_page: typeof window !== "undefined" ? window.location.pathname : "/",
         }),
       });
 

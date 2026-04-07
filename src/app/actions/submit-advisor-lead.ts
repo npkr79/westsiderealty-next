@@ -1,6 +1,7 @@
 "use server";
 
 import { submitLead, type SubmitLeadResponse } from "./submit-lead";
+import { createServiceClient } from "@/lib/supabase/serviceClient";
 
 export interface AdvisorLeadData {
   name: string;
@@ -17,6 +18,23 @@ export async function submitAdvisorLead(
   data: AdvisorLeadData
 ): Promise<SubmitLeadResponse> {
   const projectList = data.projects_discussed.join(", ");
+
+  // Mark the conversation as lead_captured in Supabase (fire-and-forget)
+  if (data.conversation_id) {
+    try {
+      const supabase = createServiceClient();
+      await supabase
+        .from("advisor_conversations")
+        .update({
+          lead_captured: true,
+          lead_captured_at: new Date().toISOString(),
+          status: "lead_captured",
+        })
+        .eq("id", data.conversation_id);
+    } catch (e) {
+      console.error("[submit-advisor-lead] failed to update conversation:", e);
+    }
+  }
 
   return submitLead({
     name: data.name,
