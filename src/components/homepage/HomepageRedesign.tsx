@@ -297,6 +297,8 @@ const QUICK_FILTERS = [
   "₹5 Cr+",
   "Villa",
   "Best in Hyderabad",
+  "Goa villas",
+  "Invest in Goa",
   "Top appreciation",
 ];
 
@@ -1555,7 +1557,8 @@ export default function HomepageRedesign() {
                 {[
                   "4BHK under 8 Cr in Kokapet",
                   "FD vs Kokapet?",
-                  "4 BHK in Puppalaguda under 10 Cr",
+                  "Rental yields in Calangute Goa?",
+                  "Best area to invest in Goa under 2 Cr?",
                 ].map((q) => (
                   <div
                     key={q}

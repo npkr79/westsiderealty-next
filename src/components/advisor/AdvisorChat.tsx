@@ -26,7 +26,7 @@ type CaptureState = "idle" | "offered" | "declined" | "form" | "submitting" | "d
 const GENERIC_GREETING: Message = {
   role: "assistant",
   content:
-    "Hi! I'm the Westside Realty AI Advisor. Ask me about projects in Kokapet, Neopolis, or Financial District — prices, availability, investment outlook, or anything else.",
+    "Hi! I'm the Westside Realty AI Advisor. Ask me about Hyderabad (Kokapet, Neopolis, Financial District) or Goa (Calangute, Candolim, Anjuna, Assagao, Morjim) — prices, rental yields, investment outlook, or anything else.",
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -417,7 +417,7 @@ export default function AdvisorChat() {
             </div>
             <div>
               <p className="text-sm font-semibold text-white">Westside Advisor</p>
-              <p className="text-xs text-zinc-400">Hyderabad Real Estate Expert</p>
+              <p className="text-xs text-zinc-400">Hyderabad &amp; Goa Real Estate Expert</p>
             </div>
           </div>
 
