@@ -534,15 +534,6 @@ export default function AdvisoryProjectPage({
             </Card>
           )}
 
-          {/* FAQs */}
-          <Card title="Frequently Asked Questions" icon="💬">
-            <div>
-              {faqs.map((faq, i) => (
-                <FaqItem key={i} q={faq.q} a={faq.a} />
-              ))}
-            </div>
-          </Card>
-
           {/* Related projects */}
           {relatedProjects.length > 0 && (
             <Card title={`Other Projects in ${project.micro_market || "This Market"}`} icon="🏘️">
@@ -601,8 +592,13 @@ export default function AdvisoryProjectPage({
             </p>
             <button
               onClick={() => {
-                const el = document.getElementById("westside-advisor-trigger");
-                if (el) el.click();
+                if (typeof window !== "undefined") {
+                  window.dispatchEvent(
+                    new CustomEvent("westside:openAdvisor", {
+                      detail: { message: `Tell me about ${project.project_name} in ${project.micro_market || "Goa"}` },
+                    })
+                  );
+                }
               }}
               style={{
                 background: C.gold, color: "#fff", border: "none", borderRadius: 10,
@@ -621,6 +617,23 @@ export default function AdvisoryProjectPage({
               — Data sourced from Goa RERA filings, developer brochures and market research.
               Prices are indicative. Always verify directly with the developer.
             </p>
+          </div>
+        </div>
+      </div>
+
+      {/* ── FAQs — full width, above footer */}
+      <div style={{ maxWidth: 960, margin: "0 auto", padding: "0 20px 60px" }}>
+        <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 40 }}>
+          <h2 style={{ fontFamily: C.serif, fontSize: "clamp(22px, 3vw, 30px)", fontWeight: 600, color: C.text, margin: "0 0 6px" }}>
+            Frequently Asked Questions
+          </h2>
+          <p style={{ fontFamily: C.sans, fontSize: 13, color: C.textMuted, margin: "0 0 24px" }}>
+            About {project.project_name}, {project.micro_market || "Goa"}
+          </p>
+          <div style={{ maxWidth: 720 }}>
+            {faqs.map((faq, i) => (
+              <FaqItem key={i} q={faq.q} a={faq.a} />
+            ))}
           </div>
         </div>
       </div>
