@@ -415,14 +415,22 @@ export default function HomepageRedesign() {
       const { parsed } = await parseRes.json();
 
       // Step 2: build search params from parsed result
-      const params = new URLSearchParams({ city: "hyderabad" });
+      // Always pass raw query for cross-city name matching in the API
+      const params = new URLSearchParams({ q: query });
+      // Only restrict to hyderabad if the parse explicitly detected hyderabad context
+      if (parsed?.city) {
+        params.set("city", parsed.city);
+      } else if (parsed?.microMarket || parsed?.projectName) {
+        // Has structured Hyderabad context — default to hyderabad
+        params.set("city", "hyderabad");
+      }
+      // No city param = API will search all cities via advisor table
       if (parsed?.microMarket) params.set("microMarket", parsed.microMarket);
       if (parsed?.bhkConfig) params.set("bhk", parsed.bhkConfig);
       if (parsed?.developer) params.set("developer", parsed.developer);
       if (parsed?.projectName) params.set("projectName", parsed.projectName);
       if (parsed?.completionStatus) params.set("completionStatus", parsed.completionStatus);
       if (parsed?.isNewProject) params.set("isNewProject", "true");
-      if (parsed?.remainingQuery) params.set("q", parsed.remainingQuery);
       if (parsed?.propertyType) {
         params.set("project_type", parsed.propertyType);
         params.set("propertyTypes", parsed.propertyType);

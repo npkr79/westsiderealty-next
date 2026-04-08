@@ -23,141 +23,114 @@ export async function GET(request: NextRequest) {
   try {
     const supabase = createServiceClient();
 
-    // Get city ID
-    const { data: cityData } = await supabase
-      .from('cities')
-      .select('id, url_slug')
-      .eq('url_slug', city)
-      .maybeSingle();
+    // Get city ID (city param is optional — if absent we skip the projects table query)
+    const { data: cityData } = city
+      ? await supabase
+          .from('cities')
+          .select('id, url_slug')
+          .eq('url_slug', city)
+          .maybeSingle()
+      : { data: null };
 
-    if (!cityData) {
-      return NextResponse.json({ 
-        results: [], 
-        appliedFilters: {},
-        total: 0,
-        message: `City "${city}" not found` 
-      }, { status: 404 });
-    }
+    // Build query against projects table only when a city is known
+    let dbQuery = cityData
+      ? supabase
+          .from('projects')
+          .select(`
+            id,
+            project_name,
+            url_slug,
+            hero_image_url,
+            price_range_text,
+            status,
+            completion_status,
+            property_types,
+            meta_description,
+            project_overview_seo,
+            micro_market:micro_markets!projects_micromarket_id_fkey(micro_market_name, url_slug),
+            developer:developers(developer_name, url_slug),
+            city:cities!inner(city_name, url_slug)
+          `)
+          .eq('city_id', cityData.id)
+      : null;
 
-    // Determine which table to query based on category + projectType
-    // For now, we'll use 'projects' table for all cases
-    // In the future, we can add logic for hyderabad_properties (resale) or commercial_properties
-    const useProjectsTable = true; // Always use projects table for now
+    // Apply filters only when querying the projects table (cityData exists)
+    if (dbQuery) {
+      // Apply projectType filter (resale vs new)
+      if (projectType === 'resale') {
+        dbQuery = dbQuery.or('status.ilike.%ready%,status.ilike.%completed%,status.ilike.%resale%');
+      } else if (projectType === 'new' || projectType === 'new-project') {
+        dbQuery = dbQuery.or('status.ilike.published,status.ilike.%under construction%,status.is.null,status.neq.resale');
+      }
 
-    // Build query
-    let dbQuery = supabase
-      .from('projects')
-      .select(`
-        id,
-        project_name,
-        url_slug,
-        hero_image_url,
-        price_range_text,
-        status,
-        completion_status,
-        property_types,
-        meta_description,
-        project_overview_seo,
-        micro_market:micro_markets!projects_micromarket_id_fkey(micro_market_name, url_slug),
-        developer:developers(developer_name, url_slug),
-        city:cities!inner(city_name, url_slug)
-      `)
-      .eq('city_id', cityData.id);
+      // Apply micro-market filter
+      if (microMarket) {
+        const { data: mmData } = await supabase
+          .from('micro_markets')
+          .select('id')
+          .or(`micro_market_name.ilike.%${microMarket}%,url_slug.ilike.%${microMarket.toLowerCase().replace(/\s+/g, '-')}%`)
+          .limit(1)
+          .maybeSingle();
+        if (mmData?.id) {
+          dbQuery = dbQuery.eq('micro_market_id', mmData.id);
+        }
+      }
 
-    // Apply category filter (residential, commercial, plots)
-    // This is handled in post-processing for property_types
+      // Apply developer filter
+      if (developer) {
+        const { data: devData } = await supabase
+          .from('developers')
+          .select('id')
+          .or(`developer_name.ilike.%${developer}%,url_slug.ilike.%${developer.toLowerCase().replace(/\s+/g, '-')}%`)
+          .limit(1)
+          .maybeSingle();
+        if (devData?.id) {
+          dbQuery = dbQuery.eq('developer_id', devData.id);
+        }
+      }
 
-    // Apply projectType filter (resale vs new)
-    if (projectType === 'resale') {
-      // Resale: ready-to-move or completed projects
-      dbQuery = dbQuery.or('status.ilike.%ready%,status.ilike.%completed%,status.ilike.%resale%');
-    } else if (projectType === 'new' || projectType === 'new-project') {
-      // New projects: published, under construction, or any status that's not explicitly "resale"
-      dbQuery = dbQuery.or('status.ilike.published,status.ilike.%under construction%,status.is.null,status.neq.resale');
-    }
+      // Apply project name filter
+      if (projectName) {
+        dbQuery = dbQuery.ilike('project_name', `%${projectName}%`);
+      }
 
-    // CRITICAL: Apply micro-market filter using micro_market_id
-    // First, look up the micro-market ID from name or slug
-    if (microMarket) {
-      const { data: mmData } = await supabase
-        .from('micro_markets')
-        .select('id')
-        .or(`micro_market_name.ilike.%${microMarket}%,url_slug.ilike.%${microMarket.toLowerCase().replace(/\s+/g, '-')}%`)
-        .limit(1)
-        .maybeSingle();
+      // Apply completion_status filter
+      if (completionStatus) {
+        dbQuery = dbQuery.or(`completion_status.ilike.%${completionStatus}%,status.ilike.%${completionStatus}%`);
+      }
 
-      if (mmData?.id) {
-        console.log(`[SearchAPI] Found micro-market ID: ${mmData.id} for "${microMarket}"`);
-        dbQuery = dbQuery.eq('micro_market_id', mmData.id);
-      } else {
-        console.log(`[SearchAPI] No micro-market found for: "${microMarket}"`);
+      // Apply text search
+      if (textQuery && textQuery.trim().length >= 2) {
+        dbQuery = dbQuery.or(`
+          project_name.ilike.%${textQuery.trim()}%,
+          meta_description.ilike.%${textQuery.trim()}%,
+          project_overview_seo.ilike.%${textQuery.trim()}%
+        `);
       }
     }
 
-    // Apply developer filter using developer_id
-    // First, look up the developer ID from name or slug
-    if (developer) {
-      const { data: devData } = await supabase
-        .from('developers')
-        .select('id')
-        .or(`developer_name.ilike.%${developer}%,url_slug.ilike.%${developer.toLowerCase().replace(/\s+/g, '-')}%`)
-        .limit(1)
-        .maybeSingle();
+    // Execute projects query (skip if no city context)
+    let projects: any[] = [];
+    if (dbQuery) {
+      const { data, error } = await dbQuery
+        .order('is_featured', { ascending: false })
+        .order('created_at', { ascending: false })
+        .limit(500);
 
-      if (devData?.id) {
-        console.log(`[SearchAPI] Found developer ID: ${devData.id} for "${developer}"`);
-        dbQuery = dbQuery.eq('developer_id', devData.id);
-      } else {
-        console.log(`[SearchAPI] No developer found for: "${developer}"`);
+      if (error) {
+        console.error('[SearchAPI] Error:', error);
+        return NextResponse.json({
+          error: error.message,
+          results: [],
+          appliedFilters: {},
+          total: 0,
+        }, { status: 500 });
       }
-    }
-
-    // Apply project name filter (from parsed text) - HIGH PRIORITY
-    if (projectName) {
-      dbQuery = dbQuery.ilike('project_name', `%${projectName}%`);
-    }
-
-    // Apply BHK filter using property_types JSONB array
-    // BHK format in DB: "3 BHK", "4 BHK" (with space)
-    // Note: This will be filtered in post-processing due to Supabase JS client JSONB limitations
-    // We'll fetch all and filter by property_types array in memory
-
-    // Apply completion_status logic (for new projects)
-    if (completionStatus) {
-      // Specific status from parsed text like "New Launch"
-      dbQuery = dbQuery.or(`completion_status.ilike.%${completionStatus}%,status.ilike.%${completionStatus}%`);
-    } else if (isNewProject) {
-      // Generic "new projects" - any non-null completion_status or status
-      // We'll filter in post-processing
-    }
-
-    // Apply text search for remaining query
-    if (textQuery && textQuery.trim().length >= 2) {
-      dbQuery = dbQuery.or(`
-        project_name.ilike.%${textQuery.trim()}%,
-        meta_description.ilike.%${textQuery.trim()}%,
-        project_overview_seo.ilike.%${textQuery.trim()}%
-      `);
-    }
-
-    // Execute query
-    const { data: projects, error } = await dbQuery
-      .order('is_featured', { ascending: false })
-      .order('created_at', { ascending: false })
-      .limit(500); // Fetch more for post-processing
-
-    if (error) {
-      console.error('[SearchAPI] Error:', error);
-      return NextResponse.json({ 
-        error: error.message,
-        results: [],
-        appliedFilters: {},
-        total: 0
-      }, { status: 500 });
+      projects = data ?? [];
     }
 
     // Post-process: Filter by property types, category, BHK, and "new projects" logic
-    let filteredProjects = projects || [];
+    let filteredProjects = projects;
 
     // Filter by BHK using property_types JSONB array
     // BHK format in DB: "3 BHK", "4 BHK" (with space)
@@ -245,59 +218,83 @@ export async function GET(request: NextRequest) {
     // Limit final results
     filteredProjects = filteredProjects.slice(0, 50);
 
-    // ── Advisor table query (villa searches + fallback for empty results) ──────
-    const shouldQueryAdvisor = projectTypeFilter === 'villa' || filteredProjects.length === 0;
+    // ── Advisor table query ───────────────────────────────────────────────────
+    // Triggers for: villa search, no city context (cross-city name search), or empty results
+    const rawQ = (textQuery || '').trim();
+    const shouldQueryAdvisor =
+      projectTypeFilter === 'villa' ||
+      filteredProjects.length === 0 ||
+      !cityData; // no city = cross-city search
+
     let advisorResults: any[] = [];
 
     if (shouldQueryAdvisor) {
       let advisorQuery = supabase
         .from('advisor_project_intelligence')
-        .select('project_name, project_slug, rera_id, project_type, current_status, developer_brand, micro_market, city_slug, current_price_per_sqft_min, current_price_per_sqft_max, total_units, land_area_acres, primary_differentiator, investment_verdict, quality_score')
-        .eq('city_slug', 'hyderabad')
-        .order('quality_score', { ascending: false })
-        .limit(10);
+        .select('project_name, project_slug, rera_id, project_type, current_status, developer_brand, micro_market, micro_market_slug, city, city_slug, current_price_per_sqft_min, current_price_per_sqft_max, total_units, land_area_acres, primary_differentiator, investment_verdict, quality_score');
 
-      if (projectTypeFilter === 'villa') {
+      // If a specific city was requested, filter to it; otherwise search all cities
+      if (cityData) {
+        advisorQuery = advisorQuery.eq('city_slug', city);
+      }
+
+      // Name / text search — broadest match first
+      const nameSearch = projectName || rawQ;
+      if (nameSearch && nameSearch.length >= 2) {
+        advisorQuery = advisorQuery.ilike('project_name', `%${nameSearch}%`);
+      } else if (projectTypeFilter === 'villa') {
         advisorQuery = advisorQuery.eq('project_type', 'villa');
       }
+
       if (microMarket) {
         advisorQuery = advisorQuery.ilike('micro_market', `%${microMarket}%`);
       }
 
+      advisorQuery = advisorQuery
+        .order('quality_score', { ascending: false, nullsFirst: false })
+        .limit(10);
+
       const { data: advisorData } = await advisorQuery;
 
       if (advisorData?.length) {
-        // Map advisor records to a shape compatible with the projects table results
         const existingSlugs = new Set(filteredProjects.map((p: any) => p.url_slug));
         advisorResults = advisorData
           .filter((a: any) => !existingSlugs.has(a.project_slug))
-          .map((a: any) => ({
-            id: a.rera_id || a.project_slug,
-            project_name: a.project_name,
-            url_slug: a.project_slug,
-            hero_image_url: null,
-            price_range_text: a.current_price_per_sqft_min
-              ? `₹${Math.round(a.current_price_per_sqft_min / 1000)}K–${Math.round((a.current_price_per_sqft_max || a.current_price_per_sqft_min) / 1000)}K psft`
-              : null,
-            status: a.current_status,
-            completion_status: a.current_status,
-            property_types: [a.project_type],
-            micro_market: { micro_market_name: a.micro_market, url_slug: null },
-            developer: { developer_name: a.developer_brand, url_slug: null },
-            city: { city_name: 'Hyderabad', url_slug: 'hyderabad' },
-            // Advisor-specific fields for AI overview
-            developer_brand: a.developer_brand,
-            primary_differentiator: a.primary_differentiator,
-            investment_verdict: a.investment_verdict,
-            quality_score: a.quality_score,
-            price_min: a.current_price_per_sqft_min,
-            price_max: a.current_price_per_sqft_max,
-            _source: 'advisor',
-          }));
+          .map((a: any) => {
+            const cityLabel =
+              a.city
+                ? a.city.charAt(0).toUpperCase() + a.city.slice(1)
+                : 'India';
+            return {
+              id: a.rera_id || a.project_slug,
+              project_name: a.project_name,
+              url_slug: a.project_slug,
+              hero_image_url: null,
+              price_range_text: a.current_price_per_sqft_min
+                ? `₹${Math.round(a.current_price_per_sqft_min / 1000)}K–${Math.round((a.current_price_per_sqft_max || a.current_price_per_sqft_min) / 1000)}K psft`
+                : null,
+              status: a.current_status,
+              completion_status: a.current_status,
+              property_types: [a.project_type],
+              micro_market: {
+                micro_market_name: a.micro_market,
+                url_slug: a.micro_market_slug ?? null,
+              },
+              developer: { developer_name: a.developer_brand, url_slug: null },
+              city: { city_name: cityLabel, url_slug: a.city_slug },
+              developer_brand: a.developer_brand,
+              primary_differentiator: a.primary_differentiator,
+              investment_verdict: a.investment_verdict,
+              quality_score: a.quality_score,
+              price_min: a.current_price_per_sqft_min,
+              price_max: a.current_price_per_sqft_max,
+              _source: 'advisor',
+            };
+          });
       }
     }
 
-    // Merge: if villa search, advisor records (sorted by quality_score) come first
+    // Merge: villa search → advisor first; otherwise listing projects first
     let combinedResults: any[];
     if (projectTypeFilter === 'villa') {
       combinedResults = [...advisorResults, ...filteredProjects];
