@@ -3,6 +3,7 @@ import { createServiceClient } from "@/lib/supabase/serviceClient";
 import { getLocalityStats, generateFilterSlug } from "@/lib/utils/localityStats";
 import { parseJsonb, asArray } from "@/lib/parse-jsonb";
 import { buildProjectAbsoluteUrl } from "@/lib/routes";
+import { getAllAdvisoryProjectSlugs } from "@/services/advisoryProjectService";
 
 const baseUrl = "https://www.westsiderealty.in";
 
@@ -328,12 +329,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     console.log(`[sitemap] Generated ${smartLinkUrls.length} Smart Link URLs`);
     urls.push(...smartLinkUrls);
 
-    // Projects
+    // Projects (main listings)
+    const listingProjectSet = new Set<string>();
     if (projectsResult.data) {
       projectsResult.data.forEach((p: any) => {
         const cityData = Array.isArray(p.city) ? p.city[0] : p.city;
         const citySlug = cityData?.url_slug;
         if (p.url_slug && citySlug) {
+          const key = `${citySlug}/${p.url_slug}`;
+          listingProjectSet.add(key);
           urls.push({
             url: buildProjectAbsoluteUrl(citySlug, p.url_slug),
             lastModified: p.updated_at ? new Date(p.updated_at) : new Date(),
@@ -343,6 +347,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         }
       });
     }
+
+    // Advisory-only projects (e.g. Goa projects not yet in main listings)
+    const advisoryProjectSlugs = await getAllAdvisoryProjectSlugs();
+    advisoryProjectSlugs.forEach(({ citySlug, projectSlug }) => {
+      const key = `${citySlug}/${projectSlug}`;
+      if (!listingProjectSet.has(key)) {
+        urls.push({
+          url: buildProjectAbsoluteUrl(citySlug, projectSlug),
+          lastModified: new Date(),
+          changeFrequency: "weekly",
+          priority: 0.7,
+        });
+      }
+    });
 
     // Landing Pages
     landingPagesResult.data?.forEach((lp) => {

@@ -7,7 +7,16 @@ import { optimizeSupabaseImage, getHeroImageUrl } from "@/utils/imageOptimizatio
 import { buildProjectAbsoluteUrl, buildProjectUrl } from "@/lib/routes";
 import ProjectPageV2 from "@/components/project-details/ProjectPageV2";
 import ProjectPageRedesign from "@/components/project-details/ProjectPageRedesign";
+import AdvisoryProjectPage from "@/components/project-details/AdvisoryProjectPage";
 import { createServiceClient } from "@/lib/supabase/serviceClient";
+import {
+  getAdvisoryProjectBySlug,
+  getAllAdvisoryProjectSlugs,
+  getAdvisoryProjectsByMarket,
+  formatSegment,
+  formatStatus,
+  formatProjectType,
+} from "@/services/advisoryProjectService";
 
 
 interface PageProps {
@@ -19,7 +28,7 @@ interface PageProps {
 export async function generateStaticParams() {
   const { createBuildClient } = await import('@/lib/supabase/buildClient');
   const supabase = createBuildClient();
-  
+
   // Get all projects (including unpublished ones) to ensure newly added projects are included
   // The page component will handle filtering/publishing logic
   // Use auto-detected relationship syntax for consistency with getCityLevelProjectBySlug
@@ -28,9 +37,7 @@ export async function generateStaticParams() {
     .select("url_slug, city:cities(url_slug), micro_market:micro_markets(url_slug)")
     .limit(2000); // Increased limit to include more projects
 
-  if (!projects) return [];
-
-  return projects
+  const listingParams = (projects ?? [])
     .filter((p: any) => {
       // Handle city relation - can be object or array
       const city = Array.isArray(p.city) ? p.city[0] : p.city;
@@ -44,6 +51,15 @@ export async function generateStaticParams() {
         projectSlug: p.url_slug,
       };
     });
+
+  // Also include advisory-only projects (e.g. Goa projects not in main listings)
+  const advisoryParams = await getAllAdvisoryProjectSlugs();
+  const listingSet = new Set(listingParams.map((p) => `${p.citySlug}/${p.projectSlug}`));
+  const uniqueAdvisory = advisoryParams.filter(
+    (p) => !listingSet.has(`${p.citySlug}/${p.projectSlug}`)
+  );
+
+  return [...listingParams, ...uniqueAdvisory];
 }
 
 // Generate metadata server-side
@@ -63,6 +79,52 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     }
 
     if (!project) {
+      // Fallback: check advisory table (e.g. Goa projects)
+      const advisory = await getAdvisoryProjectBySlug(citySlug, projectSlug);
+      if (advisory) {
+        const canonicalUrl = buildProjectAbsoluteUrl(citySlug, projectSlug);
+        const cityName = advisory.city
+          ? advisory.city.charAt(0).toUpperCase() + advisory.city.slice(1)
+          : citySlug;
+        const market = advisory.micro_market || "";
+        const priceStr =
+          advisory.current_price_per_sqft_min
+            ? ` — From ₹${Number(advisory.current_price_per_sqft_min).toLocaleString("en-IN")}/sqft`
+            : "";
+        const typeLabel = formatProjectType(advisory.project_type);
+        const segmentLabel = formatSegment(advisory.project_segment);
+        const seoTitle = `${advisory.project_name}${market ? " " + market : ""}${priceStr} | Westside Realty`;
+        const seoDescription = `${advisory.project_name} is a ${[segmentLabel, typeLabel].filter(Boolean).join(" ")} project in ${market || cityName}${advisory.developer_brand ? ` by ${advisory.developer_brand}` : ""}. ${advisory.investment_verdict ? advisory.investment_verdict.slice(0, 120) + "…" : "RERA verified with expert Goa real estate advisory."} `;
+        return {
+          title: seoTitle,
+          description: seoDescription,
+          keywords: [
+            advisory.project_name,
+            market && `${advisory.project_name} ${market}`,
+            market && `${market} real estate`,
+            advisory.developer_brand && `${advisory.developer_brand} Goa`,
+            `RERA verified projects ${market || cityName}`,
+            `buy ${typeLabel || "property"} ${market || cityName}`,
+            `Goa real estate investment`,
+          ]
+            .filter(Boolean)
+            .join(", "),
+          alternates: { canonical: canonicalUrl },
+          openGraph: {
+            title: seoTitle,
+            description: seoDescription,
+            url: canonicalUrl,
+            siteName: "RE/MAX Westside Realty",
+            type: "website",
+            locale: "en_IN",
+          },
+          twitter: {
+            card: "summary_large_image",
+            title: seoTitle,
+            description: seoDescription,
+          },
+        };
+      }
       return { title: "Project Not Found" };
     }
 
@@ -178,6 +240,23 @@ export default async function ProjectDetailPage({ params }: PageProps) {
     if (resolvedCity && resolvedCity !== citySlug) {
       redirect(buildProjectUrl(resolvedCity, projectSlug));
     }
+
+    // Fallback: render advisory project page (e.g. Goa projects in advisor_project_intelligence)
+    const advisoryProject = await getAdvisoryProjectBySlug(citySlug, projectSlug);
+    if (advisoryProject) {
+      const relatedProjects = advisoryProject.micro_market_slug
+        ? await getAdvisoryProjectsByMarket(citySlug, advisoryProject.micro_market_slug, projectSlug)
+        : [];
+      return (
+        <AdvisoryProjectPage
+          project={advisoryProject}
+          relatedProjects={relatedProjects}
+          citySlug={citySlug}
+          projectSlug={projectSlug}
+        />
+      );
+    }
+
     // Fall back to the city's projects index rather than a bare 404
     redirect(`/${citySlug}/projects`);
   }
