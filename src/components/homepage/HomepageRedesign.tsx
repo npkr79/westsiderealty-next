@@ -462,11 +462,12 @@ export default function HomepageRedesign() {
       // Step 2: build search params from parsed result
       // Always pass raw query for cross-city name matching in the API
       const params = new URLSearchParams({ q: query });
-      // Only restrict to hyderabad if the parse explicitly detected hyderabad context
+      // Use city inferred by parser (comes from micro-market's own city_id join)
+      // For project name matches (Hyderabad-only projects table), default to hyderabad
       if (parsed?.city) {
         params.set("city", parsed.city);
-      } else if (parsed?.microMarket || parsed?.projectName) {
-        // Has structured Hyderabad context — default to hyderabad
+      } else if (parsed?.projectName && !parsed?.microMarket) {
+        // projectName matched from Hyderabad-only projects table → city is hyderabad
         params.set("city", "hyderabad");
       }
       // No city param = API will search all cities via advisor table

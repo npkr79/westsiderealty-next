@@ -220,11 +220,12 @@ export async function GET(request: NextRequest) {
     filteredProjects = filteredProjects.slice(0, 50);
 
     // ── Advisor table query ───────────────────────────────────────────────────
-    // Triggers for: villa search, no city context (cross-city name search), or empty results
+    // Triggers for: villa search, no city context (cross-city name search), empty results,
+    // or when the city doesn't have projects in the main table (e.g. Goa)
     const rawQ = (textQuery || '').trim();
     const shouldQueryAdvisor =
       projectTypeFilter === 'villa' ||
-      filteredProjects.length === 0 ||
+      filteredProjects.length === 0 || // also covers: city set but 0 matches (e.g. Goa has no projects table rows)
       !cityData; // no city = cross-city search
 
     let advisorResults: any[] = [];

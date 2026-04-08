@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 // Types
 export interface ParsedQuery {
   microMarket: string | null;
+  city: string | null;              // City slug inferred from micro-market (e.g. 'goa', 'hyderabad')
   developer: string | null;
   bhkConfig: string | null; // Normalized format: "3 BHK", "4 BHK" (with space)
   projectName: string | null; // Matched project name
@@ -13,7 +14,7 @@ export interface ParsedQuery {
 }
 
 interface EntityCache {
-  microMarkets: string[];
+  microMarkets: Array<{ name: string; citySlug: string | null }>;
   developers: string[];
   projects: Array<{ name: string; slug: string }>;
   cachedAt: number;
@@ -101,13 +102,16 @@ async function loadEntities(supabase: Awaited<ReturnType<typeof createClient>>):
   }
 
   const [microMarketsRes, developersRes, projectsRes] = await Promise.all([
-    supabase.from('micro_markets').select('micro_market_name'),
+    supabase.from('micro_markets').select('micro_market_name, cities(url_slug)'),
     supabase.from('developers').select('developer_name'),
     supabase.from('projects').select('project_name, url_slug').limit(5000), // Get all projects for matching
   ]);
 
   entityCache = {
-    microMarkets: (microMarketsRes.data || []).map((m: any) => m.micro_market_name),
+    microMarkets: (microMarketsRes.data || []).map((m: any) => ({
+      name: m.micro_market_name,
+      citySlug: (m.cities as any)?.url_slug ?? null,
+    })),
     developers: (developersRes.data || []).map((d: any) => d.developer_name),
     projects: (projectsRes.data || []).map((p: any) => ({ 
       name: p.project_name, 
@@ -130,6 +134,7 @@ export async function parseSearchQuery(
 
   const result: ParsedQuery = {
     microMarket: null,
+    city: null,
     developer: null,
     bhkConfig: null,
     projectName: null,
@@ -279,23 +284,24 @@ export async function parseSearchQuery(
   
   // 6. Match micro-market (exact first, then substring, then fuzzy)
   // Only match micro-markets that weren't already matched as part of project name
-  
+
   // Only match micro-markets if project name wasn't matched, or if query still has remaining text
   // Try exact case-insensitive match with word boundaries (most reliable)
-  for (const microMarket of entities.microMarkets) {
-    const microMarketLower = microMarket.toLowerCase();
-    
+  for (const mm of entities.microMarkets) {
+    const microMarketLower = mm.name.toLowerCase();
+
     // Skip if this micro-market was already part of matched project name
     if (projectMatchedText && projectMatchedText.includes(microMarketLower)) {
       continue;
     }
-    
+
     // Try full micro-market name match (with word boundaries for multi-word names)
     if (microMarketLower.includes(' ')) {
       // Multi-word micro-market: use word boundaries
       const regex = new RegExp(`\\b${microMarketLower.replace(/\s+/g, '\\s+')}\\b`, 'i');
       if (regex.test(remainingQuery)) {
-        result.microMarket = microMarket; // Use canonical name from database
+        result.microMarket = mm.name; // Use canonical name from database
+        result.city = mm.citySlug;    // Carry the correct city
         remainingQuery = remainingQuery.replace(regex, '').trim();
         break;
       }
@@ -303,49 +309,52 @@ export async function parseSearchQuery(
       // Single-word micro-market: use word boundaries
       const regex = new RegExp(`\\b${microMarketLower}\\b`, 'i');
       if (regex.test(remainingQuery)) {
-        result.microMarket = microMarket; // Use canonical name from database
+        result.microMarket = mm.name; // Use canonical name from database
+        result.city = mm.citySlug;    // Carry the correct city
         remainingQuery = remainingQuery.replace(regex, '').trim();
         break;
       }
     }
   }
-  
+
   // If no exact match, try substring matching (case-insensitive) - more aggressive
   // This handles cases where word boundaries might fail
   if (!result.microMarket) {
-    for (const microMarket of entities.microMarkets) {
-      const microMarketLower = microMarket.toLowerCase();
-      
+    for (const mm of entities.microMarkets) {
+      const microMarketLower = mm.name.toLowerCase();
+
       // Skip if this micro-market was already part of matched project name
       if (projectMatchedText && projectMatchedText.includes(microMarketLower)) {
         continue;
       }
-      
+
       // Check if micro-market name appears in remaining query (case-insensitive)
       if (remainingQueryLower.includes(microMarketLower)) {
-        result.microMarket = microMarket; // Use canonical name from database
+        result.microMarket = mm.name; // Use canonical name from database
+        result.city = mm.citySlug;    // Carry the correct city
         // Remove the matched micro-market (case-insensitive)
         remainingQuery = remainingQuery.replace(new RegExp(microMarketLower, 'gi'), '').trim();
         break;
       }
     }
   }
-  
+
   // If still no match, try fuzzy match on meaningful words (excluding common words)
   if (!result.microMarket) {
-    for (const microMarket of entities.microMarkets) {
-      const microMarketLower = microMarket.toLowerCase();
-      
+    for (const mm of entities.microMarkets) {
+      const microMarketLower = mm.name.toLowerCase();
+
       // Skip if this micro-market was already part of matched project name
       if (projectMatchedText && projectMatchedText.includes(microMarketLower)) {
         continue;
       }
-      
+
       for (const word of meaningfulWords) {
         if (word.length >= 3) {
           const score = similarityScore(word, microMarketLower);
           if (score >= 0.8) {
-            result.microMarket = microMarket; // Use canonical name from database
+            result.microMarket = mm.name; // Use canonical name from database
+            result.city = mm.citySlug;    // Carry the correct city
             remainingQuery = remainingQuery.replace(new RegExp(`\\b${word}\\b`, 'gi'), '').trim();
             break;
           }
