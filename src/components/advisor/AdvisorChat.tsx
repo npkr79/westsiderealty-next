@@ -40,8 +40,14 @@ function getPageProjectSlug(): string | null {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
+const ADVISOR_SEEN_KEY = "wsr_advisor_seen";
+
 export default function AdvisorChat() {
   const [open, setOpen] = useState(false);
+
+  // New-visitor nudge
+  const [isNewVisitor, setIsNewVisitor] = useState(false);
+  const [showLabel, setShowLabel] = useState(false);
 
   // Conversation — start empty; populated on first open
   const [messages, setMessages] = useState<Message[]>([]);
@@ -78,6 +84,28 @@ export default function AdvisorChat() {
   const userScrolledUpRef = useRef(false);
   // true when the user just sent a message — always force-scroll in that case
   const forceScrollRef = useRef(false);
+
+  // ── New-visitor nudge ─────────────────────────────────────────────────────
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const seen = localStorage.getItem(ADVISOR_SEEN_KEY);
+    if (!seen) {
+      setIsNewVisitor(true);
+      // Small delay so it appears after page paint
+      const showTimer = setTimeout(() => setShowLabel(true), 1200);
+      // Label fades away after 5s
+      const hideTimer = setTimeout(() => setShowLabel(false), 6200);
+      return () => { clearTimeout(showTimer); clearTimeout(hideTimer); };
+    }
+  }, []);
+
+  function markAdvisorSeen() {
+    if (typeof window !== "undefined") {
+      localStorage.setItem(ADVISOR_SEEN_KEY, "1");
+    }
+    setIsNewVisitor(false);
+    setShowLabel(false);
+  }
 
   function handleScrollContainer() {
     const el = scrollContainerRef.current;
@@ -380,22 +408,100 @@ export default function AdvisorChat() {
 
   return (
     <>
-      {/* Floating button */}
-      <button
-        onClick={() => setOpen((v) => !v)}
-        aria-label={open ? "Close advisor chat" : "Open advisor chat"}
-        className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-zinc-900 text-white shadow-lg transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-zinc-600"
-      >
-        {open ? (
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        ) : (
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.77 9.77 0 01-4-.84L3 20l1.09-3.27A7.93 7.93 0 013 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-          </svg>
+      <style>{`
+        @keyframes wsr-pulse-ring {
+          0%   { transform: scale(1);   opacity: 0.6; }
+          70%  { transform: scale(1.55); opacity: 0; }
+          100% { transform: scale(1.55); opacity: 0; }
+        }
+        .wsr-pulse-ring {
+          animation: wsr-pulse-ring 2s ease-out infinite;
+        }
+        @keyframes wsr-label-in {
+          from { opacity: 0; transform: translateX(10px); }
+          to   { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes wsr-label-out {
+          from { opacity: 1; transform: translateX(0); }
+          to   { opacity: 0; transform: translateX(10px); }
+        }
+        .wsr-label-enter { animation: wsr-label-in 0.35s ease forwards; }
+        .wsr-label-exit  { animation: wsr-label-out 0.35s ease forwards; }
+      `}</style>
+
+      {/* Floating button + nudge wrapper */}
+      <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3">
+
+        {/* "Ask me anything" label — new visitors only */}
+        {!open && isNewVisitor && (
+          <div
+            className={showLabel ? "wsr-label-enter" : "wsr-label-exit"}
+            style={{ pointerEvents: showLabel ? "auto" : "none" }}
+          >
+            <button
+              onClick={() => { markAdvisorSeen(); setOpen(true); }}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                background: "#18181B",
+                color: "#fff",
+                border: "none",
+                borderRadius: 999,
+                padding: "10px 16px 10px 12px",
+                fontSize: 13,
+                fontFamily: "'Outfit', sans-serif",
+                fontWeight: 500,
+                cursor: "pointer",
+                boxShadow: "0 4px 20px rgba(0,0,0,0.18)",
+                whiteSpace: "nowrap",
+              }}
+            >
+              <span style={{ fontSize: 16 }}>💬</span>
+              Ask me anything
+              <span style={{ opacity: 0.5, fontSize: 11, marginLeft: 2 }}>→</span>
+            </button>
+          </div>
         )}
-      </button>
+
+        {/* Pulse ring — only for new visitors when chat is closed */}
+        {!open && isNewVisitor && (
+          <span
+            className="wsr-pulse-ring"
+            style={{
+              position: "absolute",
+              right: 0,
+              bottom: 0,
+              width: 56,
+              height: 56,
+              borderRadius: "50%",
+              background: "rgba(24,24,27,0.35)",
+              pointerEvents: "none",
+            }}
+          />
+        )}
+
+        {/* Main button */}
+        <button
+          onClick={() => {
+            if (!open) markAdvisorSeen();
+            setOpen((v) => !v);
+          }}
+          aria-label={open ? "Close advisor chat" : "Open advisor chat"}
+          className="flex h-14 w-14 items-center justify-center rounded-full bg-zinc-900 text-white shadow-lg transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-zinc-600"
+          style={{ position: "relative", flexShrink: 0 }}
+        >
+          {open ? (
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          ) : (
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.77 9.77 0 01-4-.84L3 20l1.09-3.27A7.93 7.93 0 013 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+            </svg>
+          )}
+        </button>
+      </div>
 
       {/* Chat panel */}
       {open && (
