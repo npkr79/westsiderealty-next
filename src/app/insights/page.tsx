@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import Image from "next/image";
 import { InsightsAdvisorCTA } from "./InsightsAdvisorCTA";
+import { createServiceClient } from "@/lib/supabase/serviceClient";
 
 export const metadata: Metadata = {
   title: "Market Insights | Westside Realty Intelligence",
@@ -8,6 +10,31 @@ export const metadata: Metadata = {
 };
 
 export const revalidate = 3600;
+
+interface BlogArticlePreview {
+  slug: string;
+  title: string;
+  description: string;
+  image_url: string | null;
+  category: string | null;
+  read_time: string | null;
+  date: string | null;
+}
+
+async function getPublishedArticles(): Promise<BlogArticlePreview[]> {
+  try {
+    const supabase = createServiceClient();
+    const { data } = await supabase
+      .from("blog_articles")
+      .select("slug, title, description, image_url, category, read_time, date")
+      .eq("status", "published")
+      .order("date", { ascending: false })
+      .limit(12);
+    return data ?? [];
+  } catch {
+    return [];
+  }
+}
 
 // ─── Design constants ─────────────────────────────────────────────────────────
 
@@ -83,7 +110,9 @@ const REPORTS = [
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-export default function InsightsPage() {
+export default async function InsightsPage() {
+  const blogArticles = await getPublishedArticles();
+
   return (
     <>
       <style>{`
@@ -330,7 +359,89 @@ export default function InsightsPage() {
         </div>
       </section>
 
-      {/* ── Section 3: AI Advisor CTA ─────────────────────────────────────── */}
+      {/* ── Section 3: Blog Articles ──────────────────────────────────────── */}
+      {blogArticles.length > 0 && (
+        <section style={{ background: C.bgWarm, padding: "72px 24px" }}>
+          <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+            <div style={{ marginBottom: 48 }}>
+              <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: 12, textTransform: "uppercase", letterSpacing: "0.2em", color: C.gold, margin: "0 0 8px" }}>
+                Market Intelligence
+              </p>
+              <h2 style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: "clamp(28px,4vw,44px)", fontWeight: 600, color: C.text, margin: 0, lineHeight: 1.2 }}>
+                Research &amp; Analysis
+              </h2>
+            </div>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
+                gap: 28,
+              }}
+            >
+              {blogArticles.map((article) => (
+                <Link
+                  key={article.slug}
+                  href={`/insights/${article.slug}`}
+                  className="report-card"
+                  style={{
+                    display: "block",
+                    background: C.bgCard,
+                    border: `1px solid ${C.border}`,
+                    borderRadius: 20,
+                    overflow: "hidden",
+                    textDecoration: "none",
+                  }}
+                >
+                  {article.image_url && (
+                    <div style={{ position: "relative", height: 200, overflow: "hidden" }}>
+                      <Image
+                        src={article.image_url}
+                        alt={article.title}
+                        fill
+                        style={{ objectFit: "cover" }}
+                        unoptimized
+                      />
+                    </div>
+                  )}
+                  <div style={{ padding: 28 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+                      {article.category && (
+                        <span style={{ fontFamily: "'Outfit', sans-serif", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", color: C.gold }}>
+                          {article.category}
+                        </span>
+                      )}
+                      {article.read_time && (
+                        <span style={{ fontFamily: "'Outfit', sans-serif", fontSize: 11, color: C.textMuted }}>
+                          · {article.read_time}
+                        </span>
+                      )}
+                    </div>
+                    <h3 style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: 22, fontWeight: 600, color: C.text, lineHeight: 1.25, margin: "0 0 10px" }}>
+                      {article.title}
+                    </h3>
+                    <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: 14, color: C.textMuted, lineHeight: 1.65, margin: "0 0 20px" }}>
+                      {article.description.slice(0, 140)}{article.description.length > 140 ? "…" : ""}
+                    </p>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderTop: `1px solid ${C.border}`, paddingTop: 16 }}>
+                      {article.date && (
+                        <span style={{ fontFamily: "'Outfit', sans-serif", fontSize: 12, color: C.textMuted }}>
+                          {new Date(article.date).toLocaleDateString("en-IN", { year: "numeric", month: "short" })}
+                        </span>
+                      )}
+                      <span style={{ fontFamily: "'Outfit', sans-serif", fontSize: 13, fontWeight: 500, color: C.gold }}>
+                        Read Article →
+                      </span>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ── Section 4: AI Advisor CTA ─────────────────────────────────────── */}
       <InsightsAdvisorCTA />
     </>
   );
