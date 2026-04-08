@@ -6,7 +6,8 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
 
   // Extract all filters from URL
-  const city = searchParams.get('city') || 'hyderabad';
+  // city is intentionally optional — absent means cross-city search via advisor table
+  const city = searchParams.get('city') ?? '';
   const category = searchParams.get('category') || 'residential';
   const projectType = searchParams.get('projectType'); // 'resale' | 'new' | 'invest' | etc.
   const propertyTypesParam = searchParams.get('propertyTypes'); // comma-separated
@@ -233,17 +234,30 @@ export async function GET(request: NextRequest) {
         .from('advisor_project_intelligence')
         .select('project_name, project_slug, rera_id, project_type, current_status, developer_brand, micro_market, micro_market_slug, city, city_slug, current_price_per_sqft_min, current_price_per_sqft_max, total_units, land_area_acres, primary_differentiator, investment_verdict, quality_score');
 
-      // If a specific city was requested, filter to it; otherwise search all cities
-      if (cityData) {
-        advisorQuery = advisorQuery.eq('city_slug', city);
+      // Determine city context for advisor:
+      // 1. Use explicit city param if available
+      // 2. Detect city from raw query text ("goa", "hyderabad", "dubai")
+      // 3. No filter = search all cities
+      let advisorCitySlug: string | null = cityData ? city : null;
+      if (!advisorCitySlug && rawQ) {
+        const ql = rawQ.toLowerCase();
+        if (ql.includes('goa')) advisorCitySlug = 'goa';
+        else if (ql.includes('hyderabad') || ql.includes(' hyd')) advisorCitySlug = 'hyderabad';
+        else if (ql.includes('dubai')) advisorCitySlug = 'dubai';
+      }
+      if (advisorCitySlug) {
+        advisorQuery = advisorQuery.eq('city_slug', advisorCitySlug);
       }
 
-      // Name / text search — broadest match first
-      const nameSearch = projectName || rawQ;
+      // Name search: use explicit projectName, OR raw query only when it looks like a
+      // project name (no property-type or micro-market filter active — not a category search)
+      const looksLikeProjectName = !projectTypeFilter && !microMarket;
+      const nameSearch = projectName || (looksLikeProjectName ? rawQ : null);
       if (nameSearch && nameSearch.length >= 2) {
         advisorQuery = advisorQuery.ilike('project_name', `%${nameSearch}%`);
-      } else if (projectTypeFilter === 'villa') {
-        advisorQuery = advisorQuery.eq('project_type', 'villa');
+      } else if (projectTypeFilter) {
+        // Category search (e.g. "Goa villas") — filter by type, not name
+        advisorQuery = advisorQuery.eq('project_type', projectTypeFilter);
       }
 
       if (microMarket) {
@@ -251,7 +265,7 @@ export async function GET(request: NextRequest) {
       }
 
       advisorQuery = advisorQuery
-        .order('quality_score', { ascending: false, nullsFirst: false })
+        .order('quality_score', { ascending: false })
         .limit(10);
 
       const { data: advisorData } = await advisorQuery;
@@ -305,7 +319,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       results: combinedResults,
       appliedFilters: {
-        city,
+        city: city || null,
         category,
         projectType,
         propertyTypes,
