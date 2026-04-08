@@ -380,9 +380,54 @@ function StatItem({
 
 // ─── Main Component ──────────────────────────────────────────────────────────
 
+const BANNER_KEY = "wsr_banner_dismissed";
+const POPUP_KEY  = "wsr_popup_shown";
+
+function openAdvisor(message?: string) {
+  window.dispatchEvent(
+    new CustomEvent("westside:openAdvisor", { detail: { message } })
+  );
+}
+
 export default function HomepageRedesign() {
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
   const [topCardIdx, setTopCardIdx] = useState(0);
+
+  // ── Tier 1: Advisor banner ────────────────────────────────────────────────
+  const [showBanner, setShowBanner] = useState(false);
+
+  // ── Tier 2: Intent popup ──────────────────────────────────────────────────
+  const [showPopup, setShowPopup] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    // Banner — show unless dismissed this session
+    if (!sessionStorage.getItem(BANNER_KEY)) {
+      setShowBanner(true);
+    }
+
+    // Popup — show once per session after 60s OR exit intent
+    if (sessionStorage.getItem(POPUP_KEY)) return;
+
+    function triggerPopup() {
+      if (sessionStorage.getItem(POPUP_KEY)) return;
+      sessionStorage.setItem(POPUP_KEY, "1");
+      setShowPopup(true);
+    }
+
+    const timer = setTimeout(triggerPopup, 60_000);
+
+    function handleExitIntent(e: MouseEvent) {
+      if (e.clientY <= 5) triggerPopup();
+    }
+    document.addEventListener("mouseleave", handleExitIntent);
+
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener("mouseleave", handleExitIntent);
+    };
+  }, []);
 
   // ── Natural language search ───────────────────────────────────────────────
   const [searchQuery, setSearchQuery] = useState("");
@@ -857,6 +902,77 @@ export default function HomepageRedesign() {
           </div>
         </div>
       </section>
+
+      {/* ── Tier 1: Advisor banner ──────────────────────────────── */}
+      {showBanner && (
+        <div
+          style={{
+            background: "#1A1A1F",
+            borderBottom: "1px solid rgba(176,141,87,0.2)",
+            padding: "14px 24px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 16,
+            position: "relative",
+          }}
+        >
+          <p
+            style={{
+              fontFamily: "'Outfit', sans-serif",
+              fontSize: 14,
+              color: "rgba(255,255,255,0.75)",
+              margin: 0,
+              textAlign: "center",
+            }}
+          >
+            Not sure where to start?{" "}
+            <span style={{ color: "rgba(255,255,255,0.45)" }}>
+              Describe your budget, city, or lifestyle and our advisor will match you to the right projects.
+            </span>
+          </p>
+          <button
+            onClick={() => openAdvisor("I'm not sure where to start. Can you help me find the right property?")}
+            style={{
+              flexShrink: 0,
+              background: C.gold,
+              color: "#fff",
+              border: "none",
+              borderRadius: 999,
+              padding: "7px 18px",
+              fontFamily: "'Outfit', sans-serif",
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: "pointer",
+              whiteSpace: "nowrap",
+            }}
+          >
+            Ask the Advisor →
+          </button>
+          <button
+            onClick={() => {
+              sessionStorage.setItem(BANNER_KEY, "1");
+              setShowBanner(false);
+            }}
+            aria-label="Dismiss banner"
+            style={{
+              position: "absolute",
+              right: 16,
+              top: "50%",
+              transform: "translateY(-50%)",
+              background: "none",
+              border: "none",
+              color: "rgba(255,255,255,0.35)",
+              cursor: "pointer",
+              fontSize: 18,
+              lineHeight: 1,
+              padding: "4px 6px",
+            }}
+          >
+            ×
+          </button>
+        </div>
+      )}
 
       {/* ── Search results ──────────────────────────────────────── */}
       {(searchLoading || searchResults !== null || searchError) && (
@@ -1938,6 +2054,163 @@ export default function HomepageRedesign() {
           </div>
         </div>
       </section>
+
+      {/* ── Tier 2: Intent popup ────────────────────────────────── */}
+      {showPopup && (
+        <>
+          {/* Backdrop */}
+          <div
+            onClick={() => setShowPopup(false)}
+            style={{
+              position: "fixed",
+              inset: 0,
+              background: "rgba(0,0,0,0.45)",
+              zIndex: 9998,
+              backdropFilter: "blur(2px)",
+            }}
+          />
+
+          {/* Modal */}
+          <div
+            style={{
+              position: "fixed",
+              zIndex: 9999,
+              bottom: 0,
+              left: 0,
+              right: 0,
+              margin: "0 auto",
+              maxWidth: 460,
+              background: "#FAFAF7",
+              borderRadius: "20px 20px 0 0",
+              padding: "32px 28px 36px",
+              boxShadow: "0 -8px 48px rgba(0,0,0,0.18)",
+            }}
+            // Prevent backdrop click from closing when clicking inside modal
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Drag handle */}
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: "rgba(0,0,0,0.12)", margin: "0 auto 24px" }} />
+
+            {/* Dismiss */}
+            <button
+              onClick={() => setShowPopup(false)}
+              aria-label="Close"
+              style={{
+                position: "absolute",
+                top: 18,
+                right: 20,
+                background: "none",
+                border: "none",
+                fontSize: 20,
+                color: "rgba(0,0,0,0.3)",
+                cursor: "pointer",
+                lineHeight: 1,
+                padding: "4px 6px",
+              }}
+            >
+              ×
+            </button>
+
+            {/* Heading */}
+            <p
+              style={{
+                fontFamily: "'Outfit', sans-serif",
+                fontSize: 12,
+                textTransform: "uppercase",
+                letterSpacing: "0.16em",
+                color: C.gold,
+                margin: "0 0 10px",
+              }}
+            >
+              Westside Advisor
+            </p>
+            <h3
+              style={{
+                fontFamily: "'Cormorant Garamond', Georgia, serif",
+                fontSize: 26,
+                fontWeight: 600,
+                color: C.text,
+                margin: "0 0 8px",
+                lineHeight: 1.25,
+              }}
+            >
+              What brings you here today?
+            </h3>
+            <p
+              style={{
+                fontFamily: "'Outfit', sans-serif",
+                fontSize: 14,
+                color: C.textMuted,
+                margin: "0 0 24px",
+                lineHeight: 1.6,
+              }}
+            >
+              Our AI advisor gives you personalised guidance — prices, projects, investment outlook — in seconds.
+            </p>
+
+            {/* Intent chips */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {[
+                {
+                  label: "🏙️  Looking to buy in Hyderabad",
+                  message: "I'm looking to buy a property in Hyderabad. Can you help me find the right project?",
+                },
+                {
+                  label: "🌴  Exploring Goa villas",
+                  message: "I'm interested in villa investment in Goa. Where should I look?",
+                },
+                {
+                  label: "📊  Just researching the market",
+                  message: "I'm researching the real estate market. Can you give me an overview of current prices and investment opportunities?",
+                },
+              ].map(({ label, message }) => (
+                <button
+                  key={label}
+                  onClick={() => {
+                    setShowPopup(false);
+                    openAdvisor(message);
+                  }}
+                  style={{
+                    background: "#fff",
+                    border: `1px solid ${C.border}`,
+                    borderRadius: 12,
+                    padding: "14px 18px",
+                    fontFamily: "'Outfit', sans-serif",
+                    fontSize: 15,
+                    color: C.text,
+                    cursor: "pointer",
+                    textAlign: "left",
+                    transition: "border-color 0.2s, box-shadow 0.2s",
+                    boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
+                  }}
+                  onMouseEnter={(e) => {
+                    (e.currentTarget as HTMLButtonElement).style.borderColor = C.gold;
+                    (e.currentTarget as HTMLButtonElement).style.boxShadow = `0 2px 12px rgba(176,141,87,0.15)`;
+                  }}
+                  onMouseLeave={(e) => {
+                    (e.currentTarget as HTMLButtonElement).style.borderColor = C.border;
+                    (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 1px 4px rgba(0,0,0,0.04)";
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            <p
+              style={{
+                fontFamily: "'Outfit', sans-serif",
+                fontSize: 12,
+                color: C.textMuted,
+                textAlign: "center",
+                marginTop: 18,
+              }}
+            >
+              Or type your own question after opening the advisor
+            </p>
+          </div>
+        </>
+      )}
     </div>
   );
 }
