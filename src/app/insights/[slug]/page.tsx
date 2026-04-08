@@ -120,15 +120,16 @@ export async function generateStaticParams() {
 export async function generateMetadata({
   params,
 }: {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
-  const meta = PAGE_META[params.slug];
+  const { slug } = await params;
+  const meta = PAGE_META[slug];
   if (meta) {
     return { title: `${meta.title} | Westside Realty Intelligence` };
   }
 
   // Try blog article
-  const article = await getBlogArticle(params.slug);
+  const article = await getBlogArticle(slug);
   if (article) {
     return {
       title: article.seo_title || `${article.title} | Westside Realty`,
@@ -541,19 +542,21 @@ function LegacyInsightsPage({ slug }: { slug: string }) {
 export default async function InsightsSubPage({
   params,
 }: {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 }) {
+  const { slug } = await params;
+
   // Legacy static pages
-  if (PAGE_META[params.slug]) {
-    return <LegacyInsightsPage slug={params.slug} />;
+  if (PAGE_META[slug]) {
+    return <LegacyInsightsPage slug={slug} />;
   }
 
   // Try blog article from DB
-  const article = await getBlogArticle(params.slug);
+  const article = await getBlogArticle(slug);
   if (article) {
     return <BlogArticlePage article={article} />;
   }
 
   // Unknown slug — render generic placeholder
-  return <LegacyInsightsPage slug={params.slug} />;
+  return <LegacyInsightsPage slug={slug} />;
 }
