@@ -372,13 +372,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       });
     });
 
-    // Blogs
+    // Blog articles (rendered at /insights/[slug])
     blogsResult.data?.forEach((b) => {
       urls.push({
-        url: `${baseUrl}/blog/${b.slug}`,
+        url: `${baseUrl}/insights/${b.slug}`,
         lastModified: b.updated_at ? new Date(b.updated_at) : new Date(),
         changeFrequency: "monthly",
-        priority: 0.6,
+        priority: 0.7,
       });
     });
 
