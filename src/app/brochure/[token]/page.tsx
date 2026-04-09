@@ -70,14 +70,77 @@ async function getBrochureData(token: string) {
   return { brochure, projects };
 }
 
+// ─── North/South Goa market classification (mirrors brochure generator) ─────
+const NORTH_GOA_MARKETS = new Set([
+  "Aldona","Anjuna","Assagao","Ashwem","Bicholim","Calangute",
+  "Candolim","Mapusa","Mandrem","Morjim","Parra","Pernem",
+  "Pilerne","Porvorim","Reis Magos","Siolim","Socorro","Vagator",
+]);
+const SOUTH_GOA_MARKETS = new Set([
+  "Benaulim","Cavelossim","Colva","Dabolim","Majorda",
+  "Margao","Palolem","Varca","Vasco",
+]);
+
+function deriveRegion(filters: BrochureFilters): "north" | "south" | "" {
+  const markets = filters.microMarkets ?? (filters.microMarket ? [filters.microMarket] : []);
+  if (markets.length === 0) return "";
+  const north = markets.filter((m) => NORTH_GOA_MARKETS.has(m));
+  const south = markets.filter((m) => SOUTH_GOA_MARKETS.has(m));
+  if (north.length > 0 && south.length === 0) return "north";
+  if (south.length > 0 && north.length === 0) return "south";
+  return "";
+}
+
 export async function generateMetadata({ params }: { params: Promise<{ token: string }> }): Promise<Metadata> {
   const { token } = await params;
   const result = await getBrochureData(token);
   const title = result?.brochure?.title ?? "Property Options";
+  const count = result?.projects?.length ?? 0;
+  const filters = (result?.brochure?.filters ?? {}) as BrochureFilters;
+  const city   = filters.city ?? "";
+  const region = deriveRegion(filters);
+
+  // Build budget label
+  const budgetMin = filters.budgetMinCr;
+  const budgetMax = filters.budgetMaxCr;
+  let budget = "";
+  if (budgetMin != null && budgetMax != null) {
+    if (budgetMax >= 999) budget = `₹${budgetMin}Cr+`;
+    else budget = `₹${budgetMin}–${budgetMax} Cr`;
+  }
+
+  // Build config label
+  const configs = filters.configs?.join(" / ") ?? "";
+
+  // Dynamic OG image URL
+  const BASE = "https://www.westsiderealty.in";
+  const ogUrl = new URL(`${BASE}/api/og/brochure`);
+  ogUrl.searchParams.set("title", title);
+  ogUrl.searchParams.set("count", String(count));
+  if (city)   ogUrl.searchParams.set("city",   city);
+  if (region) ogUrl.searchParams.set("region", region);
+  if (budget) ogUrl.searchParams.set("budget", budget);
+  if (configs) ogUrl.searchParams.set("configs", configs);
+
+  const description = `${count} ${count === 1 ? "property" : "properties"} curated by your advisor — pricing, RERA details and more.`;
+
   return {
     title: `${title} | Westside Realty`,
-    description: `View curated property options shared by Westside Realty — ${result?.projects?.length ?? 0} projects selected for you.`,
+    description,
     robots: { index: false, follow: false },
+    openGraph: {
+      title: `${title} | Westside Realty`,
+      description,
+      images: [{ url: ogUrl.toString(), width: 1200, height: 630, alt: title }],
+      type: "website",
+      siteName: "Westside Realty",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${title} | Westside Realty`,
+      description,
+      images: [ogUrl.toString()],
+    },
   };
 }
 

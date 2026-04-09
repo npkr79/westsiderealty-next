@@ -25,9 +25,9 @@ const DEFAULT_OG_IMAGE =
   "https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/brand-assets/remax-logo-banner-1200x630.jpg";
 
 export const metadata: Metadata = {
-  title: "RE/MAX Westside Realty | Premium Real Estate in Hyderabad, Goa & Dubai",
+  title: "RE/MAX Westside Realty | Premium Real Estate in Hyderabad & Goa",
   description:
-    "Expert real estate advisory for premium properties in Hyderabad, Goa holiday homes, and Dubai investments. RE/MAX Westside Realty.",
+    "Expert real estate advisory for premium residential properties in Hyderabad and Goa holiday homes. RE/MAX Westside Realty.",
   metadataBase: new URL(BASE_URL),
   
   // Favicon configuration – strictly using /favicon.png from public/favicon.png
@@ -60,9 +60,9 @@ export const metadata: Metadata = {
   },
   
   openGraph: {
-    title: "RE/MAX Westside Realty | Premium Real Estate in Hyderabad, Goa & Dubai",
+    title: "RE/MAX Westside Realty | Premium Real Estate in Hyderabad & Goa",
     description:
-      "Expert real estate advisory for premium properties in Hyderabad, Goa holiday homes, and Dubai investments. RE/MAX Westside Realty.",
+      "Expert real estate advisory for premium residential properties in Hyderabad and Goa holiday homes. RE/MAX Westside Realty.",
     url: BASE_URL,
     siteName: "RE/MAX Westside Realty",
     images: [
@@ -78,9 +78,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "RE/MAX Westside Realty | Premium Real Estate in Hyderabad, Goa & Dubai",
+    title: "RE/MAX Westside Realty | Premium Real Estate in Hyderabad & Goa",
     description:
-      "Expert real estate advisory for premium properties in Hyderabad, Goa holiday homes, and Dubai investments. RE/MAX Westside Realty.",
+      "Expert real estate advisory for premium residential properties in Hyderabad and Goa holiday homes. RE/MAX Westside Realty.",
     images: [DEFAULT_OG_IMAGE],
   },
 };
