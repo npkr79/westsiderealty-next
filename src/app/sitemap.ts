@@ -145,7 +145,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       { url: `${baseUrl}/residential-intelligence`, lastModified: STATIC_DATE, changeFrequency: "weekly", priority: 0.8 },
       { url: `${baseUrl}/hyderabad/buy`, lastModified: STATIC_DATE, changeFrequency: "daily", priority: 0.8 },
       { url: `${baseUrl}/hyderabad/shares`, lastModified: STATIC_DATE, changeFrequency: "weekly", priority: 0.7 },
-      { url: `${baseUrl}/insights`, lastModified: STATIC_DATE, changeFrequency: "weekly", priority: 0.7 }
+      { url: `${baseUrl}/insights`, lastModified: STATIC_DATE, changeFrequency: "weekly", priority: 0.7 },
+      { url: `${baseUrl}/portfolio`, lastModified: new Date(), changeFrequency: "daily", priority: 0.9 }
     );
 
     // Cities and city-specific pages
@@ -348,17 +349,47 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       });
     }
 
-    // Advisory-only projects (e.g. Goa projects not yet in main listings)
+    // Focus projects from advisor_project_intelligence
+    // — Projects WITH listing_url_slug are already in the sitemap via the projects table
+    // — Projects WITHOUT listing_url_slug live at /portfolio/[slug]
+    const { data: focusProjects } = await supabase
+      .from("advisor_project_intelligence")
+      .select("project_slug, city_slug, listing_url_slug, updated_at")
+      .eq("is_focus_project", true)
+      .eq("sale_status", "active");
+
+    (focusProjects ?? []).forEach((fp: any) => {
+      if (fp.listing_url_slug) {
+        // Already included via the projects table query above — skip
+        return;
+      }
+      // Portfolio-only project (no dedicated listing page)
+      urls.push({
+        url: `${baseUrl}/portfolio/${fp.project_slug}`,
+        lastModified: fp.updated_at ? new Date(fp.updated_at) : new Date(),
+        changeFrequency: "weekly",
+        priority: 0.8,
+      });
+    });
+
+    // Non-focus advisory projects (not in focus portfolio) — generate city project URLs
+    // only if not already covered by the main projects table
     const advisoryProjectSlugs = await getAllAdvisoryProjectSlugs();
     advisoryProjectSlugs.forEach(({ citySlug, projectSlug }) => {
       const key = `${citySlug}/${projectSlug}`;
       if (!listingProjectSet.has(key)) {
-        urls.push({
-          url: buildProjectAbsoluteUrl(citySlug, projectSlug),
-          lastModified: new Date(),
-          changeFrequency: "weekly",
-          priority: 0.7,
-        });
+        // Check if this is a focus project (already handled above) — skip if so
+        const isFocus = (focusProjects ?? []).some(
+          (fp: any) => fp.project_slug === projectSlug && fp.city_slug === citySlug
+        );
+        if (!isFocus) {
+          urls.push({
+            url: buildProjectAbsoluteUrl(citySlug, projectSlug),
+            lastModified: new Date(),
+            changeFrequency: "weekly",
+            priority: 0.7,
+          });
+        }
       }
     });
 
