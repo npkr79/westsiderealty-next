@@ -632,6 +632,7 @@ export const projectService = {
       project_highlights: any[] | null;
       location_highlights: any[] | null;
       property_types: any[] | null;
+      hero_image_url: string | null;
     } | null = null;
     {
       const { data: projRow } = await runWithServiceFallback<any>((client) =>
@@ -641,6 +642,7 @@ export const projectService = {
             "project_overview_seo", "westside_realty_review", "seo_title", "meta_description", "h1_title",
             "configurations", "unit_size_range", "min_price", "max_price", "price_display_string",
             "amenities_json", "project_highlights", "location_highlights", "property_types",
+            "hero_image_url",
           ].join(", "))
           .eq("url_slug", projectSlug)
           .maybeSingle()
@@ -668,6 +670,7 @@ export const projectService = {
           project_highlights: toArr((projRow as any).project_highlights),
           location_highlights: toArr((projRow as any).location_highlights),
           property_types: toArr((projRow as any).property_types),
+          hero_image_url: toStringOrNull((projRow as any).hero_image_url),
         };
       }
     }
@@ -1341,6 +1344,7 @@ export const projectService = {
       project_highlights: projectsTableData?.project_highlights ?? null,
       location_highlights: projectsTableData?.location_highlights ?? null,
       property_types: projectsTableData?.property_types ?? null,
+      hero_image_url: projectsTableData?.hero_image_url ?? toStringOrNull((data as any).hero_image_url) ?? null,
       id: String(data.project_id ?? ""),
       project_name: String(data.project_name ?? ""),
       configuration_display: toStringOrNull(data.configuration_display),
