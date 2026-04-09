@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { createServiceClient } from "@/lib/supabase/serviceClient";
 import { PortfolioDetailClient } from "@/components/portfolio/PortfolioDetailClient";
 
-export const revalidate = 3600;
+export const dynamic = "force-dynamic";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

@@ -24,6 +24,7 @@ export interface FocusProject {
   quality_score: number | null;
   needs_review: boolean;
   hero_image_url: string | null;
+  listing_url_slug: string | null; // if set → link to /{city_slug}/projects/{listing_url_slug}
 }
 
 // ─── Design tokens (matches HomepageRedesign) ─────────────────────────────────
@@ -88,7 +89,10 @@ const CITY_LABELS: Record<string, string> = {
 // ─── Project Card ─────────────────────────────────────────────────────────────
 
 function PortfolioCard({ project }: { project: FocusProject }) {
-  const href = project.project_slug ? `/portfolio/${project.project_slug}` : "#";
+  // Hybrid routing: existing listing pages → /{city}/projects/{slug}, new → /portfolio/{slug}
+  const href = project.listing_url_slug && project.city_slug
+    ? `/${project.city_slug}/projects/${project.listing_url_slug}`
+    : `/portfolio/${project.project_slug}`;
 
   const statusStyle = statusColor(project.current_status);
   const typeStyle = typeColor(project.project_type);

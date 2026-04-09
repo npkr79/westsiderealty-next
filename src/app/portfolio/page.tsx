@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { createServiceClient } from "@/lib/supabase/serviceClient";
 import { PortfolioClient, type FocusProject } from "@/components/portfolio/PortfolioClient";
 
-export const revalidate = 3600;
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Active Portfolio | Projects We Market | Westside Realty",
@@ -26,7 +26,7 @@ async function getFocusProjects(): Promise<FocusProject[]> {
     const { data, error } = await supabase
       .from("advisor_project_intelligence")
       .select(
-        "id, project_name, project_slug, project_type, current_status, developer_brand, micro_market, micro_market_slug, city, city_slug, current_price_per_sqft_min, current_price_per_sqft_max, total_units, primary_differentiator, investment_verdict, quality_score, needs_review, hero_image_url"
+        "id, project_name, project_slug, project_type, current_status, developer_brand, micro_market, micro_market_slug, city, city_slug, current_price_per_sqft_min, current_price_per_sqft_max, total_units, primary_differentiator, investment_verdict, quality_score, needs_review, hero_image_url, listing_url_slug"
       )
       .eq("is_focus_project", true)
       .eq("sale_status", "active")
