@@ -2024,6 +2024,23 @@ export default function HomepageRedesign() {
             >
               Browse All Projects
             </Link>
+            <Link
+              href="/portfolio"
+              style={{
+                padding: "15px 32px",
+                background: "transparent",
+                borderRadius: 14,
+                border: `1.5px solid ${C.gold}`,
+                color: C.gold,
+                textDecoration: "none",
+                fontSize: 15,
+                fontWeight: 600,
+                fontFamily: "'Outfit', sans-serif",
+                transition: "background 0.18s, color 0.18s",
+              }}
+            >
+              Our Active Portfolio ↗
+            </Link>
           </div>
 
           {/* Trust signals */}

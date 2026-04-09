@@ -53,6 +53,10 @@ const STATIC_NAV_ITEMS: NavItem[] = [
     cta: { label: "View all developers →", href: "/developers" },
   },
   {
+    label: "Portfolio",
+    href: "/portfolio",
+  },
+  {
     label: "Commercial",
     href: "/commercial-investments",
   },
