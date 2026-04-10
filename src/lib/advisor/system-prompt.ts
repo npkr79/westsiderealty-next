@@ -190,6 +190,7 @@ export interface ParsedIntent {
   budget_min_cr?: number;
   budget_max_cr?: number;
   bhk?: string;
+  property_type?: "villa" | "apartment" | "plot" | "mixed_use" | string;
   project_name?: string;
   project_names?: string[];
   developer_name?: string;
@@ -198,10 +199,23 @@ export interface ParsedIntent {
   ready_to_move?: boolean;
 }
 
-export function buildIntentPrompt(userMessage: string): string {
-  return `Classify the intent of this real estate inquiry and extract key parameters.
+export function buildIntentPrompt(
+  userMessage: string,
+  history?: Array<{ role: string; content: string }>
+): string {
+  // Build a compact conversation context snippet to help infer inherited market/city
+  const contextLines = (history ?? [])
+    .slice(-6) // last 3 turns (user + assistant)
+    .map((m) => `${m.role === "user" ? "User" : "Advisor"}: ${m.content.slice(0, 300)}`)
+    .join("\n");
 
-Message: "${userMessage}"
+  const contextSection = contextLines
+    ? `\nConversation so far (use this to inherit city/market context if the current message is a follow-up):\n${contextLines}\n`
+    : "";
+
+  return `Classify the intent of this real estate inquiry and extract key parameters.
+${contextSection}
+Current message: "${userMessage}"
 
 Respond with ONLY a JSON object (no markdown, no explanation):
 {
@@ -209,6 +223,7 @@ Respond with ONLY a JSON object (no markdown, no explanation):
   "budget_min_cr": <number or null>,
   "budget_max_cr": <number or null>,
   "bhk": "<e.g. '3 BHK' or null>",
+  "property_type": "<'villa'|'apartment'|'plot'|'mixed_use' or null>",
   "project_name": "<single project name or null>",
   "project_names": ["<array of project names when comparing multiple, else null>"],
   "developer_name": "<developer name or null>",
@@ -218,12 +233,14 @@ Respond with ONLY a JSON object (no markdown, no explanation):
 }
 
 Rules:
-- budget: "under 2 crore" → budget_max_cr=2, "2-4 crore" → min=2,max=4, "3 crore budget" → min=2.4,max=3.6 (±20% range)
+- budget: "under 2 crore" → budget_max_cr=2, "2-4 crore" → min=2,max=4, "3 crore budget" → min=2.4,max=3.6 (±20% range), "5Cr+" → budget_min_cr=5, budget_max_cr=null
 - bhk: normalise to "2 BHK", "3 BHK", "4 BHK", "5 BHK"
-- city detection: any mention of goa, calangute, candolim, vagator, anjuna, assagao, morjim, benaulim, porvorim, dona paula → city="goa"; hyderabad, kokapet, neopolis, financial district, gachibowli → city="hyderabad"
+- property_type: "villa" → "villa", "apartment/flat/BHK" → "apartment", "plot/land" → "plot"
+- city detection: any mention of goa, calangute, candolim, vagator, anjuna, assagao, morjim, benaulim, siolim, porvorim, dona paula → city="goa"; hyderabad, kokapet, neopolis, financial district, gachibowli → city="hyderabad"
 - Hyderabad market slugs: "kokapet", "neopolis", "financial-district", "gachibowli", "kondapur", "madhapur", etc.
-- Goa market slugs: "calangute", "candolim", "vagator", "anjuna", "assagao", "morjim", "benaulim", "porvorim", "dona-paula"
+- Goa market slugs: "calangute", "candolim", "vagator", "anjuna", "assagao", "morjim", "siolim", "benaulim", "porvorim", "dona-paula"
 - ready_to_move: "ready", "immediate possession", "move in now" → true; "under construction", "upcoming" → false
-- project names: extract exactly as the user says them. For "Compare Sattva Lakeridge vs My Home Grava" → project_names: ["Sattva Lakeridge", "My Home Grava"], intent: "comparison"
-- when multiple projects are mentioned, use project_names (array); when one project, use project_name (string)`;
+- project names: extract exactly as the user says them.
+- when multiple projects are mentioned, use project_names (array); when one project, use project_name (string)
+- CONTEXT INHERITANCE (critical): If the current message is a follow-up (e.g. "suggest villas", "what about budget", "show me options") WITHOUT explicitly naming a city or market, inherit city and market_slug from the conversation context above. Example: if prior messages discussed "Siolim ROI", and user now says "suggest villas with 5Cr budget", set city="goa" and market_slug="siolim".`;
 }

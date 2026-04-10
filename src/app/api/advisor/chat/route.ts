@@ -111,13 +111,13 @@ async function fetchDataForIntent(
   switch (intent.intent) {
     case "budget_filter": {
       const min = intent.budget_min_cr ?? 0;
-      const max = intent.budget_max_cr ?? 99;
-      return fetchByBudget(min, max, market);
+      const max = intent.budget_max_cr ?? null;
+      return fetchByBudget(min, max, market, intent.city, intent.property_type);
     }
 
     case "bhk_filter": {
       if (!intent.bhk) return fetchAllForGeneral();
-      return fetchByBHK(intent.bhk, market);
+      return fetchByBHK(intent.bhk, market, intent.city, intent.property_type);
     }
 
     case "project_inquiry": {
@@ -317,8 +317,11 @@ export async function POST(request: NextRequest) {
     const sourcePage: string | null = body.source_page ?? request.headers.get("referer") ?? null;
     const projectSlug: string | null = body.projectSlug ?? null;
     const marketSlug: string | null = body.marketSlug ?? null;
+    // Conversation history for context-aware intent classification
+    const history: Array<{ role: string; content: string }> = Array.isArray(body.history)
+      ? body.history
+      : [];
     // visitor_id is generated client-side and persisted in localStorage
-    // Fallback to a server-generated ID if not provided (shouldn't happen in normal flow)
     const visitorId: string = body.visitor_id || `fallback_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
     if (!userMessage) {
@@ -332,7 +335,7 @@ export async function POST(request: NextRequest) {
     const intentRaw = await callClaude(
       HAIKU,
       "You are a JSON extraction assistant. Return only valid JSON.",
-      buildIntentPrompt(userMessage),
+      buildIntentPrompt(userMessage, history),
       300
     );
 
@@ -367,8 +370,8 @@ export async function POST(request: NextRequest) {
     });
 
     if (conversationUuid) {
-      // Don't await — let it run in the background
-      logMessageTurn(conversationUuid, userMessage, responseText, {
+      // Await to ensure Vercel doesn't kill the function before DB write completes
+      await logMessageTurn(conversationUuid, userMessage, responseText, {
         intent: intent.intent,
         latencyMs,
         suggestLeadCapture,

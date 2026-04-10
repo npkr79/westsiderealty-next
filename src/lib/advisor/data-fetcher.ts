@@ -69,6 +69,28 @@ export interface AdvisorQueryResult {
   markets: MarketSummary[];
 }
 
+// ─── Adjacent market map (for fallback when a specific market has few results) ──
+
+const ADJACENT_MARKETS: Record<string, string[]> = {
+  // Goa North
+  siolim:    ["candolim", "calangute", "porvorim", "morjim"],
+  candolim:  ["calangute", "siolim", "porvorim"],
+  calangute: ["candolim", "siolim", "anjuna"],
+  vagator:   ["anjuna", "assagao", "calangute"],
+  anjuna:    ["vagator", "assagao", "calangute"],
+  assagao:   ["anjuna", "vagator"],
+  morjim:    ["siolim", "candolim"],
+  porvorim:  ["candolim", "calangute"],
+  "dona-paula": ["porvorim", "calangute"],
+  // Goa South
+  benaulim:  ["cavelossim", "colva"],
+  // Hyderabad
+  kokapet:   ["neopolis", "financial-district", "gachibowli"],
+  neopolis:  ["kokapet", "financial-district"],
+  "financial-district": ["kokapet", "neopolis", "gachibowli"],
+  gachibowli: ["financial-district", "kondapur", "madhapur"],
+};
+
 // ─── Intent-based fetchers ─────────────────────────────────────────────────────
 
 const PROJECT_SELECT = `
@@ -103,8 +125,10 @@ const MARKET_SELECT = `
 
 export async function fetchByBudget(
   budgetMinCr: number,
-  budgetMaxCr: number,
-  microMarketSlug?: string
+  budgetMaxCr: number | null,
+  microMarketSlug?: string,
+  citySlug?: string,
+  propertyType?: string
 ): Promise<AdvisorQueryResult> {
   const supabase = createServiceClient();
 
@@ -112,25 +136,61 @@ export async function fetchByBudget(
   let configQuery = supabase
     .from("advisor_project_configurations")
     .select(CONFIG_SELECT_WITH_NAME)
-    .lte("price_min_cr", budgetMaxCr)
-    .gte("price_max_cr", budgetMinCr)
     .order("price_min_cr");
+
+  // Budget filtering: min budget means price_max_cr >= budgetMinCr
+  if (budgetMinCr > 0) configQuery = configQuery.gte("price_max_cr", budgetMinCr);
+  if (budgetMaxCr != null) configQuery = configQuery.lte("price_min_cr", budgetMaxCr);
 
   const { data: configRows } = await configQuery;
   const configs = (configRows ?? []) as unknown as ConfigSummary[];
 
-  // Get matching project slugs
-  const slugs = [...new Set(configs.map((c) => c.project_slug))];
+  let slugs = [...new Set(configs.map((c) => c.project_slug))];
   if (!slugs.length) return { projects: [], configs: [], markets: [] };
 
-  let projectQuery = supabase
-    .from("advisor_project_intelligence")
-    .select(PROJECT_SELECT)
-    .in("project_slug", slugs);
-  if (microMarketSlug) projectQuery = projectQuery.eq("micro_market_slug", microMarketSlug);
+  // Build project query with all available filters
+  const buildProjectQuery = (marketSlug?: string) => {
+    let q = supabase
+      .from("advisor_project_intelligence")
+      .select(PROJECT_SELECT)
+      .in("project_slug", slugs);
+    if (marketSlug) q = q.eq("micro_market_slug", marketSlug);
+    if (citySlug)   q = q.eq("city_slug", citySlug);
+    if (propertyType) q = q.eq("project_type", propertyType);
+    return q;
+  };
 
-  const { data: projectRows } = await projectQuery;
-  const projects = (projectRows ?? []) as unknown as ProjectSummary[];
+  let { data: projectRows } = await buildProjectQuery(microMarketSlug);
+  let projects = (projectRows ?? []) as unknown as ProjectSummary[];
+
+  // If specific market requested but too few results, expand to adjacent markets
+  if (microMarketSlug && projects.length < 3) {
+    const adjacent = ADJACENT_MARKETS[microMarketSlug] ?? [];
+    const expandedMarkets = [microMarketSlug, ...adjacent];
+    let eq = supabase
+      .from("advisor_project_intelligence")
+      .select(PROJECT_SELECT)
+      .in("project_slug", slugs)
+      .in("micro_market_slug", expandedMarkets);
+    if (citySlug) eq = eq.eq("city_slug", citySlug);
+    if (propertyType) eq = eq.eq("project_type", propertyType);
+    const { data: expanded } = await eq;
+    if ((expanded ?? []).length > projects.length) {
+      projects = (expanded ?? []) as unknown as ProjectSummary[];
+    }
+  }
+
+  // If still no results and property type was set, relax property type but keep city/market
+  if (projects.length === 0 && propertyType) {
+    let relaxed = supabase
+      .from("advisor_project_intelligence")
+      .select(PROJECT_SELECT)
+      .in("project_slug", slugs);
+    if (microMarketSlug) relaxed = relaxed.eq("micro_market_slug", microMarketSlug);
+    if (citySlug) relaxed = relaxed.eq("city_slug", citySlug);
+    const { data: relaxedRows } = await relaxed;
+    projects = (relaxedRows ?? []) as unknown as ProjectSummary[];
+  }
 
   const marketSlugs = [...new Set(projects.map((p) => p.micro_market_slug))];
   const { data: marketRows } = await supabase
@@ -138,20 +198,25 @@ export async function fetchByBudget(
     .select(MARKET_SELECT)
     .in("market_slug", marketSlugs);
 
+  // Filter configs to only those matching returned projects
+  const returnedSlugs = new Set(projects.map((p) => p.project_slug));
+  const filteredConfigs = configs.filter((c) => returnedSlugs.has(c.project_slug));
+
   return {
     projects,
-    configs,
+    configs: filteredConfigs,
     markets: (marketRows ?? []) as unknown as MarketSummary[],
   };
 }
 
 export async function fetchByBHK(
   bhk: string,
-  microMarketSlug?: string
+  microMarketSlug?: string,
+  citySlug?: string,
+  propertyType?: string
 ): Promise<AdvisorQueryResult> {
   const supabase = createServiceClient();
 
-  // Match config_type like "3 BHK" or "3BHK"
   const normalised = bhk.replace(/\s+/g, " ").toUpperCase();
 
   const { data: configRows } = await supabase
@@ -169,9 +234,28 @@ export async function fetchByBHK(
     .select(PROJECT_SELECT)
     .in("project_slug", slugs);
   if (microMarketSlug) projectQuery = projectQuery.eq("micro_market_slug", microMarketSlug);
+  if (citySlug)        projectQuery = projectQuery.eq("city_slug", citySlug);
+  if (propertyType)    projectQuery = projectQuery.eq("project_type", propertyType);
 
-  const { data: projectRows } = await projectQuery;
-  const projects = (projectRows ?? []) as unknown as ProjectSummary[];
+  let { data: projectRows } = await projectQuery;
+  let projects = (projectRows ?? []) as unknown as ProjectSummary[];
+
+  // Adjacent market fallback
+  if (microMarketSlug && projects.length < 3) {
+    const adjacent = ADJACENT_MARKETS[microMarketSlug] ?? [];
+    const expandedMarkets = [microMarketSlug, ...adjacent];
+    let eq = supabase
+      .from("advisor_project_intelligence")
+      .select(PROJECT_SELECT)
+      .in("project_slug", slugs)
+      .in("micro_market_slug", expandedMarkets);
+    if (citySlug) eq = eq.eq("city_slug", citySlug);
+    if (propertyType) eq = eq.eq("project_type", propertyType);
+    const { data: expanded } = await eq;
+    if ((expanded ?? []).length > projects.length) {
+      projects = (expanded ?? []) as unknown as ProjectSummary[];
+    }
+  }
 
   const marketSlugs = [...new Set(projects.map((p) => p.micro_market_slug))];
   const { data: marketRows } = await supabase
@@ -179,7 +263,12 @@ export async function fetchByBHK(
     .select(MARKET_SELECT)
     .in("market_slug", marketSlugs);
 
-  return { projects, configs, markets: (marketRows ?? []) as unknown as MarketSummary[] };
+  const returnedSlugs = new Set(projects.map((p) => p.project_slug));
+  return {
+    projects,
+    configs: configs.filter((c) => returnedSlugs.has(c.project_slug)),
+    markets: (marketRows ?? []) as unknown as MarketSummary[],
+  };
 }
 
 export async function fetchByMarket(
