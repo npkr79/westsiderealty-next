@@ -38,6 +38,19 @@ function getPageProjectSlug(): string | null {
   return match?.[1] ?? null;
 }
 
+const VISITOR_ID_KEY = "wsr_visitor_id";
+
+/** Returns a persistent visitor ID from localStorage, creating one if absent. */
+function getOrCreateVisitorId(): string {
+  if (typeof window === "undefined") return `srv_${Date.now()}`;
+  let id = localStorage.getItem(VISITOR_ID_KEY);
+  if (!id) {
+    id = `v_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+    localStorage.setItem(VISITOR_ID_KEY, id);
+  }
+  return id;
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 const ADVISOR_SEEN_KEY = "wsr_advisor_seen";
@@ -139,6 +152,7 @@ export default function AdvisorChat() {
           body: JSON.stringify({
           message: "__market_context__",
           marketSlug,
+          visitor_id: getOrCreateVisitorId(),
           source_page: typeof window !== "undefined" ? window.location.pathname : "/",
         }),
         });
@@ -169,6 +183,7 @@ export default function AdvisorChat() {
         body: JSON.stringify({
           message: "__context__",
           projectSlug: slug,
+          visitor_id: getOrCreateVisitorId(),
           source_page: typeof window !== "undefined" ? window.location.pathname : "/",
         }),
       });
@@ -236,6 +251,7 @@ export default function AdvisorChat() {
         body: JSON.stringify({
           message: text,
           history,
+          visitor_id: getOrCreateVisitorId(),
           ...(conversationId ? { conversation_id: conversationId } : {}),
           ...(pageProjectSlug ? { projectSlug: pageProjectSlug } : {}),
           ...(pageMarketSlugRef.current ? { marketSlug: pageMarketSlugRef.current } : {}),

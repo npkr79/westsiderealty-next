@@ -216,10 +216,11 @@ async function fetchDataForIntent(
 async function upsertConversationSession(
   conversationUuid: string | null,
   {
+    visitorId,
     sourcePage,
     projectSlug,
     marketSlug,
-  }: { sourcePage: string | null; projectSlug: string | null; marketSlug: string | null }
+  }: { visitorId: string; sourcePage: string | null; projectSlug: string | null; marketSlug: string | null }
 ): Promise<string | null> {
   try {
     const supabase = createServiceClient();
@@ -237,6 +238,7 @@ async function upsertConversationSession(
     const { data, error } = await supabase
       .from("advisor_conversations")
       .insert({
+        visitor_id: visitorId,
         channel: "web_chat",
         source_page: sourcePage,
         source_page_type: sourcePageType,
@@ -251,7 +253,7 @@ async function upsertConversationSession(
       .single();
 
     if (error || !data) {
-      console.error("[advisor/chat] failed to create conversation session:", error?.message);
+      console.error("[advisor/chat] failed to create conversation session:", error?.message, error?.details);
       return null;
     }
     return data.id as string;
@@ -315,6 +317,9 @@ export async function POST(request: NextRequest) {
     const sourcePage: string | null = body.source_page ?? request.headers.get("referer") ?? null;
     const projectSlug: string | null = body.projectSlug ?? null;
     const marketSlug: string | null = body.marketSlug ?? null;
+    // visitor_id is generated client-side and persisted in localStorage
+    // Fallback to a server-generated ID if not provided (shouldn't happen in normal flow)
+    const visitorId: string = body.visitor_id || `fallback_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
     if (!userMessage) {
       return NextResponse.json({ error: "message is required" }, { status: 400 });
@@ -355,6 +360,7 @@ export async function POST(request: NextRequest) {
 
     // Step 5: Log to Supabase (fire-and-forget — never blocks the response)
     const conversationUuid = await upsertConversationSession(incomingConversationId, {
+      visitorId,
       sourcePage,
       projectSlug,
       marketSlug,
