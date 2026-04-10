@@ -1,0 +1,208 @@
+name: Weekly SEO Agent
+
+# Replaces: .github/workflows/seo-audit.yml (which is now manual-trigger only)
+#
+# This is the primary automated SEO pipeline. It runs weekly and:
+#   1. Audits ISR violations, missing canonicals, PageSpeed, Vercel 500s
+#   2. Pulls Google Search Console data (28-day CTR + query data)
+#   3. Uses Claude to rewrite meta title/description for low-CTR templates
+#   4. Reports schema gaps (structured data improvements needed)
+#   5. Submits updated pages to Google Indexing API
+#   6. Re-submits sitemap to Google Search Console
+#   7. Opens a PR if any changes were made
+#
+# Required GitHub secrets:
+#   ANTHROPIC_API_KEY             — Claude API key
+#   GOOGLE_SERVICE_ACCOUNT_EMAIL  — GCP service account email
+#   GOOGLE_PRIVATE_KEY            — GCP service account private key (RSA PEM, \n escaped)
+#   GOOGLE_SITE_URL               — https://www.westsiderealty.in
+#   GH_PAT                        — GitHub PAT with repo + PR write permissions
+#   PAGESPEED_API_KEY             — Google PageSpeed Insights API key (optional)
+#   VERCEL_TOKEN                  — Vercel API token (optional, for 500 error check)
+#   VERCEL_PROJECT_ID             — Vercel project ID (optional)
+#   VERCEL_TEAM_ID                — Vercel team ID (optional)
+
+on:
+  schedule:
+    # Every Sunday at 11 PM IST (5:30 PM UTC)
+    - cron: "30 17 * * 0"
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Run mode"
+        required: false
+        default: "full"
+        type: choice
+        options:
+          - full           # Phase 1 (code) + Phase 2 (GSC) + Phase 3 (index)
+          - code-only      # Phase 1 only — ISR, canonicals, PageSpeed
+          - gsc-only       # Phase 2 only — CTR audit + meta optimization
+          - dry-run        # Audit + analyze only, no file changes or API calls
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  seo-agent:
+    name: SEO Agent (${{ github.event.inputs.mode || 'full' }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GH_PAT }}
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Determine agent flags
+        id: flags
+        run: |
+          MODE="${{ github.event.inputs.mode || 'full' }}"
+          FLAGS=""
+          if [ "$MODE" = "code-only" ]; then FLAGS="--code-only"; fi
+          if [ "$MODE" = "gsc-only" ]; then FLAGS="--gsc-only"; fi
+          if [ "$MODE" = "dry-run" ]; then FLAGS="--dry-run"; fi
+          echo "flags=$FLAGS" >> $GITHUB_OUTPUT
+          echo "Agent mode: $MODE (flags: '$FLAGS')"
+
+      - name: Run SEO Agent
+        id: agent
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GOOGLE_SERVICE_ACCOUNT_EMAIL: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_EMAIL }}
+          GOOGLE_PRIVATE_KEY: ${{ secrets.GOOGLE_PRIVATE_KEY }}
+          GOOGLE_SITE_URL: ${{ secrets.GOOGLE_SITE_URL || 'https://www.westsiderealty.in' }}
+          PAGESPEED_API_KEY: ${{ secrets.PAGESPEED_API_KEY }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          VERCEL_TEAM_ID: ${{ secrets.VERCEL_TEAM_ID }}
+        run: |
+          node scripts/seo-agent/agent.mjs ${{ steps.flags.outputs.flags }} > /tmp/agent-summary.json 2>&1 || true
+          echo "Agent run complete"
+
+          # Parse summary for GitHub Actions outputs
+          HAS_CHANGES=$(node -e "
+            try {
+              const s = JSON.parse(require('fs').readFileSync('/tmp/agent-summary.json','utf8'));
+              console.log(s.hasChanges ? 'true' : 'false');
+            } catch { console.log('false'); }
+          " 2>/dev/null || echo "false")
+          echo "has_changes=$HAS_CHANGES" >> $GITHUB_OUTPUT
+
+          META_FIXED=$(node -e "
+            try {
+              const s = JSON.parse(require('fs').readFileSync('/tmp/agent-summary.json','utf8'));
+              console.log(s.metaTemplatesOptimized || 0);
+            } catch { console.log(0); }
+          " 2>/dev/null || echo "0")
+          echo "meta_fixed=$META_FIXED" >> $GITHUB_OUTPUT
+
+          CODE_FIXED=$(node -e "
+            try {
+              const s = JSON.parse(require('fs').readFileSync('/tmp/agent-summary.json','utf8'));
+              console.log(s.codeFixesApplied || 0);
+            } catch { console.log(0); }
+          " 2>/dev/null || echo "0")
+          echo "code_fixed=$CODE_FIXED" >> $GITHUB_OUTPUT
+
+          PRIORITY_PAGES=$(node -e "
+            try {
+              const s = JSON.parse(require('fs').readFileSync('/tmp/agent-summary.json','utf8'));
+              console.log(s.priorityPagesFound || 0);
+            } catch { console.log(0); }
+          " 2>/dev/null || echo "0")
+          echo "priority_pages=$PRIORITY_PAGES" >> $GITHUB_OUTPUT
+
+      - name: Check for file changes
+        id: changes
+        run: |
+          git diff --quiet src/ && echo "has_file_changes=false" >> $GITHUB_OUTPUT || echo "has_file_changes=true" >> $GITHUB_OUTPUT
+
+      - name: Create PR branch and commit
+        if: |
+          steps.changes.outputs.has_file_changes == 'true' &&
+          github.event.inputs.mode != 'dry-run'
+        run: |
+          WEEK=$(date +%Y-W%V)
+          BRANCH="seo-agent/${WEEK}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git add src/
+          git commit -m "chore(seo): automated optimization for week ${WEEK}
+
+          - Code fixes: ${{ steps.agent.outputs.code_fixed }} applied
+          - Meta templates optimized: ${{ steps.agent.outputs.meta_fixed }}
+          - Priority pages identified: ${{ steps.agent.outputs.priority_pages }}
+
+          Generated by weekly SEO agent.
+          Co-Authored-By: github-actions[bot] <github-actions[bot]@users.noreply.github.com>"
+          git push origin "$BRANCH"
+          echo "branch=$BRANCH" >> $GITHUB_ENV
+
+      - name: Open pull request
+        if: |
+          steps.changes.outputs.has_file_changes == 'true' &&
+          github.event.inputs.mode != 'dry-run'
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          WEEK=$(date +%Y-W%V)
+          PR_BODY=""
+          if [ -f ".seo-pr-body.md" ]; then
+            PR_BODY=$(cat .seo-pr-body.md)
+          else
+            PR_BODY="## SEO Agent — Week ${WEEK}\n\nAutomated SEO optimization. See workflow logs for details."
+          fi
+
+          gh pr create \
+            --title "chore(seo): weekly optimization — week ${WEEK}" \
+            --body "$PR_BODY" \
+            --base main \
+            --head "seo-agent/${WEEK}" \
+            --label "seo,automated" 2>/dev/null || \
+          gh pr create \
+            --title "chore(seo): weekly optimization — week ${WEEK}" \
+            --body "$PR_BODY" \
+            --base main \
+            --head "seo-agent/${WEEK}"
+
+      - name: Post summary — changes found
+        if: steps.changes.outputs.has_file_changes == 'true'
+        run: |
+          echo "## SEO Agent Result" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "🔧 **Code fixes applied:** ${{ steps.agent.outputs.code_fixed }}" >> $GITHUB_STEP_SUMMARY
+          echo "✍️ **Meta templates optimized:** ${{ steps.agent.outputs.meta_fixed }}" >> $GITHUB_STEP_SUMMARY
+          echo "📉 **CTR priority pages found:** ${{ steps.agent.outputs.priority_pages }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "PR opened for review → merge after checking the diff." >> $GITHUB_STEP_SUMMARY
+          if [ -f ".seo-pr-body.md" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            cat .seo-pr-body.md >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Post summary — no changes
+        if: steps.changes.outputs.has_file_changes == 'false'
+        run: |
+          echo "## SEO Agent Result" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ No file changes this week." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**CTR priority pages found:** ${{ steps.agent.outputs.priority_pages }}" >> $GITHUB_STEP_SUMMARY
+          echo "(These pages have a CTR gap but their template metadata is already optimal)" >> $GITHUB_STEP_SUMMARY
+          if [ -f ".seo-pr-body.md" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            cat .seo-pr-body.md >> $GITHUB_STEP_SUMMARY
+          fi
