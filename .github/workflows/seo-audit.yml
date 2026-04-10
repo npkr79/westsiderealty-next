@@ -1,9 +1,10 @@
-name: Weekly SEO Audit & Auto-Fix
+name: SEO Code Audit (manual)
+
+# Scheduling has moved to seo-agent.yml (Weekly SEO Agent).
+# This workflow is kept for manual/isolated code-only audits only.
+# Trigger via GitHub Actions → Run workflow when needed.
 
 on:
-  schedule:
-    # Every Sunday at 11 PM IST (5:30 PM UTC)
-    - cron: "30 17 * * 0"
   workflow_dispatch:
     inputs:
       dry_run:
