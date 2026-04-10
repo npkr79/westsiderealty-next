@@ -206,3 +206,29 @@ jobs:
             echo "" >> $GITHUB_STEP_SUMMARY
             cat .seo-pr-body.md >> $GITHUB_STEP_SUMMARY
           fi
+
+      - name: Notify Slack
+        if: always() && env.SLACK_WEBHOOK != ''
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          if [ "${{ steps.changes.outputs.has_file_changes }}" = "true" ]; then
+            ICON="🔧"
+            STATUS="PR opened with ${{ steps.agent.outputs.code_fixed }} code fix(es) + ${{ steps.agent.outputs.meta_fixed }} meta update(s)"
+            COLOR="#36a64f"
+          else
+            ICON="✅"
+            STATUS="No changes needed. ${{ steps.agent.outputs.priority_pages }} CTR opportunity pages tracked."
+            COLOR="#2eb886"
+          fi
+          WEEK=$(date +%Y-W%V)
+          curl -s -X POST "$SLACK_WEBHOOK" \
+            -H 'Content-Type: application/json' \
+            -d "{
+              \"attachments\": [{
+                \"color\": \"$COLOR\",
+                \"title\": \"$ICON SEO Agent — Week $WEEK\",
+                \"text\": \"$STATUS\",
+                \"footer\": \"westsiderealty.in | <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}|View run>\"
+              }]
+            }"
