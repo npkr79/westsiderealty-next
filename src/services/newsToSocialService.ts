@@ -321,6 +321,7 @@ export async function createSocialPosts(
     hashtags: c.hashtags,
     image_url: imageUrl,
     platform: c.platform,
+    content_type: "post",
     status: "pending_review",
     post_category: "news",
     news_article_id: article.id,
