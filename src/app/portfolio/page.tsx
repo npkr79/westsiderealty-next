@@ -31,6 +31,7 @@ async function getFocusProjects(): Promise<FocusProject[]> {
   try {
     const supabase = createServiceClient();
 
+    // Fetch focus projects from advisor table
     const { data, error } = await supabase
       .from("advisor_project_intelligence")
       .select(
@@ -45,7 +46,41 @@ async function getFocusProjects(): Promise<FocusProject[]> {
       return [];
     }
 
-    return (data ?? []) as FocusProject[];
+    const projects = (data ?? []) as FocusProject[];
+
+    // Secondary: fetch min_area from projects table for linked projects
+    // Used to compute "From ₹X Cr" total flat price instead of per-sqft
+    const linkedSlugs = projects
+      .map((p) => p.listing_url_slug)
+      .filter((s): s is string => !!s);
+
+    if (linkedSlugs.length > 0) {
+      const { data: projectRows } = await supabase
+        .from("projects")
+        .select("url_slug, min_area, max_area")
+        .in("url_slug", linkedSlugs);
+
+      const areaMap = new Map(
+        (projectRows ?? []).map((r: { url_slug: string; min_area: number | null; max_area: number | null }) => [
+          r.url_slug,
+          { min_area: r.min_area, max_area: r.max_area },
+        ])
+      );
+
+      // Attach area data → compute min_flat_price
+      for (const p of projects) {
+        if (p.listing_url_slug && areaMap.has(p.listing_url_slug)) {
+          const { min_area, max_area } = areaMap.get(p.listing_url_slug)!;
+          p.min_area_sqft = min_area ?? null;
+          p.max_area_sqft = max_area ?? null;
+          if (p.current_price_per_sqft_min && min_area) {
+            p.min_flat_price = Math.round(p.current_price_per_sqft_min * min_area);
+          }
+        }
+      }
+    }
+
+    return projects;
   } catch (err) {
     console.error("[Portfolio] Unexpected error:", err);
     return [];
@@ -69,7 +104,14 @@ export default async function PortfolioPage() {
       name: p.project_name,
       url: `https://www.westsiderealty.in/portfolio/${p.project_slug}`,
       ...(p.hero_image_url ? { image: p.hero_image_url } : {}),
-      ...(p.current_price_per_sqft_min ? {
+      ...(p.min_flat_price ? {
+        offers: {
+          "@type": "Offer",
+          priceCurrency: "INR",
+          price: p.min_flat_price,
+          availability: "https://schema.org/InStock",
+        },
+      } : p.current_price_per_sqft_min ? {
         offers: {
           "@type": "Offer",
           priceCurrency: "INR",

@@ -27,6 +27,10 @@ export interface FocusProject {
   needs_review: boolean;
   hero_image_url: string | null;
   listing_url_slug: string | null;
+  // Enriched from projects table — used to compute total flat price
+  min_area_sqft?: number | null;
+  max_area_sqft?: number | null;
+  min_flat_price?: number | null;
 }
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
@@ -60,7 +64,26 @@ function formatType(type: string | null) {
   return type.charAt(0).toUpperCase() + type.slice(1);
 }
 
-function priceLabel(min: number | null, max: number | null): string | null {
+// Format a total rupee amount as "₹X.XX Cr" or "₹XX L"
+function formatTotalPrice(amount: number): string {
+  if (amount >= 10_000_000) {
+    return `₹${(amount / 10_000_000).toFixed(2)} Cr`;
+  }
+  if (amount >= 100_000) {
+    return `₹${Math.round(amount / 100_000)} L`;
+  }
+  return `₹${amount.toLocaleString("en-IN")}`;
+}
+
+// Returns the price label for a card.
+// Prefers "From ₹X Cr" total flat price (needs min_flat_price).
+// Falls back to per-sqft if area data is unavailable.
+function priceLabel(project: FocusProject): string | null {
+  if (project.min_flat_price) {
+    return `From ${formatTotalPrice(project.min_flat_price)}`;
+  }
+  const min = project.current_price_per_sqft_min;
+  const max = project.current_price_per_sqft_max;
   if (!min) return null;
   const fmt = (v: number) => `₹${Math.round(v / 1000)}K`;
   if (max && max !== min) return `${fmt(min)}–${fmt(max)} /sqft`;
@@ -98,7 +121,7 @@ function PortfolioCard({ project }: { project: FocusProject }) {
 
   const statusStyle = statusColor(project.current_status);
   const typeStyle = typeColor(project.project_type);
-  const price = priceLabel(project.current_price_per_sqft_min, project.current_price_per_sqft_max);
+  const price = priceLabel(project);
   const cityLabel = project.city_slug ? (CITY_LABELS[project.city_slug] ?? project.city ?? "") : (project.city ?? "");
 
   return (

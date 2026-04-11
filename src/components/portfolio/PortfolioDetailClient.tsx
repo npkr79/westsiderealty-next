@@ -362,13 +362,43 @@ export function PortfolioDetailClient({ project }: { project: FocusProjectDetail
             <div className="pd-stats">
               {project.developer_brand && <StatBox label="Developer" value={project.developer_brand} />}
               {project.project_type && <StatBox label="Type" value={project.project_type.charAt(0).toUpperCase() + project.project_type.slice(1)} />}
+              {project.project_segment && <StatBox label="Segment" value={project.project_segment.charAt(0).toUpperCase() + project.project_segment.slice(1)} />}
               {formatStatus(project.current_status) && <StatBox label="Status" value={formatStatus(project.current_status)!} />}
               {project.total_units && <StatBox label="Total Units" value={`${project.total_units}`} />}
               {project.land_area_acres && <StatBox label="Land Area" value={`${project.land_area_acres} acres`} />}
               {project.possession_date && <StatBox label="Possession" value={formatDate(project.possession_date) ?? ""} />}
               {price && <StatBox label="Indicative Price" value={price} />}
               {project.total_floors_max && <StatBox label="Max Floors" value={`G+${project.total_floors_max}`} />}
+              {project.launch_price_per_sqft && project.current_price_per_sqft_min && project.launch_price_per_sqft < project.current_price_per_sqft_min && (
+                <StatBox
+                  label="Since Launch"
+                  value={`+${Math.round(((project.current_price_per_sqft_min - project.launch_price_per_sqft) / project.launch_price_per_sqft) * 100)}%`}
+                />
+              )}
+              {project.approval_authority && <StatBox label="Approved By" value={project.approval_authority} />}
             </div>
+
+            {/* RERA verification badge */}
+            {(project.rera_id || project.rera_verified) && (
+              <div style={{ marginTop: 14, display: "flex", alignItems: "center", gap: 10, background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 10, padding: "10px 16px" }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.green} strokeWidth="2.5">
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" />
+                </svg>
+                <span style={{ fontSize: 13, color: C.green, fontWeight: 600 }}>
+                  RERA Verified {project.rera_id ? `· ${project.rera_id}` : ""}
+                </span>
+              </div>
+            )}
+
+            {/* Target buyer segment */}
+            {project.target_buyer_segment && (
+              <div style={{ marginTop: 14, background: C.bgCard, border: `1px solid ${C.border}`, borderRadius: 10, padding: "12px 16px" }}>
+                <p style={{ fontSize: 11, fontWeight: 700, color: C.textMuted, textTransform: "uppercase", letterSpacing: "0.06em", margin: "0 0 6px" }}>
+                  Best Suited For
+                </p>
+                <p style={{ fontSize: 14, color: C.text, margin: 0, lineHeight: 1.55 }}>{project.target_buyer_segment}</p>
+              </div>
+            )}
           </section>
 
           {/* Location */}
@@ -467,6 +497,27 @@ export function PortfolioDetailClient({ project }: { project: FocusProjectDetail
                   </div>
                 </div>
               )}
+            </section>
+          )}
+
+          {/* Returns & Appreciation */}
+          {(project.total_appreciation_pct || project.rental_yield_pct || project.launch_price_per_sqft) && (
+            <section>
+              <SectionTitle>Returns & Appreciation</SectionTitle>
+              <div className="pd-stats">
+                {project.total_appreciation_pct && (
+                  <StatBox label="Total Appreciation" value={`${project.total_appreciation_pct}%`} />
+                )}
+                {project.rental_yield_pct && (
+                  <StatBox label="Rental Yield" value={`${project.rental_yield_pct}% p.a.`} />
+                )}
+                {project.launch_price_per_sqft && (
+                  <StatBox label="Launch Price" value={`₹${Math.round(project.launch_price_per_sqft / 1000)}K /sqft`} />
+                )}
+                {project.current_price_per_sqft_min && (
+                  <StatBox label="Current Price" value={`₹${Math.round(project.current_price_per_sqft_min / 1000)}K /sqft`} />
+                )}
+              </div>
             </section>
           )}
 

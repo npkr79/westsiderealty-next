@@ -54,6 +54,14 @@ export interface FocusProjectDetail {
   official_website: string | null;
   needs_review: boolean;
   review_notes: string | null;
+  // Additional advisor intelligence fields
+  project_segment: string | null;
+  target_buyer_segment: string | null;
+  rera_verified: boolean;
+  total_appreciation_pct: number | null;
+  rental_yield_pct: number | null;
+  launch_price_per_sqft: number | null;
+  approval_authority: string | null;
 }
 
 // ─── Data fetch ───────────────────────────────────────────────────────────────
