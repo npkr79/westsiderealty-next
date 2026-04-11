@@ -188,18 +188,29 @@ function decodeHtmlEntities(text: string): string {
 }
 
 // Cloudinary text overlay encoding — spaces must be %20 (not underscore).
-// Underscore is a literal underscore in Cloudinary text params.
+// Non-ASCII chars (e.g. ₹) must also be percent-encoded or Cloudinary breaks.
 function encodeCloudinaryText(text: string): string {
   return text
-    .replace(/%/g, "%25")      // percent first (avoid double-encoding)
-    .replace(/ /g, "%20")      // space → %20 (renders as space in overlay)
-    .replace(/,/g, "%2C")      // comma (would break transformation params)
-    .replace(/\//g, "%2F")     // slash
-    .replace(/\?/g, "%3F")
-    .replace(/#/g, "%23")
-    .replace(/&/g, "%26")
-    .replace(/\+/g, "%2B")
-    .replace(/\$/g, "%24");
+    .split("")
+    .map((char) => {
+      const code = char.charCodeAt(0);
+      // Encode all non-ASCII (including ₹, smart quotes, etc.)
+      if (code > 127) return encodeURIComponent(char);
+      // Encode ASCII chars that break Cloudinary transformation params
+      switch (char) {
+        case "%": return "%25";
+        case " ": return "%20";
+        case ",": return "%2C";
+        case "/": return "%2F";
+        case "?": return "%3F";
+        case "#": return "%23";
+        case "&": return "%26";
+        case "+": return "%2B";
+        case "$": return "%24";
+        default:  return char;
+      }
+    })
+    .join("");
 }
 
 // Inject Cloudinary text overlay transformation into a Cloudinary URL.
@@ -223,6 +234,21 @@ function applyCloudinaryTextOverlay(cloudinaryUrl: string, headline: string): st
   ].join(",");
 
   return `${before}/upload/${textLayer}/${after}`;
+}
+
+// Build a dark gradient strip SVG for the bottom of the image.
+// Pure geometry only — NO text — so no system fonts are needed on Vercel.
+function buildGradientStripSvg(): Buffer {
+  const svg = `<svg width="1024" height="1024" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%"   stop-color="black" stop-opacity="0"/>
+        <stop offset="100%" stop-color="black" stop-opacity="0.82"/>
+      </linearGradient>
+    </defs>
+    <rect x="0" y="580" width="1024" height="444" fill="url(#g)"/>
+  </svg>`;
+  return Buffer.from(svg);
 }
 
 function buildImagePrompt(article: NewsArticle): string {
@@ -302,7 +328,7 @@ export async function generateImage(article: NewsArticle): Promise<string> {
   const rawImageBuffer = Buffer.from(base64Image, "base64");
 
   // Fetch and resize logo for top-right corner
-  console.log("[NewsToSocial] Compositing logo");
+  console.log("[NewsToSocial] Compositing gradient + logo");
   const logoFetch = await fetch(LOGO_URL);
   const logoBuffer = Buffer.from(await logoFetch.arrayBuffer());
   const logoResized = await sharp(logoBuffer)
@@ -311,9 +337,14 @@ export async function generateImage(article: NewsArticle): Promise<string> {
   const logoMeta = await sharp(logoResized).metadata();
   const logoWidth = logoMeta.width ?? 160;
 
+  // Dark gradient strip (SVG, pure geometry — no fonts needed on Vercel)
+  const gradientStrip = buildGradientStripSvg();
+
   const compositedBuffer = await sharp(rawImageBuffer)
     .composite([
-      // Logo top-right (text overlay applied via Cloudinary URL transformation)
+      // 1. Dark gradient at the bottom so white text is always readable
+      { input: gradientStrip, top: 0, left: 0 },
+      // 2. Logo top-right
       { input: logoResized, top: 20, left: 1024 - logoWidth - 20 },
     ])
     .jpeg({ quality: 92 })
