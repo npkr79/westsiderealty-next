@@ -94,23 +94,28 @@ export async function generateCaptions(
     .filter(Boolean)
     .join("\n");
 
-  const systemPrompt = `You are a social media expert for REMAX Westside Realty, a premium real estate agency in Hyderabad, India.
-You create engaging social media posts about Indian real estate and infrastructure news that position the brand as a knowledgeable market advisor.
-Always connect news to what it means for property buyers, investors, or the market. Never post raw news — add context and insight.`;
+  const systemPrompt = `You are a social media content writer for REMAX Westside Realty, a premium real estate agency in Hyderabad, India.
+Your role is to share real estate and infrastructure news with clear market context — purely informational, like a trusted market analyst.
+CRITICAL TONE RULES:
+- NEVER use calls-to-action, sales language, or push people towards transactions
+- NEVER use phrases like "Thinking of buying?", "Contact us", "Invest now", "Don't miss out", "Reach out", "Book a consultation", etc.
+- ALWAYS write as if sharing useful market knowledge — explain what the news means, why it matters, what the broader implication is
+- The brand signature at the end is sufficient; no extra CTA needed`;
 
   const userPrompt = `Generate social media captions for all 4 platforms for this real estate news article:
 
 ${context}
 
 RULES per platform:
-- LinkedIn: 200-400 chars, professional market insight + implication, 3-4 hashtags, NO emojis, end with "— REMAX Westside Realty"
-- Instagram: 150-250 chars, hook line + key stat or insight, emoji-rich, 8-10 hashtags, end with "— REMAX Westside Realty"
-- Facebook: 200-350 chars, conversational tone + useful detail for homebuyers, 5-6 hashtags, end with "— REMAX Westside Realty"
-- X: max 240 chars total (including hashtags), sharp headline + one key stat or angle, 2 hashtags only, end with "— REMAX Westside Realty"
+- LinkedIn: 200-400 chars, professional market insight + sector implication, 3-4 hashtags, NO emojis, end with "— REMAX Westside Realty"
+- Instagram: 150-250 chars, lead with the key fact + market context, emoji-rich (news/info emojis, not money/deal emojis), 8-10 hashtags, end with "— REMAX Westside Realty"
+- Facebook: 200-350 chars, explain what happened and what it means for the market in plain language, 5-6 hashtags, end with "— REMAX Westside Realty"
+- X: max 240 chars total (including hashtags), key fact + one clear implication, 2 hashtags only, end with "— REMAX Westside Realty"
+
+TONE: Informational and analytical. Share knowledge, not sales pitches. Write like a market analyst or journalist, not a salesperson.
 
 FORMATTING for Facebook and LinkedIn only — use **double asterisks** to mark text that should appear bold:
-- Wrap the opening hook/question line: **Planning your next property purchase?**
-- Wrap strong lead-in words: **Consider this:** or **Here's why it matters:**
+- Wrap strong lead-in words: **Here's what this means:** or **Key development:**
 - Wrap the closing signature: **— REMAX Westside Realty**
 - Body sentences: plain text, no asterisks
 - Instagram and X: plain text only, no asterisks at all
@@ -236,19 +241,28 @@ function applyCloudinaryTextOverlay(cloudinaryUrl: string, headline: string): st
   return `${before}/upload/${textLayer}/${after}`;
 }
 
-// Build a dark gradient strip SVG for the bottom of the image.
-// Pure geometry only — NO text — so no system fonts are needed on Vercel.
-function buildGradientStripSvg(): Buffer {
-  const svg = `<svg width="1024" height="1024" xmlns="http://www.w3.org/2000/svg">
-    <defs>
-      <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%"   stop-color="black" stop-opacity="0"/>
-        <stop offset="100%" stop-color="black" stop-opacity="0.82"/>
-      </linearGradient>
-    </defs>
-    <rect x="0" y="580" width="1024" height="444" fill="url(#g)"/>
-  </svg>`;
-  return Buffer.from(svg);
+// Build a dark-to-transparent gradient strip using raw RGBA pixels.
+// No SVG / librsvg needed — pure Node.js math, works on every Vercel runtime.
+async function buildGradientStripBuffer(): Promise<Buffer> {
+  const W = 1024;
+  const H = 440; // height of the gradient zone at the bottom
+  const raw = Buffer.alloc(W * H * 4); // RGBA
+
+  for (let y = 0; y < H; y++) {
+    // Alpha ramps from 0 (top) to ~210 (~82% of 255) at the bottom
+    const alpha = Math.round((y / (H - 1)) * 210);
+    for (let x = 0; x < W; x++) {
+      const i = (y * W + x) * 4;
+      raw[i] = 0;       // R
+      raw[i + 1] = 0;   // G
+      raw[i + 2] = 0;   // B
+      raw[i + 3] = alpha;
+    }
+  }
+
+  return sharp(raw, { raw: { width: W, height: H, channels: 4 } })
+    .png()
+    .toBuffer();
 }
 
 function buildImagePrompt(article: NewsArticle): string {
@@ -327,23 +341,24 @@ export async function generateImage(article: NewsArticle): Promise<string> {
 
   const rawImageBuffer = Buffer.from(base64Image, "base64");
 
-  // Fetch and resize logo for top-right corner
+  // Build gradient + fetch logo in parallel
   console.log("[NewsToSocial] Compositing gradient + logo");
-  const logoFetch = await fetch(LOGO_URL);
-  const logoBuffer = Buffer.from(await logoFetch.arrayBuffer());
+  const [gradientStrip, logoBuffer] = await Promise.all([
+    buildGradientStripBuffer(),
+    fetch(LOGO_URL).then((r) => r.arrayBuffer()).then((ab) => Buffer.from(ab)),
+  ]);
+
   const logoResized = await sharp(logoBuffer)
     .resize(160, null, { fit: "inside" })
     .toBuffer();
   const logoMeta = await sharp(logoResized).metadata();
   const logoWidth = logoMeta.width ?? 160;
 
-  // Dark gradient strip (SVG, pure geometry — no fonts needed on Vercel)
-  const gradientStrip = buildGradientStripSvg();
-
+  const GRADIENT_H = 440;
   const compositedBuffer = await sharp(rawImageBuffer)
     .composite([
-      // 1. Dark gradient at the bottom so white text is always readable
-      { input: gradientStrip, top: 0, left: 0 },
+      // 1. Dark gradient anchored to the bottom (y = 1024 - 440 = 584)
+      { input: gradientStrip, top: 1024 - GRADIENT_H, left: 0 },
       // 2. Logo top-right
       { input: logoResized, top: 20, left: 1024 - logoWidth - 20 },
     ])
