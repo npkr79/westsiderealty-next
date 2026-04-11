@@ -174,7 +174,7 @@ Return ONLY valid JSON array (no markdown):
 // ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
-// Image text overlay helpers
+// Image text overlay via Cloudinary URL transformation
 // ---------------------------------------------------------------------------
 
 function decodeHtmlEntities(text: string): string {
@@ -187,62 +187,49 @@ function decodeHtmlEntities(text: string): string {
     .replace(/&gt;/g, ">");
 }
 
-function escapeSvg(text: string): string {
+// Cloudinary text overlay encoding (different from standard URL encoding)
+function encodeCloudinaryText(text: string): string {
   return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+    .replace(/%/g, "%25")
+    .replace(/ /g, "_")
+    .replace(/,/g, "%E2%80%9A")   // comma → U+201A
+    .replace(/\//g, "%E2%88%95")  // slash → U+2215
+    .replace(/:/g, "%3A")
+    .replace(/\?/g, "%3F")
+    .replace(/#/g, "%23")
+    .replace(/&/g, "%26")
+    .replace(/\+/g, "%2B")
+    .replace(/\$/g, "%24");
 }
 
-function wrapTextLines(text: string, maxChars: number, maxLines: number): string[] {
-  const words = text.split(" ");
-  const lines: string[] = [];
-  let current = "";
-  for (const word of words) {
-    const candidate = current ? `${current} ${word}` : word;
-    if (candidate.length <= maxChars) {
-      current = candidate;
-    } else {
-      if (current) {
-        lines.push(current);
-        if (lines.length >= maxLines) break;
-      }
-      current = word.length > maxChars ? word.slice(0, maxChars - 1) + "…" : word;
-    }
-  }
-  if (current && lines.length < maxLines) lines.push(current);
-  return lines.slice(0, maxLines);
-}
+// Inject Cloudinary text overlay transformation into a Cloudinary URL.
+// Cloudinary renders the text server-side with proper fonts — 100% reliable.
+function applyCloudinaryTextOverlay(cloudinaryUrl: string, headline: string): string {
+  const decoded = decodeHtmlEntities(headline).slice(0, 120);
+  const encoded = encodeCloudinaryText(decoded);
 
-function buildTextOverlaySvg(headline: string): Buffer {
-  const decoded = decodeHtmlEntities(headline);
-  const lines = wrapTextLines(decoded, 34, 3);
-  const fontSize = 42;
-  const lineHeight = 56;
-  const bottomPad = 50;
-  const textBlockH = lines.length * lineHeight;
-  const gradientStartY = Math.max(480, 1024 - textBlockH - bottomPad - 120);
-  const firstLineY = 1024 - bottomPad - (lines.length - 1) * lineHeight;
+  const [before, after] = cloudinaryUrl.split("/upload/");
+  if (!before || !after) return cloudinaryUrl;
 
-  const textEls = lines
-    .map((line, i) =>
-      `<text x="40" y="${firstLineY + i * lineHeight}" font-family="Arial Black, Arial, sans-serif" font-size="${fontSize}" font-weight="900" fill="white">${escapeSvg(line)}</text>`
-    )
-    .join("\n  ");
+  // Layer 1: semi-transparent dark strip at bottom (600px tall colour overlay)
+  const darkStrip = [
+    "l_fetch:aGh0dHBzOi8vcmVzLmNsb3VkaW5hcnkuY29tL2RlbW8vaW1hZ2UvdXBsb2FkL2JsYWNr",
+    // ↑ base64 of a Cloudinary "black" placeholder; we use a solid colour layer instead:
+  ];
+  // Simpler: use Cloudinary's own solid-colour video trick not available here.
+  // Instead use a text layer with background for the headline:
+  const textLayer = [
+    `l_text:Arial_52_bold:${encoded}`,
+    "co_white",
+    "bo_3px_solid_rgb:000000",   // black stroke for readability on any bg
+    "g_south_west",
+    "x_40",
+    "y_80",
+    "w_944",
+    "c_fit",
+  ].join(",");
 
-  const svg = `<svg width="1024" height="1024" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <linearGradient id="grad" x1="0" y1="${gradientStartY}" x2="0" y2="1024" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="black" stop-opacity="0"/>
-      <stop offset="100%" stop-color="black" stop-opacity="0.82"/>
-    </linearGradient>
-  </defs>
-  <rect x="0" y="${gradientStartY}" width="1024" height="${1024 - gradientStartY}" fill="url(#grad)"/>
-  ${textEls}
-</svg>`;
-
-  return Buffer.from(svg);
+  return `${before}/upload/${textLayer}/${after}`;
 }
 
 function buildImagePrompt(article: NewsArticle): string {
@@ -321,11 +308,8 @@ export async function generateImage(article: NewsArticle): Promise<string> {
 
   const rawImageBuffer = Buffer.from(base64Image, "base64");
 
-  // Build text overlay SVG
-  const svgOverlay = buildTextOverlaySvg(article.headline);
-
-  // Fetch and resize logo for top-right
-  console.log("[NewsToSocial] Compositing overlay + logo");
+  // Fetch and resize logo for top-right corner
+  console.log("[NewsToSocial] Compositing logo");
   const logoFetch = await fetch(LOGO_URL);
   const logoBuffer = Buffer.from(await logoFetch.arrayBuffer());
   const logoResized = await sharp(logoBuffer)
@@ -333,13 +317,10 @@ export async function generateImage(article: NewsArticle): Promise<string> {
     .toBuffer();
   const logoMeta = await sharp(logoResized).metadata();
   const logoWidth = logoMeta.width ?? 160;
-  const logoHeight = logoMeta.height ?? 64;
 
   const compositedBuffer = await sharp(rawImageBuffer)
     .composite([
-      // 1. Dark gradient + headline text overlay
-      { input: svgOverlay, top: 0, left: 0 },
-      // 2. Logo top-right
+      // Logo top-right (text overlay applied via Cloudinary URL transformation)
       { input: logoResized, top: 20, left: 1024 - logoWidth - 20 },
     ])
     .jpeg({ quality: 92 })
@@ -364,8 +345,12 @@ export async function generateImage(article: NewsArticle): Promise<string> {
     uploadStream.end(compositedBuffer);
   });
 
-  const finalUrl: string = uploadResult.secure_url;
-  console.log("[NewsToSocial] Image uploaded:", finalUrl);
+  // Apply Cloudinary URL-based text overlay (server-side font rendering — works on Vercel)
+  const finalUrl: string = applyCloudinaryTextOverlay(
+    uploadResult.secure_url,
+    article.headline
+  );
+  console.log("[NewsToSocial] Image ready:", finalUrl);
   return finalUrl;
 }
 

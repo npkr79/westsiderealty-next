@@ -1187,12 +1187,22 @@ function NewsTab() {
         return (
           <div key={articleId} className="bg-gray-900 rounded-xl overflow-hidden border border-gray-800">
             {/* Image + headline */}
-            <div className="flex gap-3 p-4 border-b border-gray-800">
+            <div className="border-b border-gray-800">
               {imageUrl && (
-                <img src={imageUrl} alt="" className="w-20 h-20 rounded-lg object-cover flex-shrink-0" />
+                <div
+                  className="relative w-full overflow-hidden cursor-pointer"
+                  style={{ maxHeight: '260px' }}
+                  onClick={() => window.open(imageUrl, '_blank')}
+                  title="Click to view full image"
+                >
+                  <img src={imageUrl} alt="" className="w-full object-cover" style={{ maxHeight: '260px' }} />
+                  <div className="absolute inset-0 bg-black/0 hover:bg-black/10 transition-colors flex items-center justify-center">
+                    <span className="opacity-0 hover:opacity-100 bg-black/60 text-white text-xs px-2 py-1 rounded">Open full size ↗</span>
+                  </div>
+                </div>
               )}
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-white leading-snug line-clamp-3">{headline}</p>
+              <div className="p-4">
+                <p className="text-sm font-medium text-white leading-snug">{headline}</p>
               </div>
             </div>
 
