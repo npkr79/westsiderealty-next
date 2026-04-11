@@ -1012,9 +1012,149 @@ function HistoryTab() {
   );
 }
 
+// ── Tab: News ─────────────────────────────────────────────────────────────────
+
+interface NewsPost extends SavedPost {
+  news_article_id?: string;
+  post_category?: string;
+}
+
+const PLATFORM_COLORS: Record<string, string> = {
+  LinkedIn: 'bg-blue-900 text-blue-300',
+  Instagram: 'bg-pink-900 text-pink-300',
+  Facebook: 'bg-indigo-900 text-indigo-300',
+  X: 'bg-gray-700 text-gray-300',
+};
+
+function NewsTab() {
+  const [groups, setGroups] = useState<Map<string, NewsPost[]>>(new Map());
+  const [loading, setLoading] = useState(true);
+  const [actionId, setActionId] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const res = await fetch('/api/social/posts?status=pending_review');
+    const data = await res.json();
+    const newsPosts: NewsPost[] = (data.posts ?? []).filter(
+      (p: NewsPost) => p.post_category === 'news'
+    );
+    // Group by news_article_id
+    const map = new Map<string, NewsPost[]>();
+    for (const post of newsPosts) {
+      const key = post.news_article_id ?? post.id;
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(post);
+    }
+    setGroups(map);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const approveGroup = async (articleId: string) => {
+    setActionId(articleId);
+    const posts = groups.get(articleId) ?? [];
+    await Promise.all(
+      posts.map((p) =>
+        fetch('/api/social/posts', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: p.id, status: 'scheduled' }),
+        })
+      )
+    );
+    await load();
+    setActionId(null);
+  };
+
+  const rejectGroup = async (articleId: string) => {
+    setActionId(articleId);
+    const posts = groups.get(articleId) ?? [];
+    await Promise.all(
+      posts.map((p) =>
+        fetch(`/api/social/posts?id=${p.id}`, { method: 'DELETE' })
+      )
+    );
+    setGroups((prev) => { const m = new Map(prev); m.delete(articleId); return m; });
+    setActionId(null);
+  };
+
+  if (loading) return <p className="text-gray-500 text-sm py-8 text-center">Loading news posts…</p>;
+
+  if (groups.size === 0) {
+    return (
+      <div className="text-center py-16">
+        <p className="text-gray-400 text-sm">No news posts pending review.</p>
+        <p className="text-gray-600 text-xs mt-1">Run the cron or POST to /api/cron/news-to-social to generate.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <p className="text-xs text-gray-500">{groups.size} article{groups.size !== 1 ? 's' : ''} pending review — approve to schedule at 7pm IST</p>
+      {Array.from(groups.entries()).map(([articleId, posts]) => {
+        const headline = posts[0]?.content_idea ?? 'Untitled';
+        const imageUrl = posts[0]?.image_url;
+        const scheduledAt = posts[0]?.scheduled_at;
+        const isActing = actionId === articleId;
+        return (
+          <div key={articleId} className="bg-gray-900 rounded-xl overflow-hidden border border-gray-800">
+            {/* Image + headline */}
+            <div className="flex gap-3 p-4 border-b border-gray-800">
+              {imageUrl && (
+                <img src={imageUrl} alt="" className="w-20 h-20 rounded-lg object-cover flex-shrink-0" />
+              )}
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-white leading-snug line-clamp-3">{headline}</p>
+                {scheduledAt && (
+                  <p className="text-xs text-gray-500 mt-1">Scheduled: {toIST(scheduledAt)}</p>
+                )}
+              </div>
+            </div>
+            {/* Per-platform captions */}
+            <div className="divide-y divide-gray-800">
+              {posts.map((post) => (
+                <div key={post.id} className="px-4 py-3">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${PLATFORM_COLORS[post.platform] ?? 'bg-gray-700 text-gray-300'}`}>
+                      {post.platform}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-300 leading-relaxed whitespace-pre-wrap">{post.caption}</p>
+                  {post.hashtags && post.hashtags.length > 0 && (
+                    <p className="text-xs text-blue-500 mt-1">{post.hashtags.map((h) => `#${h}`).join(' ')}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+            {/* Actions */}
+            <div className="flex gap-2 p-4 border-t border-gray-800">
+              <button
+                onClick={() => approveGroup(articleId)}
+                disabled={isActing}
+                className="flex-1 py-2 rounded-lg bg-green-700 hover:bg-green-600 text-white text-sm font-medium disabled:opacity-50 transition-colors"
+              >
+                {isActing ? 'Approving…' : '✓ Approve & Schedule'}
+              </button>
+              <button
+                onClick={() => rejectGroup(articleId)}
+                disabled={isActing}
+                className="px-4 py-2 rounded-lg bg-gray-800 hover:bg-red-900 text-gray-400 hover:text-red-300 text-sm font-medium disabled:opacity-50 transition-colors"
+              >
+                Reject
+              </button>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // ── Main Dashboard ────────────────────────────────────────────────────────────
 
-const TABS = ['Occasions', 'Generate', 'Queue', 'Manual', 'History'] as const;
+const TABS = ['Occasions', 'Generate', 'Queue', 'News', 'Manual', 'History'] as const;
 type Tab = typeof TABS[number];
 
 export default function SocialMediaDashboard() {
@@ -1045,6 +1185,7 @@ export default function SocialMediaDashboard() {
         {activeTab === 'Occasions' && <OccasionsTab />}
         {activeTab === 'Generate' && <GenerateTab />}
         {activeTab === 'Queue' && <QueueTab />}
+        {activeTab === 'News' && <NewsTab />}
         {activeTab === 'Manual' && <ManualTab />}
         {activeTab === 'History' && <HistoryTab />}
       </div>
