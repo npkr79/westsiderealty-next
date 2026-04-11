@@ -49,6 +49,10 @@
     {
       "path": "/api/cron/news-scraper",
       "schedule": "30 0 * * *"
+    },
+    {
+      "path": "/api/cron/news-to-social",
+      "schedule": "30 1 * * *"
     }
   ]
 }
