@@ -360,17 +360,28 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     (focusProjects ?? []).forEach((fp: any) => {
       if (fp.listing_url_slug) {
-        // Already included via the projects table query above — skip
+        // Already included via the projects table query — bump priority to 0.9 for focus projects
+        // (they rank higher because we actively market them)
+        const existingIdx = urls.findIndex(
+          (u) => u.url.includes(fp.listing_url_slug)
+        );
+        if (existingIdx >= 0) urls[existingIdx].priority = 0.9;
         return;
       }
-      // Portfolio-only project (no dedicated listing page)
+      // Portfolio-only project (no dedicated listing page) — highest priority
       urls.push({
         url: `${baseUrl}/portfolio/${fp.project_slug}`,
         lastModified: fp.updated_at ? new Date(fp.updated_at) : new Date(),
         changeFrequency: "weekly",
-        priority: 0.8,
+        priority: 0.9,
       });
     });
+
+    // Always include the /portfolio index at high priority
+    const portfolioIdx = urls.findIndex((u) => u.url === `${baseUrl}/portfolio`);
+    if (portfolioIdx >= 0) {
+      urls[portfolioIdx].priority = 0.9;
+    }
 
     // Non-focus advisory projects (not in focus portfolio) — generate city project URLs
     // only if not already covered by the main projects table

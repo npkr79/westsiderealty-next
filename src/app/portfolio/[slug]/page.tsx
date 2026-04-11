@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { createServiceClient } from "@/lib/supabase/serviceClient";
 import { PortfolioDetailClient } from "@/components/portfolio/PortfolioDetailClient";
+import { JsonLd } from "@/components/common/SEO";
 
 export const dynamic = "force-dynamic";
 
@@ -92,23 +93,70 @@ export async function generateMetadata({
   const project = await getProject(slug);
   if (!project) return { title: "Project Not Found | Westside Realty" };
 
-  const city = project.city ?? "India";
-  const title = `${project.project_name} in ${project.micro_market ?? city} | Westside Realty`;
-  const description =
-    project.primary_differentiator ??
-    `${project.project_name} — ${project.project_type ?? "project"} by ${project.developer_brand ?? "a top developer"} in ${project.micro_market ?? city}.`;
+  const city = project.city ?? "Hyderabad";
+  const market = project.micro_market ?? city;
+  const developer = project.developer_brand ?? "Top Developer";
+  const priceMin = project.current_price_per_sqft_min;
+  const priceMax = project.current_price_per_sqft_max;
+  const type = project.project_type ?? "Project";
+  const canonicalUrl = `https://www.westsiderealty.in/portfolio/${slug}`;
+
+  // Build price signal string
+  const priceSignal = priceMin
+    ? priceMax && priceMax !== priceMin
+      ? `₹${Number(priceMin).toLocaleString("en-IN")}–${Number(priceMax).toLocaleString("en-IN")}/sqft`
+      : `₹${Number(priceMin).toLocaleString("en-IN")}/sqft`
+    : null;
+
+  // Title: max 60 chars — project name + location + price or RERA
+  const titleWithPrice = priceSignal
+    ? `${project.project_name}, ${market} | ${priceSignal}`
+    : `${project.project_name}, ${market} | ${type} by ${developer}`;
+  const title = titleWithPrice.length <= 60
+    ? titleWithPrice
+    : `${project.project_name}, ${market} | Westside Realty`;
+
+  // Description: max 155 chars — differentiator + price + RERA CTA
+  const reraTag = project.rera_id ? "RERA verified." : "";
+  const baseDesc = project.primary_differentiator
+    ? `${project.primary_differentiator}${priceSignal ? ` Priced at ${priceSignal}.` : ""} ${reraTag} Get floor plans & expert advisory.`
+    : `${project.project_name} by ${developer} in ${market}. ${priceSignal ? `Priced at ${priceSignal}.` : ""} ${reraTag} Talk to a dedicated advisor today.`;
+  const description = baseDesc.trim().slice(0, 155);
+
+  const keywords = [
+    project.project_name,
+    developer,
+    market,
+    city,
+    type,
+    project.rera_id ? "RERA verified" : null,
+    priceSignal ? `${market} property price` : null,
+    "westside realty",
+    "advisory project",
+    `${market} apartments`,
+  ].filter(Boolean).join(", ");
 
   return {
     title,
     description,
-    alternates: { canonical: `https://www.westsiderealty.in/portfolio/${slug}` },
+    keywords,
+    alternates: { canonical: canonicalUrl },
     openGraph: {
       title,
       description,
-      url: `https://www.westsiderealty.in/portfolio/${slug}`,
+      url: canonicalUrl,
       siteName: "RE/MAX Westside Realty",
-      images: project.hero_image_url ? [{ url: project.hero_image_url }] : [],
       type: "website",
+      locale: "en_IN",
+      images: project.hero_image_url
+        ? [{ url: project.hero_image_url, width: 1200, height: 630, alt: project.project_name }]
+        : [{ url: "https://www.westsiderealty.in/placeholder.svg", width: 1200, height: 630 }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: project.hero_image_url ? [project.hero_image_url] : [],
     },
   };
 }
@@ -124,5 +172,90 @@ export default async function PortfolioDetailPage({
   const project = await getProject(slug);
   if (!project) notFound();
 
-  return <PortfolioDetailClient project={project} />;
+  const canonicalUrl = `https://www.westsiderealty.in/portfolio/${slug}`;
+  const city = project.city ?? "Hyderabad";
+  const market = project.micro_market ?? city;
+  const priceMin = project.current_price_per_sqft_min;
+  const priceMax = project.current_price_per_sqft_max;
+
+  // ApartmentComplex schema with Offer/price for rich snippets
+  const apartmentSchema: Record<string, unknown> = {
+    "@context": "https://schema.org",
+    "@type": "ApartmentComplex",
+    "@id": `${canonicalUrl}#project`,
+    name: project.project_name,
+    description: project.primary_differentiator ?? `${project.project_name} by ${project.developer_brand} in ${market}`,
+    url: canonicalUrl,
+    image: project.hero_image_url ?? undefined,
+    address: {
+      "@type": "PostalAddress",
+      addressLocality: market,
+      addressRegion: city,
+      addressCountry: "IN",
+    },
+    ...(project.latitude && project.longitude ? {
+      geo: {
+        "@type": "GeoCoordinates",
+        latitude: project.latitude,
+        longitude: project.longitude,
+      },
+    } : {}),
+    ...(priceMin ? {
+      offers: {
+        "@type": "Offer",
+        priceCurrency: "INR",
+        price: priceMin,
+        priceSpecification: {
+          "@type": "UnitPriceSpecification",
+          price: priceMin,
+          priceCurrency: "INR",
+          ...(priceMax && priceMax !== priceMin ? { maxPrice: priceMax } : {}),
+          referenceQuantity: {
+            "@type": "QuantitativeValue",
+            value: 1,
+            unitCode: "SQF",
+          },
+        },
+        availability: "https://schema.org/InStock",
+        seller: {
+          "@type": "RealEstateAgent",
+          name: "RE/MAX Westside Realty",
+          url: "https://www.westsiderealty.in",
+        },
+      },
+    } : {}),
+    ...(project.rera_id ? {
+      identifier: {
+        "@type": "PropertyValue",
+        name: "RERA Registration Number",
+        value: project.rera_id,
+      },
+    } : {}),
+    ...(project.developer_brand ? {
+      developer: {
+        "@type": "Organization",
+        name: project.developer_brand,
+      },
+    } : {}),
+    numberOfAvailableAccommodationUnits: project.total_units ?? undefined,
+    tourBookingPage: canonicalUrl,
+  };
+
+  // BreadcrumbList
+  const breadcrumbSchema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: "https://www.westsiderealty.in" },
+      { "@type": "ListItem", position: 2, name: "Portfolio", item: "https://www.westsiderealty.in/portfolio" },
+      { "@type": "ListItem", position: 3, name: project.project_name, item: canonicalUrl },
+    ],
+  };
+
+  return (
+    <>
+      <JsonLd jsonLd={[apartmentSchema, breadcrumbSchema]} />
+      <PortfolioDetailClient project={project} />
+    </>
+  );
 }
