@@ -203,7 +203,7 @@ function encodeCloudinaryText(text: string): string {
 }
 
 // Inject Cloudinary text overlay transformation into a Cloudinary URL.
-// Two layers: (1) semi-transparent dark strip, (2) white headline text.
+// White headline text at the bottom — image AI prompt ensures a dark bottom zone.
 function applyCloudinaryTextOverlay(cloudinaryUrl: string, headline: string): string {
   const decoded = decodeHtmlEntities(headline).slice(0, 120);
   const encoded = encodeCloudinaryText(decoded);
@@ -211,29 +211,18 @@ function applyCloudinaryTextOverlay(cloudinaryUrl: string, headline: string): st
   const [before, after] = cloudinaryUrl.split("/upload/");
   if (!before || !after) return cloudinaryUrl;
 
-  // Layer 1: dark semi-transparent strip across the bottom third
-  // Uses a black solid color layer, 30% opacity, covering bottom 280px
-  const darkStrip = [
-    "l_fetch:https://res.cloudinary.com/demo/image/upload/black",
-    "o_55",
-    "g_south",
-    "h_280",
-    "w_1024",
-    "c_fill",
-  ].join(",");
-
-  // Layer 2: white headline text anchored bottom-left within the strip
+  // White headline text anchored bottom-left
   const textLayer = [
     `l_text:Arial_52_bold:${encoded}`,
     "co_white",
     "g_south_west",
     "x_36",
-    "y_40",
+    "y_44",
     "w_952",
     "c_fit",
   ].join(",");
 
-  return `${before}/upload/${darkStrip}/${textLayer}/${after}`;
+  return `${before}/upload/${textLayer}/${after}`;
 }
 
 function buildImagePrompt(article: NewsArticle): string {

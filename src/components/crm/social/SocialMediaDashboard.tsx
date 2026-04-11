@@ -1188,19 +1188,32 @@ function NewsTab() {
           <div key={articleId} className="bg-gray-900 rounded-xl overflow-hidden border border-gray-800">
             {/* Image + headline */}
             <div className="border-b border-gray-800">
-              {imageUrl && (
-                <div
-                  className="relative w-full overflow-hidden cursor-pointer"
-                  style={{ maxHeight: '260px' }}
-                  onClick={() => window.open(imageUrl, '_blank')}
-                  title="Click to view full image"
-                >
-                  <img src={imageUrl} alt="" className="w-full object-cover" style={{ maxHeight: '260px' }} />
-                  <div className="absolute inset-0 bg-black/0 hover:bg-black/10 transition-colors flex items-center justify-center">
-                    <span className="opacity-0 hover:opacity-100 bg-black/60 text-white text-xs px-2 py-1 rounded">Open full size ↗</span>
+              <div
+                className="relative w-full overflow-hidden cursor-pointer bg-gray-800"
+                style={{ minHeight: '200px', maxHeight: '280px' }}
+                onClick={() => imageUrl && window.open(imageUrl, '_blank')}
+                title={imageUrl ? 'Click to view full image' : undefined}
+              >
+                {imageUrl ? (
+                  <>
+                    <img
+                      src={imageUrl}
+                      alt=""
+                      className="w-full object-cover"
+                      style={{ minHeight: '200px', maxHeight: '280px' }}
+                    />
+                    {/* Dark gradient at bottom so text is always readable */}
+                    <div className="absolute bottom-0 left-0 right-0 h-28 bg-gradient-to-t from-black/70 to-transparent pointer-events-none" />
+                    <div className="absolute top-2 right-2 opacity-0 hover:opacity-100 transition-opacity">
+                      <span className="bg-black/60 text-white text-xs px-2 py-1 rounded">Open full size ↗</span>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex items-center justify-center h-full" style={{ minHeight: '200px' }}>
+                    <span className="text-gray-600 text-sm">Generating image…</span>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
               <div className="p-4">
                 <p className="text-sm font-medium text-white leading-snug">{headline}</p>
               </div>
