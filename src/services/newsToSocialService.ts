@@ -173,6 +173,78 @@ Return ONLY valid JSON array (no markdown):
 // Generate image prompt for a news article by category
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Image text overlay helpers
+// ---------------------------------------------------------------------------
+
+function decodeHtmlEntities(text: string): string {
+  return text
+    .replace(/&#039;/g, "'")
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">");
+}
+
+function escapeSvg(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function wrapTextLines(text: string, maxChars: number, maxLines: number): string[] {
+  const words = text.split(" ");
+  const lines: string[] = [];
+  let current = "";
+  for (const word of words) {
+    const candidate = current ? `${current} ${word}` : word;
+    if (candidate.length <= maxChars) {
+      current = candidate;
+    } else {
+      if (current) {
+        lines.push(current);
+        if (lines.length >= maxLines) break;
+      }
+      current = word.length > maxChars ? word.slice(0, maxChars - 1) + "…" : word;
+    }
+  }
+  if (current && lines.length < maxLines) lines.push(current);
+  return lines.slice(0, maxLines);
+}
+
+function buildTextOverlaySvg(headline: string): Buffer {
+  const decoded = decodeHtmlEntities(headline);
+  const lines = wrapTextLines(decoded, 34, 3);
+  const fontSize = 42;
+  const lineHeight = 56;
+  const bottomPad = 50;
+  const textBlockH = lines.length * lineHeight;
+  const gradientStartY = Math.max(480, 1024 - textBlockH - bottomPad - 120);
+  const firstLineY = 1024 - bottomPad - (lines.length - 1) * lineHeight;
+
+  const textEls = lines
+    .map((line, i) =>
+      `<text x="40" y="${firstLineY + i * lineHeight}" font-family="Arial Black, Arial, sans-serif" font-size="${fontSize}" font-weight="900" fill="white">${escapeSvg(line)}</text>`
+    )
+    .join("\n  ");
+
+  const svg = `<svg width="1024" height="1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="grad" x1="0" y1="${gradientStartY}" x2="0" y2="1024" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="black" stop-opacity="0"/>
+      <stop offset="100%" stop-color="black" stop-opacity="0.82"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="${gradientStartY}" width="1024" height="${1024 - gradientStartY}" fill="url(#grad)"/>
+  ${textEls}
+</svg>`;
+
+  return Buffer.from(svg);
+}
+
 function buildImagePrompt(article: NewsArticle): string {
   const categoryVisuals: Record<string, string> = {
     infrastructure:
@@ -204,10 +276,10 @@ function buildImagePrompt(article: NewsArticle): string {
 
 CRITICAL REQUIREMENTS:
 - NO human faces, NO text, NO watermarks, NO logos
-- Leave bottom-right corner (220x100px) completely clear (for logo)
 - Square format 1:1, vibrant but not garish
 - Style: Premium Indian real estate brand, Instagram-ready
-- Lighting: Professional, bright and engaging`;
+- Lighting: Professional, bright and engaging
+- Keep the bottom 40% of the image relatively dark/shadowed — text will be overlaid there`;
 }
 
 // ---------------------------------------------------------------------------
@@ -249,25 +321,26 @@ export async function generateImage(article: NewsArticle): Promise<string> {
 
   const rawImageBuffer = Buffer.from(base64Image, "base64");
 
-  // Composite RE/MAX logo onto bottom-right
-  console.log("[NewsToSocial] Compositing logo");
+  // Build text overlay SVG
+  const svgOverlay = buildTextOverlaySvg(article.headline);
+
+  // Fetch and resize logo for top-right
+  console.log("[NewsToSocial] Compositing overlay + logo");
   const logoFetch = await fetch(LOGO_URL);
   const logoBuffer = Buffer.from(await logoFetch.arrayBuffer());
   const logoResized = await sharp(logoBuffer)
-    .resize(200, null, { fit: "inside" })
+    .resize(160, null, { fit: "inside" })
     .toBuffer();
   const logoMeta = await sharp(logoResized).metadata();
-  const logoWidth = logoMeta.width ?? 200;
-  const logoHeight = logoMeta.height ?? 80;
+  const logoWidth = logoMeta.width ?? 160;
+  const logoHeight = logoMeta.height ?? 64;
 
   const compositedBuffer = await sharp(rawImageBuffer)
     .composite([
-      {
-        input: logoResized,
-        gravity: "southeast",
-        left: 1024 - logoWidth - 20,
-        top: 1024 - logoHeight - 20,
-      },
+      // 1. Dark gradient + headline text overlay
+      { input: svgOverlay, top: 0, left: 0 },
+      // 2. Logo top-right
+      { input: logoResized, top: 20, left: 1024 - logoWidth - 20 },
     ])
     .jpeg({ quality: 92 })
     .toBuffer();
@@ -322,6 +395,9 @@ export async function createSocialPosts(
   const scheduledAt = todayAt7pmIST();
   const now = new Date().toISOString();
 
+  // FB/Instagram: pending_review → user approves → scheduled → auto-published
+  // X/LinkedIn: manual_ready → user copies and posts manually
+  const AUTO_PLATFORMS = ["Facebook", "Instagram"];
   const rows = captions.map((c) => ({
     content_idea: article.headline,
     caption: c.caption,
@@ -329,10 +405,10 @@ export async function createSocialPosts(
     image_url: imageUrl,
     platform: c.platform,
     content_type: "post",
-    status: "pending_review",
+    status: AUTO_PLATFORMS.includes(c.platform) ? "pending_review" : "manual_ready",
     post_category: "news",
     news_article_id: article.id,
-    scheduled_at: scheduledAt,
+    scheduled_at: AUTO_PLATFORMS.includes(c.platform) ? scheduledAt : null,
     updated_at: now,
   }));
 

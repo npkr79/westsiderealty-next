@@ -1070,11 +1070,14 @@ function NewsTab() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const res = await fetch('/api/social/posts?status=pending_review');
-    const data = await res.json();
-    const newsPosts: NewsPost[] = (data.posts ?? []).filter(
-      (p: NewsPost) => p.post_category === 'news'
-    );
+    const [r1, r2] = await Promise.all([
+      fetch('/api/social/posts?status=pending_review').then((r) => r.json()),
+      fetch('/api/social/posts?status=manual_ready').then((r) => r.json()),
+    ]);
+    const newsPosts: NewsPost[] = [
+      ...(r1.posts ?? []).filter((p: NewsPost) => p.post_category === 'news'),
+      ...(r2.posts ?? []).filter((p: NewsPost) => p.post_category === 'news'),
+    ];
     const map = new Map<string, NewsPost[]>();
     for (const post of newsPosts) {
       const key = post.news_article_id ?? post.id;
@@ -1087,8 +1090,18 @@ function NewsTab() {
 
   useEffect(() => { load(); }, [load]);
 
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const copyToClipboard = async (post: NewsPost) => {
+    const text = post.caption + (post.hashtags?.length ? '\n\n' + post.hashtags.map((h) => `#${h}`).join(' ') : '');
+    await navigator.clipboard.writeText(text);
+    setCopiedId(post.id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
   const scheduleGroup = async (articleId: string, scheduledAt: string) => {
-    const posts = groups.get(articleId) ?? [];
+    // Only schedule FB/Instagram (pending_review) — skip manual_ready posts
+    const posts = (groups.get(articleId) ?? []).filter((p) => p.status === 'pending_review');
     await Promise.all(
       posts.map((p) =>
         fetch('/api/social/posts', {
@@ -1161,14 +1174,16 @@ function NewsTab() {
   return (
     <div className="space-y-6">
       <p className="text-xs text-gray-500">
-        {groups.size} article{groups.size !== 1 ? 's' : ''} pending review
-        &nbsp;·&nbsp; 1st approve → 9:30am IST &nbsp;·&nbsp; 2nd → 7:00pm IST &nbsp;·&nbsp; 3rd+ → pick time
+        {groups.size} article{groups.size !== 1 ? 's' : ''} ready
+        &nbsp;·&nbsp; FB/Insta: approve to auto-schedule &nbsp;·&nbsp; X/LinkedIn: copy & post manually
       </p>
       {Array.from(groups.entries()).map(([articleId, posts]) => {
         const headline = posts[0]?.content_idea ?? 'Untitled';
         const imageUrl = posts[0]?.image_url;
         const isActing = actionId === articleId;
         const showPicker = pickerArticleId === articleId;
+        const autoPosts = posts.filter((p) => p.status === 'pending_review');
+        const manualPosts = posts.filter((p) => p.status === 'manual_ready');
         return (
           <div key={articleId} className="bg-gray-900 rounded-xl overflow-hidden border border-gray-800">
             {/* Image + headline */}
@@ -1180,22 +1195,51 @@ function NewsTab() {
                 <p className="text-sm font-medium text-white leading-snug line-clamp-3">{headline}</p>
               </div>
             </div>
-            {/* Per-platform captions */}
-            <div className="divide-y divide-gray-800">
-              {posts.map((post) => (
-                <div key={post.id} className="px-4 py-3">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${PLATFORM_COLORS[post.platform] ?? 'bg-gray-700 text-gray-300'}`}>
-                      {post.platform}
-                    </span>
-                  </div>
-                  <p className="text-xs text-gray-300 leading-relaxed whitespace-pre-wrap">{post.caption}</p>
-                  {post.hashtags && post.hashtags.length > 0 && (
-                    <p className="text-xs text-blue-500 mt-1">{post.hashtags.map((h) => `#${h}`).join(' ')}</p>
-                  )}
+
+            {/* Auto platforms: FB + Instagram */}
+            {autoPosts.length > 0 && (
+              <div>
+                <p className="text-[10px] text-gray-500 uppercase tracking-wider px-4 pt-3 pb-1">Auto-publish — Facebook & Instagram</p>
+                <div className="divide-y divide-gray-800">
+                  {autoPosts.map((post) => (
+                    <div key={post.id} className="px-4 py-3">
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${PLATFORM_COLORS[post.platform] ?? 'bg-gray-700 text-gray-300'}`}>{post.platform}</span>
+                      <p className="text-xs text-gray-300 leading-relaxed whitespace-pre-wrap mt-1">{post.caption}</p>
+                      {post.hashtags && post.hashtags.length > 0 && (
+                        <p className="text-xs text-blue-500 mt-1">{post.hashtags.map((h) => `#${h}`).join(' ')}</p>
+                      )}
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </div>
+            )}
+
+            {/* Manual platforms: X + LinkedIn */}
+            {manualPosts.length > 0 && (
+              <div className="border-t border-gray-800">
+                <p className="text-[10px] text-gray-500 uppercase tracking-wider px-4 pt-3 pb-1">Manual post — X & LinkedIn</p>
+                <div className="divide-y divide-gray-800">
+                  {manualPosts.map((post) => (
+                    <div key={post.id} className="px-4 py-3">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${PLATFORM_COLORS[post.platform] ?? 'bg-gray-700 text-gray-300'}`}>{post.platform}</span>
+                        <button
+                          onClick={() => copyToClipboard(post)}
+                          className="text-xs px-3 py-1 rounded-lg bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors"
+                        >
+                          {copiedId === post.id ? '✓ Copied!' : 'Copy text'}
+                        </button>
+                      </div>
+                      <p className="text-xs text-gray-300 leading-relaxed whitespace-pre-wrap mt-1">{post.caption}</p>
+                      {post.hashtags && post.hashtags.length > 0 && (
+                        <p className="text-xs text-blue-500 mt-1">{post.hashtags.map((h) => `#${h}`).join(' ')}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Manual time picker (3rd+ approval) */}
             {showPicker && (
               <div className="px-4 py-3 border-t border-gray-800 bg-gray-950">
