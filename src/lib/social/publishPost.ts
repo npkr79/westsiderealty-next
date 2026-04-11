@@ -178,23 +178,11 @@ export async function publishPost(post: SocialPost): Promise<PublishResult> {
   }
 
   // ── LinkedIn ──
-  if (post.platform === 'LinkedIn' && liClientId && liClientSecret && liCompanyId) {
+  const liAccessToken = process.env.LINKEDIN_ACCESS_TOKEN;
+  if (post.platform === 'LinkedIn' && liAccessToken && liCompanyId) {
     try {
-      const tokenRes = await fetch('https://www.linkedin.com/oauth/v2/accessToken', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-          grant_type: 'client_credentials',
-          client_id: liClientId,
-          client_secret: liClientSecret,
-        }),
-      });
-      const tokenData = await tokenRes.json();
-      const liToken: string = tokenData?.access_token;
-
-      if (!liToken) {
-        post_error = 'LinkedIn token fetch failed';
-      } else if (post.content_type === 'article') {
+      const liToken = liAccessToken;
+      if (post.content_type === 'article') {
         const articleRes = await fetch('https://api.linkedin.com/v2/articles', {
           method: 'POST',
           headers: {
