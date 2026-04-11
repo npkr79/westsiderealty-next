@@ -6,6 +6,20 @@ function captionWithHashtags(caption: string, hashtags: string[] | null): string
   return caption + '\n\n' + hashtags.map((h) => '#' + h).join(' ');
 }
 
+// Convert **marked** text to Unicode mathematical bold characters
+// Facebook and LinkedIn render these natively as bold
+function applyBoldUnicode(text: string): string {
+  return text.replace(/\*\*(.+?)\*\*/g, (_, inner: string) =>
+    inner.split('').map((char) => {
+      const code = char.charCodeAt(0);
+      if (code >= 65 && code <= 90) return String.fromCodePoint(0x1D400 + code - 65); // A-Z
+      if (code >= 97 && code <= 122) return String.fromCodePoint(0x1D41A + code - 97); // a-z
+      if (code >= 48 && code <= 57) return String.fromCodePoint(0x1D7CE + code - 48); // 0-9
+      return char;
+    }).join('')
+  );
+}
+
 interface SocialPost {
   id: string;
   platform: string;
@@ -91,7 +105,7 @@ export async function publishPost(post: SocialPost): Promise<PublishResult> {
   // ── Facebook ──
   if (post.platform === 'Facebook' && fbPageId && fbToken) {
     try {
-      const message = captionWithHashtags(post.caption ?? '', post.hashtags ?? null);
+      const message = applyBoldUnicode(captionWithHashtags(post.caption ?? '', post.hashtags ?? null));
       let res: Response;
       if (post.image_url) {
         res = await fetch(`https://graph.facebook.com/v18.0/${fbPageId}/photos`, {
@@ -131,7 +145,7 @@ export async function publishPost(post: SocialPost): Promise<PublishResult> {
       if (!igAccountId) {
         post_error = 'No Instagram account connected';
       } else {
-        const caption = captionWithHashtags(post.caption ?? '', post.hashtags ?? null);
+        const caption = applyBoldUnicode(captionWithHashtags(post.caption ?? '', post.hashtags ?? null));
         const containerRes = await fetch(`https://graph.facebook.com/v18.0/${igAccountId}/media`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -217,7 +231,7 @@ export async function publishPost(post: SocialPost): Promise<PublishResult> {
             lifecycleState: 'PUBLISHED',
             specificContent: {
               'com.linkedin.ugc.ShareContent': {
-                shareCommentary: { text: post.caption },
+                shareCommentary: { text: applyBoldUnicode(captionWithHashtags(post.caption ?? '', post.hashtags ?? null)) },
                 shareMediaCategory: post.image_url ? 'IMAGE' : 'NONE',
                 media: post.image_url
                   ? [{ status: 'READY', originalUrl: post.image_url, title: { text: post.title ?? '' } }]

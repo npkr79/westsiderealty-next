@@ -108,6 +108,13 @@ RULES per platform:
 - Facebook: 200-350 chars, conversational tone + useful detail for homebuyers, 5-6 hashtags, end with "— RE/MAX Westside Realty"
 - X: max 240 chars total (including hashtags), sharp headline + one key stat or angle, 2 hashtags only, end with "— RE/MAX Westside Realty"
 
+FORMATTING for Facebook and LinkedIn only — use **double asterisks** to mark text that should appear bold:
+- Wrap the opening hook/question line: **Planning your next property purchase?**
+- Wrap strong lead-in words: **Consider this:** or **Here's why it matters:**
+- Wrap the closing signature: **— RE/MAX Westside Realty**
+- Body sentences: plain text, no asterisks
+- Instagram and X: plain text only, no asterisks at all
+
 Return ONLY valid JSON array (no markdown):
 [
   {
