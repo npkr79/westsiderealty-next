@@ -94,7 +94,7 @@ export async function generateCaptions(
     .filter(Boolean)
     .join("\n");
 
-  const systemPrompt = `You are a social media expert for RE/MAX Westside Realty, a premium real estate agency in Hyderabad, India.
+  const systemPrompt = `You are a social media expert for REMAX Westside Realty, a premium real estate agency in Hyderabad, India.
 You create engaging social media posts about Indian real estate and infrastructure news that position the brand as a knowledgeable market advisor.
 Always connect news to what it means for property buyers, investors, or the market. Never post raw news — add context and insight.`;
 
@@ -103,15 +103,15 @@ Always connect news to what it means for property buyers, investors, or the mark
 ${context}
 
 RULES per platform:
-- LinkedIn: 200-400 chars, professional market insight + implication, 3-4 hashtags, NO emojis, end with "— RE/MAX Westside Realty"
-- Instagram: 150-250 chars, hook line + key stat or insight, emoji-rich, 8-10 hashtags, end with "— RE/MAX Westside Realty"
-- Facebook: 200-350 chars, conversational tone + useful detail for homebuyers, 5-6 hashtags, end with "— RE/MAX Westside Realty"
-- X: max 240 chars total (including hashtags), sharp headline + one key stat or angle, 2 hashtags only, end with "— RE/MAX Westside Realty"
+- LinkedIn: 200-400 chars, professional market insight + implication, 3-4 hashtags, NO emojis, end with "— REMAX Westside Realty"
+- Instagram: 150-250 chars, hook line + key stat or insight, emoji-rich, 8-10 hashtags, end with "— REMAX Westside Realty"
+- Facebook: 200-350 chars, conversational tone + useful detail for homebuyers, 5-6 hashtags, end with "— REMAX Westside Realty"
+- X: max 240 chars total (including hashtags), sharp headline + one key stat or angle, 2 hashtags only, end with "— REMAX Westside Realty"
 
 FORMATTING for Facebook and LinkedIn only — use **double asterisks** to mark text that should appear bold:
 - Wrap the opening hook/question line: **Planning your next property purchase?**
 - Wrap strong lead-in words: **Consider this:** or **Here's why it matters:**
-- Wrap the closing signature: **— RE/MAX Westside Realty**
+- Wrap the closing signature: **— REMAX Westside Realty**
 - Body sentences: plain text, no asterisks
 - Instagram and X: plain text only, no asterisks at all
 
@@ -187,14 +187,14 @@ function decodeHtmlEntities(text: string): string {
     .replace(/&gt;/g, ">");
 }
 
-// Cloudinary text overlay encoding (different from standard URL encoding)
+// Cloudinary text overlay encoding — spaces must be %20 (not underscore).
+// Underscore is a literal underscore in Cloudinary text params.
 function encodeCloudinaryText(text: string): string {
   return text
-    .replace(/%/g, "%25")
-    .replace(/ /g, "_")
-    .replace(/,/g, "%E2%80%9A")   // comma → U+201A
-    .replace(/\//g, "%E2%88%95")  // slash → U+2215
-    .replace(/:/g, "%3A")
+    .replace(/%/g, "%25")      // percent first (avoid double-encoding)
+    .replace(/ /g, "%20")      // space → %20 (renders as space in overlay)
+    .replace(/,/g, "%2C")      // comma (would break transformation params)
+    .replace(/\//g, "%2F")     // slash
     .replace(/\?/g, "%3F")
     .replace(/#/g, "%23")
     .replace(/&/g, "%26")
@@ -203,7 +203,7 @@ function encodeCloudinaryText(text: string): string {
 }
 
 // Inject Cloudinary text overlay transformation into a Cloudinary URL.
-// Cloudinary renders the text server-side with proper fonts — 100% reliable.
+// Two layers: (1) semi-transparent dark strip, (2) white headline text.
 function applyCloudinaryTextOverlay(cloudinaryUrl: string, headline: string): string {
   const decoded = decodeHtmlEntities(headline).slice(0, 120);
   const encoded = encodeCloudinaryText(decoded);
@@ -211,25 +211,29 @@ function applyCloudinaryTextOverlay(cloudinaryUrl: string, headline: string): st
   const [before, after] = cloudinaryUrl.split("/upload/");
   if (!before || !after) return cloudinaryUrl;
 
-  // Layer 1: semi-transparent dark strip at bottom (600px tall colour overlay)
+  // Layer 1: dark semi-transparent strip across the bottom third
+  // Uses a black solid color layer, 30% opacity, covering bottom 280px
   const darkStrip = [
-    "l_fetch:aGh0dHBzOi8vcmVzLmNsb3VkaW5hcnkuY29tL2RlbW8vaW1hZ2UvdXBsb2FkL2JsYWNr",
-    // ↑ base64 of a Cloudinary "black" placeholder; we use a solid colour layer instead:
-  ];
-  // Simpler: use Cloudinary's own solid-colour video trick not available here.
-  // Instead use a text layer with background for the headline:
+    "l_fetch:https://res.cloudinary.com/demo/image/upload/black",
+    "o_55",
+    "g_south",
+    "h_280",
+    "w_1024",
+    "c_fill",
+  ].join(",");
+
+  // Layer 2: white headline text anchored bottom-left within the strip
   const textLayer = [
     `l_text:Arial_52_bold:${encoded}`,
     "co_white",
-    "bo_3px_solid_rgb:000000",   // black stroke for readability on any bg
     "g_south_west",
-    "x_40",
-    "y_80",
-    "w_944",
+    "x_36",
+    "y_40",
+    "w_952",
     "c_fit",
   ].join(",");
 
-  return `${before}/upload/${textLayer}/${after}`;
+  return `${before}/upload/${darkStrip}/${textLayer}/${after}`;
 }
 
 function buildImagePrompt(article: NewsArticle): string {
