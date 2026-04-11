@@ -184,15 +184,15 @@ export async function publishPost(post: SocialPost): Promise<PublishResult> {
   const liAccessToken = process.env.LINKEDIN_ACCESS_TOKEN;
   if (post.platform === 'LinkedIn' && liAccessToken) {
     try {
-      // Fetch member URN from the token
-      const meRes = await fetch('https://api.linkedin.com/v2/me', {
+      // Fetch member URN via OpenID Connect userinfo (requires profile scope)
+      const meRes = await fetch('https://api.linkedin.com/v2/userinfo', {
         headers: { Authorization: `Bearer ${liAccessToken}` },
       });
       const meData = await meRes.json();
-      const memberUrn = meData.id ? `urn:li:person:${meData.id}` : null;
+      const memberUrn = meData.sub ? `urn:li:person:${meData.sub}` : null;
 
       if (!memberUrn) {
-        post_error = `LinkedIn /me failed: ${meData.message ?? JSON.stringify(meData).slice(0, 100)}`;
+        post_error = `LinkedIn /userinfo failed: ${meData.message ?? JSON.stringify(meData).slice(0, 100)}`;
       } else {
         const text = applyBoldUnicode(captionWithHashtags(post.caption ?? '', post.hashtags ?? null));
         const postRes = await fetch('https://api.linkedin.com/v2/ugcPosts', {
