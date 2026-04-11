@@ -1026,10 +1026,34 @@ const PLATFORM_COLORS: Record<string, string> = {
   X: 'bg-gray-700 text-gray-300',
 };
 
+// Slot 1: 9:30am IST = 04:00 UTC, Slot 2: 7:00pm IST = 13:30 UTC
+function todaySlotUTC(hour: number, minute: number): string {
+  const nowIST = new Date(Date.now() + 5.5 * 60 * 60 * 1000);
+  const dateIST = nowIST.toISOString().split('T')[0]; // YYYY-MM-DD in IST
+  return new Date(`${dateIST}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00Z`).toISOString();
+}
+
+async function getTodayScheduledArticleCount(): Promise<number> {
+  const res = await fetch('/api/social/posts?status=scheduled');
+  const data = await res.json();
+  const nowIST = new Date(Date.now() + 5.5 * 60 * 60 * 1000);
+  const todayIST = nowIST.toISOString().split('T')[0];
+  const todayNews = (data.posts ?? []).filter((p: NewsPost) => {
+    if (p.post_category !== 'news' || !p.scheduled_at) return false;
+    const pIST = new Date(new Date(p.scheduled_at).getTime() + 5.5 * 60 * 60 * 1000);
+    return pIST.toISOString().split('T')[0] === todayIST;
+  });
+  const distinct = new Set(todayNews.map((p: NewsPost) => p.news_article_id ?? p.id));
+  return distinct.size;
+}
+
 function NewsTab() {
   const [groups, setGroups] = useState<Map<string, NewsPost[]>>(new Map());
   const [loading, setLoading] = useState(true);
   const [actionId, setActionId] = useState<string | null>(null);
+  // Manual time picker state
+  const [pickerArticleId, setPickerArticleId] = useState<string | null>(null);
+  const [pickerTime, setPickerTime] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -1038,7 +1062,6 @@ function NewsTab() {
     const newsPosts: NewsPost[] = (data.posts ?? []).filter(
       (p: NewsPost) => p.post_category === 'news'
     );
-    // Group by news_article_id
     const map = new Map<string, NewsPost[]>();
     for (const post of newsPosts) {
       const key = post.news_article_id ?? post.id;
@@ -1051,19 +1074,51 @@ function NewsTab() {
 
   useEffect(() => { load(); }, [load]);
 
-  const approveGroup = async (articleId: string) => {
-    setActionId(articleId);
+  const scheduleGroup = async (articleId: string, scheduledAt: string) => {
     const posts = groups.get(articleId) ?? [];
     await Promise.all(
       posts.map((p) =>
         fetch('/api/social/posts', {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id: p.id, status: 'scheduled' }),
+          body: JSON.stringify({ id: p.id, status: 'scheduled', scheduled_at: scheduledAt }),
         })
       )
     );
     await load();
+  };
+
+  const handleApprove = async (articleId: string) => {
+    setActionId(articleId);
+    const count = await getTodayScheduledArticleCount();
+    if (count === 0) {
+      // Slot 1: 9:30am IST = 04:00 UTC
+      await scheduleGroup(articleId, todaySlotUTC(4, 0));
+    } else if (count === 1) {
+      // Slot 2: 7:00pm IST = 13:30 UTC
+      await scheduleGroup(articleId, todaySlotUTC(13, 30));
+    } else {
+      // 3rd+ — show manual picker
+      setActionId(null);
+      // Default picker value to next hour in IST (datetime-local is local browser time)
+      const next = new Date(Date.now() + 60 * 60 * 1000);
+      setPickerTime(next.toISOString().slice(0, 16));
+      setPickerArticleId(articleId);
+      return;
+    }
+    setActionId(null);
+  };
+
+  const handlePickerConfirm = async () => {
+    if (!pickerArticleId || !pickerTime) return;
+    setActionId(pickerArticleId);
+    // pickerTime is browser local — treat as IST and convert to UTC
+    const localDate = new Date(pickerTime);
+    const utcMs = localDate.getTime() - (5.5 * 60 * 60 * 1000);
+    const utcIso = new Date(utcMs).toISOString();
+    await scheduleGroup(pickerArticleId, utcIso);
+    setPickerArticleId(null);
+    setPickerTime('');
     setActionId(null);
   };
 
@@ -1092,12 +1147,15 @@ function NewsTab() {
 
   return (
     <div className="space-y-6">
-      <p className="text-xs text-gray-500">{groups.size} article{groups.size !== 1 ? 's' : ''} pending review — approve to schedule at 7pm IST</p>
+      <p className="text-xs text-gray-500">
+        {groups.size} article{groups.size !== 1 ? 's' : ''} pending review
+        &nbsp;·&nbsp; 1st approve → 9:30am IST &nbsp;·&nbsp; 2nd → 7:00pm IST &nbsp;·&nbsp; 3rd+ → pick time
+      </p>
       {Array.from(groups.entries()).map(([articleId, posts]) => {
         const headline = posts[0]?.content_idea ?? 'Untitled';
         const imageUrl = posts[0]?.image_url;
-        const scheduledAt = posts[0]?.scheduled_at;
         const isActing = actionId === articleId;
+        const showPicker = pickerArticleId === articleId;
         return (
           <div key={articleId} className="bg-gray-900 rounded-xl overflow-hidden border border-gray-800">
             {/* Image + headline */}
@@ -1107,9 +1165,6 @@ function NewsTab() {
               )}
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-white leading-snug line-clamp-3">{headline}</p>
-                {scheduledAt && (
-                  <p className="text-xs text-gray-500 mt-1">Scheduled: {toIST(scheduledAt)}</p>
-                )}
               </div>
             </div>
             {/* Per-platform captions */}
@@ -1128,14 +1183,41 @@ function NewsTab() {
                 </div>
               ))}
             </div>
+            {/* Manual time picker (3rd+ approval) */}
+            {showPicker && (
+              <div className="px-4 py-3 border-t border-gray-800 bg-gray-950">
+                <p className="text-xs text-yellow-400 mb-2">2 posts already scheduled today — pick a custom time (IST):</p>
+                <div className="flex gap-2 items-center">
+                  <input
+                    type="datetime-local"
+                    value={pickerTime}
+                    onChange={(e) => setPickerTime(e.target.value)}
+                    className="flex-1 bg-gray-800 text-white text-xs rounded-lg px-3 py-2 border border-gray-700"
+                  />
+                  <button
+                    onClick={handlePickerConfirm}
+                    disabled={!pickerTime || isActing}
+                    className="px-4 py-2 rounded-lg bg-green-700 hover:bg-green-600 text-white text-xs font-medium disabled:opacity-50"
+                  >
+                    Confirm
+                  </button>
+                  <button
+                    onClick={() => setPickerArticleId(null)}
+                    className="px-3 py-2 rounded-lg bg-gray-800 text-gray-400 text-xs"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+            )}
             {/* Actions */}
             <div className="flex gap-2 p-4 border-t border-gray-800">
               <button
-                onClick={() => approveGroup(articleId)}
-                disabled={isActing}
+                onClick={() => handleApprove(articleId)}
+                disabled={isActing || showPicker}
                 className="flex-1 py-2 rounded-lg bg-green-700 hover:bg-green-600 text-white text-sm font-medium disabled:opacity-50 transition-colors"
               >
-                {isActing ? 'Approving…' : '✓ Approve & Schedule'}
+                {isActing ? 'Scheduling…' : '✓ Approve & Schedule'}
               </button>
               <button
                 onClick={() => rejectGroup(articleId)}
