@@ -178,48 +178,36 @@ export async function publishPost(post: SocialPost): Promise<PublishResult> {
   }
 
   // ── LinkedIn ──
+  // Uses w_member_social token — posts as the authenticated member (personal profile).
+  // w_organization_social (company page posting) requires LinkedIn Marketing Developer
+  // Platform partner approval which is not self-serve.
   const liAccessToken = process.env.LINKEDIN_ACCESS_TOKEN;
-  if (post.platform === 'LinkedIn' && liAccessToken && liCompanyId) {
+  if (post.platform === 'LinkedIn' && liAccessToken) {
     try {
-      const liToken = liAccessToken;
-      if (post.content_type === 'article') {
-        const articleRes = await fetch('https://api.linkedin.com/v2/articles', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${liToken}`,
-            'X-Restli-Protocol-Version': '2.0.0',
-          },
-          body: JSON.stringify({
-            author: `urn:li:organization:${liCompanyId}`,
-            title: post.article_title,
-            content: { contentEntities: [], description: post.article_body },
-            distribution: { linkedInDistributionTarget: {} },
-            subject: post.article_title,
-            text: { text: post.article_body },
-          }),
-        });
-        const articleData = await articleRes.json();
-        if (articleRes.ok) {
-          platform_post_id = articleData.id ?? null;
-          success = true;
-        } else {
-          post_error = articleData.message ?? 'LinkedIn article post failed';
-        }
+      // Fetch member URN from the token
+      const meRes = await fetch('https://api.linkedin.com/v2/me', {
+        headers: { Authorization: `Bearer ${liAccessToken}` },
+      });
+      const meData = await meRes.json();
+      const memberUrn = meData.id ? `urn:li:person:${meData.id}` : null;
+
+      if (!memberUrn) {
+        post_error = `LinkedIn /me failed: ${meData.message ?? JSON.stringify(meData).slice(0, 100)}`;
       } else {
+        const text = applyBoldUnicode(captionWithHashtags(post.caption ?? '', post.hashtags ?? null));
         const postRes = await fetch('https://api.linkedin.com/v2/ugcPosts', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${liToken}`,
+            Authorization: `Bearer ${liAccessToken}`,
             'X-Restli-Protocol-Version': '2.0.0',
           },
           body: JSON.stringify({
-            author: `urn:li:organization:${liCompanyId}`,
+            author: memberUrn,
             lifecycleState: 'PUBLISHED',
             specificContent: {
               'com.linkedin.ugc.ShareContent': {
-                shareCommentary: { text: applyBoldUnicode(captionWithHashtags(post.caption ?? '', post.hashtags ?? null)) },
+                shareCommentary: { text },
                 shareMediaCategory: post.image_url ? 'IMAGE' : 'NONE',
                 media: post.image_url
                   ? [{ status: 'READY', originalUrl: post.image_url, title: { text: post.title ?? '' } }]
@@ -234,7 +222,7 @@ export async function publishPost(post: SocialPost): Promise<PublishResult> {
           platform_post_id = postData.id ?? null;
           success = true;
         } else {
-          post_error = postData.message ?? 'LinkedIn post failed';
+          post_error = postData.message ?? `LinkedIn post failed: ${JSON.stringify(postData).slice(0, 150)}`;
         }
       }
     } catch (e) {
