@@ -1,4 +1,5 @@
 import { createServiceClient } from '@/lib/supabase/serviceClient';
+import { createHmac } from 'crypto';
 
 function captionWithHashtags(caption: string, hashtags: string[] | null): string {
   if (!hashtags?.length) return caption;
@@ -24,12 +25,64 @@ export interface PublishResult {
   error: string | null;
 }
 
+// ── Twitter / X OAuth 1.0a ────────────────────────────────────────────────────
+
+function oauthSign(
+  method: string,
+  url: string,
+  params: Record<string, string>,
+  consumerSecret: string,
+  tokenSecret: string
+): string {
+  const enc = (s: string) => encodeURIComponent(s);
+  const sorted = Object.entries(params)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([k, v]) => `${enc(k)}=${enc(v)}`)
+    .join('&');
+  const base = `${method.toUpperCase()}&${enc(url)}&${enc(sorted)}`;
+  const signingKey = `${enc(consumerSecret)}&${enc(tokenSecret)}`;
+  return createHmac('sha1', signingKey).update(base).digest('base64');
+}
+
+function buildOauthHeader(
+  consumerKey: string,
+  consumerSecret: string,
+  accessToken: string,
+  tokenSecret: string,
+  method: string,
+  url: string,
+  bodyParams: Record<string, string> = {}
+): string {
+  const nonce = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+  const timestamp = Math.floor(Date.now() / 1000).toString();
+  const oauthParams: Record<string, string> = {
+    oauth_consumer_key: consumerKey,
+    oauth_nonce: nonce,
+    oauth_signature_method: 'HMAC-SHA1',
+    oauth_timestamp: timestamp,
+    oauth_token: accessToken,
+    oauth_version: '1.0',
+  };
+  const allParams = { ...oauthParams, ...bodyParams };
+  const signature = oauthSign(method, url, allParams, consumerSecret, tokenSecret);
+  oauthParams['oauth_signature'] = signature;
+  const enc = (s: string) => encodeURIComponent(s);
+  const headerParts = Object.entries(oauthParams)
+    .map(([k, v]) => `${enc(k)}="${enc(v)}"`)
+    .join(', ');
+  return `OAuth ${headerParts}`;
+}
+
 export async function publishPost(post: SocialPost): Promise<PublishResult> {
   const fbPageId = process.env.FACEBOOK_PAGE_ID;
   const fbToken = process.env.FACEBOOK_PAGE_ACCESS_TOKEN;
   const liClientId = process.env.LINKEDIN_CLIENT_ID;
   const liClientSecret = process.env.LINKEDIN_CLIENT_SECRET;
   const liCompanyId = process.env.LINKEDIN_COMPANY_ID;
+  const xApiKey = process.env.TWITTER_API_KEY;
+  const xApiSecret = process.env.TWITTER_API_SECRET;
+  const xAccessToken = process.env.TWITTER_ACCESS_TOKEN;
+  const xAccessTokenSecret = process.env.TWITTER_ACCESS_TOKEN_SECRET;
 
   let platform_post_id: string | null = null;
   let post_error: string | null = null;
@@ -185,6 +238,36 @@ export async function publishPost(post: SocialPost): Promise<PublishResult> {
     } catch (e) {
       post_error = e instanceof Error ? e.message : 'LinkedIn post failed';
       console.error('[publishPost] LinkedIn error:', e);
+    }
+  }
+
+  // ── X (Twitter) ──
+  if (post.platform === 'X' && xApiKey && xApiSecret && xAccessToken && xAccessTokenSecret) {
+    try {
+      const tweetUrl = 'https://api.twitter.com/2/tweets';
+      const text = captionWithHashtags(post.caption ?? '', post.hashtags ?? null).slice(0, 280);
+      const authHeader = buildOauthHeader(
+        xApiKey, xApiSecret, xAccessToken, xAccessTokenSecret,
+        'POST', tweetUrl
+      );
+      const tweetRes = await fetch(tweetUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: authHeader,
+        },
+        body: JSON.stringify({ text }),
+      });
+      const tweetData = await tweetRes.json();
+      if (tweetRes.ok && tweetData.data?.id) {
+        platform_post_id = tweetData.data.id;
+        success = true;
+      } else {
+        post_error = tweetData.detail ?? tweetData.errors?.[0]?.message ?? 'X post failed';
+      }
+    } catch (e) {
+      post_error = e instanceof Error ? e.message : 'X post failed';
+      console.error('[publishPost] X error:', e);
     }
   }
 

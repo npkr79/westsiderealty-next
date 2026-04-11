@@ -675,6 +675,7 @@ function QueueTab() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editCaption, setEditCaption] = useState('');
   const [editScheduledAt, setEditScheduledAt] = useState('');
+  const [postErrors, setPostErrors] = useState<Record<string, string>>({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -688,11 +689,16 @@ function QueueTab() {
 
   const postNow = async (id: string) => {
     setActionId(id);
-    await fetch('/api/social/post', {
+    setPostErrors((prev) => { const e = { ...prev }; delete e[id]; return e; });
+    const res = await fetch('/api/social/post', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ post_id: id }),
     });
+    const data = await res.json();
+    if (!data.success) {
+      setPostErrors((prev) => ({ ...prev, [id]: data.error ?? 'Post failed — check platform credentials' }));
+    }
     await load();
     setActionId(null);
   };
@@ -808,6 +814,13 @@ function QueueTab() {
                 {post.scheduled_at && (
                   <p className="flex items-center gap-1 text-xs text-gray-500">
                     <Clock size={12} /> {toIST(post.scheduled_at)}
+                  </p>
+                )}
+
+                {/* Post error */}
+                {(postErrors[post.id] || post.post_error) && (
+                  <p className="text-xs text-red-400 bg-red-950/40 rounded-lg px-3 py-2 border border-red-900">
+                    ⚠ {postErrors[post.id] ?? post.post_error}
                   </p>
                 )}
 
