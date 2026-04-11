@@ -194,6 +194,8 @@ export async function publishPost(post: SocialPost): Promise<PublishResult> {
       if (!memberUrn) {
         post_error = `LinkedIn /userinfo failed: ${meData.message ?? JSON.stringify(meData).slice(0, 100)}`;
       } else {
+        // LinkedIn requires images to be pre-uploaded via Assets API to get a URN.
+        // Post as text-only — LinkedIn text posts perform well organically.
         const text = applyBoldUnicode(captionWithHashtags(post.caption ?? '', post.hashtags ?? null));
         const postRes = await fetch('https://api.linkedin.com/v2/ugcPosts', {
           method: 'POST',
@@ -208,10 +210,7 @@ export async function publishPost(post: SocialPost): Promise<PublishResult> {
             specificContent: {
               'com.linkedin.ugc.ShareContent': {
                 shareCommentary: { text },
-                shareMediaCategory: post.image_url ? 'IMAGE' : 'NONE',
-                media: post.image_url
-                  ? [{ status: 'READY', originalUrl: post.image_url, title: { text: post.title ?? '' } }]
-                  : [],
+                shareMediaCategory: 'NONE',
               },
             },
             visibility: { 'com.linkedin.ugc.MemberNetworkVisibility': 'PUBLIC' },
