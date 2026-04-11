@@ -1,44 +1,79 @@
 /**
- * One-time script: Request immediate Google indexing for all active focus project pages.
+ * Submit all active focus project pages to Google Indexing API.
  *
- * Run once after deploying the new schema/metadata improvements to portfolio pages:
+ * Fetches project slugs directly from Supabase — no manual input needed.
+ *
+ * Run after deploying schema/metadata improvements:
  *   node --env-file=.env.local scripts/index-focus-projects.mjs
  */
 
 import { requestIndexing } from "./seo-agent/indexing-api.mjs";
 
-const SITE_URL = "https://www.westsiderealty.in";
+const SITE_URL = process.env.GOOGLE_SITE_URL || "https://www.westsiderealty.in";
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-// Hardcoded focus project slugs — update this list as your portfolio changes,
-// or swap for a Supabase query if you want to automate it fully.
-// Run: SELECT project_slug FROM advisor_project_intelligence WHERE is_focus_project=true AND sale_status='active';
-const FOCUS_PROJECT_SLUGS = [
-  // Add your active focus project slugs here — from the /portfolio page
-  // e.g. "rajapushpa-atria-kokapet", "pws-7-hills", etc.
-  // You can get these from: https://www.westsiderealty.in/portfolio
-];
-
-async function main() {
-  if (FOCUS_PROJECT_SLUGS.length === 0) {
-    console.log("No slugs listed. Add your focus project slugs to FOCUS_PROJECT_SLUGS array.");
-    console.log("Get them from: https://www.westsiderealty.in/portfolio");
-    process.exit(0);
+async function getFocusProjectSlugs() {
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
+    throw new Error(
+      "Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in .env.local"
+    );
   }
 
-  const urls = [
-    `${SITE_URL}/portfolio`,
-    ...FOCUS_PROJECT_SLUGS.map((slug) => `${SITE_URL}/portfolio/${slug}`),
-  ];
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/advisor_project_intelligence?select=project_slug,listing_url_slug,city_slug&is_focus_project=eq.true&sale_status=eq.active`,
+    {
+      headers: {
+        apikey: SUPABASE_SERVICE_KEY,
+        Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
+      },
+    }
+  );
 
-  console.log(`Submitting ${urls.length} URLs to Google Indexing API...`);
-  const results = await requestIndexing(urls);
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Supabase query failed (${res.status}): ${err}`);
+  }
+
+  return res.json();
+}
+
+async function main() {
+  console.log("Fetching active focus projects from Supabase...");
+
+  const projects = await getFocusProjectSlugs();
+  console.log(`Found ${projects.length} active focus project(s)`);
+
+  const urls = new Set([`${SITE_URL}/portfolio`]);
+
+  for (const p of projects) {
+    // Portfolio detail page (always exists)
+    urls.add(`${SITE_URL}/portfolio/${p.project_slug}`);
+
+    // Also index the main project listing page if linked
+    if (p.listing_url_slug && p.city_slug) {
+      urls.add(`${SITE_URL}/${p.city_slug}/projects/${p.listing_url_slug}`);
+    }
+  }
+
+  const urlList = [...urls];
+  console.log(`Submitting ${urlList.length} URL(s) to Google Indexing API:\n`);
+  urlList.forEach((u) => console.log(`  ${u}`));
+  console.log("");
+
+  const results = await requestIndexing(urlList);
 
   const succeeded = results.filter((r) => r.success).length;
-  console.log(`\nDone: ${succeeded}/${results.length} submitted successfully.`);
+  const failed = results.filter((r) => !r.success);
 
-  for (const r of results.filter((r) => !r.success)) {
-    console.log(`  ❌ Failed: ${r.url} — ${r.error}`);
+  console.log(`\n✅ ${succeeded}/${urlList.length} submitted successfully`);
+  if (failed.length > 0) {
+    console.log(`\n❌ Failed (${failed.length}):`);
+    failed.forEach((r) => console.log(`  ${r.url} — ${r.error}`));
   }
 }
 
-main().catch(console.error);
+main().catch((err) => {
+  console.error("Fatal:", err.message);
+  process.exit(1);
+});
