@@ -192,20 +192,23 @@ function decodeHtmlEntities(text: string): string {
     .replace(/&gt;/g, ">");
 }
 
-// Cloudinary text overlay encoding — spaces must be %20 (not underscore).
-// Non-ASCII chars (e.g. ₹) must also be percent-encoded or Cloudinary breaks.
+// Cloudinary text overlay encoding.
+// KEY FINDING (tested): %2C is decoded back to "," by Cloudinary and breaks
+// transformation parsing. Replace commas with em-dash (%E2%80%94) instead —
+// multi-byte UTF-8 is NOT decoded as a separator, so it is safe.
+// All other non-ASCII chars (₹, etc.) work fine as %XX percent-encoded.
 function encodeCloudinaryText(text: string): string {
   return text
     .split("")
     .map((char) => {
       const code = char.charCodeAt(0);
-      // Encode all non-ASCII (including ₹, smart quotes, etc.)
+      // Non-ASCII: percent-encode each UTF-8 byte (works for ₹, etc.)
       if (code > 127) return encodeURIComponent(char);
-      // Encode ASCII chars that break Cloudinary transformation params
+      // ASCII chars that break Cloudinary transformation params
       switch (char) {
         case "%": return "%25";
         case " ": return "%20";
-        case ",": return "%2C";
+        case ",": return "%E2%80%94"; // em-dash — comma breaks param parsing
         case "/": return "%2F";
         case "?": return "%3F";
         case "#": return "%23";
