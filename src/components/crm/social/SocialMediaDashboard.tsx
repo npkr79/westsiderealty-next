@@ -57,9 +57,8 @@ interface SavedPost {
 
 function toIST(ts: string): string {
   if (!ts) return '';
-  const normalized = ts.includes('Z') || ts.includes('+') ? ts : ts + 'Z';
-  const ist = new Date(new Date(normalized).getTime() + 5.5 * 60 * 60 * 1000);
-  return ist.toLocaleString('en-IN', {
+  return new Date(ts).toLocaleString('en-IN', {
+    timeZone: 'Asia/Kolkata',
     day: '2-digit', month: '2-digit', year: 'numeric',
     hour: '2-digit', minute: '2-digit', hour12: true,
   }) + ' IST';
@@ -1147,8 +1146,8 @@ function NewsTab() {
     setActionId(articleId);
     const scheduledAt = await findNextAvailableSlot();
     await scheduleGroup(articleId, scheduledAt);
-    const labelIST = new Date(new Date(scheduledAt).getTime() + 5.5 * 60 * 60 * 1000);
-    const label = labelIST.toLocaleString('en-IN', {
+    const label = new Date(scheduledAt).toLocaleString('en-IN', {
+      timeZone: 'Asia/Kolkata',
       day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: true,
     }) + ' IST';
     setScheduleLabels((prev) => ({ ...prev, [articleId]: label }));
