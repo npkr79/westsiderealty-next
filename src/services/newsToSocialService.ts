@@ -57,19 +57,46 @@ export async function pickTopArticles(
   supabase: SupabaseClient,
   count = 4
 ): Promise<NewsArticle[]> {
+  const SELECT =
+    "id, headline, summary, ai_summary, ai_tags, category, sub_category, cities, relevance_score, source_name, source_url, image_url";
+
+  // Pull a larger pool so we have enough to satisfy city slots + fill remaining
   const { data, error } = await supabase
     .from("news_articles")
-    .select(
-      "id, headline, summary, ai_summary, ai_tags, category, sub_category, cities, relevance_score, source_name, source_url, image_url"
-    )
+    .select(SELECT)
     .eq("is_processed", false)
     .eq("is_rejected", false)
     .gte("relevance_score", 7.0)
     .order("relevance_score", { ascending: false })
-    .limit(count);
+    .limit(20);
 
   if (error) throw new Error(`pickTopArticles failed: ${error.message}`);
-  return (data ?? []) as NewsArticle[];
+  const pool = (data ?? []) as NewsArticle[];
+
+  const picked: NewsArticle[] = [];
+  const used = new Set<string>();
+
+  // Reserve 1 slot each for Hyderabad and Goa (best scored available)
+  for (const city of ["hyderabad", "goa"]) {
+    const match = pool.find(
+      (a) => !used.has(a.id) && a.cities?.includes(city)
+    );
+    if (match) {
+      picked.push(match);
+      used.add(match.id);
+    }
+  }
+
+  // Fill remaining slots with top-scored articles not already picked
+  for (const article of pool) {
+    if (picked.length >= count) break;
+    if (!used.has(article.id)) {
+      picked.push(article);
+      used.add(article.id);
+    }
+  }
+
+  return picked;
 }
 
 // ---------------------------------------------------------------------------
