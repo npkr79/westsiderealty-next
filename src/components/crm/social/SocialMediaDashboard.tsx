@@ -152,7 +152,7 @@ const ALL_COMBOS = [
   { platform: 'Instagram', content_type: 'post', formatLabel: 'POST', charLimit: '150–250 chars' },
   { platform: 'LinkedIn', content_type: 'post', formatLabel: 'POST', charLimit: '150–300 chars' },
   { platform: 'LinkedIn', content_type: 'article', formatLabel: 'ARTICLE', charLimit: 'Long form' },
-  { platform: 'X', content_type: 'tweet', formatLabel: 'TWEET', charLimit: 'Max 240 chars' },
+  { platform: 'X', content_type: 'tweet', formatLabel: 'POST', charLimit: 'Long form (Premium)' },
   { platform: 'WhatsApp', content_type: 'broadcast', formatLabel: 'BROADCAST', charLimit: '150–300 chars' },
 ];
 
@@ -1039,34 +1039,63 @@ const PLATFORM_COLORS: Record<string, string> = {
   X: 'bg-gray-700 text-gray-300',
 };
 
-// Slot 1: 9:30am IST = 04:00 UTC, Slot 2: 7:00pm IST = 13:30 UTC
-function todaySlotUTC(hour: number, minute: number): string {
-  const nowIST = new Date(Date.now() + 5.5 * 60 * 60 * 1000);
-  const dateIST = nowIST.toISOString().split('T')[0]; // YYYY-MM-DD in IST
-  return new Date(`${dateIST}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00Z`).toISOString();
+// Daily publish slots (UTC): 9:30am IST, 7:00pm IST, 1:00pm IST
+const DAILY_SLOTS_UTC: [number, number][] = [
+  [4, 0],   // 9:30am IST
+  [13, 30], // 7:00pm IST
+  [7, 30],  // 1:00pm IST
+];
+
+function slotISO(dateIST: string, hourUTC: number, minuteUTC: number): string {
+  return new Date(
+    `${dateIST}T${String(hourUTC).padStart(2, '0')}:${String(minuteUTC).padStart(2, '0')}:00Z`
+  ).toISOString();
 }
 
-async function getTodayScheduledArticleCount(): Promise<number> {
+// Find next available slot across days. Each day has 3 slots; overflow → next day.
+async function findNextAvailableSlot(): Promise<string> {
   const res = await fetch('/api/social/posts?status=scheduled');
   const data = await res.json();
-  const nowIST = new Date(Date.now() + 5.5 * 60 * 60 * 1000);
-  const todayIST = nowIST.toISOString().split('T')[0];
-  const todayNews = (data.posts ?? []).filter((p: NewsPost) => {
-    if (p.post_category !== 'news' || !p.scheduled_at) return false;
-    const pIST = new Date(new Date(p.scheduled_at).getTime() + 5.5 * 60 * 60 * 1000);
-    return pIST.toISOString().split('T')[0] === todayIST;
-  });
-  const distinct = new Set(todayNews.map((p: NewsPost) => p.news_article_id ?? p.id));
-  return distinct.size;
+  const scheduledPosts = (data.posts ?? []).filter(
+    (p: NewsPost) => p.post_category === 'news' && p.scheduled_at
+  );
+
+  const articlesByDate: Record<string, string[]> = {};
+  for (const post of scheduledPosts) {
+    const pIST = new Date(new Date(post.scheduled_at!).getTime() + 5.5 * 60 * 60 * 1000);
+    const dateStr = pIST.toISOString().split('T')[0];
+    if (!articlesByDate[dateStr]) articlesByDate[dateStr] = [];
+    const key = post.news_article_id ?? post.id;
+    if (!articlesByDate[dateStr].includes(key)) articlesByDate[dateStr].push(key);
+  }
+
+  const nowUTC = Date.now();
+  const nowIST = new Date(nowUTC + 5.5 * 60 * 60 * 1000);
+  for (let dayOffset = 0; dayOffset < 14; dayOffset++) {
+    const checkDate = new Date(nowIST);
+    checkDate.setUTCDate(checkDate.getUTCDate() + dayOffset);
+    const dateIST = checkDate.toISOString().split('T')[0];
+    const slotsUsed = articlesByDate[dateIST]?.length ?? 0;
+    if (slotsUsed >= 3) continue;
+    // Iterate remaining slots for this day, skipping past ones (only relevant for today)
+    for (let slotIdx = slotsUsed; slotIdx < DAILY_SLOTS_UTC.length; slotIdx++) {
+      const [h, m] = DAILY_SLOTS_UTC[slotIdx];
+      const slotTimeUTC = new Date(`${dateIST}T${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00Z`).getTime();
+      if (dayOffset === 0 && slotTimeUTC <= nowUTC) continue; // past slot, skip
+      return slotISO(dateIST, h, m);
+    }
+    // All remaining slots today are past — try next day
+  }
+  const fallback = new Date(nowIST);
+  fallback.setUTCDate(fallback.getUTCDate() + 14);
+  return slotISO(fallback.toISOString().split('T')[0], 4, 0);
 }
 
 function NewsTab() {
   const [groups, setGroups] = useState<Map<string, NewsPost[]>>(new Map());
   const [loading, setLoading] = useState(true);
   const [actionId, setActionId] = useState<string | null>(null);
-  // Manual time picker state
-  const [pickerArticleId, setPickerArticleId] = useState<string | null>(null);
-  const [pickerTime, setPickerTime] = useState('');
+  const [scheduleLabels, setScheduleLabels] = useState<Record<string, string>>({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -1116,46 +1145,46 @@ function NewsTab() {
 
   const handleApprove = async (articleId: string) => {
     setActionId(articleId);
-    const count = await getTodayScheduledArticleCount();
-    if (count === 0) {
-      // Slot 1: 9:30am IST = 04:00 UTC
-      await scheduleGroup(articleId, todaySlotUTC(4, 0));
-    } else if (count === 1) {
-      // Slot 2: 7:00pm IST = 13:30 UTC
-      await scheduleGroup(articleId, todaySlotUTC(13, 30));
-    } else {
-      // 3rd+ — show manual picker
-      setActionId(null);
-      // Default picker value to next hour in IST (datetime-local is local browser time)
-      const next = new Date(Date.now() + 60 * 60 * 1000);
-      setPickerTime(next.toISOString().slice(0, 16));
-      setPickerArticleId(articleId);
-      return;
-    }
+    const scheduledAt = await findNextAvailableSlot();
+    await scheduleGroup(articleId, scheduledAt);
+    const labelIST = new Date(new Date(scheduledAt).getTime() + 5.5 * 60 * 60 * 1000);
+    const label = labelIST.toLocaleString('en-IN', {
+      day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: true,
+    }) + ' IST';
+    setScheduleLabels((prev) => ({ ...prev, [articleId]: label }));
     setActionId(null);
   };
 
-  const handlePickerConfirm = async () => {
-    if (!pickerArticleId || !pickerTime) return;
-    setActionId(pickerArticleId);
-    // pickerTime is browser local — treat as IST and convert to UTC
-    const localDate = new Date(pickerTime);
-    const utcMs = localDate.getTime() - (5.5 * 60 * 60 * 1000);
-    const utcIso = new Date(utcMs).toISOString();
-    await scheduleGroup(pickerArticleId, utcIso);
-    setPickerArticleId(null);
-    setPickerTime('');
+  const markManualPosted = async (articleId: string) => {
+    setActionId(articleId);
+    const posts = (groups.get(articleId) ?? []).filter((p) => p.status === 'manual_ready');
+    await Promise.all(
+      posts.map((p) =>
+        fetch('/api/social/posts', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: p.id, status: 'published', posted_at: new Date().toISOString() }),
+        })
+      )
+    );
+    setGroups((prev) => { const m = new Map(prev); m.delete(articleId); return m; });
     setActionId(null);
   };
 
   const rejectGroup = async (articleId: string) => {
     setActionId(articleId);
     const posts = groups.get(articleId) ?? [];
-    await Promise.all(
-      posts.map((p) =>
-        fetch(`/api/social/posts?id=${p.id}`, { method: 'DELETE' })
-      )
-    );
+    // Delete all social posts
+    await Promise.all(posts.map((p) => fetch(`/api/social/posts?id=${p.id}`, { method: 'DELETE' })));
+    // Mark the news article as rejected so it won't be re-generated
+    const newsArticleId = posts[0]?.news_article_id;
+    if (newsArticleId) {
+      await fetch('/api/news/articles', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: newsArticleId, is_rejected: true }),
+      });
+    }
     setGroups((prev) => { const m = new Map(prev); m.delete(articleId); return m; });
     setActionId(null);
   };
@@ -1175,15 +1204,15 @@ function NewsTab() {
     <div className="space-y-6">
       <p className="text-xs text-gray-500">
         {groups.size} article{groups.size !== 1 ? 's' : ''} ready
-        &nbsp;·&nbsp; FB/Insta: approve to auto-schedule &nbsp;·&nbsp; X/LinkedIn: copy & post manually
+        &nbsp;·&nbsp; FB/Insta: approve to auto-schedule &nbsp;·&nbsp; X/LinkedIn: copy &amp; post manually, then click Posted
       </p>
       {Array.from(groups.entries()).map(([articleId, posts]) => {
         const headline = posts[0]?.content_idea ?? 'Untitled';
         const imageUrl = posts[0]?.image_url;
         const isActing = actionId === articleId;
-        const showPicker = pickerArticleId === articleId;
         const autoPosts = posts.filter((p) => p.status === 'pending_review');
         const manualPosts = posts.filter((p) => p.status === 'manual_ready');
+        const scheduledLabel = scheduleLabels[articleId];
         return (
           <div key={articleId} className="bg-gray-900 rounded-xl overflow-hidden border border-gray-800">
             {/* Image + headline */}
@@ -1202,7 +1231,6 @@ function NewsTab() {
                       className="w-full object-cover"
                       style={{ minHeight: '200px', maxHeight: '280px' }}
                     />
-                    {/* Dark gradient at bottom so text is always readable */}
                     <div className="absolute bottom-0 left-0 right-0 h-28 bg-gradient-to-t from-black/70 to-transparent pointer-events-none" />
                     <div className="absolute top-2 right-2 opacity-0 hover:opacity-100 transition-opacity">
                       <span className="bg-black/60 text-white text-xs px-2 py-1 rounded">Open full size ↗</span>
@@ -1216,6 +1244,9 @@ function NewsTab() {
               </div>
               <div className="p-4">
                 <p className="text-sm font-medium text-white leading-snug">{headline}</p>
+                {scheduledLabel && (
+                  <p className="text-xs text-green-400 mt-1">✓ FB/Insta scheduled for {scheduledLabel}</p>
+                )}
               </div>
             </div>
 
@@ -1263,42 +1294,26 @@ function NewsTab() {
               </div>
             )}
 
-            {/* Manual time picker (3rd+ approval) */}
-            {showPicker && (
-              <div className="px-4 py-3 border-t border-gray-800 bg-gray-950">
-                <p className="text-xs text-yellow-400 mb-2">2 posts already scheduled today — pick a custom time (IST):</p>
-                <div className="flex gap-2 items-center">
-                  <input
-                    type="datetime-local"
-                    value={pickerTime}
-                    onChange={(e) => setPickerTime(e.target.value)}
-                    className="flex-1 bg-gray-800 text-white text-xs rounded-lg px-3 py-2 border border-gray-700"
-                  />
-                  <button
-                    onClick={handlePickerConfirm}
-                    disabled={!pickerTime || isActing}
-                    className="px-4 py-2 rounded-lg bg-green-700 hover:bg-green-600 text-white text-xs font-medium disabled:opacity-50"
-                  >
-                    Confirm
-                  </button>
-                  <button
-                    onClick={() => setPickerArticleId(null)}
-                    className="px-3 py-2 rounded-lg bg-gray-800 text-gray-400 text-xs"
-                  >
-                    ✕
-                  </button>
-                </div>
-              </div>
-            )}
             {/* Actions */}
             <div className="flex gap-2 p-4 border-t border-gray-800">
-              <button
-                onClick={() => handleApprove(articleId)}
-                disabled={isActing || showPicker}
-                className="flex-1 py-2 rounded-lg bg-green-700 hover:bg-green-600 text-white text-sm font-medium disabled:opacity-50 transition-colors"
-              >
-                {isActing ? 'Scheduling…' : '✓ Approve & Schedule'}
-              </button>
+              {autoPosts.length > 0 && (
+                <button
+                  onClick={() => handleApprove(articleId)}
+                  disabled={isActing}
+                  className="flex-1 py-2 rounded-lg bg-green-700 hover:bg-green-600 text-white text-sm font-medium disabled:opacity-50 transition-colors"
+                >
+                  {isActing ? 'Scheduling…' : '✓ Approve & Schedule'}
+                </button>
+              )}
+              {manualPosts.length > 0 && (
+                <button
+                  onClick={() => markManualPosted(articleId)}
+                  disabled={isActing}
+                  className="flex-1 py-2 rounded-lg bg-blue-700 hover:bg-blue-600 text-white text-sm font-medium disabled:opacity-50 transition-colors"
+                >
+                  {isActing ? 'Saving…' : '✓ Posted'}
+                </button>
+              )}
               <button
                 onClick={() => rejectGroup(articleId)}
                 disabled={isActing}
