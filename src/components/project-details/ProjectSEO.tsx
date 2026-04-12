@@ -58,6 +58,33 @@ export default function ProjectSEO({
     ...((project.micro_market as any)?.price_per_sqft_min && {
       priceRange: `₹${(project.micro_market as any).price_per_sqft_min.toLocaleString("en-IN")} – ₹${((project.micro_market as any).price_per_sqft_max ?? (project.micro_market as any).price_per_sqft_min).toLocaleString("en-IN")} per sq ft`,
     }),
+    // Offer/price schema for price rich snippets in SERP
+    ...((project.micro_market as any)?.price_per_sqft_min && {
+      offers: {
+        "@type": "Offer",
+        priceCurrency: "INR",
+        price: (project.micro_market as any).price_per_sqft_min,
+        priceSpecification: {
+          "@type": "UnitPriceSpecification",
+          price: (project.micro_market as any).price_per_sqft_min,
+          priceCurrency: "INR",
+          referenceQuantity: {
+            "@type": "QuantitativeValue",
+            value: 1,
+            unitCode: "SQF",
+          },
+        },
+        availability: "https://schema.org/InStock",
+      },
+    }),
+    // RERA identifier if available
+    ...((project as any).rera_id && {
+      identifier: {
+        "@type": "PropertyValue",
+        name: "RERA",
+        value: (project as any).rera_id,
+      },
+    }),
   };
 
   // BreadcrumbList for rich results in Google

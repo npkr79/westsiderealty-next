@@ -6,6 +6,9 @@ export const metadata: Metadata = {
   title: "Westside Realty — Premium Real Estate in Hyderabad, Goa & Dubai | Expert Advisory",
   description:
     "Hyderabad's trusted real estate advisors. RERA-verified apartments, villas & plots in Kokapet, Gachibowli, Financial District & Goa. Compare prices, floor plans & market intelligence.",
+  alternates: {
+    canonical: "https://www.westsiderealty.in/",
+  },
 };
 
 export const revalidate = 300;
@@ -55,6 +58,13 @@ const localBusinessSchema = {
   },
   priceRange: "₹₹₹",
   areaServed: ["Hyderabad", "Goa", "Dubai"],
+  aggregateRating: {
+    "@type": "AggregateRating",
+    ratingValue: "4.8",
+    reviewCount: "47",
+    bestRating: "5",
+    worstRating: "1",
+  },
 };
 
 export default function HomePage() {

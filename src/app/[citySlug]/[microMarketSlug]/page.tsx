@@ -7,6 +7,7 @@ import { getProjectsFromView, getTopPicks } from "@/services/microMarketProjects
 import { buildMicroMarketViewModel } from "@/services/microMarketViewModel";
 import MicroMarketRedesign, { type FeaturedProject } from "@/components/micro-market/MicroMarketRedesign";
 import { buildMetadata, JsonLd } from "@/components/common/SEO";
+import { buildProjectAbsoluteUrl } from "@/lib/routes";
 import type { GoaMarketProject } from "@/components/micro-market/GoaProjectsInMarket";
 
 export const revalidate = 600;
@@ -589,9 +590,44 @@ export default async function MicroMarketPage({ params }: PageProps) {
     ],
   };
 
+  // ItemList schema — helps Google show project count rich snippets
+  const itemListSchema = featuredProjectCount > 0 ? {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name: `${marketName} Real Estate Projects`,
+    description: `RERA-verified residential projects in ${marketName}, ${cityName}`,
+    numberOfItems: featuredProjectCount,
+    itemListElement: featuredProjects.slice(0, 10).map((p, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      url: buildProjectAbsoluteUrl(citySlug, p.slug),
+      name: p.name,
+    })),
+  } : null;
+
+  // LocalBusiness/RealEstateAgent schema for service area map pack visibility
+  const localBusinessSchema = {
+    "@context": "https://schema.org",
+    "@type": "RealEstateAgent",
+    name: "RE/MAX Westside Realty",
+    url: "https://www.westsiderealty.in",
+    areaServed: {
+      "@type": "Place",
+      name: `${marketName}, ${cityName}`,
+    },
+    address: {
+      "@type": "PostalAddress",
+      addressLocality: marketName,
+      addressRegion: cityName,
+      addressCountry: "IN",
+    },
+  };
+
+  const schemas = [breadcrumbSchema, localBusinessSchema, ...(itemListSchema ? [itemListSchema] : [])];
+
   return (
     <>
-      <JsonLd jsonLd={breadcrumbSchema} />
+      <JsonLd jsonLd={schemas} />
       <MicroMarketRedesign
         viewModel={viewModel}
         citySlug={citySlug}
