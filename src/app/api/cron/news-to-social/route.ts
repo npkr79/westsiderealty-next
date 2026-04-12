@@ -21,6 +21,12 @@ async function run() {
     };
   }
 
+  // Claim articles immediately to prevent duplicate processing on concurrent runs
+  await supabase
+    .from('news_articles')
+    .update({ is_processed: true, processed_at: new Date().toISOString() })
+    .in('id', articles.map((a) => a.id));
+
   const results: NewsPostResult[] = [];
   const errors: string[] = [];
 
