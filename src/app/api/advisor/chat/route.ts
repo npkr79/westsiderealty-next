@@ -359,7 +359,12 @@ export async function POST(request: NextRequest) {
     const responseText = await callClaude(SONNET, systemPrompt, promptWithContext, 1200);
 
     const latencyMs = Date.now() - start;
-    const suggestLeadCapture = false; // extend here if needed
+
+    // Trigger lead capture after 2+ user turns, or immediately on contact/broker requests
+    const captureState: string = body.capture_state ?? "idle";
+    const userTurns = history.filter((m) => m.role === "user").length + 1; // +1 for current
+    const isContactIntent = /broker|agent|advisor|call me|contact|visit|site visit|phone|number/i.test(userMessage);
+    const suggestLeadCapture = captureState !== "done" && (userTurns >= 2 || isContactIntent);
 
     // Step 5: Log to Supabase (fire-and-forget — never blocks the response)
     const conversationUuid = await upsertConversationSession(incomingConversationId, {

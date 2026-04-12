@@ -252,6 +252,7 @@ export default function AdvisorChat() {
           message: text,
           history,
           visitor_id: getOrCreateVisitorId(),
+          capture_state: captureState,
           ...(conversationId ? { conversation_id: conversationId } : {}),
           ...(pageProjectSlug ? { projectSlug: pageProjectSlug } : {}),
           ...(pageMarketSlugRef.current ? { marketSlug: pageMarketSlugRef.current } : {}),
