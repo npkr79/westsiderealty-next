@@ -110,15 +110,20 @@ RULES per platform:
 - LinkedIn: 200-400 chars, professional market insight + sector implication, 3-4 hashtags, NO emojis, end with "— REMAX Westside Realty"
 - Instagram: 150-250 chars, lead with the key fact + market context, emoji-rich (news/info emojis, not money/deal emojis), 8-10 hashtags, end with "— REMAX Westside Realty"
 - Facebook: 200-350 chars, explain what happened and what it means for the market in plain language, 5-6 hashtags, end with "— REMAX Westside Realty"
-- X: max 240 chars total (including hashtags), key fact + one clear implication, 2 hashtags only, end with "— REMAX Westside Realty"
+- X: 200-400 chars (X Premium — no character limit), same professional depth as LinkedIn, 3-4 hashtags, NO emojis, end with "— REMAX Westside Realty"
 
 TONE: Informational and analytical. Share knowledge, not sales pitches. Write like a market analyst or journalist, not a salesperson.
 
-FORMATTING for Facebook and LinkedIn only — use **double asterisks** to mark text that should appear bold:
-- Wrap strong lead-in words: **Here's what this means:** or **Key development:**
+SIGNATURE FORMATTING — critical:
+- The signature must be on its own paragraph separated by a blank line
+- In the caption JSON value, put \\n\\n before the signature
+- Example: "Full body text explaining the news and market implications.\\n\\n— REMAX Westside Realty"
+
+FORMATTING — use **double asterisks** to mark text that should appear bold (applies to ALL platforms):
+- Wrap the opening news headline/key fact sentence in **double asterisks**
+  Example: **Maharashtra CM announces digital platform for affordable rentals in Mumbai** 🏠📱 The rest of the body in plain text.
 - Wrap the closing signature: **— REMAX Westside Realty**
-- Body sentences: plain text, no asterisks
-- Instagram and X: plain text only, no asterisks at all
+- Body/explanation sentences: plain text, no asterisks
 
 Return ONLY valid JSON array (no markdown):
 [
@@ -140,7 +145,7 @@ Return ONLY valid JSON array (no markdown):
   {
     "platform": "X",
     "caption": "...",
-    "hashtags": ["2 only"]
+    "hashtags": ["3-4 hashtags"]
   }
 ]`;
 
@@ -193,22 +198,22 @@ function decodeHtmlEntities(text: string): string {
 }
 
 // Cloudinary text overlay encoding.
-// KEY FINDING (tested): %2C is decoded back to "," by Cloudinary and breaks
-// transformation parsing. Replace commas with em-dash (%E2%80%94) instead —
-// multi-byte UTF-8 is NOT decoded as a separator, so it is safe.
-// All other non-ASCII chars (₹, etc.) work fine as %XX percent-encoded.
+// Commas break Cloudinary transformation param parsing even when %2C encoded.
+// Fix: strip thousands-separator commas from numbers (₹3,400 → ₹3400),
+// replace any remaining commas with " - ", then URL-encode the rest.
 function encodeCloudinaryText(text: string): string {
-  return text
+  const processed = text
+    .replace(/(\d),(\d)/g, "$1$2")  // thousands separators: 3,400 → 3400
+    .replace(/,/g, " - ");           // other commas → " - "
+
+  return processed
     .split("")
     .map((char) => {
       const code = char.charCodeAt(0);
-      // Non-ASCII: percent-encode each UTF-8 byte (works for ₹, etc.)
-      if (code > 127) return encodeURIComponent(char);
-      // ASCII chars that break Cloudinary transformation params
+      if (code > 127) return encodeURIComponent(char); // ₹ etc.
       switch (char) {
         case "%": return "%25";
         case " ": return "%20";
-        case ",": return "%E2%80%94"; // em-dash — comma breaks param parsing
         case "/": return "%2F";
         case "?": return "%3F";
         case "#": return "%23";
@@ -221,8 +226,8 @@ function encodeCloudinaryText(text: string): string {
     .join("");
 }
 
-// Inject Cloudinary text overlay transformation into a Cloudinary URL.
-// White headline text at the bottom — image AI prompt ensures a dark bottom zone.
+// Inject Cloudinary text overlays into a Cloudinary URL.
+// Yellow headline at bottom, small "PHOTO: AI GENERATED" label at top-left.
 function applyCloudinaryTextOverlay(cloudinaryUrl: string, headline: string): string {
   const decoded = decodeHtmlEntities(headline).slice(0, 120);
   const encoded = encodeCloudinaryText(decoded);
@@ -230,10 +235,10 @@ function applyCloudinaryTextOverlay(cloudinaryUrl: string, headline: string): st
   const [before, after] = cloudinaryUrl.split("/upload/");
   if (!before || !after) return cloudinaryUrl;
 
-  // White headline text anchored bottom-left
-  const textLayer = [
-    `l_text:Arial_52_bold:${encoded}`,
-    "co_white",
+  // Yellow headline text anchored bottom-left
+  const headlineLayer = [
+    `l_text:Arial_56_bold:${encoded}`,
+    "co_rgb:FFD700",
     "g_south_west",
     "x_36",
     "y_44",
@@ -241,7 +246,16 @@ function applyCloudinaryTextOverlay(cloudinaryUrl: string, headline: string): st
     "c_fit",
   ].join(",");
 
-  return `${before}/upload/${textLayer}/${after}`;
+  // Small "PHOTO: AI GENERATED" label top-left
+  const labelLayer = [
+    "l_text:Arial_22_bold:PHOTO%3A%20AI%20GENERATED",
+    "co_rgb:FFFFFF",
+    "g_north_west",
+    "x_20",
+    "y_20",
+  ].join(",");
+
+  return `${before}/upload/${labelLayer}/${headlineLayer}/${after}`;
 }
 
 // Build a dark-to-transparent gradient strip using raw RGBA pixels.

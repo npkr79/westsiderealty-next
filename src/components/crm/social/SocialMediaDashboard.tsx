@@ -55,6 +55,52 @@ interface SavedPost {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+/**
+ * Renders a caption string with:
+ * - **text** → bold bright-orange
+ * - \n\n  → paragraph break
+ * - "— REMAX…" signature → forced onto its own line in orange
+ */
+function renderCaption(text: string): React.ReactNode {
+  if (!text) return null;
+
+  // Guarantee the signature is always on its own paragraph
+  const normalized = text.replace(
+    /\s*\n*\s*(—\s*(?:REMAX|Remax)\b[^\n]*)/g,
+    '\n\n$1'
+  );
+
+  const paragraphs = normalized.split(/\n\n+/);
+
+  return (
+    <span className="leading-relaxed">
+      {paragraphs.map((para, pIdx) => {
+        const isSignature = /^—\s*(REMAX|Remax)/i.test(para.trim());
+        const parts = para.split(/(\*\*[^*]+\*\*)/g);
+        return (
+          <span key={pIdx} className={`block ${pIdx > 0 ? 'mt-2' : ''}`}>
+            {parts.map((part, i) => {
+              const bold = part.match(/^\*\*(.+)\*\*$/s);
+              if (bold) {
+                return (
+                  <strong key={i} className="font-bold text-orange-400">
+                    {bold[1]}
+                  </strong>
+                );
+              }
+              return (
+                <span key={i} className={isSignature ? 'font-semibold text-orange-400' : ''}>
+                  {part}
+                </span>
+              );
+            })}
+          </span>
+        );
+      })}
+    </span>
+  );
+}
+
 function toIST(ts: string): string {
   if (!ts) return '';
   return new Date(ts).toLocaleString('en-IN', {
@@ -214,7 +260,7 @@ function ResultCard({ post, saving, regenerating, onSave, onDiscard, onRegenerat
         </div>
       ) : (
         <div>
-          <p className="text-sm text-gray-200 leading-relaxed whitespace-pre-wrap">{post.caption}</p>
+          <p className="text-sm text-gray-200">{renderCaption(post.caption ?? '')}</p>
           {post.hashtags && post.hashtags.length > 0 && (
             <p className="text-xs text-indigo-400 mt-1.5">{post.hashtags.map((h) => '#' + h).join(' ')}</p>
           )}
@@ -945,8 +991,8 @@ function ManualTab() {
               <span className="text-xs text-gray-500">Caption</span>
               <CopyButton text={post.caption ?? ''} />
             </div>
-            <p className="text-sm text-gray-200 leading-relaxed whitespace-pre-wrap bg-gray-900 rounded-lg p-3">
-              {post.caption}
+            <p className="text-sm text-gray-200 bg-gray-900 rounded-lg p-3">
+              {renderCaption(post.caption ?? '')}
             </p>
           </div>
 
@@ -1257,7 +1303,7 @@ function NewsTab() {
                   {autoPosts.map((post) => (
                     <div key={post.id} className="px-4 py-3">
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${PLATFORM_COLORS[post.platform] ?? 'bg-gray-700 text-gray-300'}`}>{post.platform}</span>
-                      <p className="text-xs text-gray-300 leading-relaxed whitespace-pre-wrap mt-1">{post.caption}</p>
+                      <p className="text-xs text-gray-300 mt-1">{renderCaption(post.caption ?? '')}</p>
                       {post.hashtags && post.hashtags.length > 0 && (
                         <p className="text-xs text-blue-500 mt-1">{post.hashtags.map((h) => `#${h}`).join(' ')}</p>
                       )}
@@ -1283,7 +1329,7 @@ function NewsTab() {
                           {copiedId === post.id ? '✓ Copied!' : 'Copy text'}
                         </button>
                       </div>
-                      <p className="text-xs text-gray-300 leading-relaxed whitespace-pre-wrap mt-1">{post.caption}</p>
+                      <p className="text-xs text-gray-300 mt-1">{renderCaption(post.caption ?? '')}</p>
                       {post.hashtags && post.hashtags.length > 0 && (
                         <p className="text-xs text-blue-500 mt-1">{post.hashtags.map((h) => `#${h}`).join(' ')}</p>
                       )}
