@@ -1084,11 +1084,12 @@ const PLATFORM_COLORS: Record<string, string> = {
   X: 'bg-gray-700 text-gray-300',
 };
 
-// Daily publish slots (UTC): 9:30am IST, 7:00pm IST, 1:00pm IST
+// Daily publish slots (UTC) in chronological order: 9:30am, 1:00pm, 7:00pm, 9:00pm IST
 const DAILY_SLOTS_UTC: [number, number][] = [
   [4, 0],   // 9:30am IST
-  [13, 30], // 7:00pm IST
   [7, 30],  // 1:00pm IST
+  [13, 30], // 7:00pm IST
+  [15, 30], // 9:00pm IST
 ];
 
 function slotISO(dateIST: string, hourUTC: number, minuteUTC: number): string {
@@ -1097,7 +1098,7 @@ function slotISO(dateIST: string, hourUTC: number, minuteUTC: number): string {
   ).toISOString();
 }
 
-// Find next available slot across days. Each day has 3 slots; overflow → next day.
+// Find next available slot across days. Each day has 4 slots; overflow → next day.
 async function findNextAvailableSlot(): Promise<string> {
   const res = await fetch('/api/social/posts?status=scheduled');
   const data = await res.json();
@@ -1105,13 +1106,13 @@ async function findNextAvailableSlot(): Promise<string> {
     (p: NewsPost) => p.post_category === 'news' && p.scheduled_at
   );
 
-  const articlesByDate: Record<string, string[]> = {};
+  // Build set of already-booked slot times per IST date
+  const bookedByDate: Record<string, Set<string>> = {};
   for (const post of scheduledPosts) {
     const pIST = new Date(new Date(post.scheduled_at!).getTime() + 5.5 * 60 * 60 * 1000);
     const dateStr = pIST.toISOString().split('T')[0];
-    if (!articlesByDate[dateStr]) articlesByDate[dateStr] = [];
-    const key = post.news_article_id ?? post.id;
-    if (!articlesByDate[dateStr].includes(key)) articlesByDate[dateStr].push(key);
+    if (!bookedByDate[dateStr]) bookedByDate[dateStr] = new Set();
+    bookedByDate[dateStr].add(post.scheduled_at!);
   }
 
   const nowUTC = Date.now();
@@ -1120,16 +1121,15 @@ async function findNextAvailableSlot(): Promise<string> {
     const checkDate = new Date(nowIST);
     checkDate.setUTCDate(checkDate.getUTCDate() + dayOffset);
     const dateIST = checkDate.toISOString().split('T')[0];
-    const slotsUsed = articlesByDate[dateIST]?.length ?? 0;
-    if (slotsUsed >= 3) continue;
-    // Iterate remaining slots for this day, skipping past ones (only relevant for today)
-    for (let slotIdx = slotsUsed; slotIdx < DAILY_SLOTS_UTC.length; slotIdx++) {
-      const [h, m] = DAILY_SLOTS_UTC[slotIdx];
-      const slotTimeUTC = new Date(`${dateIST}T${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00Z`).getTime();
-      if (dayOffset === 0 && slotTimeUTC <= nowUTC) continue; // past slot, skip
-      return slotISO(dateIST, h, m);
+    const booked = bookedByDate[dateIST] ?? new Set();
+    if (booked.size >= DAILY_SLOTS_UTC.length) continue; // day full
+    for (const [h, m] of DAILY_SLOTS_UTC) {
+      const slotTime = slotISO(dateIST, h, m);
+      const slotTimeUTC = new Date(slotTime).getTime();
+      if (dayOffset === 0 && slotTimeUTC <= nowUTC) continue; // past slot
+      if (booked.has(slotTime)) continue; // already taken
+      return slotTime;
     }
-    // All remaining slots today are past — try next day
   }
   const fallback = new Date(nowIST);
   fallback.setUTCDate(fallback.getUTCDate() + 14);
