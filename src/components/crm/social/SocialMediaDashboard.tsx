@@ -1376,9 +1376,197 @@ function NewsTab() {
   );
 }
 
+// ── Articles Tab ──────────────────────────────────────────────────────────────
+
+interface GeneratedArticle {
+  id: string;
+  slug: string | null;
+  city: string;
+  micro_market: string;
+  seo_headline: string;
+  meta_description: string;
+  body: string;
+  target_persona: string;
+  drip_placement: string;
+  status: string;
+  published_at: string | null;
+  created_at: string;
+}
+
+const ARTICLE_CITY_LABELS: Record<string, string> = {
+  hyderabad: 'Hyderabad', goa: 'Goa', mumbai: 'Mumbai', delhi_ncr: 'Delhi NCR',
+  bengaluru: 'Bengaluru', pune: 'Pune', chennai: 'Chennai', kolkata: 'Kolkata',
+  ahmedabad: 'Ahmedabad', kochi: 'Kochi', navi_mumbai_thane: 'Navi Mumbai / Thane',
+};
+
+function ArticlesTab() {
+  const [articles, setArticles] = useState<GeneratedArticle[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<'draft' | 'published'>('draft');
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [actingId, setActingId] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/admin/articles?status=${filter}`);
+      const data = await res.json();
+      setArticles(data.articles ?? []);
+    } finally {
+      setLoading(false);
+    }
+  }, [filter]);
+
+  useEffect(() => { load(); }, [load]);
+
+  async function publish(id: string) {
+    setActingId(id);
+    try {
+      const res = await fetch(`/api/admin/articles/${id}/publish`, { method: 'POST' });
+      if (res.ok) {
+        setArticles((prev) => prev.filter((a) => a.id !== id));
+      }
+    } finally {
+      setActingId(null);
+    }
+  }
+
+  async function deleteArticle(id: string) {
+    if (!confirm('Delete this article?')) return;
+    setActingId(id);
+    try {
+      const res = await fetch(`/api/admin/articles/${id}/publish`, { method: 'DELETE' });
+      if (res.ok) {
+        setArticles((prev) => prev.filter((a) => a.id !== id));
+      }
+    } finally {
+      setActingId(null);
+    }
+  }
+
+  function readTime(body: string) {
+    const mins = Math.max(1, Math.round(body.trim().split(/\s+/).length / 200));
+    return `${mins} min`;
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex gap-1 bg-gray-900 rounded-lg p-1">
+          {(['draft', 'published'] as const).map((f) => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${filter === f ? 'bg-gray-700 text-white' : 'text-gray-500 hover:text-gray-300'}`}
+            >
+              {f === 'draft' ? 'Draft' : 'Published'}
+            </button>
+          ))}
+        </div>
+        <button onClick={load} className="p-2 rounded-lg bg-gray-800 text-gray-400 hover:text-white transition-colors">
+          <RefreshCw size={14} />
+        </button>
+      </div>
+
+      {loading ? (
+        <div className="flex justify-center py-16"><Loader2 className="animate-spin text-gray-500" /></div>
+      ) : articles.length === 0 ? (
+        <div className="text-center py-16 text-gray-500 text-sm">
+          {filter === 'draft' ? 'No draft articles. The daily cron generates 2 articles at 8 AM IST.' : 'No published articles yet.'}
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {articles.map((article) => {
+            const isExpanded = expandedId === article.id;
+            const isActing = actingId === article.id;
+            return (
+              <div key={article.id} className="bg-gray-900 rounded-xl overflow-hidden border border-gray-800">
+                {/* Header */}
+                <div className="p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      {/* City + micro-market badges */}
+                      <div className="flex items-center gap-2 flex-wrap mb-2">
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full">
+                          {ARTICLE_CITY_LABELS[article.city] ?? article.city}
+                        </span>
+                        <span className="text-[10px] text-gray-500">{article.micro_market}</span>
+                        <span className="text-[10px] text-gray-600">· {readTime(article.body)}</span>
+                        <span className="text-[10px] text-gray-600">· {article.drip_placement}</span>
+                      </div>
+                      {/* Headline */}
+                      <h3 className="text-sm font-semibold text-white leading-snug mb-1">
+                        {article.seo_headline}
+                      </h3>
+                      {/* Description */}
+                      <p className="text-xs text-gray-500 leading-relaxed line-clamp-2">
+                        {article.meta_description}
+                      </p>
+                      {/* Persona */}
+                      <p className="text-[10px] text-gray-600 mt-1">For: {article.target_persona}</p>
+                    </div>
+                    <button
+                      onClick={() => setExpandedId(isExpanded ? null : article.id)}
+                      className="p-1.5 rounded-lg bg-gray-800 text-gray-400 hover:text-white flex-shrink-0"
+                    >
+                      {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Expanded body preview */}
+                {isExpanded && (
+                  <div className="px-4 pb-4 border-t border-gray-800 pt-4">
+                    <pre className="text-xs text-gray-300 whitespace-pre-wrap font-sans leading-relaxed max-h-64 overflow-y-auto bg-gray-950 rounded-lg p-3">
+                      {article.body}
+                    </pre>
+                  </div>
+                )}
+
+                {/* Actions */}
+                {filter === 'draft' && (
+                  <div className="flex gap-2 p-3 border-t border-gray-800">
+                    <button
+                      onClick={() => publish(article.id)}
+                      disabled={isActing}
+                      className="flex-1 py-2 rounded-lg bg-amber-700 hover:bg-amber-600 text-white text-sm font-medium disabled:opacity-50 transition-colors"
+                    >
+                      {isActing ? 'Publishing…' : '↑ Publish to Website'}
+                    </button>
+                    <button
+                      onClick={() => deleteArticle(article.id)}
+                      disabled={isActing}
+                      className="px-4 py-2 rounded-lg bg-gray-800 hover:bg-red-900 text-gray-400 hover:text-red-300 text-sm font-medium disabled:opacity-50 transition-colors"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                )}
+
+                {filter === 'published' && article.slug && (
+                  <div className="flex gap-2 p-3 border-t border-gray-800">
+                    <a
+                      href={`/news-articles/${article.slug}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm font-medium text-center transition-colors"
+                    >
+                      View on Website ↗
+                    </a>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main Dashboard ────────────────────────────────────────────────────────────
 
-const TABS = ['Occasions', 'Generate', 'Queue', 'News', 'Manual', 'History'] as const;
+const TABS = ['Occasions', 'Generate', 'Queue', 'News', 'Articles', 'Manual', 'History'] as const;
 type Tab = typeof TABS[number];
 
 export default function SocialMediaDashboard() {
@@ -1410,6 +1598,7 @@ export default function SocialMediaDashboard() {
         {activeTab === 'Generate' && <GenerateTab />}
         {activeTab === 'Queue' && <QueueTab />}
         {activeTab === 'News' && <NewsTab />}
+        {activeTab === 'Articles' && <ArticlesTab />}
         {activeTab === 'Manual' && <ManualTab />}
         {activeTab === 'History' && <HistoryTab />}
       </div>

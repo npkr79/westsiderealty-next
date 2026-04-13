@@ -56,6 +56,20 @@ function weekStartISO(): string {
 }
 
 // ---------------------------------------------------------------------------
+// Slug helper
+// ---------------------------------------------------------------------------
+
+function slugify(text: string, id: string): string {
+  const base = text
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .slice(0, 70);
+  return `${base}-${id.slice(0, 6)}`;
+}
+
+// ---------------------------------------------------------------------------
 // City rotation — pick today's 2 cities
 // ---------------------------------------------------------------------------
 
@@ -359,14 +373,20 @@ export async function runArticleGeneration(
     const cityNews = article.city === city1 ? news1 : news2;
     const sourceIds = cityNews.map((n) => n.id);
 
+    // Generate a temp id for the slug suffix, then insert
+    const tempId = crypto.randomUUID();
+    const slug = slugify(article.seo_headline, tempId);
+
     const { data: inserted, error } = await supabase
       .from("generated_articles")
       .insert({
+        id: tempId,
         city: article.city,
         micro_market: article.micro_market,
         seo_headline: article.seo_headline.slice(0, 60),
         meta_description: article.meta_description.slice(0, 155),
         body: article.body,
+        slug,
         whatsapp_summary: article.whatsapp_summary.slice(0, 160),
         target_persona: article.target_persona,
         drip_placement: article.drip_placement,

@@ -36,6 +36,38 @@ async function getPublishedArticles(): Promise<BlogArticlePreview[]> {
   }
 }
 
+interface NewsArticlePreview {
+  slug: string;
+  city: string;
+  micro_market: string;
+  seo_headline: string;
+  meta_description: string;
+  body: string;
+  published_at: string;
+}
+
+const NEWS_CITY_LABELS: Record<string, string> = {
+  hyderabad: "Hyderabad", goa: "Goa", mumbai: "Mumbai", delhi_ncr: "Delhi NCR",
+  bengaluru: "Bengaluru", pune: "Pune", chennai: "Chennai", kolkata: "Kolkata",
+  ahmedabad: "Ahmedabad", kochi: "Kochi", navi_mumbai_thane: "Navi Mumbai / Thane",
+};
+
+async function getNewsArticles(): Promise<NewsArticlePreview[]> {
+  try {
+    const supabase = createServiceClient();
+    const { data } = await supabase
+      .from("generated_articles")
+      .select("slug, city, micro_market, seo_headline, meta_description, body, published_at")
+      .eq("status", "published")
+      .not("slug", "is", null)
+      .order("published_at", { ascending: false })
+      .limit(6);
+    return (data ?? []) as NewsArticlePreview[];
+  } catch {
+    return [];
+  }
+}
+
 // ─── Design constants ─────────────────────────────────────────────────────────
 
 const C = {
@@ -111,7 +143,10 @@ const REPORTS = [
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default async function InsightsPage() {
-  const blogArticles = await getPublishedArticles();
+  const [blogArticles, newsArticles] = await Promise.all([
+    getPublishedArticles(),
+    getNewsArticles(),
+  ]);
 
   return (
     <>
@@ -441,7 +476,81 @@ export default async function InsightsPage() {
         </section>
       )}
 
-      {/* ── Section 4: AI Advisor CTA ─────────────────────────────────────── */}
+      {/* ── Section 4: News & Analysis ───────────────────────────────────── */}
+      {newsArticles.length > 0 && (
+        <section style={{ background: C.bg, padding: "72px 24px" }}>
+          <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+            <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: 16, marginBottom: 48 }}>
+              <div>
+                <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: 12, textTransform: "uppercase", letterSpacing: "0.2em", color: C.gold, margin: "0 0 8px" }}>
+                  Intelligence Reports
+                </p>
+                <h2 style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: "clamp(28px,4vw,44px)", fontWeight: 600, color: C.text, margin: 0, lineHeight: 1.2 }}>
+                  News &amp; Analysis
+                </h2>
+              </div>
+              <Link
+                href="/news-articles"
+                style={{ fontFamily: "'Outfit', sans-serif", fontSize: 14, fontWeight: 500, color: C.gold, textDecoration: "none" }}
+              >
+                View all articles →
+              </Link>
+            </div>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
+                gap: 28,
+              }}
+            >
+              {newsArticles.map((article) => (
+                <Link
+                  key={article.slug}
+                  href={`/news-articles/${article.slug}`}
+                  className="report-card"
+                  style={{
+                    display: "block",
+                    background: C.bgCard,
+                    border: `1px solid ${C.border}`,
+                    borderRadius: 20,
+                    overflow: "hidden",
+                    textDecoration: "none",
+                  }}
+                >
+                  <div style={{ height: 4, background: `linear-gradient(90deg, ${C.gold}, ${C.goldLight})` }} />
+                  <div style={{ padding: 28 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
+                      <span style={{ fontFamily: "'Outfit', sans-serif", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", color: C.gold, fontWeight: 600 }}>
+                        {NEWS_CITY_LABELS[article.city] ?? article.city}
+                      </span>
+                      <span style={{ fontFamily: "'Outfit', sans-serif", fontSize: 11, color: C.textMuted }}>
+                        · {article.micro_market}
+                      </span>
+                    </div>
+                    <h3 style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: 22, fontWeight: 600, color: C.text, lineHeight: 1.25, margin: "0 0 10px" }}>
+                      {article.seo_headline}
+                    </h3>
+                    <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: 14, color: C.textMuted, lineHeight: 1.65, margin: "0 0 20px" }}>
+                      {article.meta_description.slice(0, 140)}{article.meta_description.length > 140 ? "…" : ""}
+                    </p>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderTop: `1px solid ${C.border}`, paddingTop: 16 }}>
+                      <span style={{ fontFamily: "'Outfit', sans-serif", fontSize: 12, color: C.textMuted }}>
+                        {new Date(article.published_at).toLocaleDateString("en-IN", { year: "numeric", month: "short", day: "numeric" })}
+                      </span>
+                      <span style={{ fontFamily: "'Outfit', sans-serif", fontSize: 13, fontWeight: 500, color: C.gold }}>
+                        Read Article →
+                      </span>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ── Section 5: AI Advisor CTA ─────────────────────────────────────── */}
       <InsightsAdvisorCTA />
     </>
   );

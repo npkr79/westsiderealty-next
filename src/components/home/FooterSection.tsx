@@ -108,6 +108,11 @@ export default function FooterSection() {
                 </Link>
               </li>
               <li>
+                <Link href="/news-articles" className="hover:text-luxury-gold transition-colors">
+                  News &amp; Analysis
+                </Link>
+              </li>
+              <li>
                 <Link href="/blog" className="hover:text-luxury-gold transition-colors">
                   Articles &amp; Research
                 </Link>
