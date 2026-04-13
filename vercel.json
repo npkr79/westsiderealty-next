@@ -51,6 +51,10 @@
       "schedule": "30 0,12 * * *"
     },
     {
+      "path": "/api/cron/generate-articles",
+      "schedule": "30 2 * * *"
+    },
+    {
       "path": "/api/cron/news-to-social",
       "schedule": "40 0,12 * * *"
     },
