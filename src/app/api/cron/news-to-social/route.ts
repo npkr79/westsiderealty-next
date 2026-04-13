@@ -29,6 +29,7 @@ async function run() {
 
   const results: NewsPostResult[] = [];
   const errors: string[] = [];
+  const failedIds: string[] = [];
 
   for (const article of articles) {
     try {
@@ -39,7 +40,17 @@ async function run() {
       const msg = err instanceof Error ? err.message : String(err);
       console.error('[news-to-social] Failed article', article.id, msg);
       errors.push(`${article.source_name} — ${article.headline.slice(0, 60)}: ${msg}`);
+      failedIds.push(article.id);
     }
+  }
+
+  // Reset failed articles so they can be retried on next run
+  if (failedIds.length > 0) {
+    await supabase
+      .from('news_articles')
+      .update({ is_processed: false, processed_at: null })
+      .in('id', failedIds);
+    console.log('[news-to-social] Reset', failedIds.length, 'failed articles for retry');
   }
 
   return {

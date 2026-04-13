@@ -105,6 +105,10 @@ export async function pickTopArticles(
 // Generate platform captions (all 4 in one Sonnet call)
 // ---------------------------------------------------------------------------
 
+async function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export async function generateCaptions(
   article: NewsArticle
 ): Promise<PlatformCaption[]> {
@@ -183,34 +187,46 @@ Return ONLY valid JSON array (no markdown):
   }
 ]`;
 
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "x-api-key": anthropicKey,
-      "anthropic-version": "2023-06-01",
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 2000,
-      system: systemPrompt,
-      messages: [{ role: "user", content: userPrompt }],
-    }),
-  });
+  // Retry up to 3 times with exponential backoff for overload errors
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "x-api-key": anthropicKey,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 2000,
+        system: systemPrompt,
+        messages: [{ role: "user", content: userPrompt }],
+      }),
+    });
 
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Claude caption error: ${err.slice(0, 200)}`);
+    if (res.status === 529 || res.status === 429) {
+      // Overloaded or rate-limited — wait and retry
+      const waitMs = attempt * 8000;
+      console.log(`[generateCaptions] Attempt ${attempt} overloaded, retrying in ${waitMs}ms...`);
+      if (attempt < 3) { await sleep(waitMs); continue; }
+    }
+
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(`Claude caption error: ${err.slice(0, 200)}`);
+    }
+
+    const data = await res.json();
+    const raw: string = data.content?.[0]?.text ?? "";
+    const cleaned = raw
+      .replace(/^```(?:json)?\s*/i, "")
+      .replace(/```\s*$/i, "")
+      .trim();
+
+    return JSON.parse(cleaned) as PlatformCaption[];
   }
 
-  const data = await res.json();
-  const raw: string = data.content?.[0]?.text ?? "";
-  const cleaned = raw
-    .replace(/^```(?:json)?\s*/i, "")
-    .replace(/```\s*$/i, "")
-    .trim();
-
-  return JSON.parse(cleaned) as PlatformCaption[];
+  throw new Error("Claude caption generation failed after 3 attempts (overloaded)");
 }
 
 // ---------------------------------------------------------------------------
