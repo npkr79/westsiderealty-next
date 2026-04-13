@@ -466,7 +466,7 @@ export default async function ArticlePage({
                   fontWeight: 500,
                 }}
               >
-                Westside Realty Intelligence
+                RE/MAX Westside Realty
               </p>
               {publishDate && (
                 <p

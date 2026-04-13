@@ -59,14 +59,16 @@ function weekStartISO(): string {
 // Slug helper
 // ---------------------------------------------------------------------------
 
-function slugify(text: string, id: string): string {
-  const base = text
+function slugify(text: string): string {
+  return text
     .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/₹[\d,]+\s*\/?/g, "")      // remove ₹8,211/ price tokens
+    .replace(/\d+(\.\d+)?%/g, "")        // remove percentage numbers
+    .replace(/[^a-z0-9\s-]/g, "")        // remove remaining special chars
     .replace(/\s+/g, "-")
     .replace(/-+/g, "-")
-    .slice(0, 70);
-  return `${base}-${id.slice(0, 6)}`;
+    .replace(/^-|-$/g, "")
+    .slice(0, 60);
 }
 
 // ---------------------------------------------------------------------------
@@ -433,7 +435,7 @@ export async function runArticleGeneration(
 
     // Generate a temp id for the slug suffix, then insert
     const tempId = crypto.randomUUID();
-    const slug = slugify(article.seo_headline, tempId);
+    const slug = slugify(article.seo_headline);
 
     const { data: inserted, error } = await supabase
       .from("generated_articles")
