@@ -157,17 +157,35 @@ export async function publishPost(post: SocialPost): Promise<PublishResult> {
         if (!creationId) {
           post_error = containerData.error?.message ?? 'Instagram container creation failed';
         } else {
-          const publishRes = await fetch(`https://graph.facebook.com/v18.0/${igAccountId}/media_publish`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ creation_id: creationId, access_token: fbToken }),
-          });
-          const publishData = await publishRes.json();
-          if (publishRes.ok && publishData.id) {
-            platform_post_id = publishData.id;
-            success = true;
+          // Poll container status until FINISHED — Instagram needs time to process the image
+          // before media_publish can be called, otherwise returns "Media ID is not available"
+          let statusCode = 'IN_PROGRESS';
+          let pollAttempts = 0;
+          while (statusCode === 'IN_PROGRESS' && pollAttempts < 10) {
+            await new Promise((r) => setTimeout(r, 3000)); // wait 3s between polls
+            const statusRes = await fetch(
+              `https://graph.facebook.com/v18.0/${creationId}?fields=status_code&access_token=${fbToken}`
+            );
+            const statusData = await statusRes.json();
+            statusCode = statusData?.status_code ?? 'ERROR';
+            pollAttempts++;
+          }
+
+          if (statusCode !== 'FINISHED') {
+            post_error = `Instagram media processing failed (status: ${statusCode}) after ${pollAttempts} attempts`;
           } else {
-            post_error = publishData.error?.message ?? 'Instagram publish failed';
+            const publishRes = await fetch(`https://graph.facebook.com/v18.0/${igAccountId}/media_publish`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ creation_id: creationId, access_token: fbToken }),
+            });
+            const publishData = await publishRes.json();
+            if (publishRes.ok && publishData.id) {
+              platform_post_id = publishData.id;
+              success = true;
+            } else {
+              post_error = publishData.error?.message ?? 'Instagram publish failed';
+            }
           }
         }
       }
