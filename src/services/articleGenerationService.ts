@@ -330,6 +330,58 @@ Ensure tomorrow's 2 cities are different from today's and maintain weekly rotati
 }
 
 // ---------------------------------------------------------------------------
+// Hero image generation
+// ---------------------------------------------------------------------------
+
+const CITY_IMAGE_STYLE: Record<string, string> = {
+  hyderabad: "modern luxury apartment towers, Hyderabad skyline, Financial District corridor, professional architectural photography, golden hour warm light",
+  goa: "luxury beachfront villa, North Goa coastline, tropical lush greenery, premium holiday home, professional real estate photography, warm sunset light",
+  mumbai: "premium high-rise residential tower, Mumbai skyline, sea-facing apartments, professional architectural photography, twilight blue hour",
+  bengaluru: "modern tech-corridor apartment complex, Bengaluru, lush green surroundings, professional real estate photography, golden hour",
+  pune: "luxury residential development, Pune hills backdrop, professional architectural photography, soft morning light",
+  delhi_ncr: "premium high-rise apartments, Delhi NCR skyline, wide boulevard, professional real estate photography, golden hour",
+  chennai: "upscale coastal apartment complex, Chennai, ECR beachside, professional architectural photography, warm light",
+  kolkata: "premium riverside apartment complex, Kolkata, professional real estate photography, warm golden light",
+  ahmedabad: "luxury gated residential community, Ahmedabad, modern architecture, professional real estate photography",
+  kochi: "premium backwater-view villa, Kochi Kerala, lush tropical surroundings, professional real estate photography",
+  navi_mumbai_thane: "modern premium apartment towers, Navi Mumbai, palm-lined boulevard, professional architectural photography, golden hour",
+};
+
+async function generateHeroImage(city: string, microMarket: string, headline: string): Promise<string | null> {
+  const openaiKey = process.env.OPENAI_API_KEY;
+  if (!openaiKey) {
+    console.warn("[article-gen] OPENAI_API_KEY not set — skipping image generation");
+    return null;
+  }
+
+  const cityStyle = CITY_IMAGE_STYLE[city] ?? "premium luxury residential development, India, professional real estate photography, golden hour";
+  const prompt = `${cityStyle}, ${microMarket} area, no people, no text, no watermarks, photorealistic, high-end architectural magazine quality`;
+
+  const res = await fetch("https://api.openai.com/v1/images/generations", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${openaiKey}`,
+    },
+    body: JSON.stringify({
+      model: "dall-e-3",
+      prompt,
+      n: 1,
+      size: "1792x1024",
+      quality: "standard",
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`DALL-E error: ${err}`);
+  }
+
+  const data = await res.json();
+  return (data.data?.[0]?.url as string) ?? null;
+}
+
+// ---------------------------------------------------------------------------
 // Main export
 // ---------------------------------------------------------------------------
 
@@ -369,9 +421,15 @@ export async function runArticleGeneration(
   const articleIds: string[] = [];
 
   for (const article of output.articles) {
-    // Collect source article IDs for this city
+    // Collect source article IDs + metadata for this city
     const cityNews = article.city === city1 ? news1 : news2;
     const sourceIds = cityNews.map((n) => n.id);
+    const sourceArticles = cityNews.map((n) => ({
+      id: n.id,
+      headline: n.headline,
+      source_name: n.source_name,
+      scraped_at: n.scraped_at,
+    }));
 
     // Generate a temp id for the slug suffix, then insert
     const tempId = crypto.randomUUID();
@@ -392,6 +450,7 @@ export async function runArticleGeneration(
         drip_placement: article.drip_placement,
         status: "draft",
         source_article_ids: sourceIds,
+        source_articles: sourceArticles,
         market_brief: output.market_brief,
         tomorrow_suggestion: output.tomorrow_suggestion,
         week_start: weekStart,
@@ -402,8 +461,26 @@ export async function runArticleGeneration(
 
     if (error) {
       errors.push(`Insert failed for ${article.city}: ${error.message}`);
-    } else if (inserted) {
+      continue;
+    }
+
+    if (inserted) {
       articleIds.push(inserted.id);
+
+      // Generate hero image via DALL-E 3
+      try {
+        const imageUrl = await generateHeroImage(article.city, article.micro_market, article.seo_headline);
+        if (imageUrl) {
+          await supabase
+            .from("generated_articles")
+            .update({ image_url: imageUrl, updated_at: new Date().toISOString() })
+            .eq("id", inserted.id);
+        }
+      } catch (imgErr) {
+        const msg = imgErr instanceof Error ? imgErr.message : String(imgErr);
+        errors.push(`Image generation failed for ${article.city}: ${msg}`);
+        // Non-fatal — article is still inserted
+      }
     }
   }
 

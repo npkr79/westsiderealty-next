@@ -47,6 +47,7 @@ interface Article {
   target_persona: string;
   published_at: string;
   body: string;
+  image_url: string | null;
 }
 
 async function getPublishedArticles(): Promise<Article[]> {
@@ -55,7 +56,7 @@ async function getPublishedArticles(): Promise<Article[]> {
     const { data } = await supabase
       .from("generated_articles")
       .select(
-        "id, slug, city, micro_market, seo_headline, meta_description, target_persona, published_at, body"
+        "id, slug, city, micro_market, seo_headline, meta_description, target_persona, published_at, body, image_url"
       )
       .eq("status", "published")
       .not("slug", "is", null)
@@ -188,6 +189,17 @@ export default async function NewsArticlesPage() {
                     textDecoration: "none",
                   }}
                 >
+                  {/* Hero image */}
+                  {article.image_url && (
+                    <div style={{ position: "relative", height: 200, overflow: "hidden" }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={article.image_url}
+                        alt={article.seo_headline}
+                        style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                      />
+                    </div>
+                  )}
                   {/* City color bar */}
                   <div
                     style={{

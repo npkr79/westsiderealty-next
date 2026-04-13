@@ -1378,6 +1378,13 @@ function NewsTab() {
 
 // ── Articles Tab ──────────────────────────────────────────────────────────────
 
+interface SourceArticle {
+  id: string;
+  headline: string;
+  source_name: string;
+  scraped_at: string;
+}
+
 interface GeneratedArticle {
   id: string;
   slug: string | null;
@@ -1391,6 +1398,8 @@ interface GeneratedArticle {
   status: string;
   published_at: string | null;
   created_at: string;
+  image_url: string | null;
+  source_articles: SourceArticle[] | null;
 }
 
 const ARTICLE_CITY_LABELS: Record<string, string> = {
@@ -1514,12 +1523,42 @@ function ArticlesTab() {
                   </div>
                 </div>
 
-                {/* Expanded body preview */}
+                {/* Expanded body preview + sources */}
                 {isExpanded && (
-                  <div className="px-4 pb-4 border-t border-gray-800 pt-4">
-                    <pre className="text-xs text-gray-300 whitespace-pre-wrap font-sans leading-relaxed max-h-64 overflow-y-auto bg-gray-950 rounded-lg p-3">
-                      {article.body}
-                    </pre>
+                  <div className="px-4 pb-4 border-t border-gray-800 pt-4 space-y-4">
+                    {/* Hero image preview */}
+                    {article.image_url && (
+                      <div>
+                        <p className="text-[10px] text-gray-600 uppercase tracking-widest mb-1.5">Hero Image</p>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={article.image_url} alt="Hero" className="w-full rounded-lg object-cover max-h-48" />
+                      </div>
+                    )}
+                    {/* Article body */}
+                    <div>
+                      <p className="text-[10px] text-gray-600 uppercase tracking-widest mb-1.5">Article Body</p>
+                      <pre className="text-xs text-gray-300 whitespace-pre-wrap font-sans leading-relaxed max-h-56 overflow-y-auto bg-gray-950 rounded-lg p-3">
+                        {article.body}
+                      </pre>
+                    </div>
+                    {/* Sources */}
+                    {article.source_articles && article.source_articles.length > 0 && (
+                      <div>
+                        <p className="text-[10px] text-gray-600 uppercase tracking-widest mb-2">
+                          Sources ({article.source_articles.length} articles)
+                        </p>
+                        <div className="space-y-1.5">
+                          {article.source_articles.map((src) => (
+                            <div key={src.id} className="bg-gray-950 rounded-lg px-3 py-2">
+                              <p className="text-xs text-gray-300 leading-snug">{src.headline}</p>
+                              <p className="text-[10px] text-gray-600 mt-0.5">
+                                {src.source_name} · {src.scraped_at ? new Date(src.scraped_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : ''}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 

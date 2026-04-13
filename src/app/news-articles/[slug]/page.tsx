@@ -42,6 +42,7 @@ interface Article {
   target_persona: string;
   drip_placement: string;
   published_at: string;
+  image_url: string | null;
 }
 
 async function getArticle(slug: string): Promise<Article | null> {
@@ -49,7 +50,7 @@ async function getArticle(slug: string): Promise<Article | null> {
   const { data } = await supabase
     .from("generated_articles")
     .select(
-      "id, slug, city, micro_market, seo_headline, meta_description, body, target_persona, drip_placement, published_at"
+      "id, slug, city, micro_market, seo_headline, meta_description, body, target_persona, drip_placement, published_at, image_url"
     )
     .eq("slug", slug)
     .eq("status", "published")
@@ -484,8 +485,41 @@ export default async function ArticlePage({
         </div>
       </section>
 
+      {/* Hero image */}
+      {article.image_url && (
+        <div style={{ background: C.bg, padding: "0 24px" }}>
+          <div
+            style={{
+              maxWidth: 800,
+              margin: "0 auto",
+              transform: "translateY(-32px)",
+            }}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={article.image_url}
+              alt={article.seo_headline}
+              style={{
+                width: "100%",
+                height: "auto",
+                maxHeight: 420,
+                objectFit: "cover",
+                borderRadius: 16,
+                boxShadow: "0 20px 60px rgba(0,0,0,0.15)",
+                display: "block",
+              }}
+            />
+          </div>
+        </div>
+      )}
+
       {/* Article body */}
-      <section style={{ background: C.bg, padding: "56px 24px 96px" }}>
+      <section
+        style={{
+          background: C.bg,
+          padding: article.image_url ? "0 24px 96px" : "56px 24px 96px",
+        }}
+      >
         <div style={{ maxWidth: 760, margin: "0 auto" }}>
           {/* Target persona pill */}
           <div
