@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/serviceClient";
+
+export const maxDuration = 300;
 import {
   fetchAllRSSFeeds,
   deduplicateItems,

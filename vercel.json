@@ -6,6 +6,12 @@
     "src/app/api/cron/link-checker/route.ts": {
       "maxDuration": 300
     },
+    "src/app/api/cron/news-scraper/route.ts": {
+      "maxDuration": 300
+    },
+    "src/app/api/cron/news-to-social/route.ts": {
+      "maxDuration": 300
+    },
     "src/app/api/cron/rental-intelligence/hyderabad/route.ts": {
       "maxDuration": 300
     },
