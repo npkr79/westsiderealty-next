@@ -1106,13 +1106,15 @@ async function findNextAvailableSlot(): Promise<string> {
     (p: NewsPost) => p.post_category === 'news' && p.scheduled_at
   );
 
-  // Build set of already-booked slot times per IST date
-  const bookedByDate: Record<string, Set<string>> = {};
+  // Normalize ISO strings to epoch ms for reliable comparison
+  // (Supabase returns "2026-04-13T04:00:00+00:00", slotISO returns "2026-04-13T04:00:00.000Z" — same time, different strings)
+  const bookedByDate: Record<string, Set<number>> = {};
   for (const post of scheduledPosts) {
-    const pIST = new Date(new Date(post.scheduled_at!).getTime() + 5.5 * 60 * 60 * 1000);
+    const epochMs = new Date(post.scheduled_at!).getTime();
+    const pIST = new Date(epochMs + 5.5 * 60 * 60 * 1000);
     const dateStr = pIST.toISOString().split('T')[0];
     if (!bookedByDate[dateStr]) bookedByDate[dateStr] = new Set();
-    bookedByDate[dateStr].add(post.scheduled_at!);
+    bookedByDate[dateStr].add(epochMs);
   }
 
   const nowUTC = Date.now();
@@ -1127,7 +1129,7 @@ async function findNextAvailableSlot(): Promise<string> {
       const slotTime = slotISO(dateIST, h, m);
       const slotTimeUTC = new Date(slotTime).getTime();
       if (dayOffset === 0 && slotTimeUTC <= nowUTC) continue; // past slot
-      if (booked.has(slotTime)) continue; // already taken
+      if (booked.has(slotTimeUTC)) continue; // already taken
       return slotTime;
     }
   }
