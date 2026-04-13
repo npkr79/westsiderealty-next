@@ -1,13 +1,8 @@
-// Helper to get the appropriate client (works in both server and client contexts)
-async function getSupabaseClient() {
-  // Check if we're in a server context
-  if (typeof window === 'undefined') {
-    const { createClient } = await import('@/lib/supabase/server');
-    return await createClient();
-  }
-  // Client context
-  const { createClient } = await import('@/lib/supabase/client');
-  return createClient();
+import { createServiceClient } from '@/lib/supabase/serviceClient';
+
+// Always use service client — this runs server-side only (no cookies dependency)
+function getSupabaseClient() {
+  return createServiceClient();
 }
 
 export interface PropertyFAQ {
@@ -29,7 +24,7 @@ export async function getPropertyFAQsFromProject(projectName: string | null | un
 
   try {
     console.log('[PropertyFAQService] Fetching FAQs for project:', projectName);
-    const supabase = await getSupabaseClient();
+    const supabase = getSupabaseClient();
     
     // First try exact match
     let { data, error } = await supabase

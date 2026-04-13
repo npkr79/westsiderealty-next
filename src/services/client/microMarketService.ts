@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/client';
+import { createServiceClient } from '@/lib/supabase/serviceClient';
 
 export interface MicroMarketInfo {
   micro_market_name: string;
@@ -36,7 +36,7 @@ export const microMarketService = {
 
     console.log('🔍 [MicroMarketService] Fetching data for:', microMarketName);
 
-    const supabase = createClient();
+    const supabase = createServiceClient();
     let result = await supabase
       .from('micro_markets')
       .select('micro_market_name, growth_story, connectivity_details, infrastructure_details, it_corridor_influence, h1_title, url_slug, price_per_sqft_min, price_per_sqft_max, annual_appreciation_min, rental_yield_min')
@@ -100,7 +100,7 @@ export const microMarketService = {
     console.log('🔍 [MicroMarketService] Fetching micro-markets for city:', citySlug);
 
     // First, get the city ID
-    const supabase = createClient();
+    const supabase = createServiceClient();
     const { data: cityData, error: cityError } = await supabase
       .from('cities')
       .select('id')
