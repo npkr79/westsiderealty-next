@@ -148,7 +148,7 @@ export async function fetchAllRSSFeeds(sources: NewsSource[]): Promise<{
   const results = await Promise.allSettled(
     sources.map(async (source) => {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 15_000);
+      const timeout = setTimeout(() => controller.abort(), 8_000);
       try {
         const res = await fetch(source.url, {
           signal: controller.signal,
