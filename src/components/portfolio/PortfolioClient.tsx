@@ -110,6 +110,7 @@ function typeColor(type: string | null) {
 const CITY_LABELS: Record<string, string> = {
   goa: "Goa",
   hyderabad: "Hyderabad",
+  bangalore: "Bangalore",
 };
 
 // ─── Project Card ─────────────────────────────────────────────────────────────
