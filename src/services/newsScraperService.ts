@@ -30,6 +30,7 @@ export interface ClassifiedArticle extends RawArticle {
   sub_category: string | null;
   cities: string[];
   relevance_score: number;
+  sentiment: 'positive' | 'negative' | 'neutral';
   ai_summary: string;
   ai_tags: string[];
 }
@@ -239,6 +240,7 @@ const CATEGORIES = [
 
 interface ClassificationResult {
   relevance_score: number;
+  sentiment: 'positive' | 'negative' | 'neutral';
   category: string;
   sub_category: string | null;
   cities: string[];
@@ -260,15 +262,31 @@ async function classifyBatch(
     source_category: a.raw_category,
   }));
 
-  const prompt = `You are a real estate news classifier for Westside Realty, an Indian real estate advisory firm.
+  const prompt = `You are a real estate news classifier for Westside Realty, a premium Indian real estate advisory firm.
 
-Classify each article for relevance to Indian real estate buyers and investors.
+Your job is to identify EXCITING, POSITIVE, FOMO-inducing real estate news that encourages buyers and investors to act. We want content that signals market momentum, growth, and opportunity.
 
-SCORING GUIDE:
-- 9-10: Direct real estate impact (property prices, new launches, RERA, home loans, builder news)
-- 7-8: Strong indirect impact (metro/highway infra near cities, RBI rate decisions, major govt housing schemes)
-- 5-6: Moderate impact (general economy, IT sector employment, city development plans)
-- 1-4: Weak/irrelevant (politics, sports, entertainment, foreign news, unrelated sectors)
+SENTIMENT GUIDE — classify first:
+- "positive": News showing market growth, price appreciation, record sales/leasing, investment inflows, infrastructure wins, developer success, demand milestones, strong employment, economic tailwinds. These CREATE confidence and FOMO.
+- "negative": Fraud cases, scams, ED/CBI raids, demolitions (HYDRAA etc.), builder insolvency/NCLT/NCLAT, GST complaints, encroachment disputes, delays, affordable housing schemes for low-income (not aspirational), protests, legal disputes. These DISCOURAGE buyers.
+- "neutral": Regulatory clarifications, policy announcements with mixed/unclear buyer impact, general economic news.
+
+SCORING GUIDE — score based on relevance AND sentiment:
+- 9-10: Positive news with direct real estate impact — record sales, price surges, investment announcements, leasing milestones, new luxury launches, demand highs
+- 7-8: Positive news with strong indirect impact — metro/infra expansion near residential zones, IT/GCC job growth (drives housing demand), RBI rate cuts, major developer wins
+- 5-6: Neutral/positive moderate impact — general economic growth, policy with unclear impact
+- 1-3: ANY negative news (fraud, demolitions, distress) OR irrelevant news — score LOW regardless of how "real estate relevant" it seems. We never post discouraging content.
+
+EXPLICIT REJECT LIST — always score 1-3 and mark "negative":
+- Demolitions by HYDRAA, BMC, or any authority
+- Fraud/scam/ED raids/CBI raids on builders or homebuyers
+- Builder insolvency, NCLT, NCLAT, IRP proceedings
+- Homebuyer protests or complaints
+- GST disputes, tax compliance issues
+- Encroachment disputes, land grab allegations
+- Affordable housing for economically weaker sections (EWS/LIG)
+- Builder delays, stalled projects
+- Any news that would make a buyer feel scared or at risk
 
 CATEGORIES: ${CATEGORIES.join(", ")}
 CITY SLUGS (use exact slugs): ${CITY_SLUGS.join(", ")}
@@ -276,10 +294,11 @@ CITY SLUGS (use exact slugs): ${CITY_SLUGS.join(", ")}
 For each article, respond with a JSON array (same order as input) where each element has:
 {
   "relevance_score": <number 1-10, one decimal>,
+  "sentiment": <"positive" | "negative" | "neutral">,
   "category": <one of the categories above>,
-  "sub_category": <optional specific sub-topic, e.g. "metro_rail", "home_loans", "affordable_housing">,
+  "sub_category": <optional specific sub-topic, e.g. "metro_rail", "home_loans", "premium_launch">,
   "cities": <array of city slugs from the list above, empty array if national/unclear>,
-  "ai_summary": <one sentence summary focused on real estate impact, max 150 chars>,
+  "ai_summary": <one exciting sentence about why this matters for buyers/investors, max 150 chars>,
   "ai_tags": <array of 3-5 lowercase tags>
 }
 
@@ -329,6 +348,7 @@ export async function classifyArticles(
           sub_category: result.sub_category ?? null,
           cities: Array.isArray(result.cities) ? result.cities : [],
           relevance_score: Number(result.relevance_score) || 5,
+          sentiment: result.sentiment ?? 'neutral',
           ai_summary: result.ai_summary ?? article.headline,
           ai_tags: Array.isArray(result.ai_tags) ? result.ai_tags : [],
         });
@@ -343,6 +363,7 @@ export async function classifyArticles(
           sub_category: null,
           cities: [],
           relevance_score: 5,
+          sentiment: 'neutral',
           ai_summary: article.headline,
           ai_tags: [],
         });
@@ -364,7 +385,10 @@ export async function insertArticles(
   supabase: SupabaseClient,
   articles: ClassifiedArticle[]
 ): Promise<{ inserted: number; skipped: number; errors: string[] }> {
-  const relevant = articles.filter((a) => a.relevance_score >= 6.0);
+  // Only keep positive/neutral articles with strong relevance — never save negative news
+  const relevant = articles.filter(
+    (a) => a.sentiment !== 'negative' && a.relevance_score >= 6.5
+  );
   const skipped = articles.length - relevant.length;
   const errors: string[] = [];
   let inserted = 0;
@@ -383,6 +407,7 @@ export async function insertArticles(
     sub_category: a.sub_category,
     cities: a.cities,
     relevance_score: a.relevance_score,
+    sentiment: a.sentiment,
     ai_summary: a.ai_summary,
     ai_tags: a.ai_tags,
     is_processed: false,

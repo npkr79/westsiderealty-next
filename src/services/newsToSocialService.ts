@@ -30,6 +30,7 @@ export interface NewsArticle {
   sub_category: string | null;
   cities: string[];
   relevance_score: number;
+  sentiment: string | null;
   source_name: string;
   source_url: string;
   image_url: string | null;
@@ -58,15 +59,16 @@ export async function pickTopArticles(
   count = 4
 ): Promise<NewsArticle[]> {
   const SELECT =
-    "id, headline, summary, ai_summary, ai_tags, category, sub_category, cities, relevance_score, source_name, source_url, image_url";
+    "id, headline, summary, ai_summary, ai_tags, category, sub_category, cities, relevance_score, sentiment, source_name, source_url, image_url";
 
-  // Pull a larger pool so we have enough to satisfy city slots + fill remaining
+  // Pull a larger pool — positive sentiment only, high relevance
   const { data, error } = await supabase
     .from("news_articles")
     .select(SELECT)
     .eq("is_processed", false)
     .eq("is_rejected", false)
-    .gte("relevance_score", 7.0)
+    .neq("sentiment", "negative")
+    .gte("relevance_score", 7.5)
     .order("relevance_score", { ascending: false })
     .limit(20);
 
@@ -122,33 +124,38 @@ export async function generateCaptions(
     .join("\n");
 
   const systemPrompt = `You are a social media content writer for REMAX Westside Realty, a premium real estate agency in Hyderabad, India.
-Your role is to share real estate and infrastructure news with clear market context — purely informational, like a trusted market analyst.
-CRITICAL TONE RULES:
-- NEVER use calls-to-action, sales language, or push people towards transactions
-- NEVER use phrases like "Thinking of buying?", "Contact us", "Invest now", "Don't miss out", "Reach out", "Book a consultation", etc.
-- ALWAYS write as if sharing useful market knowledge — explain what the news means, why it matters, what the broader implication is
-- The brand signature at the end is sufficient; no extra CTA needed`;
+Your role is to amplify exciting real estate market news in a way that creates FOMO (fear of missing out) and market confidence — making readers feel they need to be paying attention to the market RIGHT NOW.
+
+TONE RULES:
+- Lead with the most impressive number, record, or milestone from the news — make it pop
+- Connect the news to why this matters for buyers and investors ("this means demand is rising", "early movers in this corridor will benefit most")
+- Create a sense of market momentum — the market is moving, people are buying, investors are acting
+- Write with energy and conviction, like a sharp market insider sharing an unmissable signal
+- NEVER be alarmist, never predict crashes, never use fear negatively
+- NEVER use direct sales CTAs: "Contact us", "Book a consultation", "Call now", "DM us to invest"
+- The brand signature is the only soft CTA needed
+- Use power words: record, surge, milestone, boom, soaring, historic, accelerating, outperforming`;
 
   const userPrompt = `Generate social media captions for all 4 platforms for this real estate news article:
 
 ${context}
 
 RULES per platform:
-- LinkedIn: 200-400 chars, professional market insight + sector implication, 3-4 hashtags, NO emojis, end with "— REMAX Westside Realty"
-- Instagram: 150-250 chars, lead with the key fact + market context, emoji-rich (news/info emojis, not money/deal emojis), 8-10 hashtags, end with "— REMAX Westside Realty"
-- Facebook: 200-350 chars, explain what happened and what it means for the market in plain language, 5-6 hashtags, end with "— REMAX Westside Realty"
-- X: 200-400 chars (X Premium — no character limit), same professional depth as LinkedIn, 3-4 hashtags, NO emojis, end with "— REMAX Westside Realty"
+- LinkedIn: 250-400 chars, lead with the headline stat/milestone, explain the market signal it sends, professional FOMO tone, 3-4 hashtags, NO emojis, end with "— REMAX Westside Realty"
+- Instagram: 180-280 chars, lead with the wow-factor number or fact, connect to buyer opportunity, emoji-rich (use 🔥📈🏙️🚀💡📊 etc.), 8-10 hashtags, end with "— REMAX Westside Realty"
+- Facebook: 220-360 chars, conversational but exciting — explain what's happening and why now is the moment to be paying attention, 5-6 hashtags, end with "— REMAX Westside Realty"
+- X: 220-380 chars, punchy market take — drop the number, explain the implication fast, 3-4 hashtags, NO emojis, end with "— REMAX Westside Realty"
 
-TONE: Informational and analytical. Share knowledge, not sales pitches. Write like a market analyst or journalist, not a salesperson.
+FOMO FORMULA: [Impressive stat or record] → [What it signals about the market] → [Why this matters for buyers/investors now]
 
 SIGNATURE FORMATTING — critical:
 - The signature must be on its own paragraph separated by a blank line
 - In the caption JSON value, put \\n\\n before the signature
-- Example: "Full body text explaining the news and market implications.\\n\\n— REMAX Westside Realty"
+- Example: "Full caption with market insight and momentum.\\n\\n— REMAX Westside Realty"
 
 FORMATTING — use **double asterisks** to mark text that should appear bold (applies to ALL platforms):
 - Wrap the opening news headline/key fact sentence in **double asterisks**
-  Example: **Maharashtra CM announces digital platform for affordable rentals in Mumbai** 🏠📱 The rest of the body in plain text.
+  Example: **Hyderabad home sales hit 9,541 units in Q1 2026 — prices up 9% YoY** 🏙️📈 The rest of the body.
 - Wrap the closing signature: **— REMAX Westside Realty**
 - Body/explanation sentences: plain text, no asterisks
 
