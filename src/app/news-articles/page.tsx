@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "https://www.westsiderealty.in/news-articles" },
 };
 
-export const revalidate = 300;
+export const revalidate = 60;
 
 const C = {
   bg: "#FAFAF7",

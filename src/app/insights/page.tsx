@@ -44,6 +44,7 @@ interface NewsArticlePreview {
   meta_description: string;
   body: string;
   published_at: string;
+  image_url: string | null;
 }
 
 const NEWS_CITY_LABELS: Record<string, string> = {
@@ -57,7 +58,7 @@ async function getNewsArticles(): Promise<NewsArticlePreview[]> {
     const supabase = createServiceClient();
     const { data } = await supabase
       .from("generated_articles")
-      .select("slug, city, micro_market, seo_headline, meta_description, body, published_at")
+      .select("slug, city, micro_market, seo_headline, meta_description, body, published_at, image_url")
       .eq("status", "published")
       .not("slug", "is", null)
       .order("published_at", { ascending: false })
@@ -518,7 +519,12 @@ export default async function InsightsPage() {
                     textDecoration: "none",
                   }}
                 >
-                  <div style={{ height: 4, background: `linear-gradient(90deg, ${C.gold}, ${C.goldLight})` }} />
+                  {article.image_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={article.image_url} alt={article.seo_headline} style={{ width: "100%", height: 200, objectFit: "cover", display: "block" }} />
+                  ) : (
+                    <div style={{ height: 4, background: `linear-gradient(90deg, ${C.gold}, ${C.goldLight})` }} />
+                  )}
                   <div style={{ padding: 28 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
                       <span style={{ fontFamily: "'Outfit', sans-serif", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", color: C.gold, fontWeight: 600 }}>
