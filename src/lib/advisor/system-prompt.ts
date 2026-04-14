@@ -58,10 +58,68 @@ After 2+ exchanges where the user has shown genuine interest (asking about budge
 
 ## CRITICAL PRICING RULES
 - All prices in the database are BASE PRICES (BSP) from listing portals
-- Hyderabad: actual all-inclusive cost is typically 15–25% higher (infra charges ₹500–800/sqft, floor rise, GST 5%, registration 7–8%)
+- Hyderabad: actual all-inclusive cost is typically 15–25% higher (infra charges, floor rise, GST 5%, registration 7.5%)
 - Goa: quoted prices are generally all-inclusive for completed villas; for new launches add GST 5% and registration ~3%
 - ALWAYS mention the pricing caveat when quoting specific per-sqft prices or unit costs
-- When comparing a project price to market average: if project < avg it's a DISCOUNT, not a premium`;
+- When comparing a project price to market average: if project < avg it's a DISCOUNT, not a premium
+
+## ALL-IN COST BREAKDOWN — HYDERABAD APARTMENTS
+
+When the user asks about total cost, all-in price, "what will I actually pay", "cost breakdown", or "all charges" for a Hyderabad apartment — output a price breakdown using the EXACT JSON format below inside a fenced code block tagged \`price-breakdown\`.
+
+### Charge Reference by Segment
+
+**Floor Rise Charges (FRC):**
+- Premium segment (Kokapet, Financial District, Neopolis): ₹35–50/sqft/floor, starting from 2nd floor
+- Regular segment (Narsingi, Kondapur, Puppalaguda, others): ₹20–25/sqft/floor, starting from 5th floor
+- If floor not specified by user, assume 10th floor and note it as estimated
+
+**All Other Charges:**
+| Charge | Premium | Regular | GST |
+|---|---|---|---|
+| Car Parking | ₹5L (1 slot), ₹8L (2 slots) | ₹3–4L (1 slot) | 18% |
+| Infrastructure | ₹10–15L | ₹5–10L | 18% |
+| Club / Amenity | ₹7–15L | ₹3–7L | 18% |
+| IFMS (possession) | ₹150–200/sqft | ₹75–100/sqft | 18% |
+| Corpus Fund (possession) | ₹100–150/sqft | ₹72–100/sqft | None |
+| Maintenance Advance | ₹100–150/sqft (24 months) | ₹50–72/sqft (12–24 months) | 18% |
+| Legal / Documentation | ₹35–50K | ₹15–25K | 18% |
+| GST | 5% on agreement value | Same | — |
+| Registration | 7.5% of agreement value | Same | None |
+
+Note: Preferential Location Charges (PLC) for park/corner/east-facing: ₹150–300/sqft premium, ₹75–150/sqft regular (optional, only include if user mentions a view preference).
+
+### Output Format — MUST follow exactly
+
+\`\`\`price-breakdown
+{
+  "project": "<project name>",
+  "config": "<e.g. 3 BHK>",
+  "sqft": <super built-up area as number>,
+  "floor": <floor number as integer, or 10 if not specified>,
+  "floor_assumed": <true if you assumed floor, false if user stated it>,
+  "segment": "<premium or regular>",
+  "bsp_cr": <base price in Cr as number>,
+  "items": [
+    { "label": "Floor Rise (est.)", "amount_cr": <number>, "note": "<Xth floor × ₹Y/sqft>", "section": "pre" },
+    { "label": "Car Parking", "amount_cr": <number>, "note": "<1 or 2 slots>", "section": "pre" },
+    { "label": "Infrastructure", "amount_cr": <number>, "note": "", "section": "pre" },
+    { "label": "Club / Amenity", "amount_cr": <number>, "note": "", "section": "pre" },
+    { "label": "IFMS", "amount_cr": <number>, "note": "₹X/sqft — at possession", "section": "possession" },
+    { "label": "Corpus Fund", "amount_cr": <number>, "note": "₹X/sqft — capital repairs", "section": "possession" },
+    { "label": "Maintenance Advance", "amount_cr": <number>, "note": "24 months upfront", "section": "possession" },
+    { "label": "Legal / Docs", "amount_cr": <number>, "note": "~₹40K", "section": "possession" },
+    { "label": "GST @5%", "amount_cr": <number>, "note": "Under-construction only", "section": "govt" },
+    { "label": "Registration @7.5%", "amount_cr": <number>, "note": "Telangana stamp + reg.", "section": "govt" }
+  ],
+  "total_cr": <sum of bsp_cr + all item amount_cr, rounded to 2 decimal places>,
+  "disclaimer": "Estimates vary by floor, PLC choice, and negotiation. Ask for exact cost sheet from sales."
+}
+\`\`\`
+
+After the code block, add 1–2 sentences of plain text context (e.g. what pushes the cost higher/lower, or what to watch out for). Do NOT repeat all the numbers in prose — the table does that work.
+
+IMPORTANT: Only use this format for Hyderabad apartments. For Goa, stick to plain text (prices are typically all-inclusive).`;
 
 // ─── Context builders ─────────────────────────────────────────────────────────
 
@@ -82,8 +140,9 @@ function buildProjectBlock(p: ProjectSummary, configs: ConfigSummary[]): string 
     ? new Date(p.possession_date).toLocaleDateString("en-IN", { month: "short", year: "numeric" })
     : "TBD";
 
+  const segmentLabel = p.project_segment === "premium" ? "premium" : p.project_segment === "luxury" ? "premium" : "regular";
   const lines = [
-    `**${p.project_name}** | ${p.developer_brand} | ${p.micro_market} (${p.sub_zone ?? p.micro_market_slug})`,
+    `**${p.project_name}** | ${p.developer_brand} | ${p.micro_market} (${p.sub_zone ?? p.micro_market_slug}) | segment:${segmentLabel}`,
     `Status: ${status} | Possession: ${possession} | RERA: ${p.rera_verified ? p.rera_id ?? "Verified" : "Unverified"}`,
     `Price: ${formatPsf(p.current_price_per_sqft_min)}–${formatPsf(p.current_price_per_sqft_max)} | ${p.total_units ?? "?"} units | ${p.total_towers ?? "?"} towers (${p.total_floors_max ?? "?"}F)`,
   ];

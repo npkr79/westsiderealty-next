@@ -4,6 +4,110 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
 import { submitAdvisorLead } from "@/app/actions/submit-advisor-lead";
 
+// ─── Price Breakdown Table ─────────────────────────────────────────────────────
+
+interface PriceItem {
+  label: string;
+  amount_cr: number;
+  note: string;
+  section: "pre" | "possession" | "govt";
+}
+
+interface PriceBreakdownData {
+  project: string;
+  config: string;
+  sqft: number;
+  floor: number;
+  floor_assumed: boolean;
+  segment: "premium" | "regular";
+  bsp_cr: number;
+  items: PriceItem[];
+  total_cr: number;
+  disclaimer: string;
+}
+
+function formatCr(val: number): string {
+  if (val < 0.01) return `₹${Math.round(val * 1_00_000).toLocaleString("en-IN")}`;
+  return `₹${val.toFixed(2)} Cr`;
+}
+
+function PriceBreakdownTable({ raw }: { raw: string }) {
+  let data: PriceBreakdownData;
+  try {
+    data = JSON.parse(raw) as PriceBreakdownData;
+  } catch {
+    return <code className="text-xs">{raw}</code>;
+  }
+
+  const sections: Array<{ key: PriceItem["section"]; label: string }> = [
+    { key: "pre", label: "Developer Charges" },
+    { key: "possession", label: "At Possession" },
+    { key: "govt", label: "Govt. Charges" },
+  ];
+
+  const Row = ({ label, amount, note, bold }: { label: string; amount: string; note?: string; bold?: boolean }) => (
+    <div className={`flex items-start justify-between gap-2 py-1 ${bold ? "font-semibold" : ""}`}>
+      <div className="flex-1 min-w-0">
+        <span className={`text-xs ${bold ? "text-zinc-900" : "text-zinc-700"}`}>{label}</span>
+        {note ? <span className="ml-1.5 text-[10px] text-zinc-400">{note}</span> : null}
+      </div>
+      <span className={`text-xs tabular-nums shrink-0 ${bold ? "text-zinc-900" : "text-zinc-600"}`}>{amount}</span>
+    </div>
+  );
+
+  return (
+    <div className="mt-1 rounded-xl border border-zinc-200 bg-white overflow-hidden text-sm w-full">
+      {/* Header */}
+      <div className="bg-zinc-900 px-3 py-2">
+        <p className="text-white font-semibold text-xs leading-tight">{data.project}</p>
+        <p className="text-zinc-400 text-[10px] mt-0.5">
+          {data.config} · {data.sqft?.toLocaleString("en-IN")} sqft · {data.floor_assumed ? `~${data.floor}th` : `${data.floor}th`} floor
+          {data.floor_assumed ? <span className="ml-1 italic">(floor assumed)</span> : null}
+        </p>
+      </div>
+
+      <div className="px-3 py-2 border-b border-zinc-100">
+        <Row label="Base Price (BSP)" amount={formatCr(data.bsp_cr)} note="From project data" bold />
+      </div>
+
+      {sections.map(({ key, label }) => {
+        const items = data.items.filter((it) => it.section === key);
+        if (!items.length) return null;
+        return (
+          <div key={key} className="border-b border-zinc-100 last:border-0">
+            <p className="px-3 pt-2 pb-0.5 text-[9px] font-bold uppercase tracking-widest text-zinc-400">{label}</p>
+            <div className="px-3 pb-2">
+              {items.map((item, i) => (
+                <Row key={i} label={item.label} amount={`+${formatCr(item.amount_cr)}`} note={item.note || undefined} />
+              ))}
+            </div>
+          </div>
+        );
+      })}
+
+      {/* Total */}
+      <div className="bg-zinc-50 px-3 py-2 border-t-2 border-zinc-200">
+        <div className="flex justify-between items-center">
+          <span className="text-xs font-bold text-zinc-900">All-In Estimate</span>
+          <span className="text-sm font-bold text-zinc-900">~{formatCr(data.total_cr)}</span>
+        </div>
+        {data.bsp_cr > 0 && (
+          <p className="text-[10px] text-zinc-400 mt-0.5">
+            +{Math.round(((data.total_cr - data.bsp_cr) / data.bsp_cr) * 100)}% over BSP
+          </p>
+        )}
+      </div>
+
+      {/* Disclaimer */}
+      {data.disclaimer && (
+        <div className="px-3 py-1.5 bg-amber-50 border-t border-amber-100">
+          <p className="text-[10px] text-amber-700 leading-snug">⚠ {data.disclaimer}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Message {
@@ -569,6 +673,12 @@ export default function AdvisorChat() {
                         ul: ({ children }) => <ul className="mb-2 ml-4 list-disc space-y-0.5">{children}</ul>,
                         ol: ({ children }) => <ol className="mb-2 ml-4 list-decimal space-y-0.5">{children}</ol>,
                         li: ({ children }) => <li>{children}</li>,
+                        code: ({ className, children }) => {
+                          if (className === "language-price-breakdown") {
+                            return <PriceBreakdownTable raw={String(children).trim()} />;
+                          }
+                          return <code className="rounded bg-zinc-200 px-1 py-0.5 text-xs font-mono">{children}</code>;
+                        },
                       }}
                     >
                       {msg.content}
