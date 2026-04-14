@@ -35,6 +35,7 @@ export interface FocusProject {
   unit_configs?: string[] | null;
   plot_size_min_sqyd?: number | null;
   plot_size_max_sqyd?: number | null;
+  price_min_cr?: number | null;
 }
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
@@ -74,7 +75,8 @@ function formatTotalPrice(amount: number): string {
     return `₹${(amount / 10_000_000).toFixed(2)} Cr`;
   }
   if (amount >= 100_000) {
-    return `₹${Math.round(amount / 100_000)} L`;
+    const lakhs = parseFloat((amount / 100_000).toFixed(1));
+    return `₹${lakhs} Lakh`;
   }
   return `₹${amount.toLocaleString("en-IN")}`;
 }
@@ -83,12 +85,6 @@ function formatTotalPrice(amount: number): string {
 // Prefers "From ₹X Cr" total flat price (needs min_flat_price).
 // Falls back to per-sqft if area data is unavailable.
 function priceLabel(project: FocusProject): string | null {
-  // Plot projects are priced per sq yd — show as-is
-  if (project.project_type === "plot") {
-    const price = project.current_price_per_sqft_min;
-    if (!price) return null;
-    return `₹${price.toLocaleString("en-IN")} /sq yd`;
-  }
   if (project.min_flat_price) {
     return `From ${formatTotalPrice(project.min_flat_price)}`;
   }

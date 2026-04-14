@@ -35,7 +35,7 @@ async function getFocusProjects(): Promise<FocusProject[]> {
     const { data, error } = await supabase
       .from("advisor_project_intelligence")
       .select(
-        "id, project_name, project_slug, project_type, current_status, developer_brand, micro_market, micro_market_slug, city, city_slug, current_price_per_sqft_min, current_price_per_sqft_max, total_units, primary_differentiator, investment_verdict, quality_score, needs_review, hero_image_url, listing_url_slug, unit_configs"
+        "id, project_name, project_slug, project_type, current_status, developer_brand, micro_market, micro_market_slug, city, city_slug, current_price_per_sqft_min, current_price_per_sqft_max, total_units, primary_differentiator, investment_verdict, quality_score, needs_review, hero_image_url, listing_url_slug, unit_configs, price_min_cr"
       )
       .eq("is_focus_project", true)
       .eq("sale_status", "active")
@@ -80,14 +80,21 @@ async function getFocusProjects(): Promise<FocusProject[]> {
       }
     }
 
-    // For plot-type projects, extract sq yd size range from unit_configs
+    // For plot-type projects, extract sq yd size range + set min_flat_price from price_min_cr
     for (const p of projects) {
-      if (p.project_type === "plot" && p.unit_configs?.length) {
-        const raw = p.unit_configs[0]; // e.g. "Plot 180–400 sqyd | ₹28,000/sqyd | From ₹50.4L"
-        const sizeMatch = raw.match(/(\d+)[–-](\d+)\s*sqyd/i);
-        if (sizeMatch) {
-          p.plot_size_min_sqyd = parseInt(sizeMatch[1]);
-          p.plot_size_max_sqyd = parseInt(sizeMatch[2]);
+      if (p.project_type === "plot") {
+        // Set total starting price so priceLabel shows "From ₹50.4 Lakh"
+        if (p.price_min_cr) {
+          p.min_flat_price = Math.round(p.price_min_cr * 1_00_00_000);
+        }
+        // Extract plot size range from unit_configs
+        if (p.unit_configs?.length) {
+          const raw = p.unit_configs[0]; // e.g. "Plot 180–400 sqyd | ₹28,000/sqyd | From ₹50.4L"
+          const sizeMatch = raw.match(/(\d+)[–-](\d+)\s*sqyd/i);
+          if (sizeMatch) {
+            p.plot_size_min_sqyd = parseInt(sizeMatch[1]);
+            p.plot_size_max_sqyd = parseInt(sizeMatch[2]);
+          }
         }
       }
     }
