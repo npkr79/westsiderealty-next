@@ -15,6 +15,12 @@ import {
   fetchAllForGeneral,
   type AdvisorQueryResult,
 } from "@/lib/advisor/data-fetcher";
+import {
+  shouldTriggerWebSearch,
+  buildWebQuery,
+  webSearch,
+  buildWebDataContext,
+} from "@/lib/advisor/web-search";
 import { createServiceClient } from "@/lib/supabase/serviceClient";
 
 // ─── Config ───────────────────────────────────────────────────────────────────
@@ -343,17 +349,37 @@ export async function POST(request: NextRequest) {
       intent: "general",
     };
 
-    // Step 2: Fetch relevant data from Supabase
+    // Step 2: Fetch relevant data from Supabase (Layer 1 + 2)
+    const supabase = createServiceClient();
     const data = await fetchDataForIntent(intent);
 
-    // Step 3: Build context string
-    const context = buildContextString(data.projects, data.configs, data.markets);
+    // Step 3: Layer 3 — web search if DB is sparse or user wants real-time data
+    let webContext = "";
+    let webSearchFired = false;
+    if (shouldTriggerWebSearch(userMessage, intent, data.projects.length, data.markets.length)) {
+      try {
+        const { query, queryType, entityName } = buildWebQuery(intent, userMessage);
+        const webResult = await webSearch(supabase, query, queryType, entityName);
+        if (webResult) {
+          webContext = buildWebDataContext(webResult);
+          webSearchFired = true;
+          console.log(`[advisor/chat] Layer 3 fired (${queryType}): ${entityName} | from_cache=${webResult.from_cache}`);
+        }
+      } catch (e) {
+        // Web search failure must never break the chat
+        console.error("[advisor/chat] Layer 3 web search failed:", e);
+      }
+    }
 
-    // Step 4: Generate response with Sonnet
+    // Step 4: Build context string (DB data + optional web data)
+    const dbContext = buildContextString(data.projects, data.configs, data.markets);
+    const fullContext = [dbContext, webContext].filter(Boolean).join("\n\n");
+
+    // Step 5: Generate response with Sonnet
     const systemPrompt = buildSystemPrompt();
     const promptWithContext =
-      context.length > 50
-        ? `Here is the current real estate data to inform your answer:\n\n${context}\n\n---\n\nUser question: ${userMessage}`
+      fullContext.length > 50
+        ? `Here is the real estate data to inform your answer:\n\n${fullContext}\n\n---\n\nUser question: ${userMessage}`
         : userMessage;
 
     const responseText = await callClaude(SONNET, systemPrompt, promptWithContext, 1200);
@@ -391,6 +417,7 @@ export async function POST(request: NextRequest) {
         projects_loaded: data.projects.length,
         configs_loaded: data.configs.length,
         markets_loaded: data.markets.length,
+        web_search_fired: webSearchFired,
       },
       latency_ms: latencyMs,
     });

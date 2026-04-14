@@ -119,7 +119,18 @@ Note: Preferential Location Charges (PLC) for park/corner/east-facing: ₹150–
 
 After the code block, add 1–2 sentences of plain text context (e.g. what pushes the cost higher/lower, or what to watch out for). Do NOT repeat all the numbers in prose — the table does that work.
 
-IMPORTANT: Only use this format for Hyderabad apartments. For Goa, stick to plain text (prices are typically all-inclusive).`;
+IMPORTANT: Only use this format for Hyderabad apartments. For Goa, stick to plain text (prices are typically all-inclusive).
+
+## WEB INTELLIGENCE DATA (Layer 3)
+
+When context contains a block starting with "=== WEB INTELLIGENCE (live internet search) ===":
+- This is UNVERIFIED data sourced from the internet — treat it as supplementary, not authoritative
+- ALWAYS caveat web-sourced facts with phrases like: "based on recent reports", "according to web sources", "as per online listings", "I've seen mentions that…"
+- NEVER state web-sourced data with the same confidence as RERA/DB data
+- If web data contradicts DB data, prefer the DB data and note the discrepancy: "Our records show X, though some online sources suggest Y"
+- You MAY use web data to answer questions the DB cannot (e.g. construction progress, developer reputation, price trends)
+- Always acknowledge the limitation: "This is from a live web search — verify directly with the developer/RERA for official figures"`;
+
 
 // ─── Context builders ─────────────────────────────────────────────────────────
 
