@@ -75,8 +75,17 @@ function formatTotalPrice(amount: number): string {
     return `₹${(amount / 10_000_000).toFixed(2)} Cr`;
   }
   if (amount >= 100_000) {
-    const lakhs = parseFloat((amount / 100_000).toFixed(1));
-    return `₹${lakhs} Lakh`;
+    return `₹${Math.round(amount / 100_000)} L`;
+  }
+  return `₹${amount.toLocaleString("en-IN")}`;
+}
+
+function formatPlotPrice(amount: number): string {
+  if (amount >= 10_000_000) {
+    return `₹${parseFloat((amount / 10_000_000).toFixed(2))} Cr`;
+  }
+  if (amount >= 100_000) {
+    return `₹${parseFloat((amount / 100_000).toFixed(1))} Lakh`;
   }
   return `₹${amount.toLocaleString("en-IN")}`;
 }
@@ -86,7 +95,8 @@ function formatTotalPrice(amount: number): string {
 // Falls back to per-sqft if area data is unavailable.
 function priceLabel(project: FocusProject): string | null {
   if (project.min_flat_price) {
-    return `From ${formatTotalPrice(project.min_flat_price)}`;
+    const fmt = project.project_type === "plot" ? formatPlotPrice : formatTotalPrice;
+    return `From ${fmt(project.min_flat_price)}`;
   }
   const min = project.current_price_per_sqft_min;
   const max = project.current_price_per_sqft_max;
