@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
-import { upsertInboundWhatsAppMessage, updateOutboundStatusByProviderId } from "@/services/whatsappCloudService";
+import {
+  upsertInboundWhatsAppMessage,
+  updateOutboundStatusByProviderId,
+} from "@/services/whatsappCloudService";
+import { handlePropertyBotMessage } from "@/services/whatsappPropertyBotService";
 
 const WEBHOOK_VERIFY_TOKEN = process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN || "";
 
@@ -12,7 +16,10 @@ export async function GET(request: Request) {
   if (mode === "subscribe" && token && token === WEBHOOK_VERIFY_TOKEN) {
     return new Response(challenge || "", { status: 200 });
   }
-  return NextResponse.json({ error: "Webhook verification failed." }, { status: 403 });
+  return NextResponse.json(
+    { error: "Webhook verification failed." },
+    { status: 403 }
+  );
 }
 
 export async function POST(request: Request) {
@@ -24,6 +31,8 @@ export async function POST(request: Request) {
       const changes = Array.isArray(entry?.changes) ? entry.changes : [];
       for (const change of changes) {
         const value = change?.value || {};
+
+        // ── Delivery status updates ─────────────────────────────────────────
         const statuses = Array.isArray(value?.statuses) ? value.statuses : [];
         for (const statusRecord of statuses) {
           const providerMessageId = String(statusRecord?.id || "");
@@ -33,13 +42,38 @@ export async function POST(request: Request) {
           }
         }
 
+        // ── Inbound messages ────────────────────────────────────────────────
         const messages = Array.isArray(value?.messages) ? value.messages : [];
         for (const msg of messages) {
           const providerMessageId = String(msg?.id || "");
           const from = String(msg?.from || "");
-          const content = msg?.text?.body ? String(msg.text.body) : null;
-          if (providerMessageId && from) {
-            await upsertInboundWhatsAppMessage({ providerMessageId, from, content });
+          if (!providerMessageId || !from) continue;
+
+          const textContent: string | null = msg?.text?.body
+            ? String(msg.text.body)
+            : null;
+
+          // Extract media ID for image/video/document messages
+          const mediaId: string | null =
+            msg?.image?.id ||
+            msg?.video?.id ||
+            msg?.document?.id ||
+            null;
+
+          // ── Property bot takes priority for CPs ─────────────────────────
+          const handledByBot = await handlePropertyBotMessage(
+            from,
+            textContent,
+            mediaId
+          );
+
+          if (!handledByBot) {
+            // Fall through to CRM lead conversation handler
+            await upsertInboundWhatsAppMessage({
+              providerMessageId,
+              from,
+              content: textContent,
+            });
           }
         }
       }
@@ -48,7 +82,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Unexpected webhook processing error." },
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "Unexpected webhook processing error.",
+      },
       { status: 500 }
     );
   }
