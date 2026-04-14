@@ -111,6 +111,7 @@ const CITY_LABELS: Record<string, string> = {
   goa: "Goa",
   hyderabad: "Hyderabad",
   bangalore: "Bangalore",
+  sindhudurg: "Sindhudurg",
 };
 
 // ─── Project Card ─────────────────────────────────────────────────────────────
