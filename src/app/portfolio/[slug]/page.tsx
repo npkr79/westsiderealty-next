@@ -62,6 +62,8 @@ export interface FocusProjectDetail {
   rental_yield_pct: number | null;
   launch_price_per_sqft: number | null;
   approval_authority: string | null;
+  price_min_cr: number | null;
+  unit_configs: string[] | null;
 }
 
 // ─── Data fetch ───────────────────────────────────────────────────────────────

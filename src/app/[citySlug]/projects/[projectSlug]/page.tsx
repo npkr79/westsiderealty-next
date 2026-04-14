@@ -89,12 +89,22 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
         const market = advisory.micro_market || "";
         const priceStr =
           advisory.current_price_per_sqft_min
-            ? ` — From ₹${Number(advisory.current_price_per_sqft_min).toLocaleString("en-IN")}/sqft`
+            ? ` From ₹${Number(advisory.current_price_per_sqft_min).toLocaleString("en-IN")}/sqft`
             : "";
         const typeLabel = formatProjectType(advisory.project_type);
         const segmentLabel = formatSegment(advisory.project_segment);
-        const seoTitle = `${advisory.project_name}${market ? " " + market : ""}${priceStr} | Westside Realty`;
-        const seoDescription = `${advisory.project_name} is a ${[segmentLabel, typeLabel].filter(Boolean).join(" ")} project in ${market || cityName}${advisory.developer_brand ? ` by ${advisory.developer_brand}` : ""}. ${advisory.investment_verdict ? advisory.investment_verdict.slice(0, 120) + "…" : "RERA verified with expert Goa real estate advisory."} `;
+        const statusLabel = formatStatus(advisory.current_status);
+
+        // Title: project name + location + price signal (max 60 chars)
+        const titleBase = `${advisory.project_name}${market ? ", " + market : ""}`;
+        const titleWithPrice = priceStr ? `${titleBase} |${priceStr}` : `${titleBase} | Price & Reviews`;
+        const seoTitle = titleWithPrice.length <= 60 ? titleWithPrice : titleBase.length <= 60 ? titleBase : titleBase.substring(0, 57) + "...";
+
+        // Description: specifics + CTA (max 155 chars)
+        const devStr = advisory.developer_brand ? ` by ${advisory.developer_brand}` : "";
+        const typeStr = [segmentLabel, typeLabel].filter(Boolean).join(" ");
+        const seoDescription = `${advisory.project_name}${devStr} — ${typeStr || "project"} in ${market || cityName}.${priceStr ? priceStr + "." : ""} RERA verified. Get floor plans, reviews & expert advice today.`.substring(0, 155);
+
         return {
           title: seoTitle,
           description: seoDescription,
@@ -147,20 +157,79 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     if (minPrice && minPrice > 0) {
       const formatCr = (v: number) => {
         const cr = v / 10_000_000;
-        return cr >= 1 ? `₹${cr.toFixed(cr % 1 === 0 ? 0 : 1)}Cr` : `₹${(v / 100_000).toFixed(0)}L`;
+        return cr >= 1 ? `₹${cr.toFixed(cr % 1 === 0 ? 0 : 1)} Cr` : `₹${(v / 100_000).toFixed(0)} L`;
       };
       priceStr =
         maxPrice && maxPrice > minPrice
-          ? ` — ${formatCr(minPrice)}-${formatCr(maxPrice)}`
-          : ` — From ${formatCr(minPrice)}`;
+          ? `${formatCr(minPrice)}–${formatCr(maxPrice)}`
+          : `From ${formatCr(minPrice)}`;
     }
 
-    const seoTitle =
-      project.seo_title ||
-      `${cleanName}${microMarket ? " " + microMarket : ""}${priceStr} | Westside Realty`;
-    const seoDescription =
-      project.meta_description ||
-      `Explore ${cleanName} in ${microMarket || cityName}.${project.developer_name ? ` By ${project.developer_name}.` : ""} RERA verified project with expert advisory by Westside Realty.`;
+    // Gather additional signals for richer metadata
+    const totalUnits = (project as any).total_units as number | null | undefined;
+    const currentStatus = (project as any).current_status as string | null | undefined;
+    const configDisplay = (project as any).configuration_display as string | null | undefined;
+    const reraId = (project as any).rera_id as string | null | undefined;
+
+    // --- SEO Title (max 60 chars) ---
+    // Pattern: "ProjectName, Location | ₹Price" or "ProjectName, Location | Status"
+    // This mirrors how users search: "rajapushpa atria kokapet", "aparna cyberscape", "krinss villas"
+    const buildTitle = (): string => {
+      const locationStr = microMarket || cityName;
+      const nameLocation = `${cleanName}, ${locationStr}`;
+
+      // Priority 1: Name + Location + Price (most click-worthy)
+      if (priceStr) {
+        const candidate = `${nameLocation} | ${priceStr}`;
+        if (candidate.length <= 60) return candidate;
+        // Try without location
+        const shorter = `${cleanName} | ${priceStr}`;
+        if (shorter.length <= 60) return shorter;
+      }
+
+      // Priority 2: Name + Location + Config (e.g., "2, 3 BHK")
+      if (configDisplay) {
+        const candidate = `${cleanName}, ${locationStr} | ${configDisplay}`;
+        if (candidate.length <= 60) return candidate;
+      }
+
+      // Priority 3: Name + Location + "Price & Reviews"
+      const withCTA = `${nameLocation} | Price & Reviews`;
+      if (withCTA.length <= 60) return withCTA;
+
+      // Priority 4: Name + Location only
+      if (nameLocation.length <= 60) return nameLocation;
+
+      // Fallback
+      return cleanName.substring(0, 60);
+    };
+
+    const seoTitle = project.seo_title || buildTitle();
+
+    // --- SEO Description (max 155 chars) ---
+    // Pattern mirrors real queries: project name + location + developer + price + RERA + CTA
+    const buildDescription = (): string => {
+      const locationStr = microMarket || cityName;
+      const devStr = project.developer_name ? ` by ${project.developer_name}` : "";
+      const pricePhrase = priceStr ? ` Price: ${priceStr}.` : "";
+      const reraPhrase = reraId ? " RERA verified." : "";
+      const configPhrase = configDisplay ? ` ${configDisplay} units.` : "";
+
+      // Build description with most important signals first
+      const candidate = `${cleanName}${devStr} in ${locationStr}.${pricePhrase}${configPhrase}${reraPhrase} Get floor plans, reviews & expert advice.`;
+
+      if (candidate.length <= 155) return candidate;
+
+      // Shorter variant without config
+      const shorter = `${cleanName}${devStr} in ${locationStr}.${pricePhrase}${reraPhrase} Get floor plans, pricing & expert advice today.`;
+      if (shorter.length <= 155) return shorter;
+
+      // Minimal variant
+      const minimal = `${cleanName} in ${locationStr}.${pricePhrase} RERA verified. Get pricing, reviews & book a site visit today.`;
+      return minimal.substring(0, 155);
+    };
+
+    const seoDescription = project.meta_description || buildDescription();
 
     // Safe image URL - use getHeroImageUrl which handles relative paths
     let optimizedOgImage = "https://www.westsiderealty.in/placeholder.svg";
@@ -181,11 +250,14 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     const keywords = [
       cleanName,
       microMarket && `${cleanName} ${microMarket}`,
-      microMarket && `${microMarket} real estate`,
+      microMarket && `${cleanName} ${microMarket} price`,
+      microMarket && `${microMarket} apartments`,
       cityName && `${cleanName} ${cityName}`,
       project.developer_name && `${project.developer_name} projects`,
+      configDisplay && `${configDisplay} in ${microMarket || cityName}`,
+      `${cleanName} reviews`,
+      `${cleanName} floor plan`,
       `RERA verified projects ${microMarket || cityName}`,
-      `buy apartment ${microMarket || cityName}`,
     ].filter(Boolean).join(", ");
 
     return {
@@ -549,3 +621,4 @@ export default async function ProjectDetailPage({ params }: PageProps) {
 
 // Revalidate every 60 seconds to allow database changes to reflect quickly
 export const revalidate = 60;
+            

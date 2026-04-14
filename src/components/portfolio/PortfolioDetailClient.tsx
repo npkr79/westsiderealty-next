@@ -42,10 +42,22 @@ function statusStyle(s: string | null) {
   return { bg: "#f3f4f6", color: "#4b5563" };
 }
 
-function priceRange(min: number | null, max: number | null) {
+function priceRange(min: number | null, max: number | null, projectType?: string | null, priceMinCr?: number | null) {
   if (!min) return null;
+  // Plot projects: show total starting price, not per-sqft
+  if (projectType === "plot" && priceMinCr) {
+    const lakhs = parseFloat((priceMinCr * 100).toFixed(1));
+    return `From ₹${lakhs} Lakh`;
+  }
   const fmt = (v: number) => `₹${(v / 1000).toFixed(0)}K`;
   return max && max !== min ? `${fmt(min)} – ${fmt(max)} /sqft` : `${fmt(min)} /sqft`;
+}
+
+function plotSizeLabel(unitConfigs: string[] | null): string | null {
+  if (!unitConfigs?.length) return null;
+  const match = unitConfigs[0].match(/(\d+)[–-](\d+)\s*sqyd/i);
+  if (match) return `${match[1]}–${match[2]} sq yd`;
+  return null;
 }
 
 function formatDate(d: string | null) {
@@ -243,7 +255,8 @@ function StatBox({ label, value }: { label: string; value: string }) {
 
 export function PortfolioDetailClient({ project }: { project: FocusProjectDetail }) {
   const st = statusStyle(project.current_status);
-  const price = priceRange(project.current_price_per_sqft_min, project.current_price_per_sqft_max);
+  const price = priceRange(project.current_price_per_sqft_min, project.current_price_per_sqft_max, project.project_type, project.price_min_cr);
+  const plotSize = plotSizeLabel(project.unit_configs);
   const city = cityLabel(project);
 
   const faqs: Array<{ q: string; a: string }> = [];
@@ -327,7 +340,7 @@ export function PortfolioDetailClient({ project }: { project: FocusProjectDetail
         <div style={{ maxWidth: 1100, margin: "0 auto", padding: "0 16px", display: "flex", overflowX: "auto", gap: 0, scrollbarWidth: "none" }}>
           {[
             price ? { label: "Price", value: price } : null,
-            project.total_units ? { label: "Total Units", value: `${project.total_units} units` } : null,
+            plotSize ? { label: "Plot Sizes", value: plotSize } : (project.total_units ? { label: "Total Units", value: `${project.total_units} units` } : null),
             project.land_area_acres ? { label: "Land Area", value: `${project.land_area_acres} acres` } : null,
             project.possession_date ? { label: "Possession", value: formatDate(project.possession_date) ?? "" } : null,
             project.rera_id ? { label: "RERA", value: project.rera_id } : null,
@@ -376,6 +389,7 @@ export function PortfolioDetailClient({ project }: { project: FocusProjectDetail
                 />
               )}
               {project.approval_authority && <StatBox label="Approved By" value={project.approval_authority} />}
+              {plotSize && <StatBox label="Plot Sizes" value={plotSize} />}
             </div>
 
             {/* RERA verification badge */}
