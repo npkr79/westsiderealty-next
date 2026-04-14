@@ -8,7 +8,7 @@ import {
   classifyArticles,
   insertArticles,
   updateSourceStats,
-  fetchExistingUrls,
+  fetchExistingIdentifiers,
   NewsSource,
 } from "@/services/newsScraperService";
 
@@ -56,8 +56,8 @@ async function handler(request: NextRequest) {
       return NextResponse.json({ message: "No active sources configured", sourcesScraped: 0 });
     }
 
-    // 2. Fetch existing URLs for deduplication (last 7 days)
-    const existingUrls = await fetchExistingUrls(supabase);
+    // 2. Fetch existing URLs + headlines for deduplication (last 14 days)
+    const { urls: existingUrls, headlines: existingHeadlines } = await fetchExistingIdentifiers(supabase);
 
     // 3. Fetch all RSS feeds
     const { articles: rawArticles, errors: fetchErrors } = await fetchAllRSSFeeds(sources);
@@ -65,8 +65,8 @@ async function handler(request: NextRequest) {
     const sourcesScraped = sources.length - fetchErrors.length;
     const articlesFound = rawArticles.length;
 
-    // 4. Deduplicate
-    const uniqueArticles = deduplicateItems(rawArticles, existingUrls);
+    // 4. Deduplicate — 3-layer: URL + normalized headline + same-story keyword overlap
+    const uniqueArticles = deduplicateItems(rawArticles, existingUrls, existingHeadlines);
     const duplicatesSkipped = articlesFound - uniqueArticles.length;
 
     // 5. Classify with Claude Haiku (only if we have new articles)

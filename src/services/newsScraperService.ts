@@ -188,7 +188,7 @@ export async function fetchAllRSSFeeds(sources: NewsSource[]): Promise<{
 /**
  * Normalizes a headline for fuzzy duplicate detection.
  */
-function normalizeHeadline(headline: string): string {
+export function normalizeHeadline(headline: string): string {
   return headline
     .toLowerCase()
     .replace(/[^a-z0-9\s]/g, "")
@@ -198,25 +198,80 @@ function normalizeHeadline(headline: string): string {
 }
 
 /**
- * Two-layer deduplication: exact URL match + normalized headline match.
+ * Extracts significant keywords from a headline for same-story detection.
+ * Filters out short words and common stop words, keeping numbers intact.
+ */
+export function extractKeywords(headline: string): Set<string> {
+  const STOP_WORDS = new Set([
+    "this", "that", "with", "from", "have", "will", "been", "more", "than",
+    "into", "over", "also", "their", "after", "india", "real", "estate",
+    "news", "says", "said", "amid", "under", "about", "would", "could",
+    "should", "crore", "lakh", "rupees", "year", "years", "plan", "plans",
+  ]);
+  const tokens = headline
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, "")
+    .split(/\s+/)
+    .filter((w) => w.length >= 4 && !STOP_WORDS.has(w));
+  return new Set(tokens);
+}
+
+/**
+ * Returns true if two headlines are likely the same story.
+ * Uses keyword overlap — ≥3 shared significant keywords = same story.
+ */
+export function areSameStory(h1: string, h2: string): boolean {
+  const w1 = extractKeywords(h1);
+  const w2 = extractKeywords(h2);
+  if (w1.size === 0 || w2.size === 0) return false;
+  let shared = 0;
+  for (const w of w1) {
+    if (w2.has(w)) shared++;
+    if (shared >= 3) return true;
+  }
+  return false;
+}
+
+/**
+ * Three-layer deduplication:
+ *  1. Exact URL match (against DB + within batch)
+ *  2. Exact normalized headline match (against DB + within batch)
+ *  3. Same-story keyword overlap (within batch + against DB headlines)
  */
 export function deduplicateItems(
   items: RawArticle[],
-  existingUrls: Set<string>
+  existingUrls: Set<string>,
+  existingHeadlines?: Set<string>
 ): RawArticle[] {
   const seenUrls = new Set(existingUrls);
-  const seenHeadlines = new Set<string>();
+  // Build a set of existing normalized headlines from DB for exact match
+  const seenNormHeadlines = new Set<string>(existingHeadlines ?? []);
+  // Keep a list of already-accepted headlines for same-story fuzzy check
+  const acceptedHeadlines: string[] = [];
+
   const unique: RawArticle[] = [];
 
   for (const item of items) {
     const url = item.source_url.trim();
     const normHeadline = normalizeHeadline(item.headline);
 
+    // Layer 1: exact URL
     if (seenUrls.has(url)) continue;
-    if (seenHeadlines.has(normHeadline)) continue;
+    // Layer 2: exact normalized headline (catches same headline, different URL)
+    if (seenNormHeadlines.has(normHeadline)) continue;
+    // Layer 3: same-story keyword overlap against DB headlines
+    if (existingHeadlines) {
+      const isDuplicate = [...existingHeadlines].some((eh) =>
+        areSameStory(item.headline, eh)
+      );
+      if (isDuplicate) continue;
+    }
+    // Layer 3b: same-story check within this batch's accepted articles
+    if (acceptedHeadlines.some((ah) => areSameStory(item.headline, ah))) continue;
 
     seenUrls.add(url);
-    seenHeadlines.add(normHeadline);
+    seenNormHeadlines.add(normHeadline);
+    acceptedHeadlines.push(item.headline);
     unique.push(item);
   }
 
@@ -447,16 +502,33 @@ export async function updateSourceStats(
 }
 
 /**
- * Fetches existing article URLs from the last 7 days for deduplication.
+ * Fetches existing article URLs AND headlines from the last 14 days.
+ * Returns both sets for three-layer deduplication.
  */
 export async function fetchExistingUrls(
   supabase: SupabaseClient
 ): Promise<Set<string>> {
-  const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const cutoff = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
   const { data } = await supabase
     .from("news_articles")
     .select("source_url")
     .gte("scraped_at", cutoff);
 
   return new Set((data ?? []).map((r: { source_url: string }) => r.source_url));
+}
+
+export async function fetchExistingIdentifiers(
+  supabase: SupabaseClient
+): Promise<{ urls: Set<string>; headlines: Set<string> }> {
+  const cutoff = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
+  const { data } = await supabase
+    .from("news_articles")
+    .select("source_url, headline")
+    .gte("scraped_at", cutoff);
+
+  const urls = new Set((data ?? []).map((r: { source_url: string }) => r.source_url));
+  const headlines = new Set(
+    (data ?? []).map((r: { headline: string }) => normalizeHeadline(r.headline))
+  );
+  return { urls, headlines };
 }

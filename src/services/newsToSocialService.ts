@@ -1,6 +1,7 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import sharp from "sharp";
 import { v2 as cloudinary } from "cloudinary";
+import { areSameStory } from "@/services/newsScraperService";
 
 // ---------------------------------------------------------------------------
 // Cloudinary config (call once at module level)
@@ -70,17 +71,51 @@ export async function pickTopArticles(
     .neq("sentiment", "negative")
     .gte("relevance_score", 7.5)
     .order("relevance_score", { ascending: false })
-    .limit(20);
+    .limit(40); // Larger pool so we have room after dedup
 
   if (error) throw new Error(`pickTopArticles failed: ${error.message}`);
-  const pool = (data ?? []) as NewsArticle[];
+  const rawPool = (data ?? []) as NewsArticle[];
 
+  // ── Load recently processed article headlines (last 30 days) ──────────────
+  // These are the stories already turned into social posts — never re-post them.
+  const cutoff30d = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const { data: recentProcessed } = await supabase
+    .from("news_articles")
+    .select("headline")
+    .eq("is_processed", true)
+    .gte("processed_at", cutoff30d);
+  const processedHeadlines: string[] = (recentProcessed ?? []).map(
+    (r: { headline: string }) => r.headline
+  );
+
+  // ── Filter pool: remove articles that are the same story as any processed article ──
+  const deduped = rawPool.filter((article) => {
+    const isDuplicateOfProcessed = processedHeadlines.some((ph) =>
+      areSameStory(article.headline, ph)
+    );
+    return !isDuplicateOfProcessed;
+  });
+
+  // ── Within-pool dedup: remove near-duplicate stories from the candidate pool ──
+  // (e.g. 3 different sources all covered Delhi-Dehradun expressway)
+  const uniquePool: NewsArticle[] = [];
+  for (const article of deduped) {
+    const alreadyHaveSameStory = uniquePool.some((a) =>
+      areSameStory(article.headline, a.headline)
+    );
+    if (!alreadyHaveSameStory) {
+      uniquePool.push(article);
+    }
+    // else: skip this article — same story already represented by a higher-scored one
+  }
+
+  // ── Pick top articles with city diversity ─────────────────────────────────
   const picked: NewsArticle[] = [];
   const used = new Set<string>();
 
   // Reserve 1 slot each for Hyderabad and Goa (best scored available)
   for (const city of ["hyderabad", "goa"]) {
-    const match = pool.find(
+    const match = uniquePool.find(
       (a) => !used.has(a.id) && a.cities?.includes(city)
     );
     if (match) {
@@ -90,7 +125,7 @@ export async function pickTopArticles(
   }
 
   // Fill remaining slots with top-scored articles not already picked
-  for (const article of pool) {
+  for (const article of uniquePool) {
     if (picked.length >= count) break;
     if (!used.has(article.id)) {
       picked.push(article);
