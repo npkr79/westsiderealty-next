@@ -230,8 +230,193 @@ Return ONLY valid JSON array (no markdown):
 }
 
 // ---------------------------------------------------------------------------
-// Generate image prompt for a news article by category
+// Entity logo library — maps keywords found in headline/tags → Supabase asset URL
+// Add logos to the `brand-assets/logos/` bucket to activate them.
 // ---------------------------------------------------------------------------
+
+const ENTITY_LOGO_MAP: Array<{ keywords: string[]; url: string }> = [
+  {
+    keywords: ["hmda", "hyderabad metropolitan development authority"],
+    url: "https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/brand-assets/logos/hmda.png",
+  },
+  {
+    keywords: ["nhai", "national highways authority", "national highway"],
+    url: "https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/brand-assets/logos/nhai.png",
+  },
+  {
+    keywords: ["indian railways", "railway ministry", "rail vikas"],
+    url: "https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/brand-assets/logos/indian-railways.png",
+  },
+  {
+    keywords: ["credai", "confederation of real estate"],
+    url: "https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/brand-assets/logos/credai.png",
+  },
+  {
+    keywords: ["rera", "real estate regulatory authority"],
+    url: "https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/brand-assets/logos/rera.png",
+  },
+  {
+    keywords: ["rbi", "reserve bank of india"],
+    url: "https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/brand-assets/logos/rbi.png",
+  },
+  {
+    keywords: ["naredco", "national real estate development council"],
+    url: "https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/brand-assets/logos/naredco.png",
+  },
+];
+
+/** Returns the logo URL for the first entity found in article text, or null. */
+function detectEntityLogoUrl(article: NewsArticle): string | null {
+  const text = `${article.headline} ${(article.ai_tags ?? []).join(" ")} ${article.ai_summary ?? ""}`.toLowerCase();
+  for (const entry of ENTITY_LOGO_MAP) {
+    if (entry.keywords.some((kw) => text.includes(kw))) {
+      return entry.url;
+    }
+  }
+  return null;
+}
+
+/** Tries to fetch a logo buffer; returns null silently if unavailable (logo not uploaded yet). */
+async function fetchLogoBuffer(url: string): Promise<Buffer | null> {
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
+    if (!res.ok) return null;
+    const ab = await res.arrayBuffer();
+    return Buffer.from(ab);
+  } catch {
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Key stat extractor — pulls the most impressive number from the headline
+// ---------------------------------------------------------------------------
+
+function extractKeyStat(headline: string): string | null {
+  const patterns: RegExp[] = [
+    /₹[\d,]+(?:\.\d+)?\s*(?:crore|lakh|cr|L)?/i,
+    /[\d,.]+\s*(?:crore|lakh)\s*(?:rupees?|deal)?/i,
+    /[\d.]+\s*(?:hours?|hrs?)/i,
+    /[\d,]+\s*%(?:\s*(?:jump|surge|rise|growth|up|YoY|QoQ))?/i,
+    /[\d,]+\s*(?:units?|homes?|flats?|apartments?)/i,
+    /[\d]+-year\s+(?:high|record|low)/i,
+    /[\d,.]+\s*(?:km|sq\.?\s*(?:ft|m|km|yd)|acres?)/i,
+    /[\d,]+\s*(?:mn|million|bn|billion)/i,
+  ];
+  for (const re of patterns) {
+    const m = headline.match(re);
+    if (m) return m[0].trim();
+  }
+  return null;
+}
+
+// ---------------------------------------------------------------------------
+// Claude Haiku — builds a vivid, story-specific image prompt
+// ---------------------------------------------------------------------------
+
+/** Category fallback in case Haiku call fails */
+function buildFallbackImagePrompt(article: NewsArticle): string {
+  const categoryVisuals: Record<string, string> = {
+    infrastructure: "Modern Indian infrastructure — elevated expressway curving through lush green landscape, smart city skyline at golden hour. Cinematic aerial perspective.",
+    policy: "Indian government and real estate — elegant government building facade with Indian tricolor, professional corporate atmosphere. Clean and authoritative.",
+    market: "Indian real estate market — premium residential towers rising against a vivid blue sky, luxury apartments, modern glass façades. Aspirational and dynamic.",
+    corporate: "Corporate India — glass and steel office towers, GCC business district skyline, professionals in a modern lobby. Upscale and confident.",
+    regulatory: "Legal and regulatory framework — balanced scales, official documents, premium office setting. Trustworthy and professional.",
+    investment: "Real estate investment — growth chart overlaid on premium property aerial view, gold and green tones, upward trajectory. Wealth-aspirational.",
+    launch: "New property launch — architectural rendering of a luxury residential project, manicured gardens, swimming pool, modern façade. Premium and exciting.",
+  };
+  const base = categoryVisuals[article.category] ?? "Premium Indian real estate — modern skyline, aspirational architecture, cinematic quality.";
+  const cityCtx = article.cities.length && !article.cities.includes("national")
+    ? ` Evokes the character of ${article.cities[0]}.`
+    : "";
+  return `Social media background for a real estate post. ${base}${cityCtx} NO text, NO faces, NO logos. Keep bottom 35% dark for text overlay. Square 1:1.`;
+}
+
+async function buildContextualImagePrompt(article: NewsArticle): Promise<string> {
+  const anthropicKey = process.env.ANTHROPIC_API_KEY;
+  if (!anthropicKey) return buildFallbackImagePrompt(article);
+
+  const context = [
+    `Headline: ${article.headline}`,
+    article.ai_summary ? `Summary: ${article.ai_summary}` : "",
+    article.summary ? `Source summary: ${article.summary}` : "",
+    `Category: ${article.category}`,
+    article.cities.length ? `Cities mentioned: ${article.cities.join(", ")}` : "",
+    article.ai_tags.length ? `Tags: ${article.ai_tags.join(", ")}` : "",
+  ].filter(Boolean).join("\n");
+
+  const prompt = `You are a visual art director for a premium Indian real estate brand creating social media posts.
+
+Analyze this news article and write a vivid, story-specific image generation prompt for gpt-image-1 (an AI image model).
+
+${context}
+
+Your prompt must:
+1. Be SPECIFIC to this exact story — no generic "city skyline" or "highway" unless the story is literally about that location/infrastructure
+2. For infrastructure/corridor stories: describe a cinematic split-frame or panoramic composition showing BOTH endpoints (e.g., India Gate representing Delhi on the left, misty Himalayan foothills representing Dehradun on the right, connected by a golden elevated highway). Include an inset map-style element showing the route if relevant.
+3. For market/sales stories: show aspiration and momentum — luxury towers under blue skies, buyers/investors (no faces) in a thriving market scene
+4. For policy/regulatory stories: authoritative imagery — government buildings, official seals (no text), Indian tricolor, formal professional setting
+5. For corporate/GCC stories: gleaming office towers, business district aerial view
+6. Extract the KEY STAT from the headline (e.g. "2.5 Hours", "₹12000 crore", "55% jump") and instruct the model to show it as a LARGE BOLD callout text prominently in the upper half of the composition — this is the hero element
+7. Specify lighting, mood, and camera angle
+8. Name specific Indian landmarks only when directly relevant to the story
+
+STRICT RULES:
+- NO real human faces or likenesses (not even of politicians)
+- NO logos of any organizations — those are composited separately
+- Bottom 35% of image must be dark/shadowed — headline text will be overlaid there
+- Output ONLY the prompt text, no preamble, no explanations
+- Max 220 words`;
+
+  try {
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "x-api-key": anthropicKey,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "claude-haiku-4-20250514",
+        max_tokens: 450,
+        messages: [{ role: "user", content: prompt }],
+      }),
+    });
+
+    if (!res.ok) return buildFallbackImagePrompt(article);
+    const data = await res.json();
+    const scenePrompt: string = data.content?.[0]?.text?.trim() ?? "";
+    if (!scenePrompt) return buildFallbackImagePrompt(article);
+
+    console.log("[NewsToSocial] Haiku scene prompt:", scenePrompt.slice(0, 120));
+    return scenePrompt + "\n\nStyle: Magazine-quality, cinematic, premium real estate brand. Square 1:1 format. NO watermarks, NO brand logos.";
+  } catch (err) {
+    console.warn("[NewsToSocial] Haiku prompt generation failed, using fallback:", err);
+    return buildFallbackImagePrompt(article);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Try to use the article's own source image as base (best quality, no AI cost)
+// ---------------------------------------------------------------------------
+
+async function fetchSourceImageBuffer(imageUrl: string): Promise<Buffer | null> {
+  try {
+    const res = await fetch(imageUrl, { signal: AbortSignal.timeout(8000) });
+    if (!res.ok) return null;
+    const contentType = res.headers.get("content-type") ?? "";
+    if (!contentType.startsWith("image/")) return null;
+    const ab = await res.arrayBuffer();
+    const buf = Buffer.from(ab);
+    // Resize + crop to 1024×1024 square
+    return await sharp(buf)
+      .resize(1024, 1024, { fit: "cover", position: "centre" })
+      .jpeg({ quality: 92 })
+      .toBuffer();
+  } catch {
+    return null;
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Image text overlay via Cloudinary URL transformation
@@ -276,36 +461,68 @@ function encodeCloudinaryText(text: string): string {
     .join("");
 }
 
-// Inject Cloudinary text overlays into a Cloudinary URL.
-// Yellow headline at bottom, small "PHOTO: AI GENERATED" label at top-left.
-function applyCloudinaryTextOverlay(cloudinaryUrl: string, headline: string): string {
+/**
+ * Apply Cloudinary text overlays:
+ * - "PHOTO: AI GENERATED" (or "SOURCE IMAGE") label top-left
+ * - Large gold key-stat callout upper-centre (if present)
+ * - Yellow headline text anchored bottom
+ */
+function applyCloudinaryTextOverlay(
+  cloudinaryUrl: string,
+  headline: string,
+  keyStat: string | null,
+  isSourceImage: boolean,
+): string {
   const decoded = decodeHtmlEntities(headline).slice(0, 120);
   const encoded = encodeCloudinaryText(decoded);
 
   const [before, after] = cloudinaryUrl.split("/upload/");
   if (!before || !after) return cloudinaryUrl;
 
-  // Yellow headline text anchored bottom-left
-  const headlineLayer = [
-    `l_text:Arial_56_bold:${encoded}`,
+  const layers: string[] = [];
+
+  // 1. Top-left label
+  const photoLabel = isSourceImage ? "SOURCE%20IMAGE" : "PHOTO%3A%20AI%20GENERATED";
+  layers.push([
+    `l_text:Arial_22_bold:${photoLabel}`,
+    "co_rgb:FFFFFF",
+    "g_north_west",
+    "x_20",
+    "y_20",
+  ].join(","));
+
+  // 2. Key stat — large gold text, upper-centre (only if short enough to render cleanly)
+  if (keyStat) {
+    const encodedStat = encodeCloudinaryText(decodeHtmlEntities(keyStat).slice(0, 40));
+    layers.push([
+      `l_text:Arial_100_bold:${encodedStat}`,
+      "co_rgb:FFD700",
+      "g_north",
+      "y_120",
+      "w_900",
+      "c_fit",
+    ].join(","));
+    // Sub-label under the stat in white
+    layers.push([
+      "l_text:Arial_32_bold:KEY%20MARKET%20SIGNAL",
+      "co_rgb:FFFFFF",
+      "g_north",
+      "y_250",
+    ].join(","));
+  }
+
+  // 3. Headline text — yellow, bottom
+  layers.push([
+    `l_text:Arial_54_bold:${encoded}`,
     "co_rgb:FFD700",
     "g_south_west",
     "x_36",
     "y_44",
     "w_952",
     "c_fit",
-  ].join(",");
+  ].join(","));
 
-  // Small "PHOTO: AI GENERATED" label top-left
-  const labelLayer = [
-    "l_text:Arial_22_bold:PHOTO%3A%20AI%20GENERATED",
-    "co_rgb:FFFFFF",
-    "g_north_west",
-    "x_20",
-    "y_20",
-  ].join(",");
-
-  return `${before}/upload/${labelLayer}/${headlineLayer}/${after}`;
+  return `${before}/upload/${layers.join("/")}/${after}`;
 }
 
 // Build a dark-to-transparent gradient strip using raw RGBA pixels.
@@ -332,41 +549,23 @@ async function buildGradientStripBuffer(): Promise<Buffer> {
     .toBuffer();
 }
 
-function buildImagePrompt(article: NewsArticle): string {
-  const categoryVisuals: Record<string, string> = {
-    infrastructure:
-      "Modern Indian infrastructure — elevated metro rail, highways, bridges, smart city skyline at dusk with warm golden light. Cinematic, architectural photography style.",
-    policy:
-      "Indian government policy and real estate — elegant government building facade, official documents, Indian tricolor, professional corporate atmosphere. Clean and authoritative.",
-    market:
-      "Indian real estate market — premium residential towers, luxury apartments, modern glass buildings against a blue sky with clouds. Aspirational and dynamic.",
-    corporate:
-      "Corporate India — glass and steel office towers, business district skyline, modern commercial real estate. Professional and upscale.",
-    regulatory:
-      "Legal and regulatory framework — balanced scales of justice, official documents, premium office environment. Trustworthy and professional.",
-    investment:
-      "Real estate investment — growth charts, premium properties, upward trajectory, gold and green tones, prosperity theme. Optimistic and wealth-aspirational.",
-    launch:
-      "New property launch — architectural rendering of a premium residential project, luxury amenities, landscaping. Premium and exciting.",
-  };
-
-  const baseVisual =
-    categoryVisuals[article.category] ??
-    "Premium Indian real estate — modern residential and commercial buildings, city skyline, aspirational architecture. Professional quality.";
-
-  const cityContext =
-    article.cities.length && !article.cities.includes("national")
-      ? ` Setting evokes ${article.cities[0]} city character.`
-      : "";
-
-  return `Professional social media background image for a real estate news post. ${baseVisual}${cityContext}
-
-CRITICAL REQUIREMENTS:
-- NO human faces, NO text, NO watermarks, NO logos
-- Square format 1:1, vibrant but not garish
-- Style: Premium Indian real estate brand, Instagram-ready
-- Lighting: Professional, bright and engaging
-- Keep the bottom 40% of the image relatively dark/shadowed — text will be overlaid there`;
+// Build a semi-transparent dark top-band for stat readability (top 30% of image).
+async function buildTopBandBuffer(): Promise<Buffer> {
+  const W = 1024;
+  const H = 300;
+  const raw = Buffer.alloc(W * H * 4);
+  for (let y = 0; y < H; y++) {
+    // Alpha ramps from 160 (top) to 0 (bottom) — dark at top, transparent toward middle
+    const alpha = Math.round(((H - 1 - y) / (H - 1)) * 160);
+    for (let x = 0; x < W; x++) {
+      const i = (y * W + x) * 4;
+      raw[i] = 0; raw[i + 1] = 0; raw[i + 2] = 0;
+      raw[i + 3] = alpha;
+    }
+  }
+  return sharp(raw, { raw: { width: W, height: H, channels: 4 } })
+    .png()
+    .toBuffer();
 }
 
 // ---------------------------------------------------------------------------
@@ -377,63 +576,123 @@ export async function generateImage(article: NewsArticle): Promise<string> {
   const openaiKey = process.env.OPENAI_API_KEY;
   if (!openaiKey) throw new Error("OPENAI_API_KEY not configured");
 
-  const imagePrompt = buildImagePrompt(article);
+  const keyStat = extractKeyStat(article.headline);
+  const entityLogoUrl = detectEntityLogoUrl(article);
 
-  // Generate with gpt-image-1
-  console.log("[NewsToSocial] Generating image for:", article.headline.slice(0, 60));
-  const imageRes = await fetch("https://api.openai.com/v1/images/generations", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${openaiKey}`,
-    },
-    body: JSON.stringify({
-      model: "gpt-image-1",
-      prompt: imagePrompt,
-      n: 1,
-      size: "1024x1024",
-      quality: "medium",
-      output_format: "jpeg",
-    }),
-  });
+  // ── Step 1: Get base image buffer ─────────────────────────────────────────
+  // Prefer the article's own source image (official press renders, real photos).
+  // Fall back to AI generation if unavailable.
+  let rawImageBuffer: Buffer;
+  let isSourceImage = false;
 
-  if (!imageRes.ok) {
-    const errText = await imageRes.text();
-    throw new Error(`gpt-image-1 error: ${errText.slice(0, 200)}`);
+  if (article.image_url) {
+    console.log("[NewsToSocial] Trying source image:", article.image_url.slice(0, 80));
+    const sourceBuffer = await fetchSourceImageBuffer(article.image_url);
+    if (sourceBuffer) {
+      rawImageBuffer = sourceBuffer;
+      isSourceImage = true;
+      console.log("[NewsToSocial] Using source image — skipping AI generation");
+    } else {
+      console.log("[NewsToSocial] Source image unavailable, falling back to AI generation");
+    }
   }
 
-  const imageData = await imageRes.json();
-  const base64Image: string = imageData.data?.[0]?.b64_json;
-  if (!base64Image) throw new Error("gpt-image-1 returned no image data");
+  if (!isSourceImage) {
+    // Build a vivid, context-specific prompt via Claude Haiku, then generate
+    console.log("[NewsToSocial] Building contextual prompt via Haiku...");
+    const imagePrompt = await buildContextualImagePrompt(article);
+    console.log("[NewsToSocial] Generating AI image for:", article.headline.slice(0, 60));
 
-  const rawImageBuffer = Buffer.from(base64Image, "base64");
+    const imageRes = await fetch("https://api.openai.com/v1/images/generations", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${openaiKey}`,
+      },
+      body: JSON.stringify({
+        model: "gpt-image-1",
+        prompt: imagePrompt,
+        n: 1,
+        size: "1024x1024",
+        quality: "high",
+        output_format: "jpeg",
+      }),
+    });
 
-  // Build gradient + fetch logo in parallel
-  console.log("[NewsToSocial] Compositing gradient + logo");
-  const [gradientStrip, logoBuffer] = await Promise.all([
+    if (!imageRes.ok) {
+      const errText = await imageRes.text();
+      throw new Error(`gpt-image-1 error: ${errText.slice(0, 200)}`);
+    }
+
+    const imageData = await imageRes.json();
+    const base64Image: string = imageData.data?.[0]?.b64_json;
+    if (!base64Image) throw new Error("gpt-image-1 returned no image data");
+    rawImageBuffer = Buffer.from(base64Image, "base64");
+  }
+
+  // ── Step 2: Build composite layers in parallel ────────────────────────────
+  console.log("[NewsToSocial] Compositing layers...");
+
+  const parallelFetches: [
+    Promise<Buffer>,                   // gradient strip (always)
+    Promise<Buffer | null>,            // top band (when stat exists)
+    Promise<Buffer>,                   // REMAX logo
+    Promise<Buffer | null>,            // entity logo (optional)
+  ] = [
     buildGradientStripBuffer(),
+    keyStat ? buildTopBandBuffer() : Promise.resolve(null),
     fetch(LOGO_URL).then((r) => r.arrayBuffer()).then((ab) => Buffer.from(ab)),
-  ]);
+    entityLogoUrl ? fetchLogoBuffer(entityLogoUrl) : Promise.resolve(null),
+  ];
 
+  const [gradientStrip, topBand, logoBuffer, entityLogoBuffer] = await Promise.all(parallelFetches);
+
+  // Resize REMAX logo
   const logoResized = await sharp(logoBuffer)
     .resize(160, null, { fit: "inside" })
     .toBuffer();
   const logoMeta = await sharp(logoResized).metadata();
   const logoWidth = logoMeta.width ?? 160;
 
+  // Resize entity logo if present
+  let entityLogoResized: Buffer | null = null;
+  let entityLogoWidth = 0;
+  if (entityLogoBuffer) {
+    entityLogoResized = await sharp(entityLogoBuffer)
+      .resize(120, 60, { fit: "inside", background: { r: 0, g: 0, b: 0, alpha: 0 } })
+      .png()
+      .toBuffer();
+    const eMeta = await sharp(entityLogoResized).metadata();
+    entityLogoWidth = eMeta.width ?? 120;
+    console.log("[NewsToSocial] Entity logo composited:", entityLogoUrl!.split("/").pop());
+  }
+
+  // ── Step 3: Composite everything with Sharp ───────────────────────────────
   const GRADIENT_H = 440;
-  const compositedBuffer = await sharp(rawImageBuffer)
-    .composite([
-      // 1. Dark gradient anchored to the bottom (y = 1024 - 440 = 584)
-      { input: gradientStrip, top: 1024 - GRADIENT_H, left: 0 },
-      // 2. Logo top-right
-      { input: logoResized, top: 20, left: 1024 - logoWidth - 20 },
-    ])
+  const compositeInputs: sharp.OverlayOptions[] = [
+    // Bottom gradient for headline readability
+    { input: gradientStrip, top: 1024 - GRADIENT_H, left: 0 },
+    // REMAX logo — top-right
+    { input: logoResized, top: 20, left: 1024 - logoWidth - 20 },
+  ];
+
+  // Top dark band when key stat will be shown (improves contrast)
+  if (topBand) {
+    compositeInputs.push({ input: topBand, top: 0, left: 0 });
+  }
+
+  // Entity logo — top-left
+  if (entityLogoResized) {
+    compositeInputs.push({ input: entityLogoResized, top: 20, left: 20 });
+  }
+
+  const compositedBuffer = await sharp(rawImageBuffer!)
+    .composite(compositeInputs)
     .jpeg({ quality: 92 })
     .toBuffer();
 
-  // Upload to Cloudinary
-  console.log("[NewsToSocial] Uploading to Cloudinary");
+  // ── Step 4: Upload to Cloudinary ──────────────────────────────────────────
+  console.log("[NewsToSocial] Uploading to Cloudinary...");
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const uploadResult = await new Promise<any>((resolve, reject) => {
     const uploadStream = cloudinary.uploader.upload_stream(
@@ -451,10 +710,12 @@ export async function generateImage(article: NewsArticle): Promise<string> {
     uploadStream.end(compositedBuffer);
   });
 
-  // Apply Cloudinary URL-based text overlay (server-side font rendering — works on Vercel)
+  // ── Step 5: Apply text overlays via Cloudinary URL transforms ─────────────
   const finalUrl: string = applyCloudinaryTextOverlay(
     uploadResult.secure_url,
-    article.headline
+    article.headline,
+    keyStat,
+    isSourceImage,
   );
   console.log("[NewsToSocial] Image ready:", finalUrl);
   return finalUrl;
