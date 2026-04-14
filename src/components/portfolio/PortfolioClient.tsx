@@ -31,6 +31,10 @@ export interface FocusProject {
   min_area_sqft?: number | null;
   max_area_sqft?: number | null;
   min_flat_price?: number | null;
+  // Plot-specific — sq yd size range extracted from unit_configs
+  unit_configs?: string[] | null;
+  plot_size_min_sqyd?: number | null;
+  plot_size_max_sqyd?: number | null;
 }
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
@@ -79,6 +83,12 @@ function formatTotalPrice(amount: number): string {
 // Prefers "From ₹X Cr" total flat price (needs min_flat_price).
 // Falls back to per-sqft if area data is unavailable.
 function priceLabel(project: FocusProject): string | null {
+  // Plot projects are priced per sq yd — show as-is
+  if (project.project_type === "plot") {
+    const price = project.current_price_per_sqft_min;
+    if (!price) return null;
+    return `₹${price.toLocaleString("en-IN")} /sq yd`;
+  }
   if (project.min_flat_price) {
     return `From ${formatTotalPrice(project.min_flat_price)}`;
   }
@@ -248,9 +258,13 @@ function PortfolioCard({ project }: { project: FocusProject }) {
           }}>
             <div>
               {price && <p style={{ fontSize: 13, fontWeight: 700, color: C.text, margin: 0 }}>{price}</p>}
-              {project.total_units && (
+              {project.project_type === "plot" && project.plot_size_min_sqyd && project.plot_size_max_sqyd ? (
+                <p style={{ fontSize: 11, color: C.textMuted, margin: "2px 0 0" }}>
+                  {project.plot_size_min_sqyd}–{project.plot_size_max_sqyd} sq yd
+                </p>
+              ) : project.total_units ? (
                 <p style={{ fontSize: 11, color: C.textMuted, margin: "2px 0 0" }}>{project.total_units} units</p>
-              )}
+              ) : null}
             </div>
             <span style={{
               fontSize: 12, fontWeight: 600, color: "#fff",
