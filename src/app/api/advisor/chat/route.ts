@@ -21,6 +21,7 @@ import {
   webSearch,
   buildWebDataContext,
 } from "@/lib/advisor/web-search";
+import { runProactiveIntelligence } from "@/lib/advisor/proactive";
 import { createServiceClient } from "@/lib/supabase/serviceClient";
 
 // ─── Config ───────────────────────────────────────────────────────────────────
@@ -407,6 +408,17 @@ export async function POST(request: NextRequest) {
         latencyMs,
         suggestLeadCapture,
       }).catch(() => {}); // swallow errors, never break the chat
+
+      // Step 6: Proactive intelligence — score buying signals, alert duty advisor if hot
+      // Fire-and-forget: never blocks response, never breaks the chat
+      runProactiveIntelligence(
+        supabase,
+        conversationUuid,
+        userMessage,
+        history,
+        intent,
+        sourcePage
+      ).catch((e) => console.error("[advisor/chat] proactive intelligence error:", e));
     }
 
     return NextResponse.json({
