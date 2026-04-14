@@ -235,10 +235,10 @@ async function findCpByPhone(
   const supabase = createServiceClient();
   const normalized = phone.replace(/\D/g, "");
 
+  // Match any internal CRM user — admin, agent, channel_partner, team_lead, etc.
   const { data } = await supabase
     .from("crm_users")
-    .select("id, full_name, crm_roles!inner(name)")
-    .eq("crm_roles.name", "channel_partner")
+    .select("id, full_name")
     .or(`whatsapp_number.eq.${normalized},whatsapp_number.eq.+${normalized}`)
     .maybeSingle();
 
