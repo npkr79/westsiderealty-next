@@ -378,8 +378,11 @@ async function buildContextualImagePrompt(article: NewsArticle): Promise<string>
   const anthropicKey = process.env.ANTHROPIC_API_KEY;
   if (!anthropicKey) return buildFallbackImagePrompt(article);
 
+  const keyStat = extractKeyStat(article.headline);
+  const headlineClean = article.headline.replace(/\*\*/g, "").trim();
+
   const context = [
-    `Headline: ${article.headline}`,
+    `Headline: ${headlineClean}`,
     article.ai_summary ? `Summary: ${article.ai_summary}` : "",
     article.summary ? `Source summary: ${article.summary}` : "",
     `Category: ${article.category}`,
@@ -387,36 +390,36 @@ async function buildContextualImagePrompt(article: NewsArticle): Promise<string>
     article.ai_tags.length ? `Tags: ${article.ai_tags.join(", ")}` : "",
   ].filter(Boolean).join("\n");
 
-  const prompt = `You are a visual art director for a premium Indian real estate brand creating social media posts.
+  const prompt = `You are a visual art director for a premium Indian real estate brand's social media.
 
-Analyze this news article and write a story-specific image generation prompt for gpt-image-1.
+You must write a prompt for gpt-image-1 to generate a vertical 1:1 social media image.
 
+The image must have TWO parts:
+1. A vivid, story-specific photorealistic background scene (top 60-65%)
+2. The headline text rendered in bold at the bottom (bottom 35%), on a dark gradient for contrast
+
+ARTICLE:
 ${context}
 
-LIGHTING RULES — pick ONE that fits the story, never default to golden hour or warm tones:
-- Infrastructure/expressway: bright midday sun, aerial perspective, sharp shadows, vivid blue sky
-- Developer/sales news: clean cool morning light, architectural photography style, glass and steel
-- GCC/corporate: blue-hour or cool morning, city skyline, glass reflections, business energy
-- Government/policy: flat neutral daylight, official building facades, crisp and authoritative
-- Goa/coastal: soft bright coastal light, sea visible, natural greens and blues
-- Hyderabad: specific to the corridor — Kokapet glass towers, ORR flyover, or tech campus feel
+HEADLINE TO RENDER IN THE IMAGE (bottom of image, bold white or gold text):
+"${headlineClean}"
+${keyStat ? `\nKEY STAT (render large and prominent near the top or center): "${keyStat}"` : ""}
 
-Your prompt must:
-1. Be SPECIFIC to this exact story — describe the actual subject, not a generic scene
-2. For infrastructure stories: show the specific route or structure (e.g., wide-angle of a massive cable-stayed bridge over a river, or a six-lane expressway cutting through farmland)
-3. For sales/revenue stories: scale and ambition — towers under construction, cranes, buyers walking through a show flat (no faces)
-4. For GCC/corporate stories: a gleaming tech campus or business district, not generic towers
-5. For Goa stories: coastal villas, beach, palm trees, natural light — no urban feel
-6. Specify exact camera angle, lens feel (wide-angle / telephoto / aerial drone)
-7. Each prompt must feel visually DIFFERENT from a real estate skyline shot
+SCENE RULES — be specific to THIS story, not generic:
+- GCC/office leasing → gleaming tech campus aerial, workers visible (no faces), glass buildings
+- Infrastructure/road/metro → aerial of the actual route, construction machinery, cranes
+- Coastal/Goa → actual beach, palm trees, coastal villas, sea visible — NO urban towers
+- Developer launch → towers under construction, cranes, scale and ambition
+- Government/affordable housing → colony-style buildings, NOT luxury towers
+- Hyderabad residential → match the actual story (colony = colony, tech park = tech park)
 
 STRICT RULES:
-- NEVER use: golden hour, amber sky, warm tones, aspirational, wealth-aspirational
-- NO real human faces or likenesses
-- NO logos of any organizations — composited separately
-- Bottom 35% must be dark/shadowed for text overlay
-- Output ONLY the prompt text, no preamble
-- Max 200 words`;
+- Top-right corner must stay clean (logo composited separately — leave ~180x80px clear)
+- NO brand logos in the scene
+- NO faces
+- NO golden hour / amber sky — use bright daylight or cool morning light
+- The only text in the image is the headline at the bottom (and key stat if present)
+- Output ONLY the image generation prompt, no explanation`;
 
   try {
     const res = await fetch("https://api.anthropic.com/v1/messages", {
@@ -427,8 +430,8 @@ STRICT RULES:
         "content-type": "application/json",
       },
       body: JSON.stringify({
-        model: "claude-haiku-4-20250514",
-        max_tokens: 450,
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 600,
         messages: [{ role: "user", content: prompt }],
       }),
     });
@@ -438,10 +441,10 @@ STRICT RULES:
     const scenePrompt: string = data.content?.[0]?.text?.trim() ?? "";
     if (!scenePrompt) return buildFallbackImagePrompt(article);
 
-    console.log("[NewsToSocial] Haiku scene prompt:", scenePrompt.slice(0, 120));
-    return scenePrompt + "\n\nStyle: Magazine-quality, cinematic, premium real estate brand. Square 1:1 format. NO watermarks, NO brand logos.";
+    console.log("[NewsToSocial] Sonnet scene prompt:", scenePrompt.slice(0, 150));
+    return scenePrompt;
   } catch (err) {
-    console.warn("[NewsToSocial] Haiku prompt generation failed, using fallback:", err);
+    console.warn("[NewsToSocial] Sonnet prompt generation failed, using fallback:", err);
     return buildFallbackImagePrompt(article);
   }
 }
@@ -622,115 +625,72 @@ async function buildTopBandBuffer(): Promise<Buffer> {
 // Generate and upload image
 // ---------------------------------------------------------------------------
 
-export async function generateImage(article: NewsArticle, postCaption?: string): Promise<string> {
+export async function generateImage(article: NewsArticle): Promise<string> {
   const openaiKey = process.env.OPENAI_API_KEY;
   if (!openaiKey) throw new Error("OPENAI_API_KEY not configured");
 
-  const keyStat = extractKeyStat(article.headline);
   const entityLogoUrl = detectEntityLogoUrl(article);
 
-  // ── Step 1: Generate base image with gpt-image-1 ─────────────────────────
-  // Always AI-generate — source images from news sites are low quality,
-  // wrong aspect ratio, and often blocked by hotlink protection.
-  let rawImageBuffer: Buffer;
+  // ── Step 1: Sonnet writes the scene prompt (includes headline text in image) ─
+  console.log("[NewsToSocial] Building image prompt via Sonnet...");
+  const imagePrompt = await buildContextualImagePrompt(article);
+  console.log("[NewsToSocial] Generating AI image for:", article.headline.slice(0, 60));
 
-  {
-    let imagePrompt: string;
+  // ── Step 2: Generate image with gpt-image-1 ──────────────────────────────
+  const imageRes = await fetch("https://api.openai.com/v1/images/generations", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${openaiKey}`,
+    },
+    body: JSON.stringify({
+      model: "gpt-image-1",
+      prompt: imagePrompt,
+      n: 1,
+      size: "1024x1024",
+      quality: "high",
+      output_format: "jpeg",
+    }),
+  });
 
-    if (postCaption) {
-      imagePrompt = `Generate a vertical image for this post: ${postCaption}`;
-      console.log("[NewsToSocial] Using post caption as image prompt for:", article.headline.slice(0, 60));
-    } else {
-      console.log("[NewsToSocial] Building contextual prompt via Haiku...");
-      imagePrompt = await buildContextualImagePrompt(article);
-    }
-
-    console.log("[NewsToSocial] Generating AI image for:", article.headline.slice(0, 60));
-
-    const imageRes = await fetch("https://api.openai.com/v1/images/generations", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${openaiKey}`,
-      },
-      body: JSON.stringify({
-        model: "gpt-image-1",
-        prompt: imagePrompt,
-        n: 1,
-        size: "1024x1024",
-        quality: "high",
-        output_format: "jpeg",
-      }),
-    });
-
-    if (!imageRes.ok) {
-      const errText = await imageRes.text();
-      throw new Error(`gpt-image-1 error: ${errText.slice(0, 200)}`);
-    }
-
-    const imageData = await imageRes.json();
-    const base64Image: string = imageData.data?.[0]?.b64_json;
-    if (!base64Image) throw new Error("gpt-image-1 returned no image data");
-    rawImageBuffer = Buffer.from(base64Image, "base64");
+  if (!imageRes.ok) {
+    const errText = await imageRes.text();
+    throw new Error(`gpt-image-1 error: ${errText.slice(0, 200)}`);
   }
 
-  // ── Step 2: Build composite layers in parallel ────────────────────────────
-  console.log("[NewsToSocial] Compositing layers...");
+  const imageData = await imageRes.json();
+  const base64Image: string = imageData.data?.[0]?.b64_json;
+  if (!base64Image) throw new Error("gpt-image-1 returned no image data");
+  const rawImageBuffer = Buffer.from(base64Image, "base64");
 
-  const parallelFetches: [
-    Promise<Buffer>,                   // gradient strip (always)
-    Promise<Buffer | null>,            // top band (when stat exists)
-    Promise<Buffer>,                   // REMAX logo
-    Promise<Buffer | null>,            // entity logo (optional)
-  ] = [
-    buildGradientStripBuffer(),
-    keyStat ? buildTopBandBuffer() : Promise.resolve(null),
+  // ── Step 3: Composite REMAX logo (top-right) + optional entity logo ───────
+  console.log("[NewsToSocial] Compositing logo...");
+  const [logoBuffer, entityLogoBuffer] = await Promise.all([
     fetch(LOGO_URL).then((r) => r.arrayBuffer()).then((ab) => Buffer.from(ab)),
     entityLogoUrl ? fetchLogoBuffer(entityLogoUrl) : Promise.resolve(null),
-  ];
+  ]);
 
-  const [gradientStrip, topBand, logoBuffer, entityLogoBuffer] = await Promise.all(parallelFetches);
-
-  // Resize REMAX logo
   const logoResized = await sharp(logoBuffer)
     .resize(160, null, { fit: "inside" })
     .toBuffer();
-  const logoMeta = await sharp(logoResized).metadata();
-  const logoWidth = logoMeta.width ?? 160;
+  const logoWidth = (await sharp(logoResized).metadata()).width ?? 160;
 
-  // Resize entity logo if present
-  let entityLogoResized: Buffer | null = null;
-  let entityLogoWidth = 0;
-  if (entityLogoBuffer) {
-    entityLogoResized = await sharp(entityLogoBuffer)
-      .resize(120, 60, { fit: "inside", background: { r: 0, g: 0, b: 0, alpha: 0 } })
-      .png()
-      .toBuffer();
-    const eMeta = await sharp(entityLogoResized).metadata();
-    entityLogoWidth = eMeta.width ?? 120;
-    console.log("[NewsToSocial] Entity logo composited:", entityLogoUrl!.split("/").pop());
-  }
-
-  // ── Step 3: Composite everything with Sharp ───────────────────────────────
-  const GRADIENT_H = 440;
   const compositeInputs: sharp.OverlayOptions[] = [
-    // Bottom gradient for headline readability
-    { input: gradientStrip, top: 1024 - GRADIENT_H, left: 0 },
-    // REMAX logo — top-right
     { input: logoResized, top: 20, left: 1024 - logoWidth - 20 },
   ];
 
-  // Top dark band when key stat will be shown (improves contrast)
-  if (topBand) {
-    compositeInputs.push({ input: topBand, top: 0, left: 0 });
-  }
-
-  // Entity logo — top-left
-  if (entityLogoResized) {
+  if (entityLogoBuffer) {
+    const entityLogoResized = await sharp(entityLogoBuffer)
+      .resize(120, 60, { fit: "inside", background: { r: 0, g: 0, b: 0, alpha: 0 } })
+      .png()
+      .toBuffer();
+    const entityLogoWidth = (await sharp(entityLogoResized).metadata()).width ?? 120;
     compositeInputs.push({ input: entityLogoResized, top: 20, left: 20 });
+    console.log("[NewsToSocial] Entity logo composited:", entityLogoUrl!.split("/").pop());
+    void entityLogoWidth;
   }
 
-  const compositedBuffer = await sharp(rawImageBuffer!)
+  const compositedBuffer = await sharp(rawImageBuffer)
     .composite(compositeInputs)
     .jpeg({ quality: 92 })
     .toBuffer();
@@ -754,15 +714,8 @@ export async function generateImage(article: NewsArticle, postCaption?: string):
     uploadStream.end(compositedBuffer);
   });
 
-  // ── Step 5: Apply text overlays via Cloudinary URL transforms ─────────────
-  const finalUrl: string = applyCloudinaryTextOverlay(
-    uploadResult.secure_url,
-    article.headline,
-    keyStat,
-    false, // always AI generated
-  );
-  console.log("[NewsToSocial] Image ready:", finalUrl);
-  return finalUrl;
+  console.log("[NewsToSocial] Image ready:", uploadResult.secure_url);
+  return uploadResult.secure_url;
 }
 
 // ---------------------------------------------------------------------------
@@ -839,15 +792,10 @@ export async function processArticle(
   supabase: SupabaseClient,
   article: NewsArticle
 ): Promise<NewsPostResult> {
-  // Generate captions first so we can feed the post text to gpt-image-1
-  const captions = await generateCaptions(article);
-
-  // Use Instagram caption as the image prompt — most descriptive, story-specific
-  const instagramCaption = captions.find((c) => c.platform === "Instagram")?.caption
-    ?? captions[0]?.caption
-    ?? "";
-
-  const imageUrl = await generateImage(article, instagramCaption);
+  const [captions, imageUrl] = await Promise.all([
+    generateCaptions(article),
+    generateImage(article),
+  ]);
 
   const postIds = await createSocialPosts(supabase, article, captions, imageUrl);
 
