@@ -648,7 +648,7 @@ export async function generateImage(article: NewsArticle): Promise<string> {
       prompt: imagePrompt,
       n: 1,
       size: "1024x1024",
-      quality: "high",
+      quality: "medium",
       output_format: "jpeg",
     }),
   });
