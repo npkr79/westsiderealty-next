@@ -143,6 +143,7 @@ function toRawArticle(item: SerperNewsItem, queryType: SerperQueryType): RawArti
     image_url: item.imageUrl ?? null,
     published_at: parseSerperDate(item.date),
     raw_category: queryType,
+    search_query_type: queryType,
   };
 }
 
