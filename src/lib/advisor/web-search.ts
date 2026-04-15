@@ -218,11 +218,61 @@ async function storeInCache(
 
 // ─── Tavily API call ──────────────────────────────────────────────────────────
 
+// High-quality Indian real estate and news domains
+const REALESTATE_DOMAINS = [
+  "99acres.com",
+  "magicbricks.com",
+  "housing.com",
+  "squareyards.com",
+  "proptiger.com",
+  "nobroker.in",
+  "economictimes.indiatimes.com",
+  "timesofindia.indiatimes.com",
+  "thehindu.com",
+  "businessstandard.com",
+  "ndtv.com",
+  "livemint.com",
+  "moneycontrol.com",
+  "indianexpress.com",
+  "deccanchronicle.com",
+  "rera.telangana.gov.in",
+  "credai.org",
+];
+
+const NEWS_DOMAINS = [
+  "economictimes.indiatimes.com",
+  "timesofindia.indiatimes.com",
+  "thehindu.com",
+  "businessstandard.com",
+  "ndtv.com",
+  "livemint.com",
+  "moneycontrol.com",
+  "indianexpress.com",
+  "deccanchronicle.com",
+  "hindustantimes.com",
+  "financialexpress.com",
+  "realty.economictimes.indiatimes.com",
+];
+
+const DOMAIN_MAP: Record<WebQueryType, string[]> = {
+  developer_reputation: REALESTATE_DOMAINS,
+  project_facts: REALESTATE_DOMAINS,
+  market_news: NEWS_DOMAINS,
+  live_search: [...REALESTATE_DOMAINS, ...NEWS_DOMAINS],
+};
+
 async function callTavily(
-  query: string
-): Promise<{ results: TavilyResult[]; answer: string }> {
+  query: string,
+  queryType: WebQueryType
+): Promise<{ results: TavilyResult[] }> {
   const apiKey = process.env.TAVILY_API_KEY;
   if (!apiKey) throw new Error("TAVILY_API_KEY not configured");
+
+  // Use advanced depth for developer/project queries — worth the 2x credit cost
+  const searchDepth =
+    queryType === "developer_reputation" || queryType === "project_facts"
+      ? "advanced"
+      : "basic";
 
   const res = await fetch("https://api.tavily.com/search", {
     method: "POST",
@@ -230,11 +280,13 @@ async function callTavily(
     body: JSON.stringify({
       api_key: apiKey,
       query,
-      search_depth: "basic",
-      include_answer: true,
-      max_results: 5,
+      search_depth: searchDepth,
+      include_answer: false, // Don't use Tavily's AI summary — it hallucinates from bad sources
+      include_raw_content: false,
+      max_results: 7,
+      include_domains: DOMAIN_MAP[queryType] ?? [],
     }),
-    signal: AbortSignal.timeout(10_000),
+    signal: AbortSignal.timeout(12_000),
   });
 
   if (!res.ok) {
@@ -245,7 +297,6 @@ async function callTavily(
   const data = await res.json();
   return {
     results: (data.results ?? []) as TavilyResult[],
-    answer: (data.answer ?? "") as string,
   };
 }
 
@@ -274,24 +325,35 @@ export async function webSearch(
   }
 
   // Layer 3: fresh Tavily search
-  console.log(`[WebSearch] Tavily search: ${query}`);
+  console.log(`[WebSearch] Tavily search (${queryType}): ${query}`);
   try {
-    const { results, answer } = await callTavily(query);
-    if (!results.length && !answer) return null;
+    const { results } = await callTavily(query, queryType);
+    if (!results.length) {
+      console.log(`[WebSearch] No results returned for: ${query}`);
+      return null;
+    }
+
+    console.log(`[WebSearch] Got ${results.length} results from: ${results.map((r) => new URL(r.url).hostname).join(", ")}`);
 
     const rawContent = results
-      .slice(0, 4)
+      .slice(0, 5)
       .map((r) => `### ${r.title}\n${r.content}`)
       .join("\n\n");
 
+    // No Tavily-generated summary — let the model synthesize from raw content
+    const summary = results
+      .slice(0, 3)
+      .map((r) => `${r.title}: ${r.content.slice(0, 200)}`)
+      .join(" | ");
+
     // Store in cache — fire-and-forget, never block the response
-    storeInCache(supabase, cacheKey, queryType, entityName, query, results, answer).catch(
+    storeInCache(supabase, cacheKey, queryType, entityName, query, results, summary).catch(
       (e) => console.error("[WebSearch] Cache store failed:", e)
     );
 
     const expiresAt = new Date(Date.now() + TTL_MS[queryType]).toISOString();
     return {
-      summary: answer,
+      summary,
       raw_content: rawContent,
       sources: results.map((r) => ({ title: r.title, url: r.url })),
       from_cache: false,
