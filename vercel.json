@@ -54,7 +54,7 @@
     },
     {
       "path": "/api/cron/news-scraper",
-      "schedule": "30 0,12 * * *"
+      "schedule": "30 0 * * *"
     },
     {
       "path": "/api/cron/generate-articles",
@@ -62,7 +62,7 @@
     },
     {
       "path": "/api/cron/news-to-social",
-      "schedule": "40 0,12 * * *"
+      "schedule": "40 0 * * *"
     },
     {
       "path": "/api/cron/publish-news-posts",
