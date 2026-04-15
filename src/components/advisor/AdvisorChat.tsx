@@ -113,7 +113,6 @@ function PriceBreakdownTable({ raw }: { raw: string }) {
 interface Message {
   role: "user" | "assistant";
   content: string;
-  webSearchFired?: boolean;
 }
 
 interface ApiResponse {
@@ -123,7 +122,6 @@ interface ApiResponse {
   suggest_lead_capture?: boolean;
   intent_signals?: string[];
   projects_discussed?: string[];
-  data_stats?: { web_search_fired?: boolean };
   error?: string;
 }
 
@@ -377,14 +375,7 @@ export default function AdvisorChat() {
         return;
       }
 
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "assistant",
-          content: data.message,
-          webSearchFired: data.data_stats?.web_search_fired === true,
-        },
-      ]);
+      setMessages((prev) => [...prev, { role: "assistant", content: data.message }]);
 
       // Persist conversation_id from first regular response
       if (data.conversation_id && !conversationId) setConversationId(data.conversation_id);
@@ -675,33 +666,23 @@ export default function AdvisorChat() {
                   {msg.role === "user" ? (
                     msg.content
                   ) : (
-                    <>
-                      <ReactMarkdown
-                        components={{
-                          p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
-                          strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
-                          ul: ({ children }) => <ul className="mb-2 ml-4 list-disc space-y-0.5">{children}</ul>,
-                          ol: ({ children }) => <ol className="mb-2 ml-4 list-decimal space-y-0.5">{children}</ol>,
-                          li: ({ children }) => <li>{children}</li>,
-                          code: ({ className, children }) => {
-                            if (className === "language-price-breakdown") {
-                              return <PriceBreakdownTable raw={String(children).trim()} />;
-                            }
-                            return <code className="rounded bg-zinc-200 px-1 py-0.5 text-xs font-mono">{children}</code>;
-                          },
-                        }}
-                      >
-                        {msg.content}
-                      </ReactMarkdown>
-                      {msg.webSearchFired && (
-                        <div className="mt-2 flex items-center gap-1 text-[10px] text-zinc-400">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9" />
-                          </svg>
-                          Live web search used — verify key facts independently
-                        </div>
-                      )}
-                    </>
+                    <ReactMarkdown
+                      components={{
+                        p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                        strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+                        ul: ({ children }) => <ul className="mb-2 ml-4 list-disc space-y-0.5">{children}</ul>,
+                        ol: ({ children }) => <ol className="mb-2 ml-4 list-decimal space-y-0.5">{children}</ol>,
+                        li: ({ children }) => <li>{children}</li>,
+                        code: ({ className, children }) => {
+                          if (className === "language-price-breakdown") {
+                            return <PriceBreakdownTable raw={String(children).trim()} />;
+                          }
+                          return <code className="rounded bg-zinc-200 px-1 py-0.5 text-xs font-mono">{children}</code>;
+                        },
+                      }}
+                    >
+                      {msg.content}
+                    </ReactMarkdown>
                   )}
                 </div>
               </div>
