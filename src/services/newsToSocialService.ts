@@ -401,7 +401,7 @@ The image must have TWO parts:
 ARTICLE:
 ${context}
 
-HEADLINE TO RENDER IN THE IMAGE (bottom of image, bold white or gold text):
+HEADLINE TO RENDER IN THE IMAGE (bold white or gold text, positioned in the bottom 30% of the image, with at least 60px of dark space below the last line — do NOT let text touch or bleed off the bottom edge):
 "${headlineClean}"
 ${keyStat ? `\nKEY STAT (render large and prominent near the top or center): "${keyStat}"` : ""}
 
