@@ -7,6 +7,8 @@ export type WebQueryType =
   | "project_facts"
   | "developer_reputation"
   | "market_news"
+  | "possession_status"
+  | "market_pipeline"
   | "live_search";
 
 export interface WebSearchResult {
@@ -40,6 +42,8 @@ const TTL_MS: Record<WebQueryType, number> = {
   project_facts:        90 * 24 * 60 * 60 * 1000, // 90 days — static facts
   developer_reputation: 30 * 24 * 60 * 60 * 1000, // 30 days — reputation
   market_news:           7 * 24 * 60 * 60 * 1000, // 7 days  — live market
+  possession_status:     7 * 24 * 60 * 60 * 1000, // 7 days  — construction/handover news
+  market_pipeline:      14 * 24 * 60 * 60 * 1000, // 14 days — pipeline/inventory data
   live_search:           7 * 24 * 60 * 60 * 1000, // 7 days  — general
 };
 
@@ -53,6 +57,14 @@ const LIVE_SEARCH_PATTERNS = [
   /any (news|update|problem|issue) (on|about|with)/i,
   /what.{0,20}happening (with|in|at)/i,
   /price (now|today|currently)|current price|going rate/i,
+  /possession|handover|hand.?over|when.{0,20}ready|when.{0,20}deliver/i,
+  /pipeline|total units|how many units|inventory|how many project/i,
+];
+
+const POSSESSION_PATTERNS = [
+  /possession|handover|hand.?over|when.{0,20}ready|when.{0,20}deliver/i,
+  /delay|delayed|on time|construction (progress|update|status)/i,
+  /already (given|handed|delivered)|early possession/i,
 ];
 
 export function shouldTriggerWebSearch(
@@ -85,6 +97,21 @@ export function buildWebQuery(
 ): { queries: string[]; queryType: WebQueryType; entityName: string } {
   const city = intent.city === "goa" ? "Goa" : "Hyderabad";
 
+  // Possession / handover status — fires before generic project_inquiry
+  const isPossessionQuery = POSSESSION_PATTERNS.some((re) => re.test(userMessage));
+  if (isPossessionQuery && (intent.project_name || intent.project_names?.[0])) {
+    const projectName = intent.project_names?.[0] ?? intent.project_name!;
+    return {
+      queries: [
+        `"${projectName}" possession handover 2025 2026 residents buyers`,
+        `"${projectName}" construction progress update early delivery`,
+      ],
+      queryType: "possession_status",
+      entityName: projectName,
+    };
+  }
+
+  // Developer reputation / track record
   if (
     (intent.intent === "developer_inquiry" && intent.developer_name) ||
     (/track record|reliable|delivery|complaints/.test(userMessage.toLowerCase()) && intent.developer_name)
@@ -100,6 +127,21 @@ export function buildWebQuery(
     };
   }
 
+  // Market pipeline / inventory data
+  if (/pipeline|total units|inventory|how many units|how many project/i.test(userMessage)) {
+    const market = intent.market_slug
+      ? intent.market_slug.replace(/-/g, " ")
+      : city;
+    return {
+      queries: [
+        `${market} ${city} real estate pipeline units inventory 2025 2026 launches`,
+      ],
+      queryType: "market_pipeline",
+      entityName: market,
+    };
+  }
+
+  // Generic project facts
   if (intent.intent === "project_inquiry") {
     const projectName = intent.project_names?.[0] ?? intent.project_name ?? "real estate project";
     return {
@@ -112,6 +154,7 @@ export function buildWebQuery(
     };
   }
 
+  // Market overview / investment
   if (intent.intent === "market_overview" || intent.intent === "investment_advice") {
     const market = intent.market_slug
       ? intent.market_slug.replace(/-/g, " ")
@@ -294,6 +337,8 @@ async function synthesizeWithHaiku(
     developer_reputation: `developer reputation, delivery track record, and buyer sentiment for "${entityName}"`,
     project_facts: `project details, RERA status, possession timeline, and pricing for "${entityName}"`,
     market_news: `real estate market trends, pricing, and investment signals for "${entityName}"`,
+    possession_status: `actual possession/handover status, construction progress, and buyer experiences for "${entityName}" — focus on real handover dates, not just RERA deadline`,
+    market_pipeline: `total pipeline units, active launches, and inventory levels for "${entityName}" real estate market`,
     live_search: `real estate information about "${entityName}"`,
   };
 
