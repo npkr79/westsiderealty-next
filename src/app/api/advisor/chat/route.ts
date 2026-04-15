@@ -357,7 +357,41 @@ export async function POST(request: NextRequest) {
     // Step 3: Layer 3 — web search if DB is sparse or user wants real-time data
     let webContext = "";
     let webSearchFired = false;
-    if (shouldTriggerWebSearch(userMessage, intent, data.projects.length, data.markets.length)) {
+
+    // For comparison/project_inquiry with MULTIPLE named projects:
+    // Fire a separate web search for each project that is missing or has null prices.
+    // This handles the case where a project exists in DB but has no price/market data.
+    const namedProjects =
+      (intent.intent === "comparison" || intent.intent === "project_inquiry") &&
+      (intent.project_names?.length ?? 0) > 1
+        ? (intent.project_names ?? [])
+        : [];
+
+    const sparseCount = data.projects.filter((p) => p.current_price_per_sqft_min === null).length;
+
+    if (namedProjects.length > 1) {
+      // Comparison with multiple projects: fire web search for EACH named project in parallel.
+      // This ensures we get real data even for projects that exist in DB with null prices.
+      const webContextParts: string[] = [];
+      await Promise.all(
+        namedProjects.map(async (name) => {
+          try {
+            const singleIntent = { ...intent, project_name: name, project_names: [name] };
+            const { queries, queryType, entityName } = buildWebQuery(singleIntent, name);
+            const webResult = await webSearch(supabase, queries, queryType, entityName);
+            if (webResult) {
+              webContextParts.push(buildWebDataContext(webResult));
+              webSearchFired = true;
+              console.log(`[advisor/chat] Layer 3 (comparison) fired for "${name}" | from_cache=${webResult.from_cache}`);
+            }
+          } catch (e) {
+            console.error(`[advisor/chat] Layer 3 web search failed for "${name}":`, e);
+          }
+        })
+      );
+      webContext = webContextParts.join("\n\n");
+    } else if (shouldTriggerWebSearch(userMessage, intent, data.projects.length, data.markets.length, sparseCount)) {
+      // Standard single-entity web search
       try {
         const { queries, queryType, entityName } = buildWebQuery(intent, userMessage);
         const webResult = await webSearch(supabase, queries, queryType, entityName);

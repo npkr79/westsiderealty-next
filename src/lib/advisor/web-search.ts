@@ -71,7 +71,8 @@ export function shouldTriggerWebSearch(
   userMessage: string,
   intent: ParsedIntent,
   dbProjects: number,
-  dbMarkets: number
+  dbMarkets: number,
+  sparseProjects?: number  // projects found in DB but with null price data
 ): boolean {
   const hasLiveKeyword = LIVE_SEARCH_PATTERNS.some((re) => re.test(userMessage));
   if (hasLiveKeyword) return true;
@@ -83,8 +84,17 @@ export function shouldTriggerWebSearch(
     "investment_advice",
     "comparison",
   ].includes(intent.intent);
+
+  // Fire if DB returned nothing for a specific query
   const dbEmpty = dbProjects === 0 && dbMarkets === 0;
   if (isSpecificQuery && dbEmpty) return true;
+
+  // Fire if there's a named project but DB has no price data (project exists but sparse)
+  if (
+    isSpecificQuery &&
+    (sparseProjects ?? 0) > 0 &&
+    (intent.project_name || (intent.project_names?.length ?? 0) > 0)
+  ) return true;
 
   return false;
 }

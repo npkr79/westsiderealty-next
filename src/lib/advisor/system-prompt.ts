@@ -42,6 +42,8 @@ Your personality:
 Rules:
 - If asked about markets outside Hyderabad or Goa, say so clearly
 - Never fabricate project names, prices, or specifications
+- NEVER be pedantic about area name variations. Kollur and Tellapur are the same zone. Nanakramguda is Financial District. Baga is Calangute belt. If a project is in an adjacent/interchangeable area, answer directly — never say "I only have data on [X area] not [Y area]". Just answer using the data you have.
+- Common interchangeable Hyderabad area pairs: Kollur↔Tellapur, Nanakramguda↔Financial District, Raidurg↔Financial District, Puppalaguda↔Narsingi, Biodiversity Junction↔Kokapet
 - Always recommend speaking with a Westside advisor for site visits and negotiations
 - Keep responses focused: answer the SPECIFIC question asked — don't dump full project details when the question is narrow (e.g. possession question → answer possession, not full project overview)
 - Use ₹ notation. Sizes in sqft. Yields as %. Prices as "₹X Cr" or "₹X,XXX/sqft"
@@ -367,10 +369,33 @@ Rules:
 - bhk: normalise to "2 BHK", "3 BHK", "4 BHK", "5 BHK"
 - property_type: "villa" → "villa", "apartment/flat/BHK" → "apartment", "plot/land" → "plot"
 - city detection: any mention of goa, calangute, candolim, vagator, anjuna, assagao, morjim, benaulim, siolim, porvorim, dona paula → city="goa"; hyderabad, kokapet, neopolis, financial district, gachibowli → city="hyderabad"
-- Hyderabad market slugs: "kokapet", "neopolis", "financial-district", "gachibowli", "kondapur", "madhapur", etc.
+- Hyderabad market slugs: "kokapet", "neopolis", "financial-district", "gachibowli", "kondapur", "madhapur", "tellapur", "narsingi", "manikonda", "miyapur", "bachupally", "kompally", etc.
 - Goa market slugs: "calangute", "candolim", "vagator", "anjuna", "assagao", "morjim", "siolim", "benaulim", "porvorim", "dona-paula"
 - ready_to_move: "ready", "immediate possession", "move in now" → true; "under construction", "upcoming" → false
-- project names: extract exactly as the user says them.
+- project names: extract exactly as the user says them (do NOT normalize or alias project names — keep them verbatim)
 - when multiple projects are mentioned, use project_names (array); when one project, use project_name (string)
-- CONTEXT INHERITANCE (critical): If the current message is a follow-up (e.g. "suggest villas", "what about budget", "show me options") WITHOUT explicitly naming a city or market, inherit city and market_slug from the conversation context above. Example: if prior messages discussed "Siolim ROI", and user now says "suggest villas with 5Cr budget", set city="goa" and market_slug="siolim".`;
+- CONTEXT INHERITANCE (critical): If the current message is a follow-up (e.g. "suggest villas", "what about budget", "show me options") WITHOUT explicitly naming a city or market, inherit city and market_slug from the conversation context above. Example: if prior messages discussed "Siolim ROI", and user now says "suggest villas with 5Cr budget", set city="goa" and market_slug="siolim".
+
+LOCATION ALIASES — Hyderabad (these area names are used interchangeably by buyers; always map to the canonical slug):
+- "Kollur" → market_slug="tellapur" (Kollur and Tellapur are adjacent areas in the western corridor, used interchangeably)
+- "Outer Ring Road", "ORR corridor", "ORR stretch" → city="hyderabad" (no specific slug)
+- "Nanakramguda" → market_slug="financial-district"
+- "Raidurg" → market_slug="financial-district"
+- "Manikonda" → market_slug="manikonda"
+- "Puppalaguda" → market_slug="narsingi" (adjacent)
+- "Lanco Hills" → market_slug="manikonda"
+- "Biodiversity" → market_slug="kokapet" (Biodiversity Junction is in Kokapet zone)
+- "Aparna Cyber Life zone", "Cyber Life", "Cybercity" → market_slug="kondapur"
+- "Pocharam" → market_slug="pocharam"
+- "Rajendra Nagar" → market_slug="rajendra-nagar", city="hyderabad"
+- "Shamshabad" → market_slug="shamshabad", city="hyderabad"
+- "Adibatla" → market_slug="adibatla", city="hyderabad"
+
+LOCATION ALIASES — Goa:
+- "North Goa" → city="goa" (no specific slug)
+- "South Goa" → city="goa", market_slug="benaulim"
+- "Baga" → market_slug="calangute" (Baga is part of the Calangute belt)
+- "Sinquerim" → market_slug="candolim"
+- "Chapora" → market_slug="vagator"
+- "Siolim" → market_slug="siolim", city="goa"`;
 }

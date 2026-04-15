@@ -86,9 +86,13 @@ const ADJACENT_MARKETS: Record<string, string[]> = {
   benaulim:  ["cavelossim", "colva"],
   // Hyderabad
   kokapet:   ["neopolis", "financial-district", "gachibowli"],
-  neopolis:  ["kokapet", "financial-district"],
+  neopolis:  ["kokapet", "financial-district", "tellapur"],
   "financial-district": ["kokapet", "neopolis", "gachibowli"],
   gachibowli: ["financial-district", "kondapur", "madhapur"],
+  tellapur:  ["neopolis", "kokapet", "narsingi"],
+  narsingi:  ["tellapur", "financial-district", "manikonda"],
+  manikonda: ["narsingi", "financial-district", "gachibowli"],
+  "rajendra-nagar": ["narsingi", "manikonda"],
 };
 
 // ─── Intent-based fetchers ─────────────────────────────────────────────────────
