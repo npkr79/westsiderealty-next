@@ -35,6 +35,7 @@ export interface NewsArticle {
   source_name: string;
   source_url: string;
   image_url: string | null;
+  search_query_type?: string | null;
 }
 
 export interface PlatformCaption {
@@ -60,7 +61,7 @@ export async function pickTopArticles(
   count = 4
 ): Promise<NewsArticle[]> {
   const SELECT =
-    "id, headline, summary, ai_summary, ai_tags, category, sub_category, cities, relevance_score, sentiment, source_name, source_url, image_url";
+    "id, headline, summary, ai_summary, ai_tags, category, sub_category, cities, relevance_score, sentiment, source_name, source_url, image_url, search_query_type";
 
   // Pull a larger pool — positive sentiment only, high relevance
   const { data, error } = await supabase
@@ -113,11 +114,17 @@ export async function pickTopArticles(
   const picked: NewsArticle[] = [];
   const used = new Set<string>();
 
-  // Reserve 1 slot each for Hyderabad and Goa (best scored available)
+  // Reserve 1 slot each for Hyderabad and Goa.
+  // Prefer articles from dedicated Serper city queries first (search_query_type),
+  // fall back to articles where Claude tagged the city.
   for (const city of ["hyderabad", "goa"]) {
-    const match = uniquePool.find(
+    const fromCityQuery = uniquePool.find(
+      (a) => !used.has(a.id) && a.search_query_type === city
+    );
+    const fromCityTag = uniquePool.find(
       (a) => !used.has(a.id) && a.cities?.includes(city)
     );
+    const match = fromCityQuery ?? fromCityTag;
     if (match) {
       picked.push(match);
       used.add(match.id);
@@ -352,19 +359,19 @@ function extractKeyStat(headline: string): string | null {
 /** Category fallback in case Haiku call fails */
 function buildFallbackImagePrompt(article: NewsArticle): string {
   const categoryVisuals: Record<string, string> = {
-    infrastructure: "Modern Indian infrastructure — elevated expressway curving through lush green landscape, smart city skyline at golden hour. Cinematic aerial perspective.",
-    policy: "Indian government and real estate — elegant government building facade with Indian tricolor, professional corporate atmosphere. Clean and authoritative.",
-    market: "Indian real estate market — premium residential towers rising against a vivid blue sky, luxury apartments, modern glass façades. Aspirational and dynamic.",
-    corporate: "Corporate India — glass and steel office towers, GCC business district skyline, professionals in a modern lobby. Upscale and confident.",
-    regulatory: "Legal and regulatory framework — balanced scales, official documents, premium office setting. Trustworthy and professional.",
-    investment: "Real estate investment — growth chart overlaid on premium property aerial view, gold and green tones, upward trajectory. Wealth-aspirational.",
-    launch: "New property launch — architectural rendering of a luxury residential project, manicured gardens, swimming pool, modern façade. Premium and exciting.",
+    infrastructure: "Aerial view of a modern Indian elevated expressway cutting through a dense green landscape, sharp midday light, blue sky with scattered clouds, photorealistic, no haze.",
+    policy: "Indian government building facade with clean white architecture, sharp daylight, Indian tricolor flag visible, professional and authoritative atmosphere.",
+    market: "Modern glass-facade residential towers under a bright blue sky, sharp architectural photography style, clean daylight, no orange tones.",
+    corporate: "Gleaming glass office towers in an Indian business district, cool morning light, reflective facades, busy ground-level street scene below, photorealistic.",
+    regulatory: "Clean modern law office interior, neutral daylight through large windows, documents and bookshelves, no people, professional.",
+    investment: "Aerial view of a premium gated community under construction, concrete frames and cranes, clear afternoon light, showing scale and progress.",
+    launch: "Architectural render of a luxury apartment complex — clean white and grey facades, manicured landscaping, swimming pool, sharp bright daylight, no filters.",
   };
-  const base = categoryVisuals[article.category] ?? "Premium Indian real estate — modern skyline, aspirational architecture, cinematic quality.";
+  const base = categoryVisuals[article.category] ?? "Modern Indian city skyline, sharp blue-sky daylight, glass towers, photorealistic wide angle.";
   const cityCtx = article.cities.length && !article.cities.includes("national")
-    ? ` Evokes the character of ${article.cities[0]}.`
+    ? ` Style evokes ${article.cities[0]} — specific local character.`
     : "";
-  return `Social media background for a real estate post. ${base}${cityCtx} NO text, NO faces, NO logos. Keep bottom 35% dark for text overlay. Square 1:1.`;
+  return `Social media background image. ${base}${cityCtx} NO text, NO human faces, NO logos. Bottom 35% must be dark/shadowed for text overlay. Square 1:1 format.`;
 }
 
 async function buildContextualImagePrompt(article: NewsArticle): Promise<string> {
@@ -382,26 +389,34 @@ async function buildContextualImagePrompt(article: NewsArticle): Promise<string>
 
   const prompt = `You are a visual art director for a premium Indian real estate brand creating social media posts.
 
-Analyze this news article and write a vivid, story-specific image generation prompt for gpt-image-1 (an AI image model).
+Analyze this news article and write a story-specific image generation prompt for gpt-image-1.
 
 ${context}
 
+LIGHTING RULES — pick ONE that fits the story, never default to golden hour or warm tones:
+- Infrastructure/expressway: bright midday sun, aerial perspective, sharp shadows, vivid blue sky
+- Developer/sales news: clean cool morning light, architectural photography style, glass and steel
+- GCC/corporate: blue-hour or cool morning, city skyline, glass reflections, business energy
+- Government/policy: flat neutral daylight, official building facades, crisp and authoritative
+- Goa/coastal: soft bright coastal light, sea visible, natural greens and blues
+- Hyderabad: specific to the corridor — Kokapet glass towers, ORR flyover, or tech campus feel
+
 Your prompt must:
-1. Be SPECIFIC to this exact story — no generic "city skyline" or "highway" unless the story is literally about that location/infrastructure
-2. For infrastructure/corridor stories: describe a cinematic split-frame or panoramic composition showing BOTH endpoints (e.g., India Gate representing Delhi on the left, misty Himalayan foothills representing Dehradun on the right, connected by a golden elevated highway). Include an inset map-style element showing the route if relevant.
-3. For market/sales stories: show aspiration and momentum — luxury towers under blue skies, buyers/investors (no faces) in a thriving market scene
-4. For policy/regulatory stories: authoritative imagery — government buildings, official seals (no text), Indian tricolor, formal professional setting
-5. For corporate/GCC stories: gleaming office towers, business district aerial view
-6. Extract the KEY STAT from the headline (e.g. "2.5 Hours", "₹12000 crore", "55% jump") and instruct the model to show it as a LARGE BOLD callout text prominently in the upper half of the composition — this is the hero element
-7. Specify lighting, mood, and camera angle
-8. Name specific Indian landmarks only when directly relevant to the story
+1. Be SPECIFIC to this exact story — describe the actual subject, not a generic scene
+2. For infrastructure stories: show the specific route or structure (e.g., wide-angle of a massive cable-stayed bridge over a river, or a six-lane expressway cutting through farmland)
+3. For sales/revenue stories: scale and ambition — towers under construction, cranes, buyers walking through a show flat (no faces)
+4. For GCC/corporate stories: a gleaming tech campus or business district, not generic towers
+5. For Goa stories: coastal villas, beach, palm trees, natural light — no urban feel
+6. Specify exact camera angle, lens feel (wide-angle / telephoto / aerial drone)
+7. Each prompt must feel visually DIFFERENT from a real estate skyline shot
 
 STRICT RULES:
-- NO real human faces or likenesses (not even of politicians)
-- NO logos of any organizations — those are composited separately
-- Bottom 35% of image must be dark/shadowed — headline text will be overlaid there
-- Output ONLY the prompt text, no preamble, no explanations
-- Max 220 words`;
+- NEVER use: golden hour, amber sky, warm tones, aspirational, wealth-aspirational
+- NO real human faces or likenesses
+- NO logos of any organizations — composited separately
+- Bottom 35% must be dark/shadowed for text overlay
+- Output ONLY the prompt text, no preamble
+- Max 200 words`;
 
   try {
     const res = await fetch("https://api.anthropic.com/v1/messages", {

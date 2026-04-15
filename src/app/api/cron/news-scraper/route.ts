@@ -1,16 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/serviceClient";
-
-export const maxDuration = 300;
 import {
-  fetchAllRSSFeeds,
   deduplicateItems,
   classifyArticles,
   insertArticles,
-  updateSourceStats,
   fetchExistingIdentifiers,
-  NewsSource,
 } from "@/services/newsScraperService";
+import { fetchSerperNews } from "@/services/serperService";
+
+export const maxDuration = 300;
 
 // ---------------------------------------------------------------------------
 // Auth helper
@@ -37,39 +35,24 @@ async function handler(request: NextRequest) {
   const supabase = createServiceClient();
 
   try {
-    // 1. Fetch active sources
-    const { data: sourcesData, error: sourcesError } = await supabase
-      .from("news_sources")
-      .select("id, name, url, source_type, category, is_active")
-      .eq("is_active", true);
+    // 1. Fetch existing URLs + headlines for deduplication (last 14 days)
+    const { urls: existingUrls, headlines: existingHeadlines } =
+      await fetchExistingIdentifiers(supabase);
 
-    if (sourcesError) {
-      return NextResponse.json(
-        { error: `Failed to fetch sources: ${sourcesError.message}` },
-        { status: 500 }
-      );
-    }
-
-    const sources: NewsSource[] = sourcesData ?? [];
-
-    if (sources.length === 0) {
-      return NextResponse.json({ message: "No active sources configured", sourcesScraped: 0 });
-    }
-
-    // 2. Fetch existing URLs + headlines for deduplication (last 14 days)
-    const { urls: existingUrls, headlines: existingHeadlines } = await fetchExistingIdentifiers(supabase);
-
-    // 3. Fetch all RSS feeds
-    const { articles: rawArticles, errors: fetchErrors } = await fetchAllRSSFeeds(sources);
-
-    const sourcesScraped = sources.length - fetchErrors.length;
+    // 2. Fetch news via Serper (6 queries in parallel)
+    console.log("[news-scraper] Fetching news via Serper...");
+    const { articles: rawArticles, queryStats } = await fetchSerperNews();
     const articlesFound = rawArticles.length;
 
-    // 4. Deduplicate — 3-layer: URL + normalized headline + same-story keyword overlap
+    console.log(`[news-scraper] Serper returned ${articlesFound} total articles across 6 queries`);
+
+    // 3. Deduplicate — 3-layer: URL + normalized headline + same-story keyword overlap
     const uniqueArticles = deduplicateItems(rawArticles, existingUrls, existingHeadlines);
     const duplicatesSkipped = articlesFound - uniqueArticles.length;
 
-    // 5. Classify with Claude Haiku (only if we have new articles)
+    console.log(`[news-scraper] ${uniqueArticles.length} unique articles after dedup (${duplicatesSkipped} skipped)`);
+
+    // 4. Classify with Claude Haiku
     let articlesRelevant = 0;
     let inserted = 0;
     let classifySkipped = 0;
@@ -79,38 +62,33 @@ async function handler(request: NextRequest) {
       const classified = await classifyArticles(uniqueArticles);
       articlesRelevant = classified.filter((a) => a.relevance_score >= 7.0).length;
 
-      // 6. Insert (only articles scoring >= 6.0)
+      // 5. Insert (only articles scoring >= 6.5)
       const insertResult = await insertArticles(supabase, classified);
       inserted = insertResult.inserted;
       classifySkipped = insertResult.skipped;
       insertErrors.push(...insertResult.errors);
     }
 
-    // 7. Update source stats
-    const successfulSources = sources
-      .filter((s) => !fetchErrors.find((e) => e.source === s.name))
-      .map((s) => s.name);
-    await updateSourceStats(supabase, successfulSources);
-
-    // 8. Fetch top articles for response preview
+    // 6. Fetch top articles for response preview
     const { data: topArticles } = await supabase
       .from("news_articles")
-      .select("id, headline, source_name, relevance_score, category, cities")
+      .select("id, headline, source_name, relevance_score, category, cities, search_query_type")
       .gte("relevance_score", 7.0)
       .gte("scraped_at", new Date(startedAt - 60_000).toISOString())
       .order("relevance_score", { ascending: false })
-      .limit(5);
+      .limit(10);
 
     return NextResponse.json({
       success: true,
-      sourcesScraped,
+      source: "serper",
+      queryStats,
       articlesFound,
       articlesNew: uniqueArticles.length,
       duplicatesSkipped,
       articlesRelevant,
       inserted,
       skipped: classifySkipped,
-      errors: [...fetchErrors.map((e) => `${e.source}: ${e.error}`), ...insertErrors],
+      errors: insertErrors,
       topArticles: topArticles ?? [],
       durationMs: Date.now() - startedAt,
       scrapedAt: new Date().toISOString(),

@@ -23,6 +23,7 @@ export interface RawArticle {
   image_url: string | null;
   published_at: string | null;
   raw_category: string | null;
+  search_query_type?: string; // set by Serper: national_developer | national_infra | national_gcc | national_launches | hyderabad | goa
 }
 
 export interface ClassifiedArticle extends RawArticle {
@@ -465,6 +466,7 @@ export async function insertArticles(
     sentiment: a.sentiment,
     ai_summary: a.ai_summary,
     ai_tags: a.ai_tags,
+    search_query_type: a.search_query_type ?? null,
     is_processed: false,
     is_rejected: false,
   }));
