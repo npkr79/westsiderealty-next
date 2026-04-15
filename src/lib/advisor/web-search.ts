@@ -19,28 +19,32 @@ export interface WebSearchResult {
   expires_at: string;
 }
 
-interface TavilyResult {
+interface SerperResult {
   title: string;
-  url: string;
-  content: string;
-  score: number;
+  link: string;
+  snippet: string;
+  position: number;
+  date?: string;
+}
+
+interface HaikuSynthesis {
+  overview: string;         // Google AI Overview style paragraph — what the model reads
+  key_facts: string[];      // Bullet-level facts extracted (delivery, price, RERA, complaints)
+  sentiment: "positive" | "neutral" | "negative" | "mixed";
+  data_quality: "specific" | "generic"; // 'generic' = marketing fluff, no real data
 }
 
 // ─── Cache TTLs (ms) ─────────────────────────────────────────────────────────
 
 const TTL_MS: Record<WebQueryType, number> = {
-  project_facts: 90 * 24 * 60 * 60 * 1000,       // 90 days — static facts change slowly
-  developer_reputation: 30 * 24 * 60 * 60 * 1000, // 30 days — reputation changes monthly
-  market_news: 7 * 24 * 60 * 60 * 1000,           // 7 days  — market news is live
-  live_search: 7 * 24 * 60 * 60 * 1000,           // 7 days  — general real-time queries
+  project_facts:        90 * 24 * 60 * 60 * 1000, // 90 days — static facts
+  developer_reputation: 30 * 24 * 60 * 60 * 1000, // 30 days — reputation
+  market_news:           7 * 24 * 60 * 60 * 1000, // 7 days  — live market
+  live_search:           7 * 24 * 60 * 60 * 1000, // 7 days  — general
 };
 
 // ─── Layer 3 trigger detection ────────────────────────────────────────────────
 
-/**
- * Keywords that explicitly signal the user wants live / real-time data
- * that no static DB can answer.
- */
 const LIVE_SEARCH_PATTERNS = [
   /latest|recent(ly)?|current(ly)?|right now|today|this (week|month|year)/i,
   /track record|delivery record|delivered on time|past project|completed project/i,
@@ -57,11 +61,9 @@ export function shouldTriggerWebSearch(
   dbProjects: number,
   dbMarkets: number
 ): boolean {
-  // Trigger A: Explicit real-time keywords in the message
   const hasLiveKeyword = LIVE_SEARCH_PATTERNS.some((re) => re.test(userMessage));
   if (hasLiveKeyword) return true;
 
-  // Trigger B: DB came back empty for a specific entity query
   const isSpecificQuery = [
     "project_inquiry",
     "developer_inquiry",
@@ -80,51 +82,51 @@ export function shouldTriggerWebSearch(
 export function buildWebQuery(
   intent: ParsedIntent,
   userMessage: string
-): { query: string; queryType: WebQueryType; entityName: string } {
+): { queries: string[]; queryType: WebQueryType; entityName: string } {
   const city = intent.city === "goa" ? "Goa" : "Hyderabad";
 
-  // Developer reputation / track record
   if (
-    intent.intent === "developer_inquiry" && intent.developer_name ||
-    /track record|reliable|delivery|complaints/.test(userMessage.toLowerCase()) && intent.developer_name
+    (intent.intent === "developer_inquiry" && intent.developer_name) ||
+    (/track record|reliable|delivery|complaints/.test(userMessage.toLowerCase()) && intent.developer_name)
   ) {
     const dev = intent.developer_name!;
     return {
-      query: `${dev} developer ${city} track record delivery history reviews completed projects 2024 2025`,
+      queries: [
+        `"${dev}" ${city} developer reviews track record delivery completed projects`,
+        `"${dev}" RERA projects Telangana complaints possession`,
+      ],
       queryType: "developer_reputation",
       entityName: dev,
     };
   }
 
-  // Specific project facts or updates
   if (intent.intent === "project_inquiry") {
-    const projectName =
-      intent.project_names?.[0] ?? intent.project_name ?? "real estate project";
+    const projectName = intent.project_names?.[0] ?? intent.project_name ?? "real estate project";
     return {
-      query: `${projectName} ${city} real estate project price possession date construction update RERA 2025`,
+      queries: [
+        `"${projectName}" ${city} RERA possession date launch price per sqft`,
+        `"${projectName}" ${city} construction update reviews buyer feedback`,
+      ],
       queryType: "project_facts",
       entityName: projectName,
     };
   }
 
-  // Market news / overview
-  if (
-    intent.intent === "market_overview" ||
-    intent.intent === "investment_advice"
-  ) {
+  if (intent.intent === "market_overview" || intent.intent === "investment_advice") {
     const market = intent.market_slug
       ? intent.market_slug.replace(/-/g, " ")
       : city;
     return {
-      query: `${market} ${city} real estate market price appreciation trends news 2025`,
+      queries: [
+        `${market} ${city} real estate market price appreciation trends 2025 2026`,
+      ],
       queryType: "market_news",
       entityName: market,
     };
   }
 
-  // General live search — use the user's own message enriched with context
   return {
-    query: `${userMessage} ${city} real estate 2025`,
+    queries: [`${userMessage} ${city} real estate 2025`],
     queryType: "live_search",
     entityName: userMessage.slice(0, 60).trim(),
   };
@@ -132,11 +134,7 @@ export function buildWebQuery(
 
 // ─── Cache helpers ────────────────────────────────────────────────────────────
 
-function buildCacheKey(
-  queryType: WebQueryType,
-  entityName: string
-): string {
-  // Cache bucket = entity slug + TTL window (so it auto-refreshes after TTL)
+function buildCacheKey(queryType: WebQueryType, entityName: string): string {
   const slug = entityName
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
@@ -159,20 +157,18 @@ async function checkCache(
 
     if (!data) return null;
 
-    // Bump use_count — fire-and-forget
     supabase
       .from("advisor_web_cache")
-      .update({ use_count: data.use_count ?? 0 + 1 })
+      .update({ use_count: (data.use_count ?? 0) + 1 })
       .eq("cache_key", cacheKey)
-      .then(() => {})
-      .catch(() => {});
+      .then(() => {}).catch(() => {});
 
-    const results = (data.results ?? []) as TavilyResult[];
+    const results = (data.results ?? []) as SerperResult[];
     return {
       summary: data.summary ?? "",
       raw_content: results
-        .slice(0, 4)
-        .map((r) => `### ${r.title}\n${r.content}`)
+        .slice(0, 3)
+        .map((r) => `### ${r.title}\n${r.snippet}`)
         .join("\n\n"),
       sources: (data.source_urls as string[]).map((url) => ({ url, title: "" })),
       from_cache: true,
@@ -190,19 +186,19 @@ async function storeInCache(
   cacheKey: string,
   queryType: WebQueryType,
   entityName: string,
-  queryUsed: string,
-  results: TavilyResult[],
+  queriesUsed: string[],
+  results: SerperResult[],
   summary: string
 ): Promise<void> {
   const expiresAt = new Date(Date.now() + TTL_MS[queryType]).toISOString();
-  const sourceUrls = results.map((r) => r.url).filter(Boolean);
+  const sourceUrls = results.map((r) => r.link).filter(Boolean);
 
   await supabase.from("advisor_web_cache").upsert(
     {
       cache_key: cacheKey,
       query_type: queryType,
       entity_name: entityName,
-      query_used: queryUsed,
+      query_used: queriesUsed.join(" | "),
       results,
       summary,
       source_urls: sourceUrls,
@@ -216,194 +212,243 @@ async function storeInCache(
   );
 }
 
-// ─── Tavily API call ──────────────────────────────────────────────────────────
+// ─── Serper API call ──────────────────────────────────────────────────────────
 
-// High-quality Indian real estate and news domains
-const REALESTATE_DOMAINS = [
-  "99acres.com",
-  "magicbricks.com",
-  "housing.com",
-  "squareyards.com",
-  "proptiger.com",
-  "nobroker.in",
-  "economictimes.indiatimes.com",
-  "timesofindia.indiatimes.com",
-  "thehindu.com",
-  "businessstandard.com",
-  "ndtv.com",
-  "livemint.com",
-  "moneycontrol.com",
-  "indianexpress.com",
-  "deccanchronicle.com",
-  "rera.telangana.gov.in",
-  "credai.org",
-];
+async function callSerper(query: string): Promise<SerperResult[]> {
+  const apiKey = process.env.SERPER_API_KEY;
+  if (!apiKey) throw new Error("SERPER_API_KEY not configured");
 
-const NEWS_DOMAINS = [
-  "economictimes.indiatimes.com",
-  "timesofindia.indiatimes.com",
-  "thehindu.com",
-  "businessstandard.com",
-  "ndtv.com",
-  "livemint.com",
-  "moneycontrol.com",
-  "indianexpress.com",
-  "deccanchronicle.com",
-  "hindustantimes.com",
-  "financialexpress.com",
-  "realty.economictimes.indiatimes.com",
-];
-
-const DOMAIN_MAP: Record<WebQueryType, string[]> = {
-  developer_reputation: REALESTATE_DOMAINS,
-  project_facts: REALESTATE_DOMAINS,
-  market_news: NEWS_DOMAINS,
-  live_search: [...REALESTATE_DOMAINS, ...NEWS_DOMAINS],
-};
-
-async function callTavily(
-  query: string,
-  queryType: WebQueryType
-): Promise<{ results: TavilyResult[] }> {
-  const apiKey = process.env.TAVILY_API_KEY;
-  if (!apiKey) throw new Error("TAVILY_API_KEY not configured");
-
-  // Use advanced depth for developer/project queries — worth the 2x credit cost
-  const searchDepth =
-    queryType === "developer_reputation" || queryType === "project_facts"
-      ? "advanced"
-      : "basic";
-
-  const res = await fetch("https://api.tavily.com/search", {
+  const res = await fetch("https://google.serper.dev/search", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "X-API-KEY": apiKey,
+      "Content-Type": "application/json",
+    },
     body: JSON.stringify({
-      api_key: apiKey,
-      query,
-      search_depth: searchDepth,
-      include_answer: false, // Don't use Tavily's AI summary — it hallucinates from bad sources
-      include_raw_content: false,
-      max_results: 7,
-      include_domains: DOMAIN_MAP[queryType] ?? [],
+      q: query,
+      gl: "in",   // India
+      hl: "en",
+      num: 10,
     }),
-    signal: AbortSignal.timeout(12_000),
+    signal: AbortSignal.timeout(8_000),
   });
 
   if (!res.ok) {
     const err = await res.text();
-    throw new Error(`Tavily API error ${res.status}: ${err.slice(0, 200)}`);
+    throw new Error(`Serper API error ${res.status}: ${err.slice(0, 200)}`);
   }
 
   const data = await res.json();
-  return {
-    results: (data.results ?? []) as TavilyResult[],
+  return (data.organic ?? []) as SerperResult[];
+}
+
+// ─── Run multiple Serper queries in parallel, deduplicate by URL ──────────────
+
+async function runSerperQueries(queries: string[]): Promise<SerperResult[]> {
+  const settled = await Promise.allSettled(queries.map(callSerper));
+
+  const seen = new Set<string>();
+  const merged: SerperResult[] = [];
+
+  for (const result of settled) {
+    if (result.status === "fulfilled") {
+      for (const r of result.value) {
+        if (!seen.has(r.link)) {
+          seen.add(r.link);
+          merged.push(r);
+        }
+      }
+    }
+  }
+
+  return merged;
+}
+
+// ─── Haiku synthesis — Google AI Overview style ───────────────────────────────
+
+async function synthesizeWithHaiku(
+  results: SerperResult[],
+  queryType: WebQueryType,
+  entityName: string
+): Promise<HaikuSynthesis> {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+
+  // Fallback if no API key
+  if (!apiKey) {
+    return {
+      overview: results.slice(0, 3).map((r) => r.snippet).join(" "),
+      key_facts: results.slice(0, 3).map((r) => r.title),
+      sentiment: "neutral",
+      data_quality: "generic",
+    };
+  }
+
+  // Take top 3 results — title + snippet + source domain
+  const top3 = results.slice(0, 3).map((r) => {
+    let domain = "";
+    try { domain = new URL(r.link).hostname.replace("www.", ""); } catch { domain = r.link; }
+    return `Source: ${domain}\nTitle: ${r.title}\nSnippet: ${r.snippet}`;
+  }).join("\n\n---\n\n");
+
+  const contextLabel: Record<WebQueryType, string> = {
+    developer_reputation: `developer reputation, delivery track record, and buyer sentiment for "${entityName}"`,
+    project_facts: `project details, RERA status, possession timeline, and pricing for "${entityName}"`,
+    market_news: `real estate market trends, pricing, and investment signals for "${entityName}"`,
+    live_search: `real estate information about "${entityName}"`,
   };
+
+  const prompt = `You are a real estate research assistant for a premium Indian real estate advisory firm.
+
+Synthesize these 3 Google search results into a structured intelligence brief about ${contextLabel[queryType]}.
+
+SEARCH RESULTS:
+${top3}
+
+Return a JSON object with this exact structure:
+{
+  "overview": "3-5 sentences synthesizing what these results say, like a Google AI Overview. Be specific — include actual numbers, project names, dates if mentioned. If results are vague marketing copy with no real facts, say so clearly.",
+  "key_facts": ["fact 1", "fact 2", "fact 3"],
+  "sentiment": "positive|neutral|negative|mixed",
+  "data_quality": "specific|generic"
+}
+
+Rules:
+- "overview" must read like a confident research brief, not a list of links
+- "key_facts" must be actual verifiable facts (numbers, dates, names) — not generic claims
+- "data_quality" = "specific" only if real facts (prices, dates, RERA numbers, project names) are present
+- "data_quality" = "generic" if results are just marketing copy
+- Return ONLY valid JSON, no preamble`;
+
+  try {
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "claude-haiku-4-20250514",
+        max_tokens: 600,
+        messages: [{ role: "user", content: prompt }],
+      }),
+    });
+
+    if (!res.ok) throw new Error(`Haiku API error ${res.status}`);
+    const data = await res.json();
+    const text: string = data.content?.[0]?.text?.trim() ?? "";
+
+    // Strip markdown code fences if present
+    const jsonStr = text.replace(/^```json\s*/i, "").replace(/```\s*$/, "").trim();
+    return JSON.parse(jsonStr) as HaikuSynthesis;
+  } catch (err) {
+    console.warn("[WebSearch] Haiku synthesis failed, using raw snippets:", err);
+    return {
+      overview: results.slice(0, 3).map((r) => r.snippet).join(" "),
+      key_facts: results.slice(0, 3).map((r) => r.title),
+      sentiment: "neutral",
+      data_quality: "generic",
+    };
+  }
 }
 
 // ─── Main export ──────────────────────────────────────────────────────────────
 
 /**
- * Layer 3 web search with cache-first pattern.
+ * Layer 3 web search: Serper (Google) + Claude Haiku synthesis.
  *
- * 1. Check advisor_web_cache — return immediately if fresh entry exists
- * 2. Cache miss → call Tavily → store result in cache (fire-and-forget)
- * 3. Returns null if Tavily fails or returns empty results
+ * 1. Check advisor_web_cache — return immediately if fresh
+ * 2. Cache miss → run 1-2 parallel Serper queries → deduplicate results
+ * 3. Haiku reads top 3 results → builds Google AI Overview style synthesis
+ * 4. Store synthesis in cache (fire-and-forget)
+ * 5. Return structured result to advisor model
  */
 export async function webSearch(
   supabase: SupabaseClient,
-  query: string,
+  queries: string[],
   queryType: WebQueryType,
   entityName: string
 ): Promise<WebSearchResult | null> {
   const cacheKey = buildCacheKey(queryType, entityName);
 
-  // Layer 2.5: check cache first
+  // Cache first
   const cached = await checkCache(supabase, cacheKey);
   if (cached) {
     console.log(`[WebSearch] Cache hit (${queryType}): ${entityName}`);
     return cached;
   }
 
-  // Layer 3: fresh Tavily search
-  console.log(`[WebSearch] Tavily search (${queryType}): ${query}`);
+  // Fresh Serper search
+  console.log(`[WebSearch] Serper search (${queryType}): ${queries.join(" | ")}`);
   try {
-    const { results } = await callTavily(query, queryType);
+    const results = await runSerperQueries(queries);
     if (!results.length) {
-      console.log(`[WebSearch] No results returned for: ${query}`);
+      console.log(`[WebSearch] No results for: ${entityName}`);
       return null;
     }
 
-    console.log(`[WebSearch] Got ${results.length} results from: ${results.map((r) => new URL(r.url).hostname).join(", ")}`);
+    const sources = results.slice(0, 3).map((r) => {
+      let domain = r.link;
+      try { domain = new URL(r.link).hostname.replace("www.", ""); } catch { /* */ }
+      return { title: r.title, url: r.link, domain };
+    });
+    console.log(`[WebSearch] Got ${results.length} results from: ${sources.map((s) => s.domain).join(", ")}`);
 
-    const rawContent = results
-      .slice(0, 5)
-      .map((r) => `### ${r.title}\n${r.content}`)
-      .join("\n\n");
+    // Haiku synthesizes top 3 results into a Google AI Overview style brief
+    const synthesis = await synthesizeWithHaiku(results, queryType, entityName);
+    console.log(`[WebSearch] Synthesis quality: ${synthesis.data_quality}, sentiment: ${synthesis.sentiment}`);
 
-    // No Tavily-generated summary — let the model synthesize from raw content
-    const summary = results
-      .slice(0, 3)
-      .map((r) => `${r.title}: ${r.content.slice(0, 200)}`)
-      .join(" | ");
+    // summary = the Haiku overview — what the advisor model reads
+    const summary = synthesis.overview;
+    const rawContent = [
+      synthesis.key_facts.length ? `Key facts:\n${synthesis.key_facts.map((f) => `- ${f}`).join("\n")}` : "",
+      `\nRaw snippets:\n${results.slice(0, 3).map((r) => `[${r.title}] ${r.snippet}`).join("\n")}`,
+    ].join("\n");
 
-    // Store in cache — fire-and-forget, never block the response
-    storeInCache(supabase, cacheKey, queryType, entityName, query, results, summary).catch(
-      (e) => console.error("[WebSearch] Cache store failed:", e)
-    );
+    // Store in cache — fire-and-forget
+    storeInCache(supabase, cacheKey, queryType, entityName, queries, results.slice(0, 10), summary)
+      .catch((e) => console.error("[WebSearch] Cache store failed:", e));
 
     const expiresAt = new Date(Date.now() + TTL_MS[queryType]).toISOString();
     return {
       summary,
       raw_content: rawContent,
-      sources: results.map((r) => ({ title: r.title, url: r.url })),
+      sources: sources.map((s) => ({ title: s.title, url: s.url })),
       from_cache: false,
       query_type: queryType,
       entity_name: entityName,
       expires_at: expiresAt,
     };
   } catch (err) {
-    console.error("[WebSearch] Tavily call failed:", err);
+    console.error("[WebSearch] Serper search failed:", err);
     return null; // graceful fallback — advisor answers from DB only
   }
 }
 
 // ─── Context string builder ───────────────────────────────────────────────────
 
-/**
- * Formats web search results into a context block for the advisor system prompt.
- * Always labels data as web-sourced so the model caveats appropriately.
- */
 export function buildWebDataContext(result: WebSearchResult): string {
   const lines: string[] = [
     "=== WEB INTELLIGENCE ===",
     `Query type: ${result.query_type} | Entity: ${result.entity_name}`,
     "",
-    "IMPORTANT: Synthesize the facts below into a confident advisor response. Do NOT mention 'web sources',",
-    "'online', 'based on recent reports', or any language that reveals you searched the internet.",
-    "If the data below is vague marketing copy with no real specifics, say you don't have enough verified",
-    "data and recommend RERA check + site visit. Never pad with generic fluff.",
+    "IMPORTANT: Synthesize the intelligence below into a confident advisor response.",
+    "Do NOT mention 'web sources', 'online', 'based on recent reports', or reveal you searched the internet.",
+    "If the overview says data is generic/vague with no real specifics, tell the user you don't have",
+    "enough verified data and recommend RERA check + site visit.",
     "",
+    "INTELLIGENCE BRIEF:",
+    result.summary,
   ];
 
-  if (result.summary) {
-    lines.push(`AI Summary of search results:\n${result.summary}`);
-    lines.push("");
-  }
-
   if (result.raw_content) {
-    lines.push("Detailed search results:");
-    lines.push(result.raw_content.slice(0, 2500)); // cap to stay within token budget
+    lines.push("");
+    lines.push(result.raw_content.slice(0, 2000));
   }
 
   if (result.sources.length) {
     lines.push("");
-    lines.push(
-      "Sources: " +
-        result.sources
-          .filter((s) => s.url)
-          .map((s) => s.url)
-          .join(" | ")
-    );
+    lines.push("Sources: " + result.sources.map((s) => s.url).join(" | "));
   }
 
   return lines.join("\n");

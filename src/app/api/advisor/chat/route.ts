@@ -359,8 +359,8 @@ export async function POST(request: NextRequest) {
     let webSearchFired = false;
     if (shouldTriggerWebSearch(userMessage, intent, data.projects.length, data.markets.length)) {
       try {
-        const { query, queryType, entityName } = buildWebQuery(intent, userMessage);
-        const webResult = await webSearch(supabase, query, queryType, entityName);
+        const { queries, queryType, entityName } = buildWebQuery(intent, userMessage);
+        const webResult = await webSearch(supabase, queries, queryType, entityName);
         if (webResult) {
           webContext = buildWebDataContext(webResult);
           webSearchFired = true;
