@@ -629,26 +629,12 @@ export async function generateImage(article: NewsArticle): Promise<string> {
   const keyStat = extractKeyStat(article.headline);
   const entityLogoUrl = detectEntityLogoUrl(article);
 
-  // ── Step 1: Get base image buffer ─────────────────────────────────────────
-  // Prefer the article's own source image (official press renders, real photos).
-  // Fall back to AI generation if unavailable.
+  // ── Step 1: Generate base image with gpt-image-1 ─────────────────────────
+  // Always AI-generate — source images from news sites are low quality,
+  // wrong aspect ratio, and often blocked by hotlink protection.
   let rawImageBuffer: Buffer;
-  let isSourceImage = false;
 
-  if (article.image_url) {
-    console.log("[NewsToSocial] Trying source image:", article.image_url.slice(0, 80));
-    const sourceBuffer = await fetchSourceImageBuffer(article.image_url);
-    if (sourceBuffer) {
-      rawImageBuffer = sourceBuffer;
-      isSourceImage = true;
-      console.log("[NewsToSocial] Using source image — skipping AI generation");
-    } else {
-      console.log("[NewsToSocial] Source image unavailable, falling back to AI generation");
-    }
-  }
-
-  if (!isSourceImage) {
-    // Build a vivid, context-specific prompt via Claude Haiku, then generate
+  {
     console.log("[NewsToSocial] Building contextual prompt via Haiku...");
     const imagePrompt = await buildContextualImagePrompt(article);
     console.log("[NewsToSocial] Generating AI image for:", article.headline.slice(0, 60));
@@ -765,7 +751,7 @@ export async function generateImage(article: NewsArticle): Promise<string> {
     uploadResult.secure_url,
     article.headline,
     keyStat,
-    isSourceImage,
+    false, // always AI generated
   );
   console.log("[NewsToSocial] Image ready:", finalUrl);
   return finalUrl;
