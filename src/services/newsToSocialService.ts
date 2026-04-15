@@ -622,7 +622,7 @@ async function buildTopBandBuffer(): Promise<Buffer> {
 // Generate and upload image
 // ---------------------------------------------------------------------------
 
-export async function generateImage(article: NewsArticle): Promise<string> {
+export async function generateImage(article: NewsArticle, postCaption?: string): Promise<string> {
   const openaiKey = process.env.OPENAI_API_KEY;
   if (!openaiKey) throw new Error("OPENAI_API_KEY not configured");
 
@@ -635,8 +635,16 @@ export async function generateImage(article: NewsArticle): Promise<string> {
   let rawImageBuffer: Buffer;
 
   {
-    console.log("[NewsToSocial] Building contextual prompt via Haiku...");
-    const imagePrompt = await buildContextualImagePrompt(article);
+    let imagePrompt: string;
+
+    if (postCaption) {
+      imagePrompt = `Generate a vertical image for this post: ${postCaption}`;
+      console.log("[NewsToSocial] Using post caption as image prompt for:", article.headline.slice(0, 60));
+    } else {
+      console.log("[NewsToSocial] Building contextual prompt via Haiku...");
+      imagePrompt = await buildContextualImagePrompt(article);
+    }
+
     console.log("[NewsToSocial] Generating AI image for:", article.headline.slice(0, 60));
 
     const imageRes = await fetch("https://api.openai.com/v1/images/generations", {
@@ -831,10 +839,15 @@ export async function processArticle(
   supabase: SupabaseClient,
   article: NewsArticle
 ): Promise<NewsPostResult> {
-  const [captions, imageUrl] = await Promise.all([
-    generateCaptions(article),
-    generateImage(article),
-  ]);
+  // Generate captions first so we can feed the post text to gpt-image-1
+  const captions = await generateCaptions(article);
+
+  // Use Instagram caption as the image prompt — most descriptive, story-specific
+  const instagramCaption = captions.find((c) => c.platform === "Instagram")?.caption
+    ?? captions[0]?.caption
+    ?? "";
+
+  const imageUrl = await generateImage(article, instagramCaption);
 
   const postIds = await createSocialPosts(supabase, article, captions, imageUrl);
 
