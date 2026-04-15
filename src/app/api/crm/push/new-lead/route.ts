@@ -240,9 +240,12 @@ export async function POST(request: NextRequest) {
 
     const SRINIVAS_WHATSAPP = '918520099841';
     const KRISHNA_WHATSAPP = '919666845340';
+    const NAVEEN_WHATSAPP = '919573808992';
 
+    // 99acres routing: project-based per agent (add new projects here as needed)
     const srinivasProperties = ['rajapushpa imperia', 'aparna zenon', 'nk villa scapes', 'hallmark treasor', 'my home vipina', 'rajapushpa cannon dale', 'aparna elixir', 'preston', 'anvitas', 'amari'];
     const krishnaProperties = ['aparna cyberon', 'aparna cyber heights'];
+    const naveenProperties = ['my home tridasa', 'myhome tridasa'];
 
     if (srinivasProperties.some(p => propertyName.includes(p))) {
       targets.push({ name: 'Srinivas', phone: SRINIVAS_WHATSAPP });
@@ -250,6 +253,9 @@ export async function POST(request: NextRequest) {
     } else if (krishnaProperties.some(p => propertyName.includes(p))) {
       targets.push({ name: 'Krishna', phone: KRISHNA_WHATSAPP });
       agentWhatsappForAssignment = KRISHNA_WHATSAPP;
+    } else if (naveenProperties.some(p => propertyName.includes(p))) {
+      targets.push({ name: 'Naveen', phone: NAVEEN_WHATSAPP });
+      agentWhatsappForAssignment = NAVEEN_WHATSAPP;
     }
     targets.push(adminTarget);
 
