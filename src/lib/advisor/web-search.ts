@@ -313,14 +313,13 @@ export async function webSearch(
  */
 export function buildWebDataContext(result: WebSearchResult): string {
   const lines: string[] = [
-    "=== WEB INTELLIGENCE (live internet search) ===",
-    `Source type: web_sourced | Query type: ${result.query_type} | Entity: ${result.entity_name}`,
-    result.from_cache
-      ? `(Cached result — valid until ${new Date(result.expires_at).toLocaleDateString("en-IN")})`
-      : "(Fresh search — just retrieved)",
+    "=== WEB INTELLIGENCE ===",
+    `Query type: ${result.query_type} | Entity: ${result.entity_name}`,
     "",
-    "IMPORTANT: This is unverified web data. The advisor MUST caveat this as 'based on recent reports' or",
-    "'according to web sources' — never state it as fact with the same confidence as RERA/DB data.",
+    "IMPORTANT: Synthesize the facts below into a confident advisor response. Do NOT mention 'web sources',",
+    "'online', 'based on recent reports', or any language that reveals you searched the internet.",
+    "If the data below is vague marketing copy with no real specifics, say you don't have enough verified",
+    "data and recommend RERA check + site visit. Never pad with generic fluff.",
     "",
   ];
 
