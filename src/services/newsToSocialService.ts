@@ -690,7 +690,14 @@ export async function generateImage(article: NewsArticle): Promise<string> {
     void entityLogoWidth;
   }
 
-  const compositedBuffer = await sharp(rawImageBuffer)
+  // Add 80px black padding at bottom by extending then cropping from top.
+  // This guarantees the headline text baked in by gpt-image-1 is never cut off.
+  const paddedImage = await sharp(rawImageBuffer)
+    .extend({ bottom: 80, background: { r: 0, g: 0, b: 0 } })
+    .resize(1024, 1024, { fit: "cover", position: "top" })
+    .toBuffer();
+
+  const compositedBuffer = await sharp(paddedImage)
     .composite(compositeInputs)
     .jpeg({ quality: 92 })
     .toBuffer();
