@@ -604,12 +604,12 @@ function applyCloudinaryTextOverlay(
 // No SVG / librsvg needed — pure Node.js math, works on every Vercel runtime.
 async function buildGradientStripBuffer(): Promise<Buffer> {
   const W = 1024;
-  const H = 440; // height of the gradient zone at the bottom
+  const H = 260; // just enough to cover the text area at the bottom
   const raw = Buffer.alloc(W * H * 4); // RGBA
 
   for (let y = 0; y < H; y++) {
-    // Alpha ramps from 0 (top) to ~210 (~82% of 255) at the bottom
-    const alpha = Math.round((y / (H - 1)) * 210);
+    // Alpha ramps from 0 (top) to ~200 (~78% of 255) at the bottom
+    const alpha = Math.round((y / (H - 1)) * 200);
     for (let x = 0; x < W; x++) {
       const i = (y * W + x) * 4;
       raw[i] = 0;       // R
@@ -773,7 +773,7 @@ export async function generateImage(article: NewsArticle): Promise<string> {
   // Add dark gradient strip at bottom (pure pixel math — no fonts, works on Vercel)
   // This gives the Cloudinary text overlay a dark background to sit on.
   const gradientBuffer = await buildGradientStripBuffer();
-  compositeInputs.unshift({ input: gradientBuffer, top: 1024 - 440, left: 0 });
+  compositeInputs.unshift({ input: gradientBuffer, top: 1024 - 260, left: 0 });
 
   // Composite: background + gradient + logos
   const compositedBuffer = await sharp(rawImageBuffer)
