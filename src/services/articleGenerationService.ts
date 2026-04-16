@@ -418,7 +418,7 @@ Call the generate_articles tool with both articles and the market brief.`;
   // markdown in article bodies (quotes, backticks, newlines) never breaks parsing.
   const response = await anthropic.messages.create({
     model: "claude-sonnet-4-6",
-    max_tokens: 4096,
+    max_tokens: 8192,  // 2 full articles + market brief can exceed 4096
     system: SYSTEM_PROMPT,
     tools: [
       {
@@ -443,8 +443,6 @@ Call the generate_articles tool with both articles and the market brief.`;
                 },
                 required: ["city", "micro_market", "seo_headline", "meta_description", "body", "whatsapp_summary", "target_persona", "drip_placement"],
               },
-              minItems: 2,
-              maxItems: 2,
             },
             market_brief: {
               type: "array",
