@@ -115,7 +115,8 @@ async function pickTodayCities(supabase: SupabaseClient): Promise<[City, City]> 
 // Slug helper
 // ---------------------------------------------------------------------------
 
-function slugify(text: string): string {
+function slugify(text: string | undefined | null): string {
+  if (!text) return `article-${Date.now()}`;
   return text
     .toLowerCase()
     .replace(/₹[\d,]+\s*\/?/g, "")
@@ -233,7 +234,8 @@ async function getDbNewsForCity(
 // Phase 3 — Semantic Dedup (60-day rolling archive)
 // ---------------------------------------------------------------------------
 
-function jaccardSimilarity(a: string, b: string): number {
+function jaccardSimilarity(a: string | undefined | null, b: string | undefined | null): number {
+  if (!a || !b) return 0;
   const tokenize = (s: string) =>
     new Set(
       s.toLowerCase()
@@ -463,7 +465,19 @@ Call the generate_articles tool with both articles and the market brief.`;
     throw new Error("Claude did not call the generate_articles tool");
   }
 
-  return toolBlock.input as RunOutput;
+  const result = toolBlock.input as RunOutput;
+
+  // Validate articles array before returning — catch missing required fields early
+  if (!Array.isArray(result.articles) || result.articles.length === 0) {
+    throw new Error("Tool response missing articles array");
+  }
+  for (const a of result.articles) {
+    if (!a.city) throw new Error(`Article missing city field`);
+    if (!a.seo_headline) throw new Error(`Article for ${a.city} missing seo_headline`);
+    if (!a.body) throw new Error(`Article for ${a.city} missing body`);
+  }
+
+  return result;
 }
 
 // ---------------------------------------------------------------------------
