@@ -481,41 +481,79 @@ Call the generate_articles tool with both articles and the market brief.`;
 }
 
 // ---------------------------------------------------------------------------
-// Hero image generation
+// Hero image generation — gpt-image-1 (high quality) + Cloudinary upload
 // ---------------------------------------------------------------------------
 
-const CITY_IMAGE_STYLE: Record<string, string> = {
-  hyderabad:        "modern luxury apartment towers, Hyderabad skyline, Financial District corridor, professional architectural photography, golden hour warm light",
-  goa:              "luxury beachfront villa, North Goa coastline, tropical lush greenery, premium holiday home, professional real estate photography, warm sunset light",
-  mumbai:           "premium high-rise residential tower, Mumbai skyline, sea-facing apartments, professional architectural photography, twilight blue hour",
-  bengaluru:        "modern tech-corridor apartment complex, Bengaluru, lush green surroundings, professional real estate photography, golden hour",
-  pune:             "luxury residential development, Pune hills backdrop, professional architectural photography, soft morning light",
-  delhi_ncr:        "premium high-rise apartments, Delhi NCR skyline, wide boulevard, professional real estate photography, golden hour",
-  gurugram:         "gleaming glass office towers and luxury apartments, Gurugram Cyber City corridor, professional architectural photography, golden hour",
-  noida:            "modern premium apartment complex, Noida Expressway corridor, professional real estate photography, clear blue sky",
-  jaipur:           "luxury gated villa community, Jaipur, Rajasthani architectural accents, professional real estate photography, warm afternoon light",
-  chennai:          "upscale coastal apartment complex, Chennai, ECR beachside, professional architectural photography, warm light",
-  kolkata:          "premium riverside apartment complex, Kolkata, professional real estate photography, warm golden light",
-  ahmedabad:        "luxury gated residential community, Ahmedabad, modern architecture, professional real estate photography",
-  kochi:            "premium backwater-view villa, Kochi Kerala, lush tropical surroundings, professional real estate photography",
-};
+// Extract plain text from the first N paragraphs of a markdown body.
+function extractFirstParagraphs(markdown: string, count = 2): string {
+  return markdown
+    .split(/\n{2,}/)                        // split on blank lines
+    .map((p) => p.replace(/[#*_`>~[\]]/g, "").trim()) // strip markdown syntax
+    .filter((p) => p.length > 40)           // skip headings/short lines
+    .slice(0, count)
+    .join(" ");
+}
 
-async function generateHeroImage(city: string, microMarket: string): Promise<string | null> {
+async function generateHeroImage(
+  headline: string,
+  body: string,
+  articleId: string,
+): Promise<string | null> {
   const openaiKey = process.env.OPENAI_API_KEY;
   if (!openaiKey) return null;
 
-  const cityStyle = CITY_IMAGE_STYLE[city] ?? "premium luxury residential development, India, professional real estate photography, golden hour";
-  const prompt = `${cityStyle}, ${microMarket} area, no people, no text, no watermarks, photorealistic, high-end architectural magazine quality`;
+  const context = extractFirstParagraphs(body, 2);
+
+  const prompt = [
+    `Create a premium editorial hero image for a real estate news article.`,
+    `Article title: "${headline}"`,
+    `Context: ${context.slice(0, 400)}`,
+    `Style: photorealistic, high-end architectural magazine quality, wide cinematic shot.`,
+    `NO text, NO watermarks, NO logos, NO people's faces.`,
+    `Composition: subject centred horizontally, clear sky or clean background at top third,`,
+    `main subject (building / skyline / infrastructure) fills the centre of the frame`,
+    `so the image works when cropped to any aspect ratio without key elements being cut off.`,
+    `Lighting: bright natural daylight or golden hour — crisp, professional.`,
+  ].join(" ");
 
   const res = await fetch("https://api.openai.com/v1/images/generations", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${openaiKey}` },
-    body: JSON.stringify({ model: "dall-e-3", prompt, n: 1, size: "1792x1024", quality: "standard" }),
+    body: JSON.stringify({
+      model: "gpt-image-1",
+      prompt,
+      n: 1,
+      size: "1536x1024",   // landscape 3:2 — closest to 16:9 gpt-image-1 supports
+      quality: "high",
+      output_format: "jpeg",
+    }),
   });
 
-  if (!res.ok) throw new Error(`DALL-E error: ${await res.text()}`);
+  if (!res.ok) throw new Error(`gpt-image-1 error: ${(await res.text()).slice(0, 200)}`);
+
   const data = await res.json();
-  return (data.data?.[0]?.url as string) ?? null;
+  const b64: string = data.data?.[0]?.b64_json;
+  if (!b64) throw new Error("gpt-image-1 returned no image data");
+
+  // Upload to Cloudinary for a permanent URL
+  const { v2: cloudinary } = await import("cloudinary");
+  cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key:    process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+    analytics:  false,
+  });
+
+  const uploadResult = await new Promise<{ secure_url: string }>((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      { folder: `article-heroes/${articleId}`, public_id: "hero", overwrite: true, resource_type: "image" },
+      (err, result) => { if (err || !result) reject(err); else resolve(result); }
+    );
+    stream.end(Buffer.from(b64, "base64"));
+  });
+
+  console.log(`[article-gen] Hero image uploaded: ${uploadResult.secure_url}`);
+  return uploadResult.secure_url;
 }
 
 // ---------------------------------------------------------------------------
@@ -650,7 +688,7 @@ export async function runArticleGeneration(
     if (inserted) {
       articleIds.push(inserted.id);
       try {
-        const imageUrl = await generateHeroImage(article.city, article.micro_market);
+        const imageUrl = await generateHeroImage(article.seo_headline, article.body, inserted.id);
         if (imageUrl) {
           await supabase
             .from("generated_articles")
