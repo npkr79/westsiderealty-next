@@ -502,7 +502,7 @@ async function generateHeroImage(
 
   const context = extractFirstParagraphs(body, 2);
 
-  const prompt = `${headline}\n\n${context.slice(0, 600)}\n\nGenerate a hero image for this article.`;
+  const prompt = `${headline}\n\n${context.slice(0, 600)}\n\nGenerate a hero image for this article. The visuals should look like a real photograph, not an illustration or cartoon. Do not add much text except the title.`;
 
   const res = await fetch("https://api.openai.com/v1/images/generations", {
     method: "POST",
@@ -540,15 +540,8 @@ async function generateHeroImage(
     stream.end(Buffer.from(b64, "base64"));
   });
 
-  // Apply centred title overlay via Cloudinary URL transforms
-  const encodedTitle = encodeURIComponent(headline.replace(/,/g, "%2C").replace(/\//g, "%2F"));
-  const overlayUrl = uploadResult.secure_url.replace(
-    "/upload/",
-    `/upload/w_1400,c_fit,co_white,g_center,y_0,l_text:Arial_52_bold_center:${encodedTitle}/`
-  );
-
-  console.log(`[article-gen] Hero image uploaded: ${overlayUrl}`);
-  return overlayUrl;
+  console.log(`[article-gen] Hero image uploaded: ${uploadResult.secure_url}`);
+  return uploadResult.secure_url;
 }
 
 // ---------------------------------------------------------------------------
