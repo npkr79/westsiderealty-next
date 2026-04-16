@@ -394,6 +394,8 @@ async function buildContextualImagePrompt(article: NewsArticle): Promise<string>
 
   const keyStat = extractKeyStat(article.headline);
   const headlineClean = article.headline.replace(/\*\*/g, "").trim();
+  // Image headline: max 6 words — long headlines always overflow the image frame
+  const headlineForImage = headlineClean.split(/\s+/).slice(0, 6).join(" ");
 
   const context = [
     `Headline: ${headlineClean}`,
@@ -415,8 +417,8 @@ The image must have TWO parts:
 ARTICLE:
 ${context}
 
-HEADLINE TO RENDER IN THE IMAGE (bold white text, starting no lower than 50% from the top — ALL lines must be FULLY VISIBLE, the last line must end at least 200px above the bottom edge — NEVER let any word or line bleed off or get cut):
-"${headlineClean}"
+HEADLINE TO RENDER IN THE IMAGE (bold white text, max 2 lines, last line must end at least 200px above bottom edge — NEVER cut off):
+"${headlineForImage}"
 ${keyStat ? `\nKEY STAT (render large and prominent near the top or center): "${keyStat}"` : ""}
 
 SCENE RULES — be specific to THIS story, not generic:
