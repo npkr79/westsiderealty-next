@@ -606,6 +606,4 @@ export default async function ProjectDetailPage({ params }: PageProps) {
   );
 }
 
-// Revalidate every 60 seconds to allow database changes to reflect quickly
-export const revalidate = 60;
             
