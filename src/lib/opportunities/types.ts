@@ -89,6 +89,7 @@ export const OPPORTUNITY_CITY_LABELS: Record<string, string> = {
   mumbai: "Mumbai",
   hyderabad: "Hyderabad",
   goa: "Goa",
+  sindhudurg: "Sindhudurg",
   bangalore: "Bangalore",
   pune: "Pune",
   delhi: "Delhi NCR",
@@ -96,6 +97,7 @@ export const OPPORTUNITY_CITY_LABELS: Record<string, string> = {
 
 export function formatStage(stage: string | null): string {
   if (!stage) return "";
+  if (stage === "land_available") return "Land Available";
   if (stage === "feasibility") return "Feasibility Complete";
   if (stage === "approvals_in_progress") return "Approvals In Progress";
   if (stage === "ready_to_launch") return "Ready to Launch";

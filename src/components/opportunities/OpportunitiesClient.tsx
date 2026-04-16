@@ -419,6 +419,11 @@ function OpportunitiesClientInner({ opportunities }: { opportunities: Developmen
           <div className="op-divider" />
           <FilterPill label="All Stages" active={stageFilter === "all"} onClick={() => setFilter("stage", "all")} />
           <FilterPill
+            label="Land Available"
+            active={stageFilter === "land_available"}
+            onClick={() => setFilter("stage", "land_available")}
+          />
+          <FilterPill
             label="Feasibility"
             active={stageFilter === "feasibility"}
             onClick={() => setFilter("stage", "feasibility")}
