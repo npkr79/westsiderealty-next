@@ -1493,6 +1493,13 @@ function ArticlesTab() {
                 {/* Header */}
                 <div className="p-4">
                   <div className="flex items-start justify-between gap-3">
+                    {/* Thumbnail */}
+                    {article.image_url && (
+                      <div className="w-14 h-14 flex-shrink-0 rounded-lg overflow-hidden">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={article.image_url} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover" />
+                      </div>
+                    )}
                     <div className="flex-1 min-w-0">
                       {/* City + micro-market badges */}
                       <div className="flex items-center gap-2 flex-wrap mb-2">
@@ -1531,7 +1538,7 @@ function ArticlesTab() {
                       <div>
                         <p className="text-[10px] text-gray-600 uppercase tracking-widest mb-1.5">Hero Image</p>
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={article.image_url} alt="Hero" className="w-full rounded-lg object-cover max-h-48" />
+                        <img src={article.image_url} alt="Hero" className="w-full rounded-lg object-contain" />
                       </div>
                     )}
                     {/* Article body */}
