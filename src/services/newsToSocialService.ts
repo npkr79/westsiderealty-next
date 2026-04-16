@@ -78,20 +78,34 @@ export async function pickTopArticles(
   const rawPool = (data ?? []) as NewsArticle[];
 
   // ── Load recently processed article headlines (last 30 days) ──────────────
-  // These are the stories already turned into social posts — never re-post them.
+  // Two sources: is_processed=true articles + social_posts captions.
+  // This catches the same story arriving from a different URL/source next day.
   const cutoff30d = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-  const { data: recentProcessed } = await supabase
-    .from("news_articles")
-    .select("headline")
-    .eq("is_processed", true)
-    .gte("processed_at", cutoff30d);
-  const processedHeadlines: string[] = (recentProcessed ?? []).map(
-    (r: { headline: string }) => r.headline
-  );
+  const [processedRes, socialPostsRes] = await Promise.all([
+    supabase
+      .from("news_articles")
+      .select("headline")
+      .eq("is_processed", true)
+      .gte("processed_at", cutoff30d),
+    supabase
+      .from("social_posts")
+      .select("news_articles(headline)")
+      .gte("created_at", cutoff30d)
+      .not("news_article_id", "is", null),
+  ]);
+
+  const processedHeadlines: string[] = [
+    ...((processedRes.data ?? []) as { headline: string }[]).map((r) => r.headline),
+    ...((socialPostsRes.data ?? []) as { news_articles: { headline: string } | null }[])
+      .map((r) => r.news_articles?.headline)
+      .filter(Boolean) as string[],
+  ];
+  // Deduplicate the headline list itself
+  const uniqueProcessedHeadlines = [...new Set(processedHeadlines)];
 
   // ── Filter pool: remove articles that are the same story as any processed article ──
   const deduped = rawPool.filter((article) => {
-    const isDuplicateOfProcessed = processedHeadlines.some((ph) =>
+    const isDuplicateOfProcessed = uniqueProcessedHeadlines.some((ph) =>
       areSameStory(article.headline, ph)
     );
     return !isDuplicateOfProcessed;
