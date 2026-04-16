@@ -401,7 +401,7 @@ The image must have TWO parts:
 ARTICLE:
 ${context}
 
-HEADLINE TO RENDER IN THE IMAGE (bold white or gold text, positioned in the bottom 30% of the image, with at least 60px of dark space below the last line — do NOT let text touch or bleed off the bottom edge):
+HEADLINE TO RENDER IN THE IMAGE (bold white text, starting no lower than 50% from the top — ALL lines must be FULLY VISIBLE, the last line must end at least 200px above the bottom edge — NEVER let any word or line bleed off or get cut):
 "${headlineClean}"
 ${keyStat ? `\nKEY STAT (render large and prominent near the top or center): "${keyStat}"` : ""}
 
@@ -690,11 +690,13 @@ export async function generateImage(article: NewsArticle): Promise<string> {
     void entityLogoWidth;
   }
 
-  // Add 80px black padding at bottom by extending then cropping from top.
-  // This guarantees the headline text baked in by gpt-image-1 is never cut off.
+  // Shift image content UP by 160px to guarantee bottom text is never cut off.
+  // Strategy: remove top 160px (sky/background) → add 160px black at bottom.
+  // The previous extend+resize approach was backwards (cropped off the padding).
+  const SHIFT_UP = 160;
   const paddedImage = await sharp(rawImageBuffer)
-    .extend({ bottom: 80, background: { r: 0, g: 0, b: 0 } })
-    .resize(1024, 1024, { fit: "cover", position: "top" })
+    .extract({ left: 0, top: SHIFT_UP, width: 1024, height: 1024 - SHIFT_UP })
+    .extend({ bottom: SHIFT_UP, background: { r: 0, g: 0, b: 0 } })
     .toBuffer();
 
   const compositedBuffer = await sharp(paddedImage)
