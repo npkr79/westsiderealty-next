@@ -394,8 +394,12 @@ async function buildContextualImagePrompt(article: NewsArticle): Promise<string>
 
   const keyStat = extractKeyStat(article.headline);
   const headlineClean = article.headline.replace(/\*\*/g, "").trim();
-  // Image headline: max 6 words — long headlines always overflow the image frame
-  const headlineForImage = headlineClean.split(/\s+/).slice(0, 6).join(" ");
+  // Font size instruction based on headline word count — keeps full headline visible
+  const wordCount = headlineClean.split(/\s+/).length;
+  const fontSizeInstruction =
+    wordCount <= 6  ? "very large bold font (fills 2 lines max)" :
+    wordCount <= 10 ? "large bold font (fits across 3 lines)" :
+                     "medium bold font, slightly smaller size so ALL words fit within 4 lines";
 
   const context = [
     `Headline: ${headlineClean}`,
@@ -417,8 +421,8 @@ The image must have TWO parts:
 ARTICLE:
 ${context}
 
-HEADLINE TO RENDER IN THE IMAGE (bold white text, max 2 lines, last line must end at least 200px above bottom edge — NEVER cut off):
-"${headlineForImage}"
+HEADLINE TO RENDER IN THE IMAGE — use ${fontSizeInstruction}. White bold text on dark gradient. ALL words must be FULLY VISIBLE, last line must end at least 180px above the bottom edge. NEVER clip or cut any word:
+"${headlineClean}"
 ${keyStat ? `\nKEY STAT (render large and prominent near the top or center): "${keyStat}"` : ""}
 
 SCENE RULES — be specific to THIS story, not generic:
