@@ -502,17 +502,7 @@ async function generateHeroImage(
 
   const context = extractFirstParagraphs(body, 2);
 
-  const prompt = [
-    `Create a premium editorial hero image for a real estate news article.`,
-    `Article title: "${headline}"`,
-    `Context: ${context.slice(0, 400)}`,
-    `Style: photorealistic, high-end architectural magazine quality, wide cinematic shot.`,
-    `NO text, NO watermarks, NO logos, NO people's faces.`,
-    `Composition: subject centred horizontally, clear sky or clean background at top third,`,
-    `main subject (building / skyline / infrastructure) fills the centre of the frame`,
-    `so the image works when cropped to any aspect ratio without key elements being cut off.`,
-    `Lighting: bright natural daylight or golden hour — crisp, professional.`,
-  ].join(" ");
+  const prompt = `${headline}\n\n${context.slice(0, 600)}\n\nGenerate a hero image for this article.`;
 
   const res = await fetch("https://api.openai.com/v1/images/generations", {
     method: "POST",
@@ -550,8 +540,15 @@ async function generateHeroImage(
     stream.end(Buffer.from(b64, "base64"));
   });
 
-  console.log(`[article-gen] Hero image uploaded: ${uploadResult.secure_url}`);
-  return uploadResult.secure_url;
+  // Apply centred title overlay via Cloudinary URL transforms
+  const encodedTitle = encodeURIComponent(headline.replace(/,/g, "%2C").replace(/\//g, "%2F"));
+  const overlayUrl = uploadResult.secure_url.replace(
+    "/upload/",
+    `/upload/w_1400,c_fit,co_white,g_center,y_0,l_text:Arial_52_bold_center:${encodedTitle}/`
+  );
+
+  console.log(`[article-gen] Hero image uploaded: ${overlayUrl}`);
+  return overlayUrl;
 }
 
 // ---------------------------------------------------------------------------
