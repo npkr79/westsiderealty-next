@@ -115,22 +115,25 @@ async function pickTodayCities(supabase: SupabaseClient): Promise<[City, City]> 
   // Build candidate pool respecting weekly caps (max 2 per city)
   const available = ALL_CITIES.filter((c) => (usageCount[c] ?? 0) < 2);
 
-  // Use yesterday's suggestion if valid
-  if (suggestion?.length === 2) {
+  // Priority: guaranteed cities (hyderabad, goa) with 0 articles this week come first
+  const guaranteed = GUARANTEED_CITIES.filter(
+    (c) => (usageCount[c] ?? 0) < 2 && available.includes(c)
+  );
+
+  // Use yesterday's suggestion ONLY if both suggested cities have 0 articles this week
+  // AND there are no guaranteed cities waiting to be covered
+  if (suggestion?.length === 2 && guaranteed.length === 0) {
     const [c1, c2] = suggestion as City[];
     if (
       available.includes(c1) &&
       available.includes(c2) &&
-      c1 !== c2
+      c1 !== c2 &&
+      (usageCount[c1 as City] ?? 0) === 0 &&
+      (usageCount[c2 as City] ?? 0) === 0
     ) {
       return [c1, c2];
     }
   }
-
-  // Priority: guaranteed cities that haven't hit their minimum yet
-  const guaranteed = GUARANTEED_CITIES.filter(
-    (c) => (usageCount[c] ?? 0) < 2 && available.includes(c)
-  );
 
   // Rotating cities not yet used this week first, then least used
   const rotating = [...ROTATING_CITIES]
