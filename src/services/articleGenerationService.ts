@@ -2,57 +2,113 @@ import Anthropic from "@anthropic-ai/sdk";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 // ---------------------------------------------------------------------------
-// City definitions
+// City + Region definitions
 // ---------------------------------------------------------------------------
 
-const GUARANTEED_CITIES = ["hyderabad", "goa"] as const;
+const REGIONS = {
+  south: ["hyderabad", "bengaluru", "chennai"] as const,
+  west:  ["goa", "mumbai", "pune", "ahmedabad"] as const,
+  north: ["delhi_ncr", "gurugram", "noida", "jaipur"] as const,
+  east:  ["kolkata", "kochi"] as const,
+} as const;
 
-const ROTATING_CITIES = [
-  "mumbai",
-  "delhi_ncr",
-  "bengaluru",
-  "pune",
-  "chennai",
-  "kolkata",
-  "ahmedabad",
-  "kochi",
-  "navi_mumbai_thane",
+type Region = keyof typeof REGIONS;
+type City = (typeof REGIONS)[Region][number];
+
+// Flat list for slugify / display lookups
+const ALL_CITIES = [
+  ...REGIONS.south,
+  ...REGIONS.west,
+  ...REGIONS.north,
+  ...REGIONS.east,
 ] as const;
 
-const ALL_CITIES = [...GUARANTEED_CITIES, ...ROTATING_CITIES] as const;
-type City = (typeof ALL_CITIES)[number];
-
 const CITY_DISPLAY: Record<City, string> = {
-  hyderabad: "Hyderabad",
-  goa: "Goa",
-  mumbai: "Mumbai",
-  delhi_ncr: "Delhi NCR",
-  bengaluru: "Bengaluru",
-  pune: "Pune",
-  chennai: "Chennai",
-  kolkata: "Kolkata",
-  ahmedabad: "Ahmedabad",
-  kochi: "Kochi",
-  navi_mumbai_thane: "Navi Mumbai / Thane",
+  hyderabad:   "Hyderabad",
+  bengaluru:   "Bengaluru",
+  chennai:     "Chennai",
+  goa:         "Goa",
+  mumbai:      "Mumbai",
+  pune:        "Pune",
+  ahmedabad:   "Ahmedabad",
+  delhi_ncr:   "Delhi NCR",
+  gurugram:    "Gurugram",
+  noida:       "Noida",
+  jaipur:      "Jaipur",
+  kolkata:     "Kolkata",
+  kochi:       "Kochi",
+};
+
+// State name for fallback Serper queries
+const CITY_STATE: Record<City, string> = {
+  hyderabad:  "Telangana",
+  bengaluru:  "Karnataka",
+  chennai:    "Tamil Nadu",
+  goa:        "Goa",
+  mumbai:     "Maharashtra",
+  pune:       "Maharashtra",
+  ahmedabad:  "Gujarat",
+  delhi_ncr:  "Delhi NCR",
+  gurugram:   "Haryana",
+  noida:      "Uttar Pradesh",
+  jaipur:     "Rajasthan",
+  kolkata:    "West Bengal",
+  kochi:      "Kerala",
 };
 
 // ---------------------------------------------------------------------------
-// Week boundary helper (Monday 00:00 IST)
+// Phase 1 — Regional Round-Robin Schedule
 // ---------------------------------------------------------------------------
+// Each day maps to two regions. Within each region we pick the city
+// with the fewest articles in the last 30 days (least-used-first).
+//
+// Day: 0=Sun 1=Mon 2=Tue 3=Wed 4=Thu 5=Fri 6=Sat
+const DAY_SCHEDULE: Record<number, [Region, Region]> = {
+  0: ["west",  "east"],   // Sun
+  1: ["south", "west"],   // Mon
+  2: ["north", "east"],   // Tue
+  3: ["south", "north"],  // Wed
+  4: ["west",  "east"],   // Thu
+  5: ["south", "west"],   // Fri
+  6: ["north", "south"],  // Sat
+};
 
-function getWeekStart(): Date {
-  // IST offset: +5:30
+async function pickTodayCities(supabase: SupabaseClient): Promise<[City, City]> {
+  // Day of week in IST
   const nowIST = new Date(Date.now() + 5.5 * 60 * 60 * 1000);
-  const day = nowIST.getUTCDay(); // 0=Sun, 1=Mon … 6=Sat
-  const daysFromMonday = day === 0 ? 6 : day - 1;
-  const monday = new Date(nowIST);
-  monday.setUTCDate(nowIST.getUTCDate() - daysFromMonday);
-  monday.setUTCHours(0, 0, 0, 0);
-  return monday;
-}
+  const dayOfWeek = nowIST.getUTCDay();
+  const [regionA, regionB] = DAY_SCHEDULE[dayOfWeek];
 
-function weekStartISO(): string {
-  return getWeekStart().toISOString().split("T")[0];
+  // Load 30-day usage counts per city
+  const since30d = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const { data: recentArticles } = await supabase
+    .from("generated_articles")
+    .select("city")
+    .gte("updated_at", since30d);
+
+  const usageCount: Partial<Record<City, number>> = {};
+  for (const a of recentArticles ?? []) {
+    const c = a.city as City;
+    if (ALL_CITIES.includes(c)) usageCount[c] = (usageCount[c] ?? 0) + 1;
+  }
+
+  // Pick least-used city from each region
+  function pickFromRegion(region: Region): City {
+    const cities = [...REGIONS[region]] as City[];
+    cities.sort((a, b) => (usageCount[a] ?? 0) - (usageCount[b] ?? 0));
+    return cities[0];
+  }
+
+  const city1 = pickFromRegion(regionA);
+  let city2 = pickFromRegion(regionB);
+  // Ensure distinct (edge case: both regions happen to pick same city)
+  if (city2 === city1) {
+    const fallbacks = ([...REGIONS[regionB]] as City[]).filter((c) => c !== city1);
+    city2 = fallbacks[0] ?? (city1 === "hyderabad" ? "goa" : "hyderabad");
+  }
+
+  console.log(`[article-gen] Day ${dayOfWeek} → regions ${regionA}+${regionB} → ${city1}, ${city2}`);
+  return [city1, city2];
 }
 
 // ---------------------------------------------------------------------------
@@ -62,9 +118,9 @@ function weekStartISO(): string {
 function slugify(text: string): string {
   return text
     .toLowerCase()
-    .replace(/₹[\d,]+\s*\/?/g, "")      // remove ₹8,211/ price tokens
-    .replace(/\d+(\.\d+)?%/g, "")        // remove percentage numbers
-    .replace(/[^a-z0-9\s-]/g, "")        // remove remaining special chars
+    .replace(/₹[\d,]+\s*\/?/g, "")
+    .replace(/\d+(\.\d+)?%/g, "")
+    .replace(/[^a-z0-9\s-]/g, "")
     .replace(/\s+/g, "-")
     .replace(/-+/g, "-")
     .replace(/^-|-$/g, "")
@@ -72,89 +128,78 @@ function slugify(text: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// City rotation — pick today's 2 cities
+// Phase 2 — Serper news-first with fallback chain
 // ---------------------------------------------------------------------------
 
-async function pickTodayCities(supabase: SupabaseClient): Promise<[City, City]> {
-  const weekStart = weekStartISO();
+interface SerperResult {
+  title: string;
+  link: string;
+  snippet: string;
+  date?: string;
+}
 
-  // Fetch this week's articles to count city usage
-  const { data: weekArticles } = await supabase
-    .from("generated_articles")
-    .select("city, tomorrow_suggestion, created_at")
-    .gte("week_start", weekStart)
-    .order("created_at", { ascending: false });
+async function callSerper(query: string): Promise<SerperResult[]> {
+  const apiKey = process.env.SERPER_API_KEY;
+  if (!apiKey) return [];
+  try {
+    const res = await fetch("https://google.serper.dev/search", {
+      method: "POST",
+      headers: { "X-API-KEY": apiKey, "Content-Type": "application/json" },
+      body: JSON.stringify({ q: query, gl: "in", hl: "en", num: 8 }),
+      signal: AbortSignal.timeout(8_000),
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return (data.organic ?? []) as SerperResult[];
+  } catch {
+    return [];
+  }
+}
 
-  const usageCount: Partial<Record<City, number>> = {};
-  for (const a of weekArticles ?? []) {
-    const c = a.city as City;
-    usageCount[c] = (usageCount[c] ?? 0) + 1;
+// Returns formatted news snippets grounded in today's web results.
+// Fallback chain: city RE news → state RE policy → city infrastructure.
+async function fetchLiveNewsForCity(city: City): Promise<string> {
+  const cityName = CITY_DISPLAY[city];
+  const stateName = CITY_STATE[city];
+  const monthYear = new Date().toLocaleString("en-IN", { month: "long", year: "numeric" });
+
+  // Primary: city-specific real estate news
+  const primary = await callSerper(`"${cityName}" real estate property market news ${monthYear}`);
+  if (primary.length >= 2) {
+    return formatSerperResults(primary, cityName);
   }
 
-  // Check yesterday's suggestion
-  const yesterday = weekArticles?.find((a) => {
-    const d = new Date(a.created_at);
-    const today = new Date(Date.now() + 5.5 * 60 * 60 * 1000);
-    return d.toISOString().split("T")[0] !== today.toISOString().split("T")[0];
+  // Fallback 1: state-level RE policy
+  const stateFallback = await callSerper(`${stateName} real estate policy housing news 2025 2026`);
+  if (stateFallback.length >= 1) {
+    console.log(`[article-gen] Using state fallback for ${city}`);
+    return formatSerperResults(stateFallback, cityName);
+  }
+
+  // Fallback 2: city infrastructure as RE catalyst
+  const infraFallback = await callSerper(`${cityName} metro rail highway infrastructure project 2025 2026 real estate`);
+  if (infraFallback.length >= 1) {
+    console.log(`[article-gen] Using infra fallback for ${city}`);
+    return formatSerperResults(infraFallback, cityName);
+  }
+
+  return `No live news found for ${cityName}. Write based on current market knowledge.`;
+}
+
+function formatSerperResults(results: SerperResult[], cityName: string): string {
+  const top = results.slice(0, 5);
+  const lines = top.map((r) => {
+    const date = r.date ? ` (${r.date})` : "";
+    return `- ${r.title}${date}\n  ${r.snippet}`;
   });
-  const suggestion = yesterday?.tomorrow_suggestion as string[] | null;
-
-  // Days remaining in week (including today)
-  const nowIST = new Date(Date.now() + 5.5 * 60 * 60 * 1000);
-  const dayOfWeek = nowIST.getUTCDay();
-  const daysLeft = dayOfWeek === 0 ? 1 : 8 - dayOfWeek; // days incl today
-
-  // How many articles this week already
-  const articlesThisWeek = weekArticles?.length ?? 0;
-  const articlesToGenerate = Math.min(daysLeft * 2, 14 - articlesThisWeek);
-  if (articlesToGenerate <= 0) {
-    // Fallback: start fresh with guaranteed cities
-    return ["hyderabad", "goa"];
-  }
-
-  // Build candidate pool respecting weekly caps (max 2 per city)
-  const available = ALL_CITIES.filter((c) => (usageCount[c] ?? 0) < 2);
-
-  // Priority: guaranteed cities (hyderabad, goa) with 0 articles this week come first
-  const guaranteed = GUARANTEED_CITIES.filter(
-    (c) => (usageCount[c] ?? 0) < 2 && available.includes(c)
-  );
-
-  // Use yesterday's suggestion ONLY if both suggested cities have 0 articles this week
-  // AND there are no guaranteed cities waiting to be covered
-  if (suggestion?.length === 2 && guaranteed.length === 0) {
-    const [c1, c2] = suggestion as City[];
-    if (
-      available.includes(c1) &&
-      available.includes(c2) &&
-      c1 !== c2 &&
-      (usageCount[c1 as City] ?? 0) === 0 &&
-      (usageCount[c2 as City] ?? 0) === 0
-    ) {
-      return [c1, c2];
-    }
-  }
-
-  // Rotating cities not yet used this week first, then least used
-  const rotating = [...ROTATING_CITIES]
-    .filter((c) => available.includes(c))
-    .sort((a, b) => (usageCount[a] ?? 0) - (usageCount[b] ?? 0));
-
-  const pool = [...guaranteed, ...rotating];
-
-  if (pool.length < 2) {
-    // Edge case: fallback
-    return ["hyderabad", "goa"];
-  }
-
-  return [pool[0], pool[1]];
+  return `Live web news for ${cityName}:\n${lines.join("\n")}`;
 }
 
 // ---------------------------------------------------------------------------
-// Fetch relevant news articles for a city from DB
+// Fetch DB news articles for a city (keep as supplemental context)
 // ---------------------------------------------------------------------------
 
-interface NewsArticle {
+interface DbNewsArticle {
   id: string;
   headline: string;
   summary: string | null;
@@ -165,13 +210,11 @@ interface NewsArticle {
   scraped_at: string;
 }
 
-async function getNewsForCity(
+async function getDbNewsForCity(
   supabase: SupabaseClient,
   city: City
-): Promise<NewsArticle[]> {
-  // Look back 7 days for relevant articles
+): Promise<DbNewsArticle[]> {
   const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-
   const { data } = await supabase
     .from("news_articles")
     .select("id, headline, summary, ai_summary, source_name, cities, category, scraped_at")
@@ -180,16 +223,99 @@ async function getNewsForCity(
     .order("relevance_score", { ascending: false })
     .limit(50);
 
-  const all = (data ?? []) as NewsArticle[];
-
-  // Filter to city-tagged articles + national/general articles
+  const all = (data ?? []) as DbNewsArticle[];
   const cityTagged = all.filter((a) => a.cities?.includes(city));
-  const general = all.filter(
-    (a) => !a.cities?.length || a.cities.length === 0
-  );
+  const general = all.filter((a) => !a.cities?.length);
+  return [...cityTagged.slice(0, 6), ...general.slice(0, 3)];
+}
 
-  // Return up to 8 city-specific + 4 general for context
-  return [...cityTagged.slice(0, 8), ...general.slice(0, 4)];
+// ---------------------------------------------------------------------------
+// Phase 3 — Semantic Dedup (60-day rolling archive)
+// ---------------------------------------------------------------------------
+
+function jaccardSimilarity(a: string, b: string): number {
+  const tokenize = (s: string) =>
+    new Set(
+      s.toLowerCase()
+        .replace(/[^a-z0-9\s]/g, " ")
+        .split(/\s+/)
+        .filter((w) => w.length > 3) // skip short words
+    );
+  const setA = tokenize(a);
+  const setB = tokenize(b);
+  const intersection = [...setA].filter((t) => setB.has(t)).length;
+  const union = new Set([...setA, ...setB]).size;
+  return union === 0 ? 0 : intersection / union;
+}
+
+interface ArchivedArticle {
+  seo_headline: string;
+  city: string;
+  micro_market: string | null;
+}
+
+async function loadRecentHeadlines(supabase: SupabaseClient): Promise<ArchivedArticle[]> {
+  const since60d = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString();
+  const { data } = await supabase
+    .from("generated_articles")
+    .select("seo_headline, city, micro_market")
+    .gte("updated_at", since60d);
+  return (data ?? []) as ArchivedArticle[];
+}
+
+// Uses Claude Haiku to extract core entities from two headlines and compare them.
+async function isSameEventByEntities(
+  anthropic: Anthropic,
+  titleA: string,
+  titleB: string
+): Promise<boolean> {
+  try {
+    const res = await anthropic.messages.create({
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 256,
+      messages: [{
+        role: "user",
+        content: `Compare these two real estate article headlines and extract core entities from each.
+Return JSON only: {"a": {"developer":"","location":"","event_type":""}, "b": {"developer":"","location":"","event_type":""}, "same_event": true/false}
+If 2 or more entities match exactly, set same_event=true.
+
+Title A: ${titleA}
+Title B: ${titleB}`,
+      }],
+    });
+    const text = res.content[0].type === "text" ? res.content[0].text : "";
+    const match = text.match(/\{[\s\S]*\}/);
+    if (!match) return false;
+    const parsed = JSON.parse(match[0]) as { same_event: boolean };
+    return parsed.same_event === true;
+  } catch {
+    return false;
+  }
+}
+
+async function isDuplicateArticle(
+  anthropic: Anthropic,
+  candidateTitle: string,
+  archive: ArchivedArticle[]
+): Promise<boolean> {
+  for (const archived of archive) {
+    const sim = jaccardSimilarity(candidateTitle, archived.seo_headline);
+    if (sim >= 0.5) {
+      // Similarity threshold hit — do deeper entity check with Haiku
+      const sameEvent = await isSameEventByEntities(
+        anthropic,
+        candidateTitle,
+        archived.seo_headline
+      );
+      if (sameEvent) {
+        console.log(
+          `[article-gen] Semantic dedup: "${candidateTitle}" matches "${archived.seo_headline}" (sim=${sim.toFixed(2)})`
+        );
+        return true;
+      }
+    }
+  }
+  return false;
 }
 
 // ---------------------------------------------------------------------------
@@ -211,6 +337,7 @@ You produce authoritative, data-backed real estate articles educating buyers and
 - Length: 400–600 words per article
 - Language: English only
 - Each article must name at least one specific locality/corridor, not just the city
+- Use the live web news provided as the primary source — prioritise recent factual data over general knowledge
 
 ## HYDERABAD CONTEXT
 Core micro-markets: Kokapet, Narsingi, Tellapur, Gachibowli, Financial District, Kondapur, Manikonda
@@ -252,33 +379,37 @@ interface GeneratedArticle {
 interface RunOutput {
   articles: GeneratedArticle[];
   market_brief: string[];
-  tomorrow_suggestion: [City, City];
 }
 
 async function generateWithClaude(
   city1: City,
   city2: City,
-  news1: NewsArticle[],
-  news2: NewsArticle[]
+  liveNews1: string,
+  liveNews2: string,
+  dbNews1: DbNewsArticle[],
+  dbNews2: DbNewsArticle[]
 ): Promise<RunOutput> {
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-  const formatNews = (articles: NewsArticle[], city: City) => {
-    if (!articles.length) return `No recent tagged articles for ${CITY_DISPLAY[city]}. Use your knowledge of recent Indian real estate trends for this city.`;
-    return articles
-      .map((a) => `- [${a.source_name}] ${a.headline}${a.ai_summary ? `: ${a.ai_summary}` : ""}`)
-      .join("\n");
+  const formatDbNews = (articles: DbNewsArticle[], city: City) => {
+    if (!articles.length) return "";
+    return `\nSupplemental DB articles for ${CITY_DISPLAY[city]}:\n` +
+      articles.map((a) => `- [${a.source_name}] ${a.headline}${a.ai_summary ? `: ${a.ai_summary}` : ""}`).join("\n");
   };
 
   const userPrompt = `Today produce 2 articles:
 - Article 1: ${CITY_DISPLAY[city1]}
 - Article 2: ${CITY_DISPLAY[city2]}
 
-## Recent news for ${CITY_DISPLAY[city1]}:
-${formatNews(news1, city1)}
+## Live web news for ${CITY_DISPLAY[city1]}:
+${liveNews1}
+${formatDbNews(dbNews1, city1)}
 
-## Recent news for ${CITY_DISPLAY[city2]}:
-${formatNews(news2, city2)}
+## Live web news for ${CITY_DISPLAY[city2]}:
+${liveNews2}
+${formatDbNews(dbNews2, city2)}
+
+Ground each article in the live web news above. Prioritise recent facts, specific numbers, and named developments from the news snippets.
 
 Return a single valid JSON object with this exact structure:
 {
@@ -310,12 +441,8 @@ Return a single valid JSON object with this exact structure:
     "<bullet 3>",
     "<bullet 4>",
     "<bullet 5>"
-  ],
-  "tomorrow_suggestion": ["<city_slug_1>", "<city_slug_2>"]
-}
-
-tomorrow_suggestion must use these slugs: hyderabad, goa, mumbai, delhi_ncr, bengaluru, pune, chennai, kolkata, ahmedabad, kochi, navi_mumbai_thane
-Ensure tomorrow's 2 cities are different from today's and maintain weekly rotation balance.`;
+  ]
+}`;
 
   const response = await anthropic.messages.create({
     model: "claude-sonnet-4-6",
@@ -325,13 +452,10 @@ Ensure tomorrow's 2 cities are different from today's and maintain weekly rotati
   });
 
   const text = response.content[0].type === "text" ? response.content[0].text : "";
-
-  // Extract JSON from response
   const jsonMatch = text.match(/\{[\s\S]*\}/);
   if (!jsonMatch) throw new Error("Claude did not return valid JSON");
 
-  const parsed = JSON.parse(jsonMatch[0]) as RunOutput;
-  return parsed;
+  return JSON.parse(jsonMatch[0]) as RunOutput;
 }
 
 // ---------------------------------------------------------------------------
@@ -339,49 +463,35 @@ Ensure tomorrow's 2 cities are different from today's and maintain weekly rotati
 // ---------------------------------------------------------------------------
 
 const CITY_IMAGE_STYLE: Record<string, string> = {
-  hyderabad: "modern luxury apartment towers, Hyderabad skyline, Financial District corridor, professional architectural photography, golden hour warm light",
-  goa: "luxury beachfront villa, North Goa coastline, tropical lush greenery, premium holiday home, professional real estate photography, warm sunset light",
-  mumbai: "premium high-rise residential tower, Mumbai skyline, sea-facing apartments, professional architectural photography, twilight blue hour",
-  bengaluru: "modern tech-corridor apartment complex, Bengaluru, lush green surroundings, professional real estate photography, golden hour",
-  pune: "luxury residential development, Pune hills backdrop, professional architectural photography, soft morning light",
-  delhi_ncr: "premium high-rise apartments, Delhi NCR skyline, wide boulevard, professional real estate photography, golden hour",
-  chennai: "upscale coastal apartment complex, Chennai, ECR beachside, professional architectural photography, warm light",
-  kolkata: "premium riverside apartment complex, Kolkata, professional real estate photography, warm golden light",
-  ahmedabad: "luxury gated residential community, Ahmedabad, modern architecture, professional real estate photography",
-  kochi: "premium backwater-view villa, Kochi Kerala, lush tropical surroundings, professional real estate photography",
-  navi_mumbai_thane: "modern premium apartment towers, Navi Mumbai, palm-lined boulevard, professional architectural photography, golden hour",
+  hyderabad:        "modern luxury apartment towers, Hyderabad skyline, Financial District corridor, professional architectural photography, golden hour warm light",
+  goa:              "luxury beachfront villa, North Goa coastline, tropical lush greenery, premium holiday home, professional real estate photography, warm sunset light",
+  mumbai:           "premium high-rise residential tower, Mumbai skyline, sea-facing apartments, professional architectural photography, twilight blue hour",
+  bengaluru:        "modern tech-corridor apartment complex, Bengaluru, lush green surroundings, professional real estate photography, golden hour",
+  pune:             "luxury residential development, Pune hills backdrop, professional architectural photography, soft morning light",
+  delhi_ncr:        "premium high-rise apartments, Delhi NCR skyline, wide boulevard, professional real estate photography, golden hour",
+  gurugram:         "gleaming glass office towers and luxury apartments, Gurugram Cyber City corridor, professional architectural photography, golden hour",
+  noida:            "modern premium apartment complex, Noida Expressway corridor, professional real estate photography, clear blue sky",
+  jaipur:           "luxury gated villa community, Jaipur, Rajasthani architectural accents, professional real estate photography, warm afternoon light",
+  chennai:          "upscale coastal apartment complex, Chennai, ECR beachside, professional architectural photography, warm light",
+  kolkata:          "premium riverside apartment complex, Kolkata, professional real estate photography, warm golden light",
+  ahmedabad:        "luxury gated residential community, Ahmedabad, modern architecture, professional real estate photography",
+  kochi:            "premium backwater-view villa, Kochi Kerala, lush tropical surroundings, professional real estate photography",
 };
 
-async function generateHeroImage(city: string, microMarket: string, headline: string): Promise<string | null> {
+async function generateHeroImage(city: string, microMarket: string): Promise<string | null> {
   const openaiKey = process.env.OPENAI_API_KEY;
-  if (!openaiKey) {
-    console.warn("[article-gen] OPENAI_API_KEY not set — skipping image generation");
-    return null;
-  }
+  if (!openaiKey) return null;
 
   const cityStyle = CITY_IMAGE_STYLE[city] ?? "premium luxury residential development, India, professional real estate photography, golden hour";
   const prompt = `${cityStyle}, ${microMarket} area, no people, no text, no watermarks, photorealistic, high-end architectural magazine quality`;
 
   const res = await fetch("https://api.openai.com/v1/images/generations", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${openaiKey}`,
-    },
-    body: JSON.stringify({
-      model: "dall-e-3",
-      prompt,
-      n: 1,
-      size: "1792x1024",
-      quality: "standard",
-    }),
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${openaiKey}` },
+    body: JSON.stringify({ model: "dall-e-3", prompt, n: 1, size: "1792x1024", quality: "standard" }),
   });
 
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`DALL-E error: ${err}`);
-  }
-
+  if (!res.ok) throw new Error(`DALL-E error: ${await res.text()}`);
   const data = await res.json();
   return (data.data?.[0]?.url as string) ?? null;
 }
@@ -401,12 +511,12 @@ export async function runArticleGeneration(
   supabase: SupabaseClient
 ): Promise<ArticleRunResult> {
   const errors: string[] = [];
+  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-  // 1. Pick today's 2 cities
+  // 1. Pick today's 2 cities via regional round-robin
   const [city1, city2] = await pickTodayCities(supabase);
-  console.log(`[article-gen] Today's cities: ${city1}, ${city2}`);
 
-  // 1b. Early exit if both cities already have articles today — skip Claude entirely
+  // 2. Early exit if both already done today
   const todayStart = new Date();
   todayStart.setUTCHours(0, 0, 0, 0);
   const { data: todayArticles } = await supabase
@@ -418,63 +528,56 @@ export async function runArticleGeneration(
   const citiesToGenerate = [city1, city2].filter((c) => !citiesAlreadyDone.has(c));
 
   if (citiesToGenerate.length === 0) {
-    console.log(`[article-gen] Both cities already have articles today — skipping`);
+    console.log("[article-gen] Both cities already have articles today — skipping");
     return { articlesGenerated: 0, cities: [city1, city2], articleIds: [], errors: ["Already generated today"] };
   }
-  console.log(`[article-gen] Generating for: ${citiesToGenerate.join(", ")} (skipping: ${[city1,city2].filter(c => citiesAlreadyDone.has(c)).join(", ") || "none"})`);
 
-  // 2. Fetch relevant news for each city
-  const [news1, news2] = await Promise.all([
-    getNewsForCity(supabase, citiesToGenerate[0]),
-    getNewsForCity(supabase, citiesToGenerate[1] ?? citiesToGenerate[0]),
+  const c1 = citiesToGenerate[0];
+  const c2 = citiesToGenerate[1] ?? citiesToGenerate[0];
+
+  // 3. Load 60-day headline archive for semantic dedup
+  const headlineArchive = await loadRecentHeadlines(supabase);
+
+  // 4. Fetch live news (Serper) + DB news in parallel
+  const [liveNews1, liveNews2, dbNews1, dbNews2] = await Promise.all([
+    fetchLiveNewsForCity(c1),
+    fetchLiveNewsForCity(c2),
+    getDbNewsForCity(supabase, c1),
+    getDbNewsForCity(supabase, c2),
   ]);
 
-  // 3. Generate with Claude
+  console.log(`[article-gen] Generating for: ${c1}, ${c2}`);
+
+  // 5. Generate with Claude (grounded in live Serper news)
   let output: RunOutput;
   try {
-    output = await generateWithClaude(
-      citiesToGenerate[0],
-      citiesToGenerate[1] ?? citiesToGenerate[0],
-      news1,
-      news2
-    );
+    output = await generateWithClaude(c1, c2, liveNews1, liveNews2, dbNews1, dbNews2);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     throw new Error(`Claude generation failed: ${msg}`);
   }
 
-  // 4. Insert articles into DB
-  const weekStart = weekStartISO();
+  // 6. Insert articles, with dedup guards
   const articleIds: string[] = [];
 
   for (const article of output.articles) {
-    // Collect source article IDs + metadata for this city
-    const cityNews = article.city === city1 ? news1 : news2;
+    const cityNews = article.city === c1 ? dbNews1 : dbNews2;
     const sourceIds = cityNews.map((n) => n.id);
     const sourceArticles = cityNews.map((n) => ({
-      id: n.id,
-      headline: n.headline,
-      source_name: n.source_name,
-      scraped_at: n.scraped_at,
+      id: n.id, headline: n.headline, source_name: n.source_name, scraped_at: n.scraped_at,
     }));
 
-    // ── Dedup check 1: same slug already exists (same story, different run) ──
+    // Dedup A: exact slug match
     const slug = slugify(article.seo_headline);
     const { data: existingSlug } = await supabase
-      .from("generated_articles")
-      .select("id")
-      .eq("slug", slug)
-      .maybeSingle();
+      .from("generated_articles").select("id").eq("slug", slug).maybeSingle();
     if (existingSlug) {
-      console.log(`[article-gen] Skipping duplicate slug "${slug}" for ${article.city}`);
+      console.log(`[article-gen] Skipping duplicate slug "${slug}"`);
       errors.push(`Skipped duplicate slug: ${slug}`);
       continue;
     }
 
-    // ── Dedup check 2: already generated an article for this city TODAY ──
-    // Use updated_at (explicitly set on insert) not created_at (may be null if no DB default)
-    const todayStart = new Date();
-    todayStart.setUTCHours(0, 0, 0, 0);
+    // Dedup B: already generated for this city today
     const { count: todayCount } = await supabase
       .from("generated_articles")
       .select("id", { count: "exact", head: true })
@@ -486,9 +589,14 @@ export async function runArticleGeneration(
       continue;
     }
 
-    // Generate a temp id for the slug suffix, then insert
-    const tempId = crypto.randomUUID();
+    // Dedup C: semantic similarity against 60-day archive (Phase 3)
+    const isDup = await isDuplicateArticle(anthropic, article.seo_headline, headlineArchive);
+    if (isDup) {
+      errors.push(`Skipped semantic duplicate: ${article.seo_headline}`);
+      continue;
+    }
 
+    const tempId = crypto.randomUUID();
     const { data: inserted, error } = await supabase
       .from("generated_articles")
       .insert({
@@ -506,8 +614,7 @@ export async function runArticleGeneration(
         source_article_ids: sourceIds,
         source_articles: sourceArticles,
         market_brief: output.market_brief,
-        tomorrow_suggestion: output.tomorrow_suggestion,
-        week_start: weekStart,
+        week_start: new Date().toISOString().split("T")[0],
         updated_at: new Date().toISOString(),
       })
       .select("id")
@@ -520,10 +627,8 @@ export async function runArticleGeneration(
 
     if (inserted) {
       articleIds.push(inserted.id);
-
-      // Generate hero image via DALL-E 3
       try {
-        const imageUrl = await generateHeroImage(article.city, article.micro_market, article.seo_headline);
+        const imageUrl = await generateHeroImage(article.city, article.micro_market);
         if (imageUrl) {
           await supabase
             .from("generated_articles")
@@ -533,15 +638,9 @@ export async function runArticleGeneration(
       } catch (imgErr) {
         const msg = imgErr instanceof Error ? imgErr.message : String(imgErr);
         errors.push(`Image generation failed for ${article.city}: ${msg}`);
-        // Non-fatal — article is still inserted
       }
     }
   }
 
-  return {
-    articlesGenerated: articleIds.length,
-    cities: [city1, city2],
-    articleIds,
-    errors,
-  };
+  return { articlesGenerated: articleIds.length, cities: [c1, c2], articleIds, errors };
 }
