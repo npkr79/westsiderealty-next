@@ -447,13 +447,14 @@ export async function runArticleGeneration(
     }
 
     // ── Dedup check 2: already generated an article for this city TODAY ──
+    // Use updated_at (explicitly set on insert) not created_at (may be null if no DB default)
     const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
+    todayStart.setUTCHours(0, 0, 0, 0);
     const { count: todayCount } = await supabase
       .from("generated_articles")
       .select("id", { count: "exact", head: true })
       .eq("city", article.city)
-      .gte("created_at", todayStart.toISOString());
+      .gte("updated_at", todayStart.toISOString());
     if ((todayCount ?? 0) >= 1) {
       console.log(`[article-gen] Skipping ${article.city} — already generated today`);
       errors.push(`Skipped ${article.city}: already generated today`);
