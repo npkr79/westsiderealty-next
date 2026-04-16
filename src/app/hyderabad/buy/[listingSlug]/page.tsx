@@ -141,29 +141,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
-// Generate static params for Hyderabad properties only
+// ISR: render on-demand, cache for 1 hour. No pre-building at deploy time.
+export const revalidate = 3600;
+
+// Return empty — all listing pages render on first visit via ISR (dynamicParams=true by default)
 export async function generateStaticParams() {
-  const { createBuildClient } = await import('@/lib/supabase/buildClient');
-  const supabase = createBuildClient();
-  const params: { listingSlug: string }[] = [];
-
-  const { data: properties } = await supabase
-    .from('hyderabad_properties')
-    .select('seo_slug, slug')
-    .eq('status', 'active')
-    .not('seo_slug', 'is', null);
-
-  if (properties) {
-    properties.forEach((p) => {
-      if (p.seo_slug) {
-        params.push({ listingSlug: p.seo_slug });
-      } else if (p.slug) {
-        params.push({ listingSlug: p.slug });
-      }
-    });
-  }
-
-  return params;
+  return [];
 }
 
 // Helper functions for JSON-LD

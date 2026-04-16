@@ -292,42 +292,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
-// Generate static params for all properties (optional - for SSG)
+// ISR: render on-demand, cache for 1 hour. No pre-building at deploy time.
+export const revalidate = 3600;
+
+// Return empty — all listing pages render on first visit via ISR (dynamicParams=true by default)
 export async function generateStaticParams() {
-  const { createBuildClient } = await import('@/lib/supabase/buildClient');
-  const supabase = createBuildClient();
-  const params: { citySlug: string; listingSlug: string }[] = [];
-
-  // Fetch from all city tables
-  const cities = ['hyderabad', 'goa', 'dubai'];
-  
-  for (const city of cities) {
-    const tableName = city === 'hyderabad' 
-      ? 'hyderabad_properties'
-      : city === 'goa'
-      ? 'goa_holiday_properties'
-      : 'dubai_properties';
-
-    const statusFilter = city === 'hyderabad' ? 'active' : city === 'goa' ? 'Active' : 'published';
-
-    const { data: properties } = await supabase
-      .from(tableName)
-      .select('seo_slug, slug')
-      .eq('status', statusFilter)
-      .not('seo_slug', 'is', null);
-
-    if (properties) {
-      properties.forEach((p) => {
-        if (p.seo_slug) {
-          params.push({ citySlug: city, listingSlug: p.seo_slug });
-        } else if (p.slug) {
-          params.push({ citySlug: city, listingSlug: p.slug });
-        }
-      });
-    }
-  }
-
-  return params;
+  return [];
 }
 
 // Helper functions for JSON-LD

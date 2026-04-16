@@ -23,43 +23,30 @@ interface PageProps {
   params: Promise<{ citySlug: string | string[]; projectSlug: string | string[] }>;
 }
 
-// Generate all project URLs at build time
-// Note: This is for static generation. Dynamic routes will still work at runtime even if not listed here.
+// ISR: pages revalidate every hour. Unknown slugs are rendered on-demand (dynamicParams=true default).
+// Only pre-build a small set of high-priority pages at deploy time — everything else renders on first visit.
+export const revalidate = 3600;
+
 export async function generateStaticParams() {
   const { createBuildClient } = await import('@/lib/supabase/buildClient');
   const supabase = createBuildClient();
 
-  // Get all projects (including unpublished ones) to ensure newly added projects are included
-  // The page component will handle filtering/publishing logic
-  // Use auto-detected relationship syntax for consistency with getCityLevelProjectBySlug
+  // Pre-build only top 50 projects — all others render on first visit via ISR
   const { data: projects } = await supabase
     .from("projects")
-    .select("url_slug, city:cities(url_slug), micro_market:micro_markets(url_slug)")
-    .limit(2000); // Increased limit to include more projects
+    .select("url_slug, city:cities(url_slug)")
+    .not("url_slug", "is", null)
+    .limit(50);
 
-  const listingParams = (projects ?? [])
+  return (projects ?? [])
     .filter((p: any) => {
-      // Handle city relation - can be object or array
       const city = Array.isArray(p.city) ? p.city[0] : p.city;
       return city?.url_slug && p.url_slug;
     })
     .map((p: any) => {
-      // Handle city relation - can be object or array
       const city = Array.isArray(p.city) ? p.city[0] : p.city;
-      return {
-        citySlug: city.url_slug,
-        projectSlug: p.url_slug,
-      };
+      return { citySlug: city.url_slug, projectSlug: p.url_slug };
     });
-
-  // Also include advisory-only projects (e.g. Goa projects not in main listings)
-  const advisoryParams = await getAllAdvisoryProjectSlugs();
-  const listingSet = new Set(listingParams.map((p) => `${p.citySlug}/${p.projectSlug}`));
-  const uniqueAdvisory = advisoryParams.filter(
-    (p) => !listingSet.has(`${p.citySlug}/${p.projectSlug}`)
-  );
-
-  return [...listingParams, ...uniqueAdvisory];
 }
 
 // Generate metadata server-side
