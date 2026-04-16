@@ -433,9 +433,33 @@ export async function runArticleGeneration(
       scraped_at: n.scraped_at,
     }));
 
+    // ── Dedup check 1: same slug already exists (same story, different run) ──
+    const slug = slugify(article.seo_headline);
+    const { data: existingSlug } = await supabase
+      .from("generated_articles")
+      .select("id")
+      .eq("slug", slug)
+      .maybeSingle();
+    if (existingSlug) {
+      console.log(`[article-gen] Skipping duplicate slug "${slug}" for ${article.city}`);
+      errors.push(`Skipped duplicate slug: ${slug}`);
+      continue;
+    }
+
+    // ── Dedup check 2: already have 2 articles for this city this week ──
+    const { count: weeklyCount } = await supabase
+      .from("generated_articles")
+      .select("id", { count: "exact", head: true })
+      .eq("city", article.city)
+      .eq("week_start", weekStart);
+    if ((weeklyCount ?? 0) >= 2) {
+      console.log(`[article-gen] Skipping ${article.city} — already ${weeklyCount} articles this week`);
+      errors.push(`Skipped ${article.city}: weekly cap reached`);
+      continue;
+    }
+
     // Generate a temp id for the slug suffix, then insert
     const tempId = crypto.randomUUID();
-    const slug = slugify(article.seo_headline);
 
     const { data: inserted, error } = await supabase
       .from("generated_articles")
