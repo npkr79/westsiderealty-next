@@ -417,7 +417,7 @@ Call the generate_articles tool with both articles and the market brief.`;
   // Use tool use instead of text JSON — Anthropic handles serialisation, so
   // markdown in article bodies (quotes, backticks, newlines) never breaks parsing.
   const response = await anthropic.messages.create({
-    model: "claude-sonnet-4-6",
+    model: "claude-sonnet-4-20250514",
     max_tokens: 8192,  // 2 full articles + market brief can exceed 4096
     system: SYSTEM_PROMPT,
     tools: [
