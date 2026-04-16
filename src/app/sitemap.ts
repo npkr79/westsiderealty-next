@@ -152,8 +152,23 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       { url: `${baseUrl}/hyderabad/buy`, lastModified: STATIC_DATE, changeFrequency: "daily", priority: 0.8 },
       { url: `${baseUrl}/hyderabad/shares`, lastModified: STATIC_DATE, changeFrequency: "weekly", priority: 0.7 },
       { url: `${baseUrl}/insights`, lastModified: STATIC_DATE, changeFrequency: "weekly", priority: 0.7 },
-      { url: `${baseUrl}/portfolio`, lastModified: new Date(), changeFrequency: "daily", priority: 0.9 }
+      { url: `${baseUrl}/portfolio`, lastModified: new Date(), changeFrequency: "daily", priority: 0.9 },
+      { url: `${baseUrl}/opportunities`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.9 }
     );
+
+    // Development opportunities (B2B listings) — published rows only
+    const { data: opportunitiesData } = await supabase
+      .from("development_opportunities")
+      .select("slug, updated_at")
+      .eq("is_published", true);
+    opportunitiesData?.forEach((o: { slug: string; updated_at: string | null }) => {
+      urls.push({
+        url: `${baseUrl}/opportunities/${o.slug}`,
+        lastModified: o.updated_at ? new Date(o.updated_at) : new Date(),
+        changeFrequency: "weekly",
+        priority: 0.85,
+      });
+    });
 
     // Cities and city-specific pages
     citiesResult.data?.forEach((c) => {

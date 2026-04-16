@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Standalone sitemap for the /opportunities B2B section.
+  This is a supplementary sitemap — all URLs below are ALSO included in the
+  main sitemap at /sitemap.xml. Submit either (or both) to Google Search Console.
+  Last generated: 2026-04-17
+-->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://www.westsiderealty.in/opportunities</loc>
+    <lastmod>2026-04-17</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://www.westsiderealty.in/opportunities/nepean-sea-mumbai-land-development</loc>
+    <lastmod>2026-04-16</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+  </url>
+  <url>
+    <loc>https://www.westsiderealty.in/opportunities/mazgaon-mumbai-redevelopment</loc>
+    <lastmod>2026-04-16</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+  </url>
+  <url>
+    <loc>https://www.westsiderealty.in/opportunities/cavelossim-goa-5star-hotel-land</loc>
+    <lastmod>2026-04-17</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+  </url>
+  <url>
+    <loc>https://www.westsiderealty.in/opportunities/satarda-sindhudurg-300acre-township</loc>
+    <lastmod>2026-04-17</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+  </url>
+  <url>
+    <loc>https://www.westsiderealty.in/opportunities/vengurla-sindhudurg-14acre-coastal-land</loc>
+    <lastmod>2026-04-17</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+  </url>
+  <url>
+    <loc>https://www.westsiderealty.in/opportunities/camurlim-goa-44acre-luxury-resort-land</loc>
+    <lastmod>2026-04-17</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+  </url>
+  <url>
+    <loc>https://www.westsiderealty.in/opportunities/bicholim-goa-228acre-mixed-use-land</loc>
+    <lastmod>2026-04-17</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+  </url>
+  <url>
+    <loc>https://www.westsiderealty.in/opportunities/sindhudurg-110acre-na-converted-township-land</loc>
+    <lastmod>2026-04-17</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+  </url>
+  <url>
+    <loc>https://www.westsiderealty.in/opportunities/korgao-goa-89acre-farm-orchard-land</loc>
+    <lastmod>2026-04-17</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+  </url>
+  <url>
+    <loc>https://www.westsiderealty.in/opportunities/chikolna-south-goa-9acre-villa-land</loc>
+    <lastmod>2026-04-17</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+  </url>
+  <url>
+    <loc>https://www.westsiderealty.in/opportunities/ucassaim-goa-villa-land</loc>
+    <lastmod>2026-04-17</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+  </url>
+</urlset>
