@@ -446,15 +446,17 @@ export async function runArticleGeneration(
       continue;
     }
 
-    // ── Dedup check 2: already have 2 articles for this city this week ──
-    const { count: weeklyCount } = await supabase
+    // ── Dedup check 2: already generated an article for this city TODAY ──
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const { count: todayCount } = await supabase
       .from("generated_articles")
       .select("id", { count: "exact", head: true })
       .eq("city", article.city)
-      .eq("week_start", weekStart);
-    if ((weeklyCount ?? 0) >= 2) {
-      console.log(`[article-gen] Skipping ${article.city} — already ${weeklyCount} articles this week`);
-      errors.push(`Skipped ${article.city}: weekly cap reached`);
+      .gte("created_at", todayStart.toISOString());
+    if ((todayCount ?? 0) >= 1) {
+      console.log(`[article-gen] Skipping ${article.city} — already generated today`);
+      errors.push(`Skipped ${article.city}: already generated today`);
       continue;
     }
 
