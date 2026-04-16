@@ -410,52 +410,60 @@ ${liveNews2}
 ${formatDbNews(dbNews2, city2)}
 
 Ground each article in the live web news above. Prioritise recent facts, specific numbers, and named developments from the news snippets.
+Call the generate_articles tool with both articles and the market brief.`;
 
-Return a single valid JSON object with this exact structure:
-{
-  "articles": [
-    {
-      "city": "${city1}",
-      "micro_market": "<specific locality/corridor>",
-      "seo_headline": "<max 60 chars, includes city or area name>",
-      "meta_description": "<max 155 chars>",
-      "body": "<400–600 word article in markdown>",
-      "whatsapp_summary": "<max 160 chars, ready to paste>",
-      "target_persona": "<which buyer type>",
-      "drip_placement": "<Day-7|Day-14|Day-30|Day-45>"
-    },
-    {
-      "city": "${city2}",
-      "micro_market": "<specific locality/corridor>",
-      "seo_headline": "<max 60 chars, includes city or area name>",
-      "meta_description": "<max 155 chars>",
-      "body": "<400–600 word article in markdown>",
-      "whatsapp_summary": "<max 160 chars, ready to paste>",
-      "target_persona": "<which buyer type>",
-      "drip_placement": "<Day-7|Day-14|Day-30|Day-45>"
-    }
-  ],
-  "market_brief": [
-    "<bullet 1 — private intel for Praveen>",
-    "<bullet 2>",
-    "<bullet 3>",
-    "<bullet 4>",
-    "<bullet 5>"
-  ]
-}`;
-
+  // Use tool use instead of text JSON — Anthropic handles serialisation, so
+  // markdown in article bodies (quotes, backticks, newlines) never breaks parsing.
   const response = await anthropic.messages.create({
     model: "claude-sonnet-4-6",
     max_tokens: 4096,
     system: SYSTEM_PROMPT,
+    tools: [
+      {
+        name: "generate_articles",
+        description: "Output the two generated real estate articles and market brief",
+        input_schema: {
+          type: "object" as const,
+          properties: {
+            articles: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  city:             { type: "string" },
+                  micro_market:     { type: "string" },
+                  seo_headline:     { type: "string", description: "max 60 chars" },
+                  meta_description: { type: "string", description: "max 155 chars" },
+                  body:             { type: "string", description: "400-600 word article in markdown" },
+                  whatsapp_summary: { type: "string", description: "max 160 chars" },
+                  target_persona:   { type: "string" },
+                  drip_placement:   { type: "string", enum: ["Day-7", "Day-14", "Day-30", "Day-45"] },
+                },
+                required: ["city", "micro_market", "seo_headline", "meta_description", "body", "whatsapp_summary", "target_persona", "drip_placement"],
+              },
+              minItems: 2,
+              maxItems: 2,
+            },
+            market_brief: {
+              type: "array",
+              items: { type: "string" },
+              description: "5 private intel bullets for Praveen",
+            },
+          },
+          required: ["articles", "market_brief"],
+        },
+      },
+    ],
+    tool_choice: { type: "tool", name: "generate_articles" },
     messages: [{ role: "user", content: userPrompt }],
   });
 
-  const text = response.content[0].type === "text" ? response.content[0].text : "";
-  const jsonMatch = text.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) throw new Error("Claude did not return valid JSON");
+  const toolBlock = response.content.find((b) => b.type === "tool_use");
+  if (!toolBlock || toolBlock.type !== "tool_use") {
+    throw new Error("Claude did not call the generate_articles tool");
+  }
 
-  return JSON.parse(jsonMatch[0]) as RunOutput;
+  return toolBlock.input as RunOutput;
 }
 
 // ---------------------------------------------------------------------------
