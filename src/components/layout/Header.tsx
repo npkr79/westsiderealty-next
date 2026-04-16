@@ -62,9 +62,10 @@ const STATIC_NAV_ITEMS: NavItem[] = [
     description: "Curated redevelopment, JD, and land deals for builders, investors & family offices",
     links: [
       { label: "All Opportunities", href: "/opportunities", badge: "NEW" },
-      { label: "Nepean Sea — Land + Development", href: "/opportunities/nepean-sea-mumbai-land-development", badge: "HOT" },
-      { label: "Mazgaon Redevelopment", href: "/opportunities/mazgaon-mumbai-redevelopment" },
-      { label: "All Mumbai Deals", href: "/opportunities?city=mumbai" },
+      { label: "Nepean Sea — South Mumbai Land", href: "/opportunities/nepean-sea-mumbai-land-development", badge: "HOT" },
+      { label: "Mumbai Deals", href: "/opportunities?city=mumbai" },
+      { label: "Goa Deals", href: "/opportunities?city=goa" },
+      { label: "Sindhudurg / Konkan Deals", href: "/opportunities?city=sindhudurg" },
       { label: "Have a project to monetise?", href: "https://wa.me/919502500068?text=Hi%2C%20I%20have%20a%20development%20opportunity%20to%20discuss" },
     ],
     cta: { label: "View all opportunities →", href: "/opportunities" },
