@@ -756,11 +756,7 @@ export async function generateImage(article: NewsArticle): Promise<string> {
     console.log("[NewsToSocial] Entity logo composited:", entityLogoUrl!.split("/").pop());
   }
 
-  // Composite: background → SVG headline overlay → logos
-  const headlineClean = article.headline.replace(/\*\*/g, "").trim();
-  const headlineSvg = buildHeadlineOverlay(headlineClean);
-  compositeInputs.unshift({ input: headlineSvg, top: 0, left: 0 }); // headline first, then logos on top
-
+  // Composite: background + logos only (NO SVG text — Vercel has no system fonts)
   const compositedBuffer = await sharp(rawImageBuffer)
     .resize(1024, 1024, { fit: "cover", position: "centre" })
     .composite(compositeInputs)
@@ -786,8 +782,19 @@ export async function generateImage(article: NewsArticle): Promise<string> {
     uploadStream.end(compositedBuffer);
   });
 
-  console.log("[NewsToSocial] Image ready:", uploadResult.secure_url);
-  return uploadResult.secure_url;
+  // ── Step 5: Apply text overlays via Cloudinary URL transforms ────────────
+  // Cloudinary renders text server-side with proper fonts — no system font needed.
+  const headlineClean = article.headline.replace(/\*\*/g, "").trim();
+  const keyStat = extractKeyStat(headlineClean);
+  const finalUrl = applyCloudinaryTextOverlay(
+    uploadResult.secure_url,
+    headlineClean,
+    keyStat,
+    false,
+  );
+
+  console.log("[NewsToSocial] Image ready:", finalUrl);
+  return finalUrl;
 }
 
 // ---------------------------------------------------------------------------
