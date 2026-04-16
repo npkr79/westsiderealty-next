@@ -73,6 +73,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       goaPropertiesResult,
       dubaiPropertiesResult,
       reraProjectsResult,
+      newsArticlesResult,
     ] = await Promise.all([
       supabase.from("cities").select("url_slug, updated_at").eq("page_status", "published"),
       supabase
@@ -118,6 +119,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         .select("url_slug, city_slug, updated_at")
         .not("url_slug", "is", null)
         .not("city_slug", "is", null),
+      supabase
+        .from("generated_articles")
+        .select("slug, published_at, updated_at")
+        .eq("status", "published")
+        .not("slug", "is", null),
     ]);
 
     const urls: MetadataRoute.Sitemap = [];
@@ -419,6 +425,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       urls.push({
         url: `${baseUrl}/insights/${b.slug}`,
         lastModified: b.updated_at ? new Date(b.updated_at) : new Date(),
+        changeFrequency: "monthly",
+        priority: 0.7,
+      });
+    });
+
+    // News articles (generated_articles table, rendered at /news-articles/[slug])
+    newsArticlesResult.data?.forEach((a) => {
+      urls.push({
+        url: `${baseUrl}/news-articles/${a.slug}`,
+        lastModified: a.updated_at ? new Date(a.updated_at) : a.published_at ? new Date(a.published_at) : new Date(),
         changeFrequency: "monthly",
         priority: 0.7,
       });
