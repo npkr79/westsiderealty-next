@@ -406,20 +406,13 @@ async function buildContextualImagePrompt(article: NewsArticle): Promise<string>
 
   const prompt = `You are a visual art director for a premium Indian real estate brand's social media.
 
-You must write a prompt for gpt-image-1 to generate a vertical 1:1 social media image.
-
-The image must have TWO parts:
-1. A vivid, story-specific photorealistic background scene (top 60-65%)
-2. The headline text rendered in bold at the bottom (bottom 35%), on a dark gradient for contrast
+Write a prompt for gpt-image-1 to generate a BACKGROUND SCENE ONLY — NO TEXT in the image at all.
+The headline will be composited separately in post-production.
 
 ARTICLE:
 ${context}
 
-HEADLINE TO RENDER IN THE IMAGE — small bold white font, wrap across as many lines as needed, ALL words fully visible, last line at least 180px above the bottom edge:
-"${headlineClean}"
-${keyStat ? `\nKEY STAT (render large and prominent near the top or center): "${keyStat}"` : ""}
-
-SCENE RULES — be specific to THIS story, not generic:
+SCENE RULES — be specific to THIS story:
 - GCC/office leasing → gleaming tech campus aerial, workers visible (no faces), glass buildings
 - Infrastructure/road/metro → aerial of the actual route, construction machinery, cranes
 - Coastal/Goa → actual beach, palm trees, coastal villas, sea visible — NO urban towers
@@ -428,11 +421,12 @@ SCENE RULES — be specific to THIS story, not generic:
 - Hyderabad residential → match the actual story (colony = colony, tech park = tech park)
 
 STRICT RULES:
-- Top-right corner must stay clean (logo composited separately — leave ~180x80px clear)
+- NO TEXT anywhere in the image — no headlines, no numbers, no words
+- Top-right corner must stay clean (leave ~180x80px clear for logo)
+- Bottom 35% should have a natural dark-to-light gradient (dark at bottom) for text contrast
 - NO brand logos in the scene
 - NO faces
 - NO golden hour / amber sky — use bright daylight or cool morning light
-- The only text in the image is the headline at the bottom (and key stat if present)
 - Output ONLY the image generation prompt, no explanation`;
 
   try {
@@ -636,6 +630,66 @@ async function buildTopBandBuffer(): Promise<Buffer> {
 }
 
 // ---------------------------------------------------------------------------
+// SVG text overlay — renders headline directly, no AI text rendering
+// ---------------------------------------------------------------------------
+
+function buildHeadlineOverlay(headline: string): Buffer {
+  const W = 1024;
+  const PADDING = 40;
+  const MAX_TEXT_WIDTH = W - PADDING * 2;
+
+  // Pick font size based on headline length
+  const words = headline.split(/\s+/);
+  const fontSize = words.length <= 5 ? 64 : words.length <= 9 ? 54 : words.length <= 13 ? 44 : 36;
+  const lineHeight = Math.round(fontSize * 1.25);
+
+  // Word-wrap into lines
+  const avgCharWidth = fontSize * 0.58;
+  const charsPerLine = Math.floor(MAX_TEXT_WIDTH / avgCharWidth);
+  const lines: string[] = [];
+  let current = "";
+  for (const word of words) {
+    const test = current ? `${current} ${word}` : word;
+    if (test.length <= charsPerLine) {
+      current = test;
+    } else {
+      if (current) lines.push(current);
+      current = word;
+    }
+  }
+  if (current) lines.push(current);
+
+  const textBlockHeight = lines.length * lineHeight;
+  const gradientHeight = textBlockHeight + 80; // padding above + below text
+  const gradientTop = W - gradientHeight;
+  const textStartY = gradientTop + 40; // 40px padding from gradient top
+
+  // Build SVG text elements — escape XML special chars
+  const escape = (s: string) =>
+    s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+  const textEls = lines
+    .map((line, i) => {
+      const y = textStartY + i * lineHeight + fontSize;
+      return `<text x="${PADDING}" y="${y}" font-family="Arial,Helvetica,sans-serif" font-size="${fontSize}" font-weight="bold" fill="white" paint-order="stroke" stroke="black" stroke-width="3" stroke-linejoin="round">${escape(line)}</text>`;
+    })
+    .join("\n");
+
+  const svg = `<svg width="${W}" height="${W}" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="black" stop-opacity="0"/>
+      <stop offset="100%" stop-color="black" stop-opacity="0.82"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="${gradientTop}" width="${W}" height="${gradientHeight}" fill="url(#g)"/>
+  ${textEls}
+</svg>`;
+
+  return Buffer.from(svg);
+}
+
+// ---------------------------------------------------------------------------
 // Generate and upload image
 // ---------------------------------------------------------------------------
 
@@ -698,22 +752,17 @@ export async function generateImage(article: NewsArticle): Promise<string> {
       .resize(120, 60, { fit: "inside", background: { r: 0, g: 0, b: 0, alpha: 0 } })
       .png()
       .toBuffer();
-    const entityLogoWidth = (await sharp(entityLogoResized).metadata()).width ?? 120;
     compositeInputs.push({ input: entityLogoResized, top: 20, left: 20 });
     console.log("[NewsToSocial] Entity logo composited:", entityLogoUrl!.split("/").pop());
-    void entityLogoWidth;
   }
 
-  // Shift image content UP by 160px to guarantee bottom text is never cut off.
-  // Strategy: remove top 160px (sky/background) → add 160px black at bottom.
-  // The previous extend+resize approach was backwards (cropped off the padding).
-  const SHIFT_UP = 160;
-  const paddedImage = await sharp(rawImageBuffer)
-    .extract({ left: 0, top: SHIFT_UP, width: 1024, height: 1024 - SHIFT_UP })
-    .extend({ bottom: SHIFT_UP, background: { r: 0, g: 0, b: 0 } })
-    .toBuffer();
+  // Composite: background → SVG headline overlay → logos
+  const headlineClean = article.headline.replace(/\*\*/g, "").trim();
+  const headlineSvg = buildHeadlineOverlay(headlineClean);
+  compositeInputs.unshift({ input: headlineSvg, top: 0, left: 0 }); // headline first, then logos on top
 
-  const compositedBuffer = await sharp(paddedImage)
+  const compositedBuffer = await sharp(rawImageBuffer)
+    .resize(1024, 1024, { fit: "cover", position: "centre" })
     .composite(compositeInputs)
     .jpeg({ quality: 92 })
     .toBuffer();
