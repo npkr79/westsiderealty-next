@@ -586,17 +586,7 @@ function applyCloudinaryTextOverlay(
     ].join(","));
   }
 
-  // 3. Dark semi-transparent background block behind the headline (bottom zone)
-  layers.push([
-    "l_color:000000",
-    "o_65",
-    "w_1024",
-    "h_380",
-    "g_south",
-    "y_0",
-  ].join(","));
-
-  // 4. Headline text — yellow, bottom (on top of the dark block)
+  // 3. Headline text — yellow, bottom (dark background is baked in via Sharp gradient)
   layers.push([
     `l_text:Arial_54_bold:${encoded}`,
     "co_rgb:FFD700",
@@ -780,7 +770,12 @@ export async function generateImage(article: NewsArticle): Promise<string> {
     console.log("[NewsToSocial] Entity logo composited:", entityLogoUrl!.split("/").pop());
   }
 
-  // Composite: background + logos only (NO SVG text — Vercel has no system fonts)
+  // Add dark gradient strip at bottom (pure pixel math — no fonts, works on Vercel)
+  // This gives the Cloudinary text overlay a dark background to sit on.
+  const gradientBuffer = await buildGradientStripBuffer();
+  compositeInputs.unshift({ input: gradientBuffer, top: 1024 - 440, left: 0 });
+
+  // Composite: background + gradient + logos
   const compositedBuffer = await sharp(rawImageBuffer)
     .resize(1024, 1024, { fit: "cover", position: "centre" })
     .composite(compositeInputs)
