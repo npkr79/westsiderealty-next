@@ -97,7 +97,24 @@ function OpportunityCard({ opp }: { opp: DevelopmentOpportunity }) {
               background: "linear-gradient(to top, rgba(0,0,0,0.55), transparent 55%)",
             }}
           />
-          <div style={{ position: "absolute", top: 12, left: 12, display: "flex", gap: 6 }}>
+          <div style={{ position: "absolute", top: 12, left: 12, right: 12, display: "flex", gap: 6, flexWrap: "wrap" }}>
+            {opp.listing_type && (
+              <span
+                style={{
+                  fontSize: 10,
+                  fontWeight: 800,
+                  letterSpacing: "0.12em",
+                  padding: "4px 10px",
+                  borderRadius: 4,
+                  background: "#fff",
+                  color: "#0a0a0a",
+                  textTransform: "uppercase",
+                  border: `2px solid ${C.gold}`,
+                }}
+              >
+                {opp.listing_type}
+              </span>
+            )}
             <span
               style={{
                 fontSize: 10,
@@ -211,18 +228,37 @@ function OpportunityCard({ opp }: { opp: DevelopmentOpportunity }) {
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
+              gap: 12,
             }}
           >
-            <div>
-              {margin && (
-                <p style={{ fontSize: 13, fontWeight: 700, color: C.text, margin: 0 }}>
-                  {margin}
-                </p>
-              )}
-              {opp.stage && (
-                <p style={{ fontSize: 11, color: C.textMuted, margin: "2px 0 0" }}>
-                  {formatStage(opp.stage)}
-                </p>
+            <div style={{ minWidth: 0, flex: 1 }}>
+              {opp.asking_price_label ? (
+                <>
+                  <p style={{ fontSize: 10, color: "#9a9a9e", margin: 0, letterSpacing: "0.06em", textTransform: "uppercase", fontWeight: 600 }}>
+                    Price
+                  </p>
+                  <p style={{ fontSize: 14, fontWeight: 800, color: C.text, margin: "2px 0 0", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    {opp.asking_price_label}
+                  </p>
+                  {(margin || opp.stage) && (
+                    <p style={{ fontSize: 11, color: C.textMuted, margin: "3px 0 0" }}>
+                      {margin ? `${margin} · ` : ""}{opp.stage ? formatStage(opp.stage) : ""}
+                    </p>
+                  )}
+                </>
+              ) : (
+                <>
+                  {margin && (
+                    <p style={{ fontSize: 13, fontWeight: 700, color: C.text, margin: 0 }}>
+                      {margin}
+                    </p>
+                  )}
+                  {opp.stage && (
+                    <p style={{ fontSize: 11, color: C.textMuted, margin: "2px 0 0" }}>
+                      {formatStage(opp.stage)}
+                    </p>
+                  )}
+                </>
               )}
             </div>
             <span
@@ -234,6 +270,7 @@ function OpportunityCard({ opp }: { opp: DevelopmentOpportunity }) {
                 padding: "8px 16px",
                 borderRadius: 8,
                 whiteSpace: "nowrap",
+                flexShrink: 0,
               }}
             >
               View Deal →

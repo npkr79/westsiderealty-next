@@ -91,6 +91,23 @@ export function OpportunityDetailClient({ opportunity: opp }: { opportunity: Dev
           </nav>
 
           <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
+            {opp.listing_type && (
+              <span
+                style={{
+                  fontSize: 10,
+                  fontWeight: 800,
+                  letterSpacing: "0.12em",
+                  padding: "5px 12px",
+                  borderRadius: 4,
+                  background: "#fff",
+                  color: "#0a0a0a",
+                  textTransform: "uppercase",
+                  border: `2px solid ${C.gold}`,
+                }}
+              >
+                {opp.listing_type}
+              </span>
+            )}
             <span
               style={{
                 fontSize: 10,
@@ -163,6 +180,9 @@ export function OpportunityDetailClient({ opportunity: opp }: { opportunity: Dev
 
           {/* Key indicators in hero */}
           <div style={{ display: "flex", gap: 32, flexWrap: "wrap", marginTop: 16 }}>
+            {opp.asking_price_label && (
+              <HeroStat label="Price" value={opp.asking_price_label} />
+            )}
             {opp.plot_area_acres != null && (
               <HeroStat label="Plot Size" value={`${opp.plot_area_acres.toFixed(2)} acres`} />
             )}

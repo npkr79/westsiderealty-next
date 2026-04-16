@@ -28,6 +28,10 @@ export interface DevelopmentOpportunity {
   asset_type: string | null;
   asset_subtype: string | null;
 
+  // Listing classification + price display
+  listing_type: string | null;         // e.g. "Land for Sale", "Redevelopment Opportunity"
+  asking_price_label: string | null;   // display string, e.g. "₹3.92 Cr", "Price on Request"
+
   // Sanitised metrics
   plot_area_sqm: number | null;
   plot_area_acres: number | null;
@@ -73,6 +77,7 @@ export const OPPORTUNITY_PUBLIC_COLUMNS = [
   "id", "slug", "title",
   "city", "city_slug", "micro_market", "micro_market_slug",
   "asset_type", "asset_subtype",
+  "listing_type", "asking_price_label",
   "plot_area_sqm", "plot_area_acres", "saleable_potential_sqft",
   "indicative_project_cost_cr", "indicative_revenue_cr",
   "indicative_gross_margin_pct_min", "indicative_gross_margin_pct_max",
