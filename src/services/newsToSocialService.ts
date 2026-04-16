@@ -63,12 +63,13 @@ export async function pickTopArticles(
   const SELECT =
     "id, headline, summary, ai_summary, ai_tags, category, sub_category, cities, relevance_score, sentiment, source_name, source_url, image_url, search_query_type";
 
-  // Pull a larger pool — positive sentiment only, high relevance
+  // Pull a larger pool — positive sentiment only, high relevance, never processed
   const { data, error } = await supabase
     .from("news_articles")
     .select(SELECT)
     .eq("is_processed", false)
     .eq("is_rejected", false)
+    .eq("social_post_count", 0)   // hard stop: never regenerate if posts were already made
     .neq("sentiment", "negative")
     .gte("relevance_score", 7.5)
     .order("relevance_score", { ascending: false })
@@ -76,6 +77,16 @@ export async function pickTopArticles(
 
   if (error) throw new Error(`pickTopArticles failed: ${error.message}`);
   const rawPool = (data ?? []) as NewsArticle[];
+
+  // ── Load article IDs that already have social posts (any status incl. rejected) ──
+  // Guards against: is_processed manually reset, wipe scenarios, partial runs.
+  const { data: existingPostArticles } = await supabase
+    .from("social_posts")
+    .select("news_article_id")
+    .not("news_article_id", "is", null);
+  const articleIdsWithPosts = new Set(
+    ((existingPostArticles ?? []) as { news_article_id: string }[]).map((r) => r.news_article_id)
+  );
 
   // ── Load recently processed article headlines (last 30 days) ──────────────
   // Two sources: is_processed=true articles + social_posts captions.
@@ -103,8 +114,11 @@ export async function pickTopArticles(
   // Deduplicate the headline list itself
   const uniqueProcessedHeadlines = [...new Set(processedHeadlines)];
 
-  // ── Filter pool: remove articles that are the same story as any processed article ──
+  // ── Filter pool: remove articles that already have social posts OR are the same story ──
   const deduped = rawPool.filter((article) => {
+    // Hard block: article already had posts generated (any status — includes rejected/approved)
+    if (articleIdsWithPosts.has(article.id)) return false;
+    // Semantic dedup: same story as a recently processed article (different URL/source)
     const isDuplicateOfProcessed = uniqueProcessedHeadlines.some((ph) =>
       areSameStory(article.headline, ph)
     );
@@ -572,7 +586,17 @@ function applyCloudinaryTextOverlay(
     ].join(","));
   }
 
-  // 3. Headline text — yellow, bottom
+  // 3. Dark semi-transparent background block behind the headline (bottom zone)
+  layers.push([
+    "l_color:000000",
+    "o_65",
+    "w_1024",
+    "h_380",
+    "g_south",
+    "y_0",
+  ].join(","));
+
+  // 4. Headline text — yellow, bottom (on top of the dark block)
   layers.push([
     `l_text:Arial_54_bold:${encoded}`,
     "co_rgb:FFD700",
