@@ -403,16 +403,38 @@ export async function runArticleGeneration(
   const [city1, city2] = await pickTodayCities(supabase);
   console.log(`[article-gen] Today's cities: ${city1}, ${city2}`);
 
+  // 1b. Early exit if both cities already have articles today — skip Claude entirely
+  const todayStart = new Date();
+  todayStart.setUTCHours(0, 0, 0, 0);
+  const { data: todayArticles } = await supabase
+    .from("generated_articles")
+    .select("city")
+    .in("city", [city1, city2])
+    .gte("updated_at", todayStart.toISOString());
+  const citiesAlreadyDone = new Set((todayArticles ?? []).map((a: { city: string }) => a.city));
+  const citiesToGenerate = [city1, city2].filter((c) => !citiesAlreadyDone.has(c));
+
+  if (citiesToGenerate.length === 0) {
+    console.log(`[article-gen] Both cities already have articles today — skipping`);
+    return { articlesGenerated: 0, cities: [city1, city2], articleIds: [], errors: ["Already generated today"] };
+  }
+  console.log(`[article-gen] Generating for: ${citiesToGenerate.join(", ")} (skipping: ${[city1,city2].filter(c => citiesAlreadyDone.has(c)).join(", ") || "none"})`);
+
   // 2. Fetch relevant news for each city
   const [news1, news2] = await Promise.all([
-    getNewsForCity(supabase, city1),
-    getNewsForCity(supabase, city2),
+    getNewsForCity(supabase, citiesToGenerate[0]),
+    getNewsForCity(supabase, citiesToGenerate[1] ?? citiesToGenerate[0]),
   ]);
 
   // 3. Generate with Claude
   let output: RunOutput;
   try {
-    output = await generateWithClaude(city1, city2, news1, news2);
+    output = await generateWithClaude(
+      citiesToGenerate[0],
+      citiesToGenerate[1] ?? citiesToGenerate[0],
+      news1,
+      news2
+    );
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     throw new Error(`Claude generation failed: ${msg}`);
