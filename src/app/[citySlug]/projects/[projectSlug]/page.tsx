@@ -9,6 +9,8 @@ import ProjectPageV2 from "@/components/project-details/ProjectPageV2";
 import ProjectPageRedesign from "@/components/project-details/ProjectPageRedesign";
 import AdvisoryProjectPage from "@/components/project-details/AdvisoryProjectPage";
 import { createServiceClient } from "@/lib/supabase/serviceClient";
+import { JsonLd } from "@/components/common/SEO";
+import { generateProjectFaq } from "@/data/seo/project-faqs";
 import {
   getAdvisoryProjectBySlug,
   getAllAdvisoryProjectSlugs,
@@ -561,26 +563,43 @@ export default async function ProjectDetailPage({ params }: PageProps) {
     landingPage: `/${citySlug}/projects/${projectSlug}`,
   };
 
+  const faqSchema = generateProjectFaq({
+    name: project.project_name ?? "",
+    price_min: (project as any).price_min ?? (project as any).min_price ?? null,
+    price_max: (project as any).price_max ?? (project as any).max_price ?? null,
+    rera_id: (project as any).rera_id ?? null,
+    developer_name: project.developer?.developer_name ?? (project as any).developer_name ?? null,
+    micro_market_name: project.micro_market?.micro_market_name ?? (project as any).micro_market_name ?? null,
+    city_slug: citySlug,
+    current_status: (project as any).current_status ?? null,
+    min_area: (project as any).min_area ?? null,
+    max_area: (project as any).max_area ?? null,
+    amenities_json: (project as any).amenities_json ?? null,
+  });
+
   if (useNewProjectDesign) {
     return (
-      <ProjectPageRedesign
-        citySlug={citySlug}
-        projectSlug={projectSlug}
-        project={project}
-        insights={insights}
-        context={context}
-        developerProjects={developerProjects}
-        liveIntelligence={liveIntelligence}
-        microMarketDetail={microMarketDetail}
-        relatedProjects={relatedProjects}
-        nearbyMarkets={nearbyMarkets}
-        configDistribution={configDistribution}
-        otherProjectsInMarket={otherProjectsInMarket}
-        developerBrandSlug={developerBrandSlug}
-        developerBrandName={developerBrandName}
-        leadContext={leadContext}
-        advisorData={advisorEnrichment}
-      />
+      <>
+        <JsonLd jsonLd={[faqSchema]} />
+        <ProjectPageRedesign
+          citySlug={citySlug}
+          projectSlug={projectSlug}
+          project={project}
+          insights={insights}
+          context={context}
+          developerProjects={developerProjects}
+          liveIntelligence={liveIntelligence}
+          microMarketDetail={microMarketDetail}
+          relatedProjects={relatedProjects}
+          nearbyMarkets={nearbyMarkets}
+          configDistribution={configDistribution}
+          otherProjectsInMarket={otherProjectsInMarket}
+          developerBrandSlug={developerBrandSlug}
+          developerBrandName={developerBrandName}
+          leadContext={leadContext}
+          advisorData={advisorEnrichment}
+        />
+      </>
     );
   }
 

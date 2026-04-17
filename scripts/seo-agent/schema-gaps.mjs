@@ -201,6 +201,23 @@ const TEMPLATE_RULES = [
     mainEntityOfPage: { "@id": articleUrl + "#webpage" }
   }`,
       },
+      {
+        id: "blog-faq-schema",
+        severity: "medium",
+        description: "Blog posts with FAQ sections should use FAQPage schema — enables People Also Ask expansion",
+        check: (c) =>
+          !hasSchemaType(c, "FAQPage") &&
+          (c.includes("FAQ") || c.includes("faq") || c.includes("Frequently Asked")),
+        recommendation: `Add FAQPage schema when article has Q&A content:
+  {
+    "@type": "FAQPage",
+    mainEntity: faqs.map(faq => ({
+      "@type": "Question",
+      name: faq.question,
+      acceptedAnswer: { "@type": "Answer", text: faq.answer }
+    }))
+  }`,
+      },
     ],
   },
   {
@@ -231,6 +248,107 @@ const TEMPLATE_RULES = [
       addressRegion: "Telangana",
       addressCountry: "IN"
     }
+  }`,
+      },
+    ],
+  },
+  {
+    template: "developer-profile",
+    file: "src/app/developers/[slug]/page.tsx",
+    checks: [
+      {
+        id: "developer-organization-schema",
+        severity: "high",
+        description: "Developer profile pages should have Organization schema to appear in Knowledge Panel",
+        check: (c) => !hasSchemaType(c, "Organization", "Corporation", "LocalBusiness"),
+        recommendation: `Add Organization schema to developer profile:
+  {
+    "@type": "Organization",
+    "@id": developerUrl + "#organization",
+    name: developer.name,
+    url: developerUrl,
+    logo: developer.logo_url,
+    description: developer.hero_description,
+    foundingDate: developer.founding_year,
+    numberOfEmployees: { "@type": "QuantitativeValue", value: developer.team_size },
+    areaServed: "Hyderabad, Telangana, India"
+  }`,
+      },
+      {
+        id: "developer-aggregate-rating",
+        severity: "medium",
+        description: "Developer profiles with reviews should include AggregateRating for SERP star ratings",
+        check: (c) => !hasSchemaType(c, "AggregateRating"),
+        recommendation: `Add AggregateRating once you have review data:
+  aggregateRating: {
+    "@type": "AggregateRating",
+    ratingValue: developer.avg_rating,
+    reviewCount: developer.review_count,
+    bestRating: "5",
+    worstRating: "1"
+  }`,
+      },
+    ],
+  },
+  {
+    template: "micro-market-faq",
+    file: "src/app/[citySlug]/[microMarketSlug]/page.tsx",
+    checks: [
+      {
+        id: "micromarket-faq",
+        severity: "medium",
+        description: "Micro-market pages with FAQ/insight sections should use FAQPage schema",
+        check: (c) =>
+          !hasSchemaType(c, "FAQPage") &&
+          (c.includes("faq") || c.includes("FAQ") || c.includes("frequently")),
+        recommendation: `Add FAQPage schema to micro-market pages with Q&A content:
+  {
+    "@type": "FAQPage",
+    mainEntity: [
+      {
+        "@type": "Question",
+        name: "What is the average property price in " + microMarket.name + "?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "Property prices in " + microMarket.name + " range from ₹X to ₹Y per sq ft..."
+        }
+      }
+    ]
+  }`,
+      },
+    ],
+  },
+  {
+    template: "about-page",
+    file: "src/app/about/page.tsx",
+    checks: [
+      {
+        id: "about-local-business-schema",
+        severity: "high",
+        description: "About page should have LocalBusiness / RealEstateAgent schema with full address and hours",
+        check: (c) => !hasSchemaType(c, "LocalBusiness", "RealEstateAgent"),
+        recommendation: `Add LocalBusiness schema to about page:
+  {
+    "@type": "RealEstateAgent",
+    name: "RE/MAX Westside Realty",
+    address: {
+      "@type": "PostalAddress",
+      streetAddress: "Office address here",
+      addressLocality: "Kokapet",
+      addressRegion: "Telangana",
+      postalCode: "500075",
+      addressCountry: "IN"
+    },
+    geo: { "@type": "GeoCoordinates", latitude: 17.385, longitude: 78.327 },
+    telephone: "+91-40-XXXX-XXXX",
+    openingHoursSpecification: [
+      {
+        "@type": "OpeningHoursSpecification",
+        dayOfWeek: ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"],
+        opens: "09:00",
+        closes: "19:00"
+      }
+    ]
   }`,
       },
     ],

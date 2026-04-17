@@ -57,7 +57,7 @@ const QUERIES_PER_PAGE = 15;      // how many top queries to fetch per page
  * URL → page template classifier for westsiderealty.in
  * Returns a template identifier + relative path.
  */
-function classifyUrl(absoluteUrl) {
+export function classifyUrl(absoluteUrl) {
   const url = absoluteUrl.replace("https://www.westsiderealty.in", "");
 
   if (url === "" || url === "/") return { template: "homepage", path: "/" };

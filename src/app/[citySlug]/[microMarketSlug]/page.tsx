@@ -634,7 +634,17 @@ export default async function MicroMarketPage({ params }: PageProps) {
     },
   };
 
-  const schemas = [breadcrumbSchema, localBusinessSchema, ...(itemListSchema ? [itemListSchema] : [])];
+  // Include FAQ schema from DB if available — enables People Also Ask rich results
+  const faqSchemaFromDb = faqSchemaJson
+    ? (() => { try { return typeof faqSchemaJson === "string" ? JSON.parse(faqSchemaJson) : faqSchemaJson; } catch { return null; } })()
+    : null;
+
+  const schemas = [
+    breadcrumbSchema,
+    localBusinessSchema,
+    ...(itemListSchema ? [itemListSchema] : []),
+    ...(faqSchemaFromDb ? [faqSchemaFromDb] : []),
+  ];
 
   return (
     <>

@@ -128,7 +128,34 @@ function findMissingKeywords() {
   return missing;
 }
 
-// ─── 4. PageSpeed Scores ──────────────────────────────────────────────────────
+// ─── 4. PageSpeed + Core Web Vitals (with Google's exact thresholds) ─────────
+
+// Google's official CWV thresholds
+const CWV_THRESHOLDS = {
+  lcp:  { good: 2500,  poor: 4000  }, // ms
+  inp:  { good: 200,   poor: 500   }, // ms (replaces FID)
+  cls:  { good: 0.1,   poor: 0.25  }, // unitless
+  fcp:  { good: 1800,  poor: 3000  }, // ms
+  ttfb: { good: 800,   poor: 1800  }, // ms
+};
+
+function cwvStatus(value, metric) {
+  const t = CWV_THRESHOLDS[metric];
+  if (!t || value == null) return "unknown";
+  if (value <= t.good) return "good";
+  if (value <= t.poor) return "needs-improvement";
+  return "poor";
+}
+
+function parseMsDisplay(display) {
+  // "2.3 s" → 2300, "450 ms" → 450, "0.12" → 120 (CLS special case)
+  if (!display) return null;
+  const clean = display.trim();
+  if (/^\d+(\.\d+)?\s*s$/i.test(clean)) return parseFloat(clean) * 1000;
+  if (/^\d+(\.\d+)?\s*ms$/i.test(clean)) return parseFloat(clean);
+  if (/^\d+\.\d+$/.test(clean)) return parseFloat(clean); // CLS
+  return null;
+}
 
 async function checkPageSpeed() {
   const results = [];
@@ -147,33 +174,54 @@ async function checkPageSpeed() {
 
   for (const url of KEY_URLS) {
     try {
-      const apiUrl = `https://www.googleapis.com/pagespeedonline/v5/runPagespeed?url=${encodeURIComponent(url)}&strategy=mobile&key=${PAGESPEED_KEY}&category=performance&category=seo`;
+      const apiUrl = `https://www.googleapis.com/pagespeedonline/v5/runPagespeed?url=${encodeURIComponent(url)}&strategy=mobile&key=${PAGESPEED_KEY}&category=performance&category=seo&category=accessibility`;
       const res = await fetch(apiUrl);
       if (!res.ok) {
         results.push({ url, error: `HTTP ${res.status}` });
         continue;
       }
       const data = await res.json();
-      const perf = Math.round((data.lighthouseResult?.categories?.performance?.score ?? 0) * 100);
-      const seo = Math.round((data.lighthouseResult?.categories?.seo?.score ?? 0) * 100);
-      const lcp = data.lighthouseResult?.audits?.["largest-contentful-paint"]?.displayValue ?? "n/a";
-      const cls = data.lighthouseResult?.audits?.["cumulative-layout-shift"]?.displayValue ?? "n/a";
+      const audits = data.lighthouseResult?.audits || {};
 
-      if (perf < 60 || seo < 85) {
-        results.push({
-          url,
-          performance: perf,
-          seo,
-          lcp,
-          cls,
-          issue: [
-            perf < 60 ? `Low performance score: ${perf}/100` : null,
-            seo < 85 ? `Low SEO score: ${seo}/100` : null,
-          ].filter(Boolean).join("; "),
-        });
-      } else {
-        results.push({ url, performance: perf, seo, lcp, cls, status: "ok" });
-      }
+      const perf = Math.round((data.lighthouseResult?.categories?.performance?.score ?? 0) * 100);
+      const seo  = Math.round((data.lighthouseResult?.categories?.seo?.score ?? 0) * 100);
+      const a11y = Math.round((data.lighthouseResult?.categories?.accessibility?.score ?? 0) * 100);
+
+      // Extract raw CWV values
+      const lcpMs   = parseMsDisplay(audits["largest-contentful-paint"]?.displayValue);
+      const clsVal  = parseMsDisplay(audits["cumulative-layout-shift"]?.displayValue);
+      const inpMs   = parseMsDisplay(audits["experimental-interaction-to-next-paint"]?.displayValue)
+                   ?? parseMsDisplay(audits["max-potential-fid"]?.displayValue);
+      const fcpMs   = parseMsDisplay(audits["first-contentful-paint"]?.displayValue);
+      const ttfbMs  = parseMsDisplay(audits["server-response-time"]?.displayValue);
+
+      const cwv = {
+        lcp:  { value: lcpMs,  display: audits["largest-contentful-paint"]?.displayValue ?? "n/a",  status: cwvStatus(lcpMs, "lcp"),  threshold: "Good <2.5s" },
+        cls:  { value: clsVal, display: audits["cumulative-layout-shift"]?.displayValue ?? "n/a",   status: cwvStatus(clsVal, "cls"),  threshold: "Good <0.1" },
+        inp:  { value: inpMs,  display: audits["experimental-interaction-to-next-paint"]?.displayValue ?? "n/a", status: cwvStatus(inpMs, "inp"), threshold: "Good <200ms" },
+        fcp:  { value: fcpMs,  display: audits["first-contentful-paint"]?.displayValue ?? "n/a",   status: cwvStatus(fcpMs, "fcp"),  threshold: "Good <1.8s" },
+        ttfb: { value: ttfbMs, display: audits["server-response-time"]?.displayValue ?? "n/a",     status: cwvStatus(ttfbMs, "ttfb"), threshold: "Good <800ms" },
+      };
+
+      const cwvFailing = Object.entries(cwv)
+        .filter(([, v]) => v.status === "poor" || v.status === "needs-improvement")
+        .map(([k, v]) => `${k.toUpperCase()}: ${v.display} (${v.status})`);
+
+      const issues = [
+        perf < 60 ? `Low performance: ${perf}/100` : null,
+        seo  < 85 ? `Low SEO score: ${seo}/100` : null,
+        ...cwvFailing,
+      ].filter(Boolean);
+
+      results.push({
+        url,
+        performance: perf,
+        seo,
+        accessibility: a11y,
+        cwv,
+        issue: issues.length > 0 ? issues.join("; ") : null,
+        status: issues.length > 0 ? "fail" : "ok",
+      });
     } catch (e) {
       results.push({ url, error: String(e) });
     }
@@ -231,6 +279,7 @@ async function checkVercel500s() {
 
 async function checkSitemap() {
   const issues = [];
+  let sitemapUrls = [];
   try {
     const res = await fetch(`${BASE_URL}/sitemap.xml`, {
       headers: { "User-Agent": "Westside-SEO-Audit/1.0" },
@@ -246,11 +295,132 @@ async function checkSitemap() {
       } else {
         console.error(`[audit] Sitemap OK — ${urlCount} URLs`);
       }
+      // Extract URLs for crawl error checks (sample up to 30)
+      const matches = [...text.matchAll(/<loc>([^<]+)<\/loc>/g)].map(m => m[1]);
+      sitemapUrls = matches.slice(0, 30);
     }
   } catch (e) {
     issues.push({ issue: `Sitemap fetch failed: ${e.message}` });
   }
-  return issues;
+  return { issues, sitemapUrls };
+}
+
+// ─── 7. Crawl Error Detection (sample sitemap URLs) ──────────────────────────
+
+async function checkCrawlErrors(sitemapUrls) {
+  const errors = [];
+  if (!sitemapUrls || sitemapUrls.length === 0) return errors;
+
+  console.error(`[audit] Checking ${sitemapUrls.length} sitemap URLs for crawl errors...`);
+
+  for (const url of sitemapUrls) {
+    try {
+      const res = await fetch(url, {
+        method: "HEAD",
+        headers: { "User-Agent": "Westside-SEO-Audit/1.0" },
+        signal: AbortSignal.timeout(8000),
+        redirect: "manual",
+      });
+
+      if (res.status === 404) {
+        errors.push({ url, status: 404, type: "not-found", severity: "high", issue: `404 Not Found in sitemap` });
+      } else if (res.status === 410) {
+        errors.push({ url, status: 410, type: "gone", severity: "medium", issue: `410 Gone — confirm intentional` });
+      } else if (res.status >= 500) {
+        errors.push({ url, status: res.status, type: "server-error", severity: "critical", issue: `${res.status} Server Error` });
+      } else if (res.status >= 301 && res.status <= 308) {
+        const location = res.headers.get("location") || "";
+        errors.push({ url, status: res.status, type: "redirect", severity: "medium", issue: `Redirect in sitemap → ${location}` });
+      }
+    } catch (e) {
+      errors.push({ url, status: null, type: "timeout", severity: "medium", issue: `Fetch failed: ${e.message}` });
+    }
+    await new Promise(r => setTimeout(r, 200));
+  }
+
+  if (errors.length === 0) {
+    console.error("[audit] Crawl check: no errors in sampled sitemap URLs");
+  } else {
+    console.error(`[audit] Crawl check: ${errors.length} issue(s) in sampled URLs`);
+  }
+  return errors;
+}
+
+// ─── 8. Infrastructure Checks (robots.txt, HTTPS redirect, www redirect) ─────
+
+async function checkInfrastructure() {
+  const results = {};
+
+  // robots.txt
+  try {
+    const res = await fetch(`${BASE_URL}/robots.txt`, {
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) {
+      results.robotsTxt = { status: "fail", issue: `robots.txt returned HTTP ${res.status}` };
+    } else {
+      const text = await res.text();
+      const hasDisallowAll = /^Disallow:\s*\/\s*$/m.test(text);
+      const hasSitemap = /Sitemap:/i.test(text);
+      results.robotsTxt = {
+        status: hasDisallowAll ? "fail" : "ok",
+        hasSitemapRef: hasSitemap,
+        issue: hasDisallowAll ? "robots.txt blocks all crawlers (Disallow: /)" : null,
+      };
+    }
+  } catch (e) {
+    results.robotsTxt = { status: "fail", issue: `robots.txt fetch failed: ${e.message}` };
+  }
+
+  // HTTP → HTTPS redirect
+  const httpUrl = BASE_URL.replace("https://", "http://");
+  try {
+    const res = await fetch(httpUrl, {
+      method: "HEAD",
+      signal: AbortSignal.timeout(8000),
+      redirect: "manual",
+    });
+    if (res.status >= 301 && res.status <= 308) {
+      const loc = res.headers.get("location") || "";
+      results.httpsRedirect = {
+        status: loc.startsWith("https://") ? "ok" : "fail",
+        issue: !loc.startsWith("https://") ? `HTTP redirects to ${loc} instead of HTTPS` : null,
+      };
+    } else {
+      results.httpsRedirect = {
+        status: "fail",
+        issue: `HTTP URL returns ${res.status} instead of redirecting to HTTPS`,
+      };
+    }
+  } catch {
+    results.httpsRedirect = { status: "skip", issue: null }; // likely blocked by firewall — not a failure
+  }
+
+  // www → canonical redirect
+  const wwwUrl = BASE_URL.includes("://www.")
+    ? BASE_URL.replace("://www.", "://")
+    : BASE_URL.replace("://", "://www.");
+  try {
+    const res = await fetch(wwwUrl, {
+      method: "HEAD",
+      signal: AbortSignal.timeout(8000),
+      redirect: "manual",
+    });
+    if (res.status >= 301 && res.status <= 308) {
+      results.wwwRedirect = { status: "ok", issue: null };
+    } else if (res.status === 200) {
+      results.wwwRedirect = {
+        status: "fail",
+        issue: `Both www and non-www serve content — duplicate URL risk`,
+      };
+    } else {
+      results.wwwRedirect = { status: "ok", issue: null };
+    }
+  } catch {
+    results.wwwRedirect = { status: "skip", issue: null };
+  }
+
+  return results;
 }
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
@@ -258,14 +428,24 @@ async function checkSitemap() {
 async function main() {
   console.error("[audit] Starting SEO audit...");
 
-  const [isrViolations, missingCanonicals, missingKeywords, pageSpeed, vercel500s, sitemapIssues] = await Promise.all([
+  const [isrViolations, missingCanonicals, missingKeywords, pageSpeed, vercel500s, sitemapResult, infrastructure] = await Promise.all([
     Promise.resolve(findISRViolations()),
     Promise.resolve(findMissingCanonicals()),
     Promise.resolve(findMissingKeywords()),
     checkPageSpeed(),
     checkVercel500s(),
     checkSitemap(),
+    checkInfrastructure(),
   ]);
+
+  const sitemapIssues = sitemapResult.issues;
+  const crawlErrors = await checkCrawlErrors(sitemapResult.sitemapUrls);
+
+  // CWV summary: count pages with poor/needs-improvement metrics
+  const cwvFailing = pageSpeed.filter(p => p.cwv && Object.values(p.cwv).some(v => v.status !== "good" && v.status !== "unknown")).length;
+
+  // Infrastructure issues
+  const infraIssues = Object.values(infrastructure).filter(v => v.status === "fail").length;
 
   const findings = {
     timestamp: new Date().toISOString(),
@@ -273,9 +453,13 @@ async function main() {
       isrViolations: isrViolations.length,
       missingCanonicals: missingCanonicals.length,
       missingKeywords: missingKeywords.length,
-      pageSpeedIssues: pageSpeed.filter(p => p.issue).length,
+      pageSpeedIssues: pageSpeed.filter(p => p.status === "fail").length,
+      cwvFailing,
       vercel500Paths: vercel500s.length,
       sitemapIssues: sitemapIssues.length,
+      crawlErrors: crawlErrors.filter(e => e.type !== "redirect").length,
+      crawlRedirects: crawlErrors.filter(e => e.type === "redirect").length,
+      infraIssues,
     },
     isrViolations,
     missingCanonicals,
@@ -283,13 +467,15 @@ async function main() {
     pageSpeed,
     vercel500s,
     sitemapIssues,
+    crawlErrors,
+    infrastructure,
   };
 
   const totalIssues = Object.values(findings.summary).reduce((a, b) => a + b, 0);
   console.error(`[audit] Done. Found ${totalIssues} total issues.`);
   console.error("[audit] Summary:", JSON.stringify(findings.summary, null, 2));
 
-  // Output findings as JSON to stdout (consumed by fix.mjs)
+  // Output findings as JSON to stdout (consumed by fix.mjs and agent.mjs)
   console.log(JSON.stringify(findings, null, 2));
 
   // Exit 1 if there are auto-fixable issues (ISR + canonicals + keywords)

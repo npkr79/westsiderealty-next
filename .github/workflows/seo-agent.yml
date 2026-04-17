@@ -17,10 +17,13 @@ name: Weekly SEO Agent
 #   GOOGLE_PRIVATE_KEY            — GCP service account private key (RSA PEM, \n escaped)
 #   GOOGLE_SITE_URL               — https://www.westsiderealty.in
 #   GH_PAT                        — GitHub PAT with repo + PR write permissions
+#   SUPABASE_URL                  — Supabase project URL (NEXT_PUBLIC_SUPABASE_URL)
+#   SUPABASE_SERVICE_ROLE_KEY     — Supabase service role key (bypasses RLS)
 #   PAGESPEED_API_KEY             — Google PageSpeed Insights API key (optional)
 #   VERCEL_TOKEN                  — Vercel API token (optional, for 500 error check)
 #   VERCEL_PROJECT_ID             — Vercel project ID (optional)
 #   VERCEL_TEAM_ID                — Vercel team ID (optional)
+#   SERPAPI_KEY                   — SerpAPI key (optional, for competitor keyword data)
 
 on:
   schedule:
@@ -83,10 +86,13 @@ jobs:
           GOOGLE_SERVICE_ACCOUNT_EMAIL: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_EMAIL }}
           GOOGLE_PRIVATE_KEY: ${{ secrets.GOOGLE_PRIVATE_KEY }}
           GOOGLE_SITE_URL: ${{ secrets.GOOGLE_SITE_URL || 'https://www.westsiderealty.in' }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           PAGESPEED_API_KEY: ${{ secrets.PAGESPEED_API_KEY }}
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
           VERCEL_TEAM_ID: ${{ secrets.VERCEL_TEAM_ID }}
+          SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }}
         run: |
           node scripts/seo-agent/agent.mjs ${{ steps.flags.outputs.flags }} > /tmp/agent-summary.json 2>&1 || true
           echo "Agent run complete"
@@ -123,6 +129,86 @@ jobs:
             } catch { console.log(0); }
           " 2>/dev/null || echo "0")
           echo "priority_pages=$PRIORITY_PAGES" >> $GITHUB_OUTPUT
+
+          ON_PAGE_ISSUES=$(node -e "
+            try {
+              const s = JSON.parse(require('fs').readFileSync('/tmp/agent-summary.json','utf8'));
+              console.log(s.onPageIssues || 0);
+            } catch { console.log(0); }
+          " 2>/dev/null || echo "0")
+          echo "on_page_issues=$ON_PAGE_ISSUES" >> $GITHUB_OUTPUT
+
+          DB_CONTENT_ISSUES=$(node -e "
+            try {
+              const s = JSON.parse(require('fs').readFileSync('/tmp/agent-summary.json','utf8'));
+              console.log(s.dbContentIssues || 0);
+            } catch { console.log(0); }
+          " 2>/dev/null || echo "0")
+          echo "db_content_issues=$DB_CONTENT_ISSUES" >> $GITHUB_OUTPUT
+
+          DB_CONTENT_CRITICAL=$(node -e "
+            try {
+              const s = JSON.parse(require('fs').readFileSync('/tmp/agent-summary.json','utf8'));
+              console.log(s.dbContentCritical || 0);
+            } catch { console.log(0); }
+          " 2>/dev/null || echo "0")
+          echo "db_content_critical=$DB_CONTENT_CRITICAL" >> $GITHUB_OUTPUT
+
+          CTR_DROP_ALERTS=$(node -e "
+            try {
+              const s = JSON.parse(require('fs').readFileSync('/tmp/agent-summary.json','utf8'));
+              console.log(s.ctrDropAlerts || 0);
+            } catch { console.log(0); }
+          " 2>/dev/null || echo "0")
+          echo "ctr_drop_alerts=$CTR_DROP_ALERTS" >> $GITHUB_OUTPUT
+
+          KEYWORD_GAPS=$(node -e "
+            try {
+              const s = JSON.parse(require('fs').readFileSync('/tmp/agent-summary.json','utf8'));
+              console.log(s.keywordGaps || 0);
+            } catch { console.log(0); }
+          " 2>/dev/null || echo "0")
+          echo "keyword_gaps=$KEYWORD_GAPS" >> $GITHUB_OUTPUT
+
+          QUICK_WINS=$(node -e "
+            try {
+              const s = JSON.parse(require('fs').readFileSync('/tmp/agent-summary.json','utf8'));
+              console.log(s.quickWins || 0);
+            } catch { console.log(0); }
+          " 2>/dev/null || echo "0")
+          echo "quick_wins=$QUICK_WINS" >> $GITHUB_OUTPUT
+
+          MISSING_LOCALITIES=$(node -e "
+            try {
+              const s = JSON.parse(require('fs').readFileSync('/tmp/agent-summary.json','utf8'));
+              console.log(s.missingLocalities || 0);
+            } catch { console.log(0); }
+          " 2>/dev/null || echo "0")
+          echo "missing_localities=$MISSING_LOCALITIES" >> $GITHUB_OUTPUT
+
+          KEYWORDS_TRACKED=$(node -e "
+            try {
+              const s = JSON.parse(require('fs').readFileSync('/tmp/agent-summary.json','utf8'));
+              console.log(s.keywordsTracked || 0);
+            } catch { console.log(0); }
+          " 2>/dev/null || echo "0")
+          echo "keywords_tracked=$KEYWORDS_TRACKED" >> $GITHUB_OUTPUT
+
+          KEYWORD_DROPS=$(node -e "
+            try {
+              const s = JSON.parse(require('fs').readFileSync('/tmp/agent-summary.json','utf8'));
+              console.log(s.keywordDrops || 0);
+            } catch { console.log(0); }
+          " 2>/dev/null || echo "0")
+          echo "keyword_drops=$KEYWORD_DROPS" >> $GITHUB_OUTPUT
+
+          FAQ_FILES=$(node -e "
+            try {
+              const s = JSON.parse(require('fs').readFileSync('/tmp/agent-summary.json','utf8'));
+              console.log(s.faqFilesUpdated || 0);
+            } catch { console.log(0); }
+          " 2>/dev/null || echo "0")
+          echo "faq_files=$FAQ_FILES" >> $GITHUB_OUTPUT
 
       - name: Check for file changes
         id: changes
@@ -185,7 +271,19 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "🔧 **Code fixes applied:** ${{ steps.agent.outputs.code_fixed }}" >> $GITHUB_STEP_SUMMARY
           echo "✍️ **Meta templates optimized:** ${{ steps.agent.outputs.meta_fixed }}" >> $GITHUB_STEP_SUMMARY
-          echo "📉 **CTR priority pages found:** ${{ steps.agent.outputs.priority_pages }}" >> $GITHUB_STEP_SUMMARY
+          echo "📄 **FAQ schema files updated:** ${{ steps.agent.outputs.faq_files }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Content Quality" >> $GITHUB_STEP_SUMMARY
+          echo "🗄️ **DB content issues:** ${{ steps.agent.outputs.db_content_issues }} (${{ steps.agent.outputs.db_content_critical }} critical)" >> $GITHUB_STEP_SUMMARY
+          echo "🔍 **On-page issues found:** ${{ steps.agent.outputs.on_page_issues }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Keyword Intelligence" >> $GITHUB_STEP_SUMMARY
+          echo "📉 **CTR priority pages:** ${{ steps.agent.outputs.priority_pages }}" >> $GITHUB_STEP_SUMMARY
+          echo "⚠️ **CTR drop alerts (WoW):** ${{ steps.agent.outputs.ctr_drop_alerts }}" >> $GITHUB_STEP_SUMMARY
+          echo "🎯 **Keyword gaps found:** ${{ steps.agent.outputs.keyword_gaps }}" >> $GITHUB_STEP_SUMMARY
+          echo "⚡ **Quick win pages (pos 11-20):** ${{ steps.agent.outputs.quick_wins }}" >> $GITHUB_STEP_SUMMARY
+          echo "🗺️ **Missing locality pages:** ${{ steps.agent.outputs.missing_localities }}" >> $GITHUB_STEP_SUMMARY
+          echo "📊 **Keywords tracked:** ${{ steps.agent.outputs.keywords_tracked }} (${{ steps.agent.outputs.keyword_drops }} dropped)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "PR opened for review → merge after checking the diff." >> $GITHUB_STEP_SUMMARY
           if [ -f ".seo-pr-body.md" ]; then
@@ -200,8 +298,18 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "✅ No file changes this week." >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**CTR priority pages found:** ${{ steps.agent.outputs.priority_pages }}" >> $GITHUB_STEP_SUMMARY
-          echo "(These pages have a CTR gap but their template metadata is already optimal)" >> $GITHUB_STEP_SUMMARY
+          echo "### Content Quality" >> $GITHUB_STEP_SUMMARY
+          echo "🗄️ **DB content issues:** ${{ steps.agent.outputs.db_content_issues }} (${{ steps.agent.outputs.db_content_critical }} critical)" >> $GITHUB_STEP_SUMMARY
+          echo "🔍 **On-page issues found:** ${{ steps.agent.outputs.on_page_issues }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Keyword Intelligence" >> $GITHUB_STEP_SUMMARY
+          echo "📉 **CTR priority pages:** ${{ steps.agent.outputs.priority_pages }}" >> $GITHUB_STEP_SUMMARY
+          echo "⚠️ **CTR drop alerts (WoW):** ${{ steps.agent.outputs.ctr_drop_alerts }}" >> $GITHUB_STEP_SUMMARY
+          echo "🎯 **Keyword gaps found:** ${{ steps.agent.outputs.keyword_gaps }}" >> $GITHUB_STEP_SUMMARY
+          echo "⚡ **Quick win pages (pos 11-20):** ${{ steps.agent.outputs.quick_wins }}" >> $GITHUB_STEP_SUMMARY
+          echo "🗺️ **Missing locality pages:** ${{ steps.agent.outputs.missing_localities }}" >> $GITHUB_STEP_SUMMARY
+          echo "📊 **Keywords tracked:** ${{ steps.agent.outputs.keywords_tracked }} (${{ steps.agent.outputs.keyword_drops }} dropped)" >> $GITHUB_STEP_SUMMARY
+          echo "(Template metadata is already optimal — no file changes needed)" >> $GITHUB_STEP_SUMMARY
           if [ -f ".seo-pr-body.md" ]; then
             echo "" >> $GITHUB_STEP_SUMMARY
             cat .seo-pr-body.md >> $GITHUB_STEP_SUMMARY
@@ -214,11 +322,11 @@ jobs:
         run: |
           if [ "${{ steps.changes.outputs.has_file_changes }}" = "true" ]; then
             ICON="🔧"
-            STATUS="PR opened with ${{ steps.agent.outputs.code_fixed }} code fix(es) + ${{ steps.agent.outputs.meta_fixed }} meta update(s)"
+            STATUS="PR opened: ${{ steps.agent.outputs.code_fixed }} code fix(es), ${{ steps.agent.outputs.meta_fixed }} meta update(s), ${{ steps.agent.outputs.faq_files }} FAQ file(s). ${{ steps.agent.outputs.keyword_gaps }} keyword gaps | ${{ steps.agent.outputs.quick_wins }} quick wins | ${{ steps.agent.outputs.db_content_critical }} critical content issues"
             COLOR="#36a64f"
           else
             ICON="✅"
-            STATUS="No changes needed. ${{ steps.agent.outputs.priority_pages }} CTR opportunity pages tracked."
+            STATUS="No file changes. ${{ steps.agent.outputs.keyword_gaps }} keyword gaps | ${{ steps.agent.outputs.quick_wins }} quick wins | ${{ steps.agent.outputs.ctr_drop_alerts }} CTR drop alerts | ${{ steps.agent.outputs.keywords_tracked }} keywords tracked"
             COLOR="#2eb886"
           fi
           WEEK=$(date +%Y-W%V)

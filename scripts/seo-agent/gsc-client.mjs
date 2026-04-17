@@ -132,16 +132,35 @@ export async function querySearchAnalytics(body) {
 
 /**
  * Fetch page-level performance (impressions, clicks, CTR, position) for a date range.
+ * Default rowLimit raised to 5000 to cover all meaningful pages on the site.
  *
  * @param {string} startDate - YYYY-MM-DD
  * @param {string} endDate   - YYYY-MM-DD
- * @param {number} rowLimit  - max rows (default 500)
+ * @param {number} rowLimit  - max rows (default 5000)
  */
-export async function getPagePerformance(startDate, endDate, rowLimit = 500) {
+export async function getPagePerformance(startDate, endDate, rowLimit = 5000) {
   return querySearchAnalytics({
     startDate,
     endDate,
     dimensions: ["page"],
+    rowLimit,
+    dataState: "final",
+  });
+}
+
+/**
+ * Fetch query+page combined performance — for keyword gap and position tracking.
+ * Returns one row per (query, page) pair.
+ *
+ * @param {string} startDate
+ * @param {string} endDate
+ * @param {number} rowLimit  - max rows (default 5000)
+ */
+export async function getQueryPagePerformance(startDate, endDate, rowLimit = 5000) {
+  return querySearchAnalytics({
+    startDate,
+    endDate,
+    dimensions: ["query", "page"],
     rowLimit,
     dataState: "final",
   });
