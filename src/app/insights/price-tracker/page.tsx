@@ -7,6 +7,9 @@ export const metadata: Metadata = {
   title: "Hyderabad Price Tracker — Live Rates by Micro-Market | Westside Realty",
   description:
     "Live price-per-sqft rates across 19 Hyderabad micro-markets. RERA-sourced data updated regularly.",
+  alternates: {
+    canonical: "https://www.westsiderealty.in/insights/price-tracker",
+  },
 };
 
 export const revalidate = 3600;

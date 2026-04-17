@@ -93,14 +93,16 @@ Return ONLY valid JSON.`;
   }
 
   if (platform === 'X' && content_type === 'tweet') {
-    return `Write a tweet about: ${idea}
+    return `Write an X (Twitter) post about: ${idea}
 Topic category: ${topic_type}
+
+X Premium account — no character limit. Write with the same depth as LinkedIn.
 
 Return JSON with:
 {
-  "caption": "tweet (max 240 chars, punchy contrarian or insightful take, must make reader stop scrolling)",
-  "hashtags": ["2-3 hashtags without # symbol"],
-  "image_prompt": "DALL-E prompt for tweet image",
+  "caption": "X post (200-400 chars, professional market insight, punchy opening that stops the scroll, no emojis)",
+  "hashtags": ["3-4 hashtags without # symbol"],
+  "image_prompt": "DALL-E prompt for post image",
   "title": "short title (max 60 chars)"
 }
 Return ONLY valid JSON.`;

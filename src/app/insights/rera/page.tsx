@@ -8,6 +8,9 @@ export const metadata: Metadata = {
   title: "RERA Updates — Hyderabad Real Estate Regulatory News 2026 | Westside Realty",
   description:
     "Latest TSRERA regulatory changes, compliance requirements, and what Hyderabad property buyers need to know in 2026.",
+  alternates: {
+    canonical: "https://www.westsiderealty.in/insights/rera",
+  },
 };
 
 const LAST_UPDATED = "March 2026";

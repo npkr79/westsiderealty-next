@@ -8,6 +8,9 @@ export const metadata: Metadata = {
   title: "The GCC Rush: How Hyderabad Became India's Global Capability Centre Capital | Westside Realty",
   description:
     "In 2024–25, Hyderabad added more GCC seats than any other Indian city. What's driving the rush, which companies are here, and what it means for real estate.",
+  alternates: {
+    canonical: "https://www.westsiderealty.in/insights/gcc-hyderabad",
+  },
 };
 
 const LAST_UPDATED = "March 2026";

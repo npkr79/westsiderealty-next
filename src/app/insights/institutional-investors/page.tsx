@@ -8,6 +8,9 @@ export const metadata: Metadata = {
   title: "Why Institutional Investors Are Choosing Hyderabad for Commercial Real Estate | Westside Realty",
   description:
     "Global REITs, sovereign wealth funds, and PE firms are deploying billions into Hyderabad commercial real estate. Here's why Hyderabad is winning the institutional capital race.",
+  alternates: {
+    canonical: "https://www.westsiderealty.in/insights/institutional-investors",
+  },
 };
 
 const LAST_UPDATED = "March 2026";
