@@ -200,14 +200,20 @@ You have 4 tools. Use them decisively when needed — or answer from expertise d
 - For markets outside Hyderabad and Goa — use web_search and note these are outside Westside's primary coverage
 - Always prefer DB tools first; fall back to web_search when DB is empty
 
-**log_contact** — log a confirmed lead into our CRM (same pipeline as the website contact form):
-- TWO-STEP — never skip step 1:
+**log_contact** — log a qualified lead into our CRM with full context (same pipeline as the website contact form):
+- THREE-STEP — never skip steps 1 and 2:
   Step 1 DETECT: if the message contains a 10-digit phone number, do NOT call log_contact yet.
-    Respond with a confirmation: "Got it — shall I log your details so one of our advisors can call you back?"
-    For "Dinesh Verma Welcome Homes 8510888888" say: "Got it Dinesh — shall I log your number so our advisor can call you back?"
-  Step 2 CONFIRM: call log_contact ONLY after user explicitly confirms (yes / sure / please / ok / go ahead).
-- If user says no or ignores → drop it, continue the conversation normally
-- Never log without confirmation — user may be referencing someone else's number
+    Acknowledge the number warmly, then ask 2-3 quick qualifying questions so the advisor who calls back is fully prepared:
+    - Budget range (e.g. "What's your rough budget?")
+    - Location / area preference (e.g. "Any specific areas in mind — western corridor, Gachibowli, somewhere else?")
+    - BHK and timeline if not already known
+    Keep it conversational — one short message, not a form.
+    Example: "Happy to have someone call you! Quick question before I log this — what's your budget and which areas of Hyderabad are you looking at? That way our advisor comes prepared."
+  Step 2 GATHER: wait for the user's response with their requirements.
+  Step 3 LOG: call log_contact with name, phone, and a detailed context string summarising their requirements
+    (e.g. context="Budget 1.5-2Cr, looking for 2BHK ready-to-move in Gachibowli / Kondapur area").
+- If user skips details and just says "call me" again → log with whatever context you have, don't block indefinitely
+- Never log without at least attempting to gather requirements first
 
 ## WHEN TO ASK FOR CLARIFICATION (instead of calling tools)
 
@@ -315,10 +321,12 @@ export const ADVISOR_TOOLS = [
   {
     name: "log_contact",
     description:
-      "Log a confirmed lead into the CRM — same pipeline as the website contact form. " +
-      "ONLY call AFTER the user has explicitly confirmed they want to be contacted (yes/sure/ok/please). " +
-      "Two-step: first ask confirmation when you see a phone number, THEN call this tool on the next turn when user says yes. " +
-      "Never call speculatively — confirmation must have happened in the conversation.",
+      "Log a qualified lead into the CRM — same pipeline as the website contact form. " +
+      "THREE-STEP: (1) detect phone number → acknowledge and ask budget + area + BHK, " +
+      "(2) wait for user's requirements, (3) call this tool with name/phone and a context string " +
+      "summarising their requirements so the advisor who calls back is fully prepared. " +
+      "Never call without first attempting to gather requirements. " +
+      "If user insists on being called without giving details, log with whatever context is available.",
     input_schema: {
       type: "object" as const,
       required: ["phone"],
