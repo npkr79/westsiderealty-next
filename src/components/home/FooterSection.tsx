@@ -135,8 +135,8 @@ export default function FooterSection() {
                 </Link>
               </li>
               <li>
-                <Link href="/dubai/buy" className="hover:text-luxury-gold transition-colors">
-                  Dubai Properties
+                <Link href="/commercial/pre-leased-mumbai" className="hover:text-luxury-gold transition-colors">
+                  Commercial Properties
                 </Link>
               </li>
               <li>
