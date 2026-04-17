@@ -61,6 +61,16 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       ? ` — ₹${priceMin.toLocaleString()}-${priceMax.toLocaleString()}/sqft`
       : "";
 
+  const { data: heroProject } = await supabase
+    .from("advisor_project_intelligence")
+    .select("hero_image_url")
+    .eq("city_slug", citySlug)
+    .ilike("micro_market", cache.micro_market_name ?? microMarketSlug)
+    .eq("is_focus_project", true)
+    .not("hero_image_url", "is", null)
+    .limit(1)
+    .maybeSingle();
+
   return buildMetadata({
     title: `${marketName} Real Estate${priceRange} | ${cityName} | Westside Realty`,
     description:
@@ -68,6 +78,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       `Discover projects in ${marketName}, ${cityName}. Price trends, growth analysis & RERA-verified listings. Expert market intelligence by Westside Realty.`,
     canonicalUrl: `https://www.westsiderealty.in/${citySlug}/${microMarketSlug}`,
     keywords: `${marketName} real estate, ${marketName} apartments, buy flat ${marketName}, ${marketName} property price, ${marketName} ${cityName}, rera projects ${marketName}`,
+    imageUrl: (heroProject?.hero_image_url as string | null) ?? undefined,
   });
 }
 
