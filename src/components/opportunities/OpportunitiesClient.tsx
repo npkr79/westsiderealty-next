@@ -416,12 +416,6 @@ function OpportunitiesClientInner({ opportunities }: { opportunities: Developmen
             {[
               { label: "Live Opportunities", value: opportunities.length },
               { label: "Cities", value: cities.length },
-              {
-                label: "Total Deal Size",
-                value: `~₹${Math.round(
-                  opportunities.reduce((s, o) => s + (o.indicative_project_cost_cr ?? 0), 0)
-                )} Cr`,
-              },
             ].map((s) => (
               <div key={s.label}>
                 <p style={{ fontSize: 30, fontWeight: 800, color: "#fff", margin: 0 }}>{s.value}</p>
