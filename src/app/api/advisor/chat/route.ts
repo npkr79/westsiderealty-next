@@ -16,7 +16,8 @@ import {
   type AdvisorQueryResult,
 } from "@/lib/advisor/data-fetcher";
 import { webSearch, buildWebDataContext } from "@/lib/advisor/web-search";
-import { runProactiveIntelligence, sendDirectWhatsApp } from "@/lib/advisor/proactive";
+import { runProactiveIntelligence } from "@/lib/advisor/proactive";
+import { submitLead } from "@/app/actions/submit-lead";
 import { createServiceClient } from "@/lib/supabase/serviceClient";
 
 // ─── Config ───────────────────────────────────────────────────────────────────
@@ -309,50 +310,35 @@ async function executeAdvisorTools(
 
             console.log(`[advisor/tool] log_contact: ${name} / ${phone} / ${company}`);
 
-            // Insert into leads table
-            try {
-              await ctx.supabase.from("leads").insert({
-                name: name || "Unknown",
-                phone,
-                type: "GENERAL_CONTACT",
-                source_page: ctx.sourcePage ?? "advisor_chat",
-                details: {
-                  company: company || null,
-                  context: contactContext || null,
-                  channel: "advisor_chat",
-                  conversation_id: ctx.conversationId,
-                },
-              });
-            } catch (e) {
-              console.error("[advisor/tool] log_contact leads insert:", e);
-            }
-
-            // Fire immediate WhatsApp alert
-            try {
-              const dutyPhone = process.env.ADVISOR_DUTY_PHONE;
-              if (dutyPhone) {
-                const page =
-                  ctx.sourcePage?.replace(/^https?:\/\/[^/]+/, "") ?? "advisor chat";
-                const alertMsg = [
-                  `📞 *Contact Shared in Advisor Chat*`,
-                  ``,
-                  `👤 *Name:* ${name || "Not given"}`,
-                  `🏢 *Company:* ${company || "–"}`,
-                  `📱 *Phone:* ${phone}`,
-                  ``,
-                  `📍 *Page:* ${page}`,
-                  ctx.conversationId
-                    ? `_Conversation: ${ctx.conversationId.slice(0, 8)}…_`
-                    : "",
-                  ``,
-                  `Please call them back!`,
+            // Use the same submitLead pipeline as the website contact form.
+            // This inserts into crm_leads and triggers onNewLeadAutomation (WhatsApp alert).
+            const result = await submitLead({
+              name: name || "Unknown",
+              phone,
+              type: "GENERAL_CONTACT",
+              source_page: ctx.sourcePage ?? "advisor_chat",
+              details: {
+                company: company || null,
+                notes: [
+                  company ? `Via ${company}` : "Via advisor chat",
+                  contactContext || null,
                 ]
                   .filter(Boolean)
-                  .join("\n");
-                await sendDirectWhatsApp(dutyPhone, alertMsg);
-              }
-            } catch (e) {
-              console.error("[advisor/tool] log_contact WhatsApp alert:", e);
+                  .join(". "),
+                channel: "advisor_chat",
+                conversation_id: ctx.conversationId,
+              },
+              attribution_metadata: {
+                source_type: "advisor_chat",
+                company: company || null,
+                conversation_id: ctx.conversationId,
+              },
+            });
+
+            if (!result.success) {
+              console.error("[advisor/tool] log_contact submitLead failed:", result.error);
+              content = `Failed to log contact: ${result.error}`;
+              break;
             }
 
             // Mark conversation status
@@ -366,7 +352,7 @@ async function executeAdvisorTools(
             }
 
             contactLogged = true;
-            content = `Contact logged: ${name || "Unknown"} (${phone}${company ? ", " + company : ""}). WhatsApp alert sent to duty advisor.`;
+            content = `Lead logged to CRM: ${name || "Unknown"} (${phone}${company ? ", " + company : ""}). WhatsApp automation triggered.`;
             break;
           }
 
