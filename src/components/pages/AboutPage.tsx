@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { InlineLeadForm } from "@/components/common/InlineLeadForm";
 import Image from "next/image";
 import {
   Award,
@@ -296,15 +297,13 @@ export default function AboutPage({ testimonials = [] }: AboutPageProps) {
             Ready to Start Your Property Journey?
           </h2>
           <p className="text-white/55 mb-10 leading-relaxed">
-            Contact us today for expert advice and personalized service across Hyderabad, Goa & Dubai.
+            Leave your details and our advisor will call you back.
           </p>
-          <Link
-            href="/contact"
-            className="inline-flex items-center gap-2 px-8 py-4 bg-luxury-gold hover:bg-luxury-gold-dark text-white font-medium rounded-lg transition-colors luxury-cta"
-          >
-            <Phone className="h-4 w-4" />
-            Schedule a Consultation
-          </Link>
+          <InlineLeadForm
+            sourcePage="/about"
+            leadType="GENERAL_CONTACT"
+            ctaLabel="Request a Callback"
+          />
         </div>
       </section>
 

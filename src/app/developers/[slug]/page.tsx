@@ -6,6 +6,7 @@ import { buildMetadata } from "@/components/common/SEO";
 import { DeveloperProfileProjects } from "./DeveloperProfileProjects";
 import type { ProfileProject } from "./DeveloperProfileProjects";
 import { FaqAccordion } from "./FaqAccordion";
+import { InlineLeadForm } from "@/components/common/InlineLeadForm";
 
 export const revalidate = 3600;
 
@@ -1110,26 +1111,12 @@ export default async function DeveloperDetailPage({ params }: { params: Promise<
               Our advisors have walked every project in this portfolio. Get an honest,
               data-backed take — free.
             </p>
-            <Link
-              href="/contact"
-              style={{
-                display: "inline-block",
-                padding: "14px 36px",
-                borderRadius: 999,
-                background: `linear-gradient(135deg, ${C.goldLight}, #A88040)`,
-                color: "#0a0a0a",
-                fontFamily: "'Outfit', sans-serif",
-                fontSize: 13,
-                fontWeight: 700,
-                letterSpacing: "0.12em",
-                textTransform: "uppercase",
-                textDecoration: "none",
-                boxShadow: "0 4px 24px rgba(176,141,87,0.3)",
-                transition: "transform 0.15s, box-shadow 0.15s",
-              }}
-            >
-              Get Expert Advice — Free
-            </Link>
+            <InlineLeadForm
+              sourcePage={`/developers/${brand.url_slug}`}
+              leadType="DEVELOPER_INQUIRY"
+              ctaLabel="Request a Callback"
+              details={{ developer: brand.brand_name }}
+            />
             <p
               style={{
                 fontFamily: "'Outfit', sans-serif",

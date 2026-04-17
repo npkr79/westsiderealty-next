@@ -3,6 +3,7 @@
 import { useMemo, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { InlineLeadForm } from "@/components/common/InlineLeadForm";
 import Image from "next/image";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -501,17 +502,12 @@ function PortfolioClientInner({ projects }: { projects: FocusProject[] }) {
           <p style={{ fontSize: 14, color: "rgba(255,255,255,0.55)", margin: 0, maxWidth: 420 }}>
             Our team has access to pre-launch allocations and developer-direct deals not listed publicly.
           </p>
-          <a
-            href="/contact"
-            style={{
-              marginTop: 8, display: "inline-block",
-              background: "#c8a96e", color: "#0a0a0a",
-              fontWeight: 700, fontSize: 14,
-              padding: "11px 28px", borderRadius: 10, textDecoration: "none",
-            }}
-          >
-            Talk to an Advisor
-          </a>
+          <InlineLeadForm
+            sourcePage="/portfolio"
+            leadType="BUYER_REQUIREMENT"
+            ctaLabel="Request a Callback"
+            details={{ interest: "off_market_projects" }}
+          />
         </div>
       </div>
     </div>

@@ -3,6 +3,7 @@
 import { useMemo, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { InlineLeadForm } from "@/components/common/InlineLeadForm";
 import Image from "next/image";
 import {
   type DevelopmentOpportunity,
@@ -534,23 +535,12 @@ function OpportunitiesClientInner({ opportunities }: { opportunities: Developmen
           <p style={{ fontSize: 14, color: "rgba(255,255,255,0.6)", margin: 0, maxWidth: 480, lineHeight: 1.6 }}>
             Feasibility · Developer shortlisting · Term sheet · Closure. Confidential, fee on success.
           </p>
-          <a
-            href="/contact"
-            style={{
-              marginTop: 8,
-              display: "inline-block",
-              background: C.gold,
-              color: "#0a0a0a",
-              fontWeight: 700,
-              fontSize: 14,
-              padding: "12px 28px",
-              borderRadius: 10,
-              textDecoration: "none",
-              letterSpacing: "0.04em",
-            }}
-          >
-            Speak to Advisory Team
-          </a>
+          <InlineLeadForm
+            sourcePage="/opportunities"
+            leadType="GENERAL_CONTACT"
+            ctaLabel="Request a Callback"
+            details={{ interest: "development_opportunities" }}
+          />
         </div>
       </div>
     </div>
