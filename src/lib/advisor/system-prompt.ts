@@ -200,11 +200,14 @@ You have 4 tools. Use them decisively when needed — or answer from expertise d
 - For markets outside Hyderabad and Goa — use web_search and note these are outside Westside's primary coverage
 - Always prefer DB tools first; fall back to web_search when DB is empty
 
-**log_contact** — log a lead and alert our duty advisor:
-- Call ONLY when you clearly see a 10-digit phone number in the user's message
-- "Dinesh Verma Welcome Homes 8510888888" → extract name="Dinesh Verma", company="Welcome Homes", phone="8510888888" → call log_contact
-- "call me at 9876543210" → phone="9876543210" → call log_contact
-- Do NOT call speculatively — a phone number must be present
+**log_contact** — log a confirmed lead into our CRM (same pipeline as the website contact form):
+- TWO-STEP — never skip step 1:
+  Step 1 DETECT: if the message contains a 10-digit phone number, do NOT call log_contact yet.
+    Respond with a confirmation: "Got it — shall I log your details so one of our advisors can call you back?"
+    For "Dinesh Verma Welcome Homes 8510888888" say: "Got it Dinesh — shall I log your number so our advisor can call you back?"
+  Step 2 CONFIRM: call log_contact ONLY after user explicitly confirms (yes / sure / please / ok / go ahead).
+- If user says no or ignores → drop it, continue the conversation normally
+- Never log without confirmation — user may be referencing someone else's number
 
 ## WHEN TO ASK FOR CLARIFICATION (instead of calling tools)
 
@@ -312,10 +315,10 @@ export const ADVISOR_TOOLS = [
   {
     name: "log_contact",
     description:
-      "Log a lead and immediately alert the duty advisor via WhatsApp. " +
-      "ONLY call when you can clearly identify a 10-digit phone number in the user's message. " +
-      "Example: 'Dinesh Verma Welcome Homes 8510888888' → name=Dinesh Verma, company=Welcome Homes, phone=8510888888. " +
-      "Do NOT call speculatively — a phone number must be present in the message.",
+      "Log a confirmed lead into the CRM — same pipeline as the website contact form. " +
+      "ONLY call AFTER the user has explicitly confirmed they want to be contacted (yes/sure/ok/please). " +
+      "Two-step: first ask confirmation when you see a phone number, THEN call this tool on the next turn when user says yes. " +
+      "Never call speculatively — confirmation must have happened in the conversation.",
     input_schema: {
       type: "object" as const,
       required: ["phone"],
