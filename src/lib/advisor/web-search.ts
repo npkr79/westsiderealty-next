@@ -1,5 +1,16 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { ParsedIntent } from "./system-prompt";
+
+// Minimal intent shape for legacy shouldTriggerWebSearch / buildWebQuery helpers
+interface LegacyIntent {
+  intent: string;
+  project_name?: string;
+  project_names?: string[];
+  developer_name?: string;
+  market_slug?: string;
+  city?: string;
+  budget_min_cr?: number;
+  budget_max_cr?: number;
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -69,7 +80,7 @@ const POSSESSION_PATTERNS = [
 
 export function shouldTriggerWebSearch(
   userMessage: string,
-  intent: ParsedIntent,
+  intent: LegacyIntent,
   dbProjects: number,
   dbMarkets: number,
   sparseProjects?: number  // projects found in DB but with null price data
@@ -102,7 +113,7 @@ export function shouldTriggerWebSearch(
 // ─── Query builder ────────────────────────────────────────────────────────────
 
 export function buildWebQuery(
-  intent: ParsedIntent,
+  intent: LegacyIntent,
   userMessage: string
 ): { queries: string[]; queryType: WebQueryType; entityName: string } {
   const city = intent.city === "goa" ? "Goa" : "Hyderabad";
