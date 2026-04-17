@@ -73,6 +73,12 @@ const STATIC_NAV_ITEMS: NavItem[] = [
   {
     label: "Commercial",
     href: "/commercial-investments",
+    description: "Pre-leased commercial investment opportunities across Mumbai, Hyderabad & Goa",
+    links: [
+      { label: "Pre-Leased Mumbai", href: "/commercial/pre-leased-mumbai", badge: "NEW" },
+      { label: "All Commercial", href: "/commercial-investments" },
+    ],
+    cta: { label: "View commercial opportunities →", href: "/commercial/pre-leased-mumbai" },
   },
   {
     label: "Insights",
