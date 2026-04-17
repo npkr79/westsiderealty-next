@@ -18,6 +18,11 @@
  *     j. content-gaps      — Page-2 quick wins, missing locality pages, declining content
  *     k. faq-generator     — Write FAQPage JSON-LD TypeScript helpers for all templates
  *     l. position-tracker  — Track 100 target keywords weekly, alert on drops
+ *     m. backlink-audit    — SerpAPI brand mentions, competitor scale, indexed page counts
+ *     n. serp-features     — Featured snippets, PAA, local pack tracking per keyword
+ *     o. keyword-difficulty — Score each keyword gap 0-100 by who dominates top 10
+ *     p. content-scorer    — Rule-based + Claude quality score for all projects/micro-markets
+ *     q. crux-audit        — CrUX API real-user CWV data for all project + micro-market pages
  *
  *   Phase 3 — Index Updated Pages
  *     m. indexing-api      — Submit changed pages to Google Indexing API
@@ -61,6 +66,11 @@ import { runCompetitorKeywords } from "./competitor-keywords.mjs";
 import { runContentGaps } from "./content-gaps.mjs";
 import { runFaqGenerator } from "./faq-generator.mjs";
 import { runPositionTracker } from "./position-tracker.mjs";
+import { runBacklinkAudit } from "./backlink-audit.mjs";
+import { runSerpFeatures } from "./serp-features.mjs";
+import { runKeywordDifficulty } from "./keyword-difficulty.mjs";
+import { runContentScorer } from "./content-scorer.mjs";
+import { runCruxAudit } from "./crux-audit.mjs";
 import { requestIndexing } from "./indexing-api.mjs";
 import { submitSitemap, daysAgo } from "./gsc-client.mjs";
 
@@ -272,9 +282,55 @@ async function runGscPhases() {
     console.error("[agent] Position tracker failed:", err.message);
   }
 
+  // Backlink audit — SerpAPI brand mentions + competitor scale comparison
+  console.error("\n[agent] ═══ Phase 2k: Backlink Audit ═══");
+  let backlinkResult = { ourIndexedPages: 0, brandMentions: 0, topMentioningDomains: [], competitorScale: [], linkableAssets: 0, summary: "" };
+  try {
+    backlinkResult = await runBacklinkAudit();
+  } catch (err) {
+    console.error("[agent] Backlink audit failed:", err.message);
+  }
+
+  // SERP features — featured snippet, PAA, local pack per keyword
+  console.error("\n[agent] ═══ Phase 2l: SERP Feature Tracking ═══");
+  let serpFeaturesResult = { keywordsChecked: 0, featuredSnippetOpportunities: 0, paaOpportunities: 0, localPackPresence: 0, weOwnSnippets: 0, topOpportunities: [], summary: "" };
+  try {
+    serpFeaturesResult = await runSerpFeatures();
+  } catch (err) {
+    console.error("[agent] SERP features failed:", err.message);
+  }
+
+  // Keyword difficulty — score each gap 0-100 by who dominates the top 10
+  console.error("\n[agent] ═══ Phase 2m: Keyword Difficulty Scoring ═══");
+  let keywordDifficultyResult = { keywordsScored: 0, lowDifficulty: 0, mediumDifficulty: 0, highDifficulty: 0, quickWinKeywords: [], summary: "" };
+  try {
+    keywordDifficultyResult = await runKeywordDifficulty();
+  } catch (err) {
+    console.error("[agent] Keyword difficulty failed:", err.message);
+  }
+
+  // Content scorer — rule-based + Claude quality scores for all projects/micro-markets
+  console.error("\n[agent] ═══ Phase 2n: Content Quality Scorer ═══");
+  let contentScorerResult = { projectsScored: 0, microMarketsScored: 0, avgProjectScore: 0, avgMicroMarketScore: 0, lowScoreProjects: 0, lowScoreMicroMarkets: 0, claudeSuggestionsGenerated: 0, topIssues: [], summary: "" };
+  try {
+    contentScorerResult = await runContentScorer();
+  } catch (err) {
+    console.error("[agent] Content scorer failed:", err.message);
+  }
+
+  // CrUX audit — real-user CWV from Chrome UX Report API for all pages
+  console.error("\n[agent] ═══ Phase 2o: CrUX Audit (all pages) ═══");
+  let cruxResult = { urlsChecked: 0, urlsWithData: 0, urlsGood: 0, urlsNeedsImprovement: 0, urlsPoor: 0, worstPages: [], summary: "" };
+  try {
+    cruxResult = await runCruxAudit();
+  } catch (err) {
+    console.error("[agent] CrUX audit failed:", err.message);
+  }
+
   return {
     ctrResult, metaFixes, schemaGaps, onPageResult,
     dbContentResult, ctrTrends, competitorResult, contentGaps, faqResult, positionResult,
+    backlinkResult, serpFeaturesResult, keywordDifficultyResult, contentScorerResult, cruxResult,
   };
 }
 
@@ -338,7 +394,7 @@ async function submitSitemapToGsc() {
 
 // ─── Phase 5: Generate PR Body ────────────────────────────────────────────────
 
-async function generatePrBody({ codeFindings, codeFix, ctrResult, metaFixes, schemaGaps, onPageResult, dbContentResult, ctrTrends, competitorResult, contentGaps, faqResult, positionResult, indexingResults, sitemapResult }) {
+async function generatePrBody({ codeFindings, codeFix, ctrResult, metaFixes, schemaGaps, onPageResult, dbContentResult, ctrTrends, competitorResult, contentGaps, faqResult, positionResult, backlinkResult, serpFeaturesResult, keywordDifficultyResult, contentScorerResult, cruxResult, indexingResults, sitemapResult }) {
   const lines = [];
   const now = new Date().toISOString().slice(0, 10);
 
@@ -714,6 +770,120 @@ async function generatePrBody({ codeFindings, codeFix, ctrResult, metaFixes, sch
     lines.push("");
   }
 
+  // ── Backlink Audit ──
+  if (backlinkResult?.ourIndexedPages > 0 || backlinkResult?.brandMentions > 0) {
+    lines.push("### 🔗 Backlink & Authority Signals");
+    lines.push("");
+    lines.push(`| Signal | Value |`);
+    lines.push(`|--------|-------|`);
+    lines.push(`| Our indexed pages | ${backlinkResult.ourIndexedPages?.toLocaleString() || "—"} |`);
+    lines.push(`| Brand mentions (non-site) | ${backlinkResult.brandMentions || 0} |`);
+    lines.push(`| Linkable assets (projects+markets) | ${backlinkResult.linkableAssets || 0} |`);
+    if (backlinkResult.competitorScale?.length > 0) {
+      lines.push("");
+      lines.push("**Competitor content scale:**");
+      for (const c of backlinkResult.competitorScale) {
+        lines.push(`- \`${c.domain}\` — ${c.indexedPages?.toLocaleString() || "unknown"} indexed pages`);
+      }
+    }
+    if (backlinkResult.topMentioningDomains?.length > 0) {
+      lines.push("");
+      lines.push("**Top domains mentioning us:** " + backlinkResult.topMentioningDomains.slice(0, 5).join(", "));
+    }
+    lines.push("");
+  }
+
+  // ── SERP Features ──
+  if (serpFeaturesResult?.keywordsChecked > 0) {
+    lines.push("### ✨ SERP Feature Opportunities");
+    lines.push("");
+    lines.push(`Checked **${serpFeaturesResult.keywordsChecked}** keywords | We own **${serpFeaturesResult.weOwnSnippets}** featured snippet(s)`);
+    lines.push("");
+    lines.push(`| Opportunity | Count |`);
+    lines.push(`|-------------|-------|`);
+    lines.push(`| Featured snippets to steal | ${serpFeaturesResult.featuredSnippetOpportunities} |`);
+    lines.push(`| PAA box opportunities | ${serpFeaturesResult.paaOpportunities} |`);
+    lines.push(`| Local pack presence | ${serpFeaturesResult.localPackPresence} |`);
+    if (serpFeaturesResult.topOpportunities?.length > 0) {
+      lines.push("");
+      lines.push("**Top SERP feature targets:**");
+      for (const o of serpFeaturesResult.topOpportunities.slice(0, 5)) {
+        lines.push(`- "${o.keyword}" → **${o.opportunity}** (top competitor: ${o.top_competitor || "—"})`);
+      }
+    }
+    lines.push("");
+  }
+
+  // ── Keyword Difficulty ──
+  if (keywordDifficultyResult?.keywordsScored > 0) {
+    lines.push("### 🎯 Keyword Difficulty Scores");
+    lines.push("");
+    lines.push(`Scored **${keywordDifficultyResult.keywordsScored}** keyword gaps:`);
+    lines.push(`- 🟢 LOW (quick wins): ${keywordDifficultyResult.lowDifficulty} keywords`);
+    lines.push(`- 🟡 MEDIUM (1-3 months): ${keywordDifficultyResult.mediumDifficulty} keywords`);
+    lines.push(`- 🔴 HIGH (6+ months): ${keywordDifficultyResult.highDifficulty} keywords`);
+    if (keywordDifficultyResult.quickWinKeywords?.length > 0) {
+      lines.push("");
+      lines.push("**Quick win keywords (LOW difficulty + pos 11-30):**");
+      lines.push("");
+      lines.push("| Keyword | Position | Opportunity Score |");
+      lines.push("|---------|----------|------------------|");
+      for (const k of keywordDifficultyResult.quickWinKeywords.slice(0, 8)) {
+        lines.push(`| ${k.keyword} | ${k.our_position?.toFixed(1) || "—"} | ${k.opportunity_score} |`);
+      }
+    }
+    lines.push("");
+  }
+
+  // ── Content Scores ──
+  if (contentScorerResult?.projectsScored > 0 || contentScorerResult?.microMarketsScored > 0) {
+    lines.push("### 📝 Content Quality Scores");
+    lines.push("");
+    lines.push(`| Entity | Scored | Avg Score | Below 50 |`);
+    lines.push(`|--------|--------|-----------|----------|`);
+    lines.push(`| Projects | ${contentScorerResult.projectsScored} | ${contentScorerResult.avgProjectScore?.toFixed(0)}/100 | ${contentScorerResult.lowScoreProjects} |`);
+    lines.push(`| Micro-markets | ${contentScorerResult.microMarketsScored} | ${contentScorerResult.avgMicroMarketScore?.toFixed(0)}/100 | ${contentScorerResult.lowScoreMicroMarkets} |`);
+    if (contentScorerResult.topIssues?.length > 0) {
+      lines.push("");
+      lines.push("**Lowest-scoring pages (need content improvement):**");
+      for (const issue of contentScorerResult.topIssues.slice(0, 6)) {
+        lines.push(`- \`${issue.entity_type}/${issue.entity_slug}\` — Score: **${issue.score}/100** | Missing: ${(issue.missing_fields || []).join(", ")}`);
+        if (issue.claude_suggestion) {
+          lines.push(`  > 💡 ${issue.claude_suggestion}`);
+        }
+      }
+    }
+    lines.push("");
+  }
+
+  // ── CrUX Audit ──
+  if (cruxResult?.urlsWithData > 0) {
+    lines.push("### ⚡ Real-User Core Web Vitals (CrUX)");
+    lines.push("");
+    lines.push(`Checked **${cruxResult.urlsChecked}** URLs | **${cruxResult.urlsWithData}** with real-user data`);
+    lines.push("");
+    lines.push(`| Status | Pages |`);
+    lines.push(`|--------|-------|`);
+    lines.push(`| ✅ Good | ${cruxResult.urlsGood} |`);
+    lines.push(`| ⚠️ Needs Improvement | ${cruxResult.urlsNeedsImprovement} |`);
+    lines.push(`| ❌ Poor | ${cruxResult.urlsPoor} |`);
+    if (cruxResult.worstPages?.length > 0) {
+      lines.push("");
+      lines.push("**Pages with poorest CWV (need immediate attention):**");
+      lines.push("");
+      lines.push("| Page | LCP | INP | CLS | Status |");
+      lines.push("|------|-----|-----|-----|--------|");
+      for (const p of cruxResult.worstPages.slice(0, 8)) {
+        const short = p.url.replace("https://www.westsiderealty.in", "") || "/";
+        const lcp = p.lcp_p75 ? `${(p.lcp_p75 / 1000).toFixed(1)}s` : "—";
+        const inp = p.inp_p75 ? `${p.inp_p75}ms` : "—";
+        const cls = p.cls_p75 != null ? p.cls_p75 : "—";
+        lines.push(`| \`${short}\` | ${lcp} | ${inp} | ${cls} | ${p.overall_status} |`);
+      }
+    }
+    lines.push("");
+  }
+
   // ── Indexing ──
   if (indexingResults && indexingResults.length > 0) {
     const succeeded = indexingResults.filter((r) => r.success).length;
@@ -760,6 +930,11 @@ async function main() {
   let contentGaps = { quickWins: [], missingPages: [], decliningPages: [], ctrOpportunities: [], summary: {} };
   let faqResult = { projectFaqFileWritten: false, microMarketFaqFileWritten: false };
   let positionResult = { keywordsTracked: 0, keywordsFound: 0, drops: [], improvements: [] };
+  let backlinkResult = { ourIndexedPages: 0, brandMentions: 0, topMentioningDomains: [], competitorScale: [], linkableAssets: 0, summary: "" };
+  let serpFeaturesResult = { keywordsChecked: 0, featuredSnippetOpportunities: 0, paaOpportunities: 0, localPackPresence: 0, weOwnSnippets: 0, topOpportunities: [], summary: "" };
+  let keywordDifficultyResult = { keywordsScored: 0, lowDifficulty: 0, mediumDifficulty: 0, highDifficulty: 0, quickWinKeywords: [], summary: "" };
+  let contentScorerResult = { projectsScored: 0, microMarketsScored: 0, avgProjectScore: 0, avgMicroMarketScore: 0, lowScoreProjects: 0, lowScoreMicroMarkets: 0, claudeSuggestionsGenerated: 0, topIssues: [], summary: "" };
+  let cruxResult = { urlsChecked: 0, urlsWithData: 0, urlsGood: 0, urlsNeedsImprovement: 0, urlsPoor: 0, worstPages: [], summary: "" };
   let indexingResults = [];
   let sitemapResult = null;
 
@@ -782,6 +957,11 @@ async function main() {
     contentGaps = gscResults.contentGaps;
     faqResult = gscResults.faqResult;
     positionResult = gscResults.positionResult;
+    backlinkResult = gscResults.backlinkResult;
+    serpFeaturesResult = gscResults.serpFeaturesResult;
+    keywordDifficultyResult = gscResults.keywordDifficultyResult;
+    contentScorerResult = gscResults.contentScorerResult;
+    cruxResult = gscResults.cruxResult;
   }
 
   // Phase 3: Index changed pages
@@ -798,6 +978,7 @@ async function main() {
   const prBody = await generatePrBody({
     codeFindings, codeFix, ctrResult, metaFixes, schemaGaps, onPageResult,
     dbContentResult, ctrTrends, competitorResult, contentGaps, faqResult, positionResult,
+    backlinkResult, serpFeaturesResult, keywordDifficultyResult, contentScorerResult, cruxResult,
     indexingResults, sitemapResult,
   });
 
@@ -829,6 +1010,16 @@ async function main() {
     keywordsTracked: positionResult?.keywordsTracked || 0,
     keywordDrops: positionResult?.drops?.length || 0,
     faqFilesUpdated: (faqResult?.projectFaqFileWritten ? 1 : 0) + (faqResult?.microMarketFaqFileWritten ? 1 : 0),
+    // New phases
+    ourIndexedPages: backlinkResult?.ourIndexedPages || 0,
+    brandMentions: backlinkResult?.brandMentions || 0,
+    featuredSnippetOpportunities: serpFeaturesResult?.featuredSnippetOpportunities || 0,
+    weOwnSnippets: serpFeaturesResult?.weOwnSnippets || 0,
+    keywordDifficultyScored: keywordDifficultyResult?.keywordsScored || 0,
+    lowDifficultyKeywords: keywordDifficultyResult?.lowDifficulty || 0,
+    contentLowScorePages: (contentScorerResult?.lowScoreProjects || 0) + (contentScorerResult?.lowScoreMicroMarkets || 0),
+    cruxUrlsChecked: cruxResult?.urlsChecked || 0,
+    cruxUrlsPoor: cruxResult?.urlsPoor || 0,
     // Phase 3-4
     urlsIndexed: indexingResults.filter((r) => r.success).length,
     sitemapSubmitted: sitemapResult?.success || false,

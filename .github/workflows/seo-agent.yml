@@ -210,6 +210,38 @@ jobs:
           " 2>/dev/null || echo "0")
           echo "faq_files=$FAQ_FILES" >> $GITHUB_OUTPUT
 
+          SNIPPET_OPPS=$(node -e "
+            try {
+              const s = JSON.parse(require('fs').readFileSync('/tmp/agent-summary.json','utf8'));
+              console.log(s.featuredSnippetOpportunities || 0);
+            } catch { console.log(0); }
+          " 2>/dev/null || echo "0")
+          echo "snippet_opps=$SNIPPET_OPPS" >> $GITHUB_OUTPUT
+
+          LOW_DIFF=$(node -e "
+            try {
+              const s = JSON.parse(require('fs').readFileSync('/tmp/agent-summary.json','utf8'));
+              console.log(s.lowDifficultyKeywords || 0);
+            } catch { console.log(0); }
+          " 2>/dev/null || echo "0")
+          echo "low_diff_keywords=$LOW_DIFF" >> $GITHUB_OUTPUT
+
+          CONTENT_LOW=$(node -e "
+            try {
+              const s = JSON.parse(require('fs').readFileSync('/tmp/agent-summary.json','utf8'));
+              console.log(s.contentLowScorePages || 0);
+            } catch { console.log(0); }
+          " 2>/dev/null || echo "0")
+          echo "content_low_score=$CONTENT_LOW" >> $GITHUB_OUTPUT
+
+          CRUX_POOR=$(node -e "
+            try {
+              const s = JSON.parse(require('fs').readFileSync('/tmp/agent-summary.json','utf8'));
+              console.log(s.cruxUrlsPoor || 0);
+            } catch { console.log(0); }
+          " 2>/dev/null || echo "0")
+          echo "crux_poor=$CRUX_POOR" >> $GITHUB_OUTPUT
+
       - name: Check for file changes
         id: changes
         run: |
@@ -284,6 +316,12 @@ jobs:
           echo "⚡ **Quick win pages (pos 11-20):** ${{ steps.agent.outputs.quick_wins }}" >> $GITHUB_STEP_SUMMARY
           echo "🗺️ **Missing locality pages:** ${{ steps.agent.outputs.missing_localities }}" >> $GITHUB_STEP_SUMMARY
           echo "📊 **Keywords tracked:** ${{ steps.agent.outputs.keywords_tracked }} (${{ steps.agent.outputs.keyword_drops }} dropped)" >> $GITHUB_STEP_SUMMARY
+          echo "🟢 **Low-difficulty keyword wins:** ${{ steps.agent.outputs.low_diff_keywords }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Page Experience" >> $GITHUB_STEP_SUMMARY
+          echo "✨ **Featured snippet opportunities:** ${{ steps.agent.outputs.snippet_opps }}" >> $GITHUB_STEP_SUMMARY
+          echo "📝 **Content low-score pages (<50):** ${{ steps.agent.outputs.content_low_score }}" >> $GITHUB_STEP_SUMMARY
+          echo "❌ **CrUX poor pages (real users):** ${{ steps.agent.outputs.crux_poor }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "PR opened for review → merge after checking the diff." >> $GITHUB_STEP_SUMMARY
           if [ -f ".seo-pr-body.md" ]; then
@@ -309,6 +347,12 @@ jobs:
           echo "⚡ **Quick win pages (pos 11-20):** ${{ steps.agent.outputs.quick_wins }}" >> $GITHUB_STEP_SUMMARY
           echo "🗺️ **Missing locality pages:** ${{ steps.agent.outputs.missing_localities }}" >> $GITHUB_STEP_SUMMARY
           echo "📊 **Keywords tracked:** ${{ steps.agent.outputs.keywords_tracked }} (${{ steps.agent.outputs.keyword_drops }} dropped)" >> $GITHUB_STEP_SUMMARY
+          echo "🟢 **Low-difficulty keyword wins:** ${{ steps.agent.outputs.low_diff_keywords }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Page Experience" >> $GITHUB_STEP_SUMMARY
+          echo "✨ **Featured snippet opportunities:** ${{ steps.agent.outputs.snippet_opps }}" >> $GITHUB_STEP_SUMMARY
+          echo "📝 **Content low-score pages (<50):** ${{ steps.agent.outputs.content_low_score }}" >> $GITHUB_STEP_SUMMARY
+          echo "❌ **CrUX poor pages (real users):** ${{ steps.agent.outputs.crux_poor }}" >> $GITHUB_STEP_SUMMARY
           echo "(Template metadata is already optimal — no file changes needed)" >> $GITHUB_STEP_SUMMARY
           if [ -f ".seo-pr-body.md" ]; then
             echo "" >> $GITHUB_STEP_SUMMARY
