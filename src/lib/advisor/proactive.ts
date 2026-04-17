@@ -1,5 +1,13 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { ParsedIntent } from "./system-prompt";
+
+// Minimal intent shape needed for buying signal scoring
+export interface AdvisorToolIntent {
+  intent: string;
+  budget_min_cr?: number | null;
+  budget_max_cr?: number | null;
+  bhk?: string | null;
+  market_slug?: string | null;
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -113,7 +121,7 @@ const GLOBAL_COOLDOWN_MINUTES = 10;
 export function scoreBuyingSignals(
   currentMessage: string,
   history: Array<{ role: string; content: string }>,
-  intent: ParsedIntent
+  intent: AdvisorToolIntent
 ): BuyingSignalResult {
   const signals: string[] = [];
   let score = 0;
@@ -166,7 +174,7 @@ export function scoreBuyingSignals(
 
 // ─── Direct WhatsApp notification (internal, no lead ID needed) ───────────────
 
-async function sendDirectWhatsApp(phone: string, message: string): Promise<void> {
+export async function sendDirectWhatsApp(phone: string, message: string): Promise<void> {
   const token = process.env.WHATSAPP_ACCESS_TOKEN;
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
   if (!token || !phoneNumberId) {
@@ -270,7 +278,7 @@ export async function runProactiveIntelligence(
   conversationId: string,
   currentMessage: string,
   history: Array<{ role: string; content: string }>,
-  intent: ParsedIntent,
+  intent: AdvisorToolIntent,
   sourcePage: string | null
 ): Promise<{ score: number; signals: string[]; notified: boolean }> {
   try {
