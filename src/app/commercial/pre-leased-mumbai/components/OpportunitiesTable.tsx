@@ -225,7 +225,7 @@ export default function OpportunitiesTable({ properties }: Props) {
         </div>
 
         {/* Mobile cards */}
-        <div className="md:hidden" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <div className="md:hidden" style={{ flexDirection: "column", gap: 12 }}>
           {sorted.map((p) => (
             <div
               key={p.id}
