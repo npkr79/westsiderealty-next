@@ -92,8 +92,9 @@ export default function OpportunitiesTable({ properties }: Props) {
           11 pre-leased commercial mandates across Mumbai Metropolitan Region
         </p>
 
-        {/* Table — horizontally scrollable on mobile */}
+        {/* Desktop table */}
         <div
+          className="hidden md:block"
           style={{
             overflowX: "auto",
             borderRadius: 12,
@@ -221,6 +222,88 @@ export default function OpportunitiesTable({ properties }: Props) {
               ))}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile cards */}
+        <div className="md:hidden" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {sorted.map((p) => (
+            <div
+              key={p.id}
+              style={{
+                background: p.exclusive ? "rgba(200,169,110,0.05)" : "rgba(255,255,255,0.03)",
+                border: `1px solid ${p.exclusive ? "rgba(200,169,110,0.2)" : "rgba(255,255,255,0.08)"}`,
+                borderRadius: 12,
+                padding: 16,
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 4 }}>
+                    <span style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", fontWeight: 600 }}>#{p.id}</span>
+                    {p.exclusive && (
+                      <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.1em", background: "rgba(200,169,110,0.15)", border: "1px solid rgba(200,169,110,0.4)", color: "#c8a96e", padding: "2px 7px", borderRadius: 999 }}>
+                        EXCLUSIVE
+                      </span>
+                    )}
+                  </div>
+                  <p style={{ fontSize: 14, fontWeight: 700, color: "#fff", margin: 0 }}>{p.name}</p>
+                  <p style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", marginTop: 2 }}>{p.location}</p>
+                </div>
+                <div style={{ textAlign: "right", flexShrink: 0, marginLeft: 12 }}>
+                  <p style={{ fontSize: 18, fontWeight: 800, color: "#fff", margin: 0 }}>{p.askingPrice}</p>
+                  {p.yieldNum > 0 && (
+                    <p style={{ fontSize: 13, fontWeight: 700, color: "#c8a96e", marginTop: 2 }}>{p.yield} yield</p>
+                  )}
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 12px", marginBottom: 12 }}>
+                {p.areaSqft !== "—" && (
+                  <div>
+                    <p style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", textTransform: "uppercase", letterSpacing: "0.08em", margin: 0 }}>Area</p>
+                    <p style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", margin: 0 }}>{p.areaSqft} sq ft</p>
+                  </div>
+                )}
+                {p.monthlyRent !== "—" && (
+                  <div>
+                    <p style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", textTransform: "uppercase", letterSpacing: "0.08em", margin: 0 }}>Monthly Rent</p>
+                    <p style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", margin: 0 }}>{p.monthlyRent}</p>
+                  </div>
+                )}
+              </div>
+
+              <button
+                onClick={() => setOpenNote(openNote === p.id ? null : p.id)}
+                style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", background: "none", border: "none", padding: 0, cursor: "pointer", marginBottom: openNote === p.id ? 8 : 12, display: "block" }}
+              >
+                {openNote === p.id ? "▲ Hide details" : "▼ Show details"}
+              </button>
+              {openNote === p.id && (
+                <p style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", margin: "0 0 12px", lineHeight: 1.6 }}>
+                  {p.notes}
+                </p>
+              )}
+
+              <button
+                onClick={() => scrollToForm(`#${p.id}`)}
+                style={{
+                  width: "100%",
+                  padding: "10px 0",
+                  borderRadius: 999,
+                  background: "linear-gradient(135deg,#c8a96e,#a8843e)",
+                  color: "#0a0a0a",
+                  fontSize: 12,
+                  fontWeight: 700,
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase",
+                  border: "none",
+                  cursor: "pointer",
+                }}
+              >
+                Inquire About This Property
+              </button>
+            </div>
+          ))}
         </div>
 
         <p style={{ fontSize: 12, color: "rgba(255,255,255,0.25)", marginTop: 16, textAlign: "center" }}>
