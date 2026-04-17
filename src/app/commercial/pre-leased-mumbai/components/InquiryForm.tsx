@@ -201,47 +201,6 @@ export default function InquiryForm() {
           </form>
         )}
 
-        {/* Quick connect */}
-        <div style={{ display: "flex", gap: 12, marginTop: 28, flexWrap: "wrap" }}>
-          <a
-            href="https://wa.me/919502500068?text=Hi%2C%20I%20am%20interested%20in%20pre-leased%20commercial%20opportunities%20in%20Mumbai"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              padding: "10px 20px",
-              borderRadius: 999,
-              background: "rgba(37,211,102,0.1)",
-              border: "1px solid rgba(37,211,102,0.25)",
-              color: "#25d366",
-              fontSize: 13,
-              fontWeight: 600,
-              textDecoration: "none",
-            }}
-          >
-            <span>💬</span> WhatsApp
-          </a>
-          <a
-            href="tel:+919502500068"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              padding: "10px 20px",
-              borderRadius: 999,
-              background: "rgba(255,255,255,0.05)",
-              border: "1px solid rgba(255,255,255,0.12)",
-              color: "rgba(255,255,255,0.7)",
-              fontSize: 13,
-              fontWeight: 600,
-              textDecoration: "none",
-            }}
-          >
-            <span>📞</span> Call Us
-          </a>
-        </div>
       </div>
     </section>
   );

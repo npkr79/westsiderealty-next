@@ -320,12 +320,10 @@ export default function BrochurePageClient({ brochure, projects, token }: Props)
             Site visits, floor plans, and developer-direct pricing — all arranged for you.
           </p>
           <a
-            href="https://wa.me/919502500068"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ display: "inline-block", background: "#25D366", color: "#fff", fontWeight: 700, fontSize: 14, padding: "12px 32px", borderRadius: 10, textDecoration: "none" }}
+            href="/contact"
+            style={{ display: "inline-block", background: "#c8a96e", color: "#0a0a0a", fontWeight: 700, fontSize: 14, padding: "12px 32px", borderRadius: 10, textDecoration: "none" }}
           >
-            WhatsApp Us
+            Get in Touch
           </a>
         </div>
       </div>

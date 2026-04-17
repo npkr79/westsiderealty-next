@@ -502,17 +502,15 @@ function PortfolioClientInner({ projects }: { projects: FocusProject[] }) {
             Our team has access to pre-launch allocations and developer-direct deals not listed publicly.
           </p>
           <a
-            href="https://wa.me/919502500068?text=Hi%2C%20I%20saw%20the%20portfolio%20page%20and%20want%20to%20discuss%20options"
-            target="_blank"
-            rel="noopener noreferrer"
+            href="/contact"
             style={{
               marginTop: 8, display: "inline-block",
-              background: "#25D366", color: "#fff",
-              fontWeight: 600, fontSize: 14,
+              background: "#c8a96e", color: "#0a0a0a",
+              fontWeight: 700, fontSize: 14,
               padding: "11px 28px", borderRadius: 10, textDecoration: "none",
             }}
           >
-            WhatsApp an Advisor
+            Talk to an Advisor
           </a>
         </div>
       </div>

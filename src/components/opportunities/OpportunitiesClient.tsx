@@ -486,7 +486,7 @@ function OpportunitiesClientInner({ opportunities }: { opportunities: Developmen
             <p style={{ margin: "8px 0 0", fontSize: 13 }}>
               Looking for a specific deal type?{" "}
               <a
-                href="https://wa.me/919502500068?text=Hi%2C%20looking%20for%20development%20opportunities"
+                href="/contact"
                 style={{ color: C.goldDark, textDecoration: "underline" }}
               >
                 Talk to our advisory team
@@ -535,9 +535,7 @@ function OpportunitiesClientInner({ opportunities }: { opportunities: Developmen
             Feasibility · Developer shortlisting · Term sheet · Closure. Confidential, fee on success.
           </p>
           <a
-            href="https://wa.me/919502500068?text=Hi%2C%20I%20have%20a%20development%20opportunity%20to%20discuss"
-            target="_blank"
-            rel="noopener noreferrer"
+            href="/contact"
             style={{
               marginTop: 8,
               display: "inline-block",

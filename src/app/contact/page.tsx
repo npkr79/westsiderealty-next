@@ -127,8 +127,6 @@ export default function ContactPage() {
             {/* Quick contact chips */}
             <div style={{ display: "flex", flexWrap: "wrap", gap: 12, justifyContent: "center" }}>
               {[
-                { icon: <Phone size={15} />, label: "Call Us", sub: "+91 83677 24368", href: "tel:+918367724368" },
-                { icon: <MessageCircle size={15} />, label: "WhatsApp", sub: "Chat Now", href: "https://wa.me/918367724368" },
                 { icon: <Mail size={15} />, label: "Email", sub: "info@westsiderealty.in", href: "mailto:info@westsiderealty.in" },
               ].map((q) => (
                 <a key={q.label} href={q.href} className="quick-link" target={q.href.startsWith("http") ? "_blank" : undefined} rel="noopener noreferrer"

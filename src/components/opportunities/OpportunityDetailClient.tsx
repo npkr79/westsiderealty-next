@@ -445,38 +445,6 @@ export function OpportunityDetailClient({ opportunity: opp }: { opportunity: Dev
                 textAlign: "center",
               }}
             >
-              <p
-                style={{
-                  fontSize: 11,
-                  fontWeight: 600,
-                  color: C.textMuted,
-                  letterSpacing: "0.04em",
-                  textTransform: "uppercase",
-                  margin: 0,
-                }}
-              >
-                Or reach us directly
-              </p>
-              <a
-                href="https://wa.me/919502500068?text=Hi%2C%20I%20would%20like%20to%20discuss%20the%20Mazgaon%20opportunity"
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 8,
-                  marginTop: 10,
-                  background: "#25D366",
-                  color: "#fff",
-                  fontWeight: 600,
-                  fontSize: 13,
-                  padding: "9px 18px",
-                  borderRadius: 8,
-                  textDecoration: "none",
-                }}
-              >
-                WhatsApp Advisory Team
-              </a>
             </div>
           </div>
         </aside>

@@ -646,16 +646,6 @@ export function PortfolioDetailClient({ project }: { project: FocusProjectDetail
             </p>
             {price && <p style={{ fontSize: 12, color: C.textMuted, margin: "1px 0 0" }}>{price}</p>}
           </div>
-          <a
-            href={`https://wa.me/919502500068?text=Hi%2C%20I%27m%20interested%20in%20${encodeURIComponent(project.project_name)}%20and%20want%20to%20know%20more`}
-            target="_blank" rel="noopener noreferrer"
-            style={{
-              background: "#25D366", color: "#fff", fontWeight: 700, fontSize: 13,
-              padding: "11px 18px", borderRadius: 10, textDecoration: "none", whiteSpace: "nowrap",
-            }}
-          >
-            WhatsApp
-          </a>
           <MobileLeadButton project={project} />
         </div>
       </div>

@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Contact Us | RE/MAX Westside Realty — Hyderabad & Goa",
   description:
-    "Get in touch with our expert real estate advisors. Office in Hyderabad's Financial District. Call, WhatsApp, or email us for property guidance.",
+    "Get in touch with our expert real estate advisors. Office in Hyderabad's Financial District. Submit your details and we'll call you back.",
   alternates: { canonical: "https://www.westsiderealty.in/contact" },
   keywords: "contact westside realty, hyderabad real estate agent contact, goa property advisor",
   openGraph: {

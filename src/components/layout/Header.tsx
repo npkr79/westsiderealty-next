@@ -66,7 +66,7 @@ const STATIC_NAV_ITEMS: NavItem[] = [
       { label: "Mumbai Deals", href: "/opportunities?city=mumbai" },
       { label: "Goa Deals", href: "/opportunities?city=goa" },
       { label: "Sindhudurg / Konkan Deals", href: "/opportunities?city=sindhudurg" },
-      { label: "Have a project to monetise?", href: "https://wa.me/919502500068?text=Hi%2C%20I%20have%20a%20development%20opportunity%20to%20discuss" },
+      { label: "Have a project to monetise?", href: "/contact" },
     ],
     cta: { label: "View all opportunities →", href: "/opportunities" },
   },
