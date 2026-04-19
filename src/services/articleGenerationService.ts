@@ -79,12 +79,13 @@ async function pickTodayCities(supabase: SupabaseClient): Promise<[City, City]> 
   const dayOfWeek = nowIST.getUTCDay();
   const [regionA, regionB] = DAY_SCHEDULE[dayOfWeek];
 
-  // Load 30-day usage counts per city
+  // Load 30-day usage counts per city — use created_at so publish actions
+  // don't inflate a city's count and starve other cities of selection.
   const since30d = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
   const { data: recentArticles } = await supabase
     .from("generated_articles")
     .select("city")
-    .gte("updated_at", since30d);
+    .gte("created_at", since30d);
 
   const usageCount: Partial<Record<City, number>> = {};
   for (const a of recentArticles ?? []) {
