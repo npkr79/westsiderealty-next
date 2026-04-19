@@ -756,12 +756,11 @@ function QueueTab() {
   };
 
   const generateImage = async (post: SavedPost) => {
-    if (!post.image_prompt) return;
     setActionId(post.id);
     await fetch('/api/social/generate-image', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt: post.image_prompt, post_id: post.id }),
+      body: JSON.stringify({ post_id: post.id }),
     });
     await load();
     setActionId(null);
@@ -914,7 +913,7 @@ function QueueTab() {
                       {actionId === post.id ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />}
                       Post Now
                     </button>
-                    {!post.image_url && post.image_prompt && (
+                    {!post.image_url && (
                       <button
                         onClick={() => generateImage(post)}
                         disabled={actionId === post.id}
