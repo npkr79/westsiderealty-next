@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCrmSessionResult } from '@/lib/crm/auth';
 import { createServiceClient } from '@/lib/supabase/serviceClient';
 
+export const maxDuration = 60;
+
 export async function POST(request: NextRequest) {
   const session = await getCrmSessionResult();
   if (!session.user || session.user.role !== 'admin') {
