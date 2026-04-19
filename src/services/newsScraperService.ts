@@ -211,24 +211,66 @@ export function extractKeywords(headline: string): Set<string> {
   ]);
   const tokens = headline
     .toLowerCase()
+    .replace(/[''']s\b/g, "")   // strip possessives before tokenising ("Kalpataru's" → "Kalpataru")
     .replace(/[^a-z0-9\s]/g, "")
     .split(/\s+/)
     .filter((w) => w.length >= 4 && !STOP_WORDS.has(w));
   return new Set(tokens);
 }
 
+// City/place names that should NOT trigger the entity-match shortcut on their own.
+const PLACE_NAMES = new Set([
+  "hyderabad", "bengaluru", "bangalore", "chennai", "mumbai", "gurugram",
+  "gurgaon", "ahmedabad", "kolkata", "national", "delhi", "pune", "noida",
+  "jaipur", "kochi", "goa", "india", "indian", "gujarat", "maharashtra",
+  "telangana", "karnataka", "rajasthan", "haryana",
+]);
+
+/**
+ * Extracts proper-noun entities (developer / company names) from a headline.
+ * A word qualifies if it starts with a capital letter, is ≥6 chars, and is
+ * not a known place name. Used to catch same-company stories that are written
+ * so differently by different outlets that keyword overlap alone misses them.
+ */
+function extractEntities(headline: string): Set<string> {
+  return new Set(
+    headline
+      .replace(/[''']s\b/g, "")
+      .split(/\s+/)
+      .map((w) => w.replace(/[^a-zA-Z]/g, ""))
+      .filter((w) => w.length >= 6 && /^[A-Z]/.test(w))
+      .map((w) => w.toLowerCase())
+      .filter((w) => !PLACE_NAMES.has(w))
+  );
+}
+
 /**
  * Returns true if two headlines are likely the same story.
- * Uses keyword overlap — ≥3 shared significant keywords = same story.
+ *
+ * Two signals (either alone is sufficient):
+ *  1. Same developer/company name: a significant proper noun (≥6 chars, not a
+ *     city/place) appears in both headlines — catches multi-outlet coverage of
+ *     the same company event even when phrasing differs completely.
+ *  2. Keyword overlap: ≥4 shared significant keywords (raised from 3 to reduce
+ *     false positives on short, generic headlines).
  */
 export function areSameStory(h1: string, h2: string): boolean {
   const w1 = extractKeywords(h1);
   const w2 = extractKeywords(h2);
   if (w1.size === 0 || w2.size === 0) return false;
+
+  // Signal 1: shared company/developer name
+  const e1 = extractEntities(h1);
+  const e2 = extractEntities(h2);
+  for (const e of e1) {
+    if (e2.has(e)) return true;
+  }
+
+  // Signal 2: general keyword overlap
   let shared = 0;
   for (const w of w1) {
     if (w2.has(w)) shared++;
-    if (shared >= 3) return true;
+    if (shared >= 4) return true;
   }
   return false;
 }
