@@ -913,15 +913,6 @@ function QueueTab() {
                       {actionId === post.id ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />}
                       Post Now
                     </button>
-                    {!post.image_url && (
-                      <button
-                        onClick={() => generateImage(post)}
-                        disabled={actionId === post.id}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-700 hover:bg-gray-600 disabled:opacity-40 text-gray-300 text-xs font-medium transition-colors"
-                      >
-                        <ImagePlus size={12} /> Generate Image
-                      </button>
-                    )}
                     <button
                       onClick={() => startEdit(post)}
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-700 hover:bg-gray-600 text-gray-300 text-xs font-medium transition-colors"
@@ -1083,10 +1074,12 @@ const PLATFORM_COLORS: Record<string, string> = {
   X: 'bg-gray-700 text-gray-300',
 };
 
-// Daily publish slots (UTC) in chronological order: 9:30am, 1:00pm, 7:00pm, 9:00pm IST
+// Daily publish slots (UTC) in chronological order: 9:00am, 11:00am, 1:00pm, 4:00pm, 7:00pm, 9:00pm IST
 const DAILY_SLOTS_UTC: [number, number][] = [
-  [4, 0],   // 9:30am IST
+  [3, 30],  // 9:00am IST
+  [5, 30],  // 11:00am IST
   [7, 30],  // 1:00pm IST
+  [10, 30], // 4:00pm IST
   [13, 30], // 7:00pm IST
   [15, 30], // 9:00pm IST
 ];

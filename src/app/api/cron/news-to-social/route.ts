@@ -10,7 +10,7 @@ export const maxDuration = 300;
 
 async function run() {
   const supabase = createServiceClient();
-  const articles = await pickTopArticles(supabase, 4);
+  const articles = await pickTopArticles(supabase, 6);
 
   if (articles.length === 0) {
     return {
