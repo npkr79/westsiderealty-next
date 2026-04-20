@@ -418,7 +418,7 @@ Call the generate_articles tool with both articles and the market brief.`;
   // Use tool use instead of text JSON — Anthropic handles serialisation, so
   // markdown in article bodies (quotes, backticks, newlines) never breaks parsing.
   const response = await anthropic.messages.create({
-    model: "claude-sonnet-4-20250514",
+    model: "claude-sonnet-4-6",
     max_tokens: 8192,  // 2 full articles + market brief can exceed 4096
     system: SYSTEM_PROMPT,
     tools: [
@@ -572,7 +572,7 @@ export async function runArticleGeneration(
     .from("generated_articles")
     .select("city")
     .in("city", [city1, city2])
-    .gte("updated_at", todayStart.toISOString());
+    .gte("created_at", todayStart.toISOString());
   const citiesAlreadyDone = new Set((todayArticles ?? []).map((a: { city: string }) => a.city));
   const citiesToGenerate = [city1, city2].filter((c) => !citiesAlreadyDone.has(c));
 
@@ -631,7 +631,7 @@ export async function runArticleGeneration(
       .from("generated_articles")
       .select("id", { count: "exact", head: true })
       .eq("city", article.city)
-      .gte("updated_at", todayStart.toISOString());
+      .gte("created_at", todayStart.toISOString());
     if ((todayCount ?? 0) >= 1) {
       console.log(`[article-gen] Skipping ${article.city} — already generated today`);
       errors.push(`Skipped ${article.city}: already generated today`);
