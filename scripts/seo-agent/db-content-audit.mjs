@@ -80,27 +80,28 @@ function isThinText(val, minLen = 80) {
 
 function checkProject(project) {
   const issues = [];
-  const url = `${SITE_BASE}/${project.city_slug}/projects/${project.slug}`;
+  const url = `${SITE_BASE}/hyderabad/projects/${project.url_slug}`;
 
   const base = {
     entityType: "project",
     entityId: String(project.id),
-    entityName: project.name || project.slug,
+    entityName: project.project_name || project.url_slug,
     entityUrl: url,
   };
 
   if (isEmpty(project.hero_image_url)) {
     issues.push({ ...base, issueType: "missing_hero_image", severity: "critical", details: {} });
   }
-  if (isThinText(project.description)) {
+  const desc = project.long_description_html || "";
+  if (isThinText(desc)) {
     issues.push({
       ...base,
       issueType: "thin_description",
       severity: "high",
-      details: { length: project.description ? String(project.description).trim().length : 0 },
+      details: { length: desc.trim().length },
     });
   }
-  if (project.price_min === null && project.price_max === null) {
+  if (project.min_price === null && project.max_price === null) {
     issues.push({ ...base, issueType: "missing_price", severity: "high", details: {} });
   }
   if (isEmpty(project.rera_id)) {
@@ -118,24 +119,25 @@ function checkProject(project) {
 
 function checkMicroMarket(mm) {
   const issues = [];
-  const url = `${SITE_BASE}/${mm.city_slug}/${mm.slug}`;
+  const url = `${SITE_BASE}/hyderabad/${mm.url_slug}`;
 
   const base = {
     entityType: "micro_market",
     entityId: String(mm.id),
-    entityName: mm.name || mm.slug,
+    entityName: mm.micro_market_name || mm.url_slug,
     entityUrl: url,
   };
 
   if (isEmpty(mm.hero_hook)) {
     issues.push({ ...base, issueType: "missing_hero_hook", severity: "high", details: {} });
   }
-  if (isThinText(mm.description)) {
+  const growthStory = mm.growth_story || "";
+  if (isThinText(growthStory)) {
     issues.push({
       ...base,
       issueType: "thin_description",
       severity: "high",
-      details: { length: mm.description ? String(mm.description).trim().length : 0 },
+      details: { length: growthStory.trim().length },
     });
   }
   if (mm.price_per_sqft_min === null || mm.price_per_sqft_min === undefined) {
@@ -306,12 +308,12 @@ export async function runDbContentAudit() {
   // Fetch all three entity sets in parallel
   const [projectsRes, microMarketsRes, developersRes] = await Promise.all([
     supabase
-      .from("listing_project_detail_enriched_mv")
-      .select("id, slug, name, city_slug, hero_image_url, description, price_min, price_max, rera_id, amenities_json, gallery_images_json"),
+      .from("projects")
+      .select("id, url_slug, project_name, hero_image_url, long_description_html, min_price, max_price, rera_id, amenities_json, gallery_images_json"),
 
     supabase
       .from("micro_markets")
-      .select("id, slug, name, city_slug, hero_hook, description, price_per_sqft_min"),
+      .select("id, url_slug, micro_market_name, hero_hook, growth_story, price_per_sqft_min"),
 
     supabase
       .from("developers")

@@ -227,11 +227,15 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     .select("brand_name, about_developer")
     .eq("url_slug", slug)
     .maybeSingle();
-  const name = (data as { brand_name?: string } | null)?.brand_name ?? "Developer";
+  const name = (data as { brand_name?: string; about_developer?: string } | null)?.brand_name ?? "Developer";
+  const about = (data as { about_developer?: string } | null)?.about_developer;
+  const description = about
+    ? about.slice(0, 155).trimEnd()
+    : `${name} projects in Hyderabad — delivery track record, RERA status, buyer reviews & price range. Expert analysis by Westside Realty.`;
 
   return buildMetadata({
-    title: `${name} — Projects in Hyderabad | Westside Realty`,
-    description: `${name}: RERA-verified project portfolio, delivery track record & buyer insights. Expert reviews by Westside Realty.`,
+    title: `${name} Projects Hyderabad — Track Record & Reviews | Westside Realty`,
+    description,
     canonicalUrl: `https://www.westsiderealty.in/developers/${slug}`,
   });
 }

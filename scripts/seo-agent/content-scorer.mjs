@@ -91,7 +91,7 @@ function scoreProject(project) {
     missing.push("hero_image");
   }
 
-  const descLen = (project.description || "").trim().length;
+  const descLen = (project.long_description_html || "").trim().length;
   if (descLen > 150) {
     breakdown.has_description = 15;
   } else {
@@ -99,7 +99,7 @@ function scoreProject(project) {
     missing.push(descLen === 0 ? "description" : "description_too_short");
   }
 
-  if (project.price_min && project.price_min > 0) {
+  if (project.min_price && project.min_price > 0) {
     breakdown.has_price = 15;
   } else {
     breakdown.has_price = 0;
@@ -134,11 +134,7 @@ function scoreProject(project) {
   }
 
   const nameLower = (project.project_name || "").toLowerCase();
-  const mmLower = (project.micro_market_name || "").toLowerCase();
-  const cityLower = (project.city_slug || "").toLowerCase();
-  const hasKeyword =
-    (mmLower && nameLower.includes(mmLower)) ||
-    (cityLower && nameLower.includes(cityLower));
+  const hasKeyword = nameLower.includes("hyderabad") || nameLower.includes("hyd");
   if (hasKeyword) {
     breakdown.keyword_in_name = 15;
   } else {
@@ -162,7 +158,7 @@ function scoreMicroMarket(mm) {
     missing.push("hero_hook");
   }
 
-  const descLen = (mm.description || "").trim().length;
+  const descLen = (mm.growth_story || "").trim().length;
   if (descLen > 200) {
     breakdown.has_description = 20;
   } else {
@@ -310,16 +306,16 @@ export async function runContentScorer() {
 
   const [projectsRes, mmRes] = await Promise.all([
     supabase
-      .from("listing_project_detail_enriched_mv")
+      .from("projects")
       .select(
-        "project_slug, project_name, micro_market_name, city_slug, developer_name, description, amenities_json, gallery_images_json, hero_image_url, rera_id, price_min, price_max, min_area, max_area, current_status"
+        "id, url_slug, project_name, long_description_html, amenities_json, gallery_images_json, hero_image_url, rera_id, min_price, max_price"
       )
       .limit(100),
 
     supabase
       .from("micro_markets")
       .select(
-        "id, micro_market_slug, micro_market_name, city_slug, description, hero_hook, price_per_sqft_min, price_per_sqft_max, annual_appreciation_min, hero_image_url"
+        "id, url_slug, micro_market_name, growth_story, hero_hook, price_per_sqft_min, price_per_sqft_max, annual_appreciation_min, hero_image_url"
       )
       .limit(100),
   ]);
@@ -345,9 +341,9 @@ export async function runContentScorer() {
     return {
       entity: p,
       entity_type: "project",
-      entity_slug: p.project_slug,
+      entity_slug: p.url_slug,
       entity_name: p.project_name,
-      city_slug: p.city_slug,
+      city_slug: "hyderabad",
       score,
       score_breakdown: breakdown,
       missing_fields: missing,
@@ -360,9 +356,9 @@ export async function runContentScorer() {
     return {
       entity: mm,
       entity_type: "micro_market",
-      entity_slug: mm.micro_market_slug,
+      entity_slug: mm.url_slug,
       entity_name: mm.micro_market_name,
-      city_slug: mm.city_slug,
+      city_slug: "hyderabad",
       score,
       score_breakdown: breakdown,
       missing_fields: missing,
