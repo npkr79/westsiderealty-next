@@ -209,15 +209,15 @@ export async function runCruxAudit() {
 
   const [projectsRes, mmRes] = await Promise.all([
     supabase
-      .from("listing_project_detail_enriched_mv")
-      .select("project_slug, city_slug")
-      .not("project_slug", "is", null)
+      .from("projects")
+      .select("url_slug")
+      .not("url_slug", "is", null)
       .limit(200),
 
     supabase
       .from("micro_markets")
-      .select("micro_market_slug, city_slug")
-      .not("micro_market_slug", "is", null)
+      .select("url_slug")
+      .not("url_slug", "is", null)
       .limit(50),
   ]);
 
@@ -233,20 +233,20 @@ export async function runCruxAudit() {
 
   const urlEntries = [
     ...projects
-      .filter((p) => p.project_slug && p.city_slug)
+      .filter((p) => p.url_slug)
       .map((p) => ({
-        url: `${SITE_BASE}/${p.city_slug}/projects/${p.project_slug}`,
+        url: `${SITE_BASE}/hyderabad/projects/${p.url_slug}`,
         entity_type: "project",
-        entity_slug: p.project_slug,
-        city_slug: p.city_slug,
+        entity_slug: p.url_slug,
+        city_slug: "hyderabad",
       })),
     ...microMarkets
-      .filter((mm) => mm.micro_market_slug && mm.city_slug)
+      .filter((mm) => mm.url_slug)
       .map((mm) => ({
-        url: `${SITE_BASE}/${mm.city_slug}/${mm.micro_market_slug}`,
+        url: `${SITE_BASE}/hyderabad/${mm.url_slug}`,
         entity_type: "micro_market",
-        entity_slug: mm.micro_market_slug,
-        city_slug: mm.city_slug,
+        entity_slug: mm.url_slug,
+        city_slug: "hyderabad",
       })),
   ];
 
