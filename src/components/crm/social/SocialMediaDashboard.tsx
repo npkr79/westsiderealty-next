@@ -1074,12 +1074,10 @@ const PLATFORM_COLORS: Record<string, string> = {
   X: 'bg-gray-700 text-gray-300',
 };
 
-// Daily publish slots (UTC) in chronological order: 9:00am, 11:00am, 1:00pm, 4:00pm, 7:00pm, 9:00pm IST
+// Daily publish slots (UTC) in chronological order: 9:30am, 1:00pm, 7:00pm, 9:00pm IST
 const DAILY_SLOTS_UTC: [number, number][] = [
-  [3, 30],  // 9:00am IST
-  [5, 30],  // 11:00am IST
+  [4, 0],   // 9:30am IST
   [7, 30],  // 1:00pm IST
-  [10, 30], // 4:00pm IST
   [13, 30], // 7:00pm IST
   [15, 30], // 9:00pm IST
 ];

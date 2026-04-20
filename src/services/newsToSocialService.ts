@@ -55,7 +55,7 @@ export interface NewsPostResult {
   article_id: string;
   headline: string;
   captions: PlatformCaption[];
-  image_url: string;
+  image_url: string | null;
   post_ids: string[];
 }
 
@@ -469,7 +469,7 @@ export async function createSocialPosts(
   supabase: SupabaseClient,
   article: NewsArticle,
   captions: PlatformCaption[],
-  imageUrl: string
+  imageUrl: string | null
 ): Promise<string[]> {
   const scheduledAt = todayAt7pmIST();
   const now = new Date().toISOString();
@@ -522,18 +522,14 @@ export async function processArticle(
   supabase: SupabaseClient,
   article: NewsArticle
 ): Promise<NewsPostResult> {
-  const [captions, imageUrl] = await Promise.all([
-    generateCaptions(article),
-    generateImage(article),
-  ]);
-
-  const postIds = await createSocialPosts(supabase, article, captions, imageUrl);
+  const captions = await generateCaptions(article);
+  const postIds = await createSocialPosts(supabase, article, captions, null);
 
   return {
     article_id: article.id,
     headline: article.headline,
     captions,
-    image_url: imageUrl,
+    image_url: null,
     post_ids: postIds,
   };
 }

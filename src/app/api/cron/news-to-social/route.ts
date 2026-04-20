@@ -61,7 +61,6 @@ async function run() {
       article_id: r.article_id,
       headline: r.headline.slice(0, 80),
       posts: r.post_ids.length,
-      image_url: r.image_url,
     })),
   };
 }
