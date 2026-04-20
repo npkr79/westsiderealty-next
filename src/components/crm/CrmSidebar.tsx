@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, Users, Kanban, MessageCircle, Zap,
   TrendingUp, Bell, GitBranch, Shuffle, CheckSquare,
-  Calendar, Settings, X, Activity, UserCircle, Share2, Mic, BarChart2, FileText,
+  Calendar, Settings, X, Activity, UserCircle, Share2, Mic, BarChart2, FileText, BookOpen,
 } from "lucide-react";
 
 const navItems = [
@@ -23,6 +23,7 @@ const navItems = [
   { href: "/calendar", icon: Calendar, label: "Calendar", roles: ["admin","sales_head","team_lead","agent"] },
   { href: "/dashboard/admin/reports", icon: BarChart2, label: "Reports", roles: ["admin"] },
   { href: "/dashboard/admin/seo", icon: Activity, label: "Site Health", roles: ["admin"] },
+  { href: "/dashboard/admin/articles", icon: BookOpen, label: "Articles", roles: ["admin"] },
   { href: "/dashboard/admin/content", icon: Mic, label: "Content Studio", roles: ["admin"] },
   { href: "/profile", icon: UserCircle, label: "My Profile", roles: ["admin","sales_head","team_lead","agent","marketing","analyst","channel_partner"] },
   { href: "/settings", icon: Settings, label: "Settings", roles: ["admin","sales_head","team_lead","agent","marketing","analyst","channel_partner"] },
