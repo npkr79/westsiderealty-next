@@ -94,7 +94,7 @@ jobs:
           VERCEL_TEAM_ID: ${{ secrets.VERCEL_TEAM_ID }}
           SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }}
         run: |
-          node scripts/seo-agent/agent.mjs ${{ steps.flags.outputs.flags }} > /tmp/agent-summary.json 2>&1 || true
+          node scripts/seo-agent/agent.mjs ${{ steps.flags.outputs.flags }} > /tmp/agent-summary.json || true
           echo "Agent run complete"
 
           # Parse summary for GitHub Actions outputs
