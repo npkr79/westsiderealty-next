@@ -99,16 +99,24 @@ export async function pickTopArticles(
     ((existingPostArticles ?? []) as { news_article_id: string }[]).map((r) => r.news_article_id)
   );
 
-  // ── Load recently processed article headlines (last 30 days) ──────────────
-  // Two sources: is_processed=true articles + social_posts captions.
-  // This catches the same story arriving from a different URL/source next day.
+  // ── Load recently seen article headlines (last 30 days) ───────────────────
+  // Three sources:
+  //   1. Processed articles (is_processed=true) — already had posts generated
+  //   2. Rejected articles (is_rejected=true) — rejected before or after post creation
+  //   3. Social posts from last 30 days — catches any status (posted/rejected/pending)
+  // Together these ensure no story is repeated regardless of its outcome status.
   const cutoff30d = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-  const [processedRes, socialPostsRes] = await Promise.all([
+  const [processedRes, rejectedRes, socialPostsRes] = await Promise.all([
     supabase
       .from("news_articles")
       .select("headline")
       .eq("is_processed", true)
       .gte("processed_at", cutoff30d),
+    supabase
+      .from("news_articles")
+      .select("headline")
+      .eq("is_rejected", true)
+      .gte("updated_at", cutoff30d),
     supabase
       .from("social_posts")
       .select("news_articles(headline)")
@@ -118,6 +126,7 @@ export async function pickTopArticles(
 
   const processedHeadlines: string[] = [
     ...((processedRes.data ?? []) as { headline: string }[]).map((r) => r.headline),
+    ...((rejectedRes.data ?? []) as { headline: string }[]).map((r) => r.headline),
     ...((socialPostsRes.data ?? []) as { news_articles: { headline: string } | null }[])
       .map((r) => r.news_articles?.headline)
       .filter(Boolean) as string[],
