@@ -613,8 +613,8 @@ export default async function MicroMarketPage({ params }: PageProps) {
     itemListElement: featuredProjects.slice(0, 10).map((p, i) => ({
       "@type": "ListItem",
       position: i + 1,
-      url: buildProjectAbsoluteUrl(citySlug, p.slug),
-      name: p.name,
+      url: buildProjectAbsoluteUrl(citySlug, p.url_slug),
+      name: p.project_name,
     })),
   } : null;
 

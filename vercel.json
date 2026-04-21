@@ -34,7 +34,7 @@
     },
     {
       "path": "/api/admin/health-check",
-      "schedule": "30 3 * * 1"
+      "schedule": "0 */6 * * *"
     },
     {
       "path": "/api/cron/generate-occasion-posts",
