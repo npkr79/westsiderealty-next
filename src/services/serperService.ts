@@ -185,8 +185,17 @@ export async function fetchSerperNews(): Promise<SerperFetchResult> {
 
     for (const item of items) {
       if (!item.link || seenUrls.has(item.link)) continue; // deduplicate by URL across queries
+      const article = toRawArticle(item, type);
+      // Hard reject at source: skip anything published more than 24h ago.
+      // tbs:"qdr:d" asks Google for last 24h but isn't always strict — this
+      // ensures stale articles never enter the pipeline at all.
+      const publishedMs = article.published_at ? new Date(article.published_at).getTime() : Date.now();
+      if (Date.now() - publishedMs > 24 * 60 * 60 * 1000) {
+        console.log(`[Serper] Skipping stale article (${item.date}): ${item.title.slice(0, 60)}`);
+        continue;
+      }
       seenUrls.add(item.link);
-      allArticles.push(toRawArticle(item, type));
+      allArticles.push(article);
       count++;
     }
 
