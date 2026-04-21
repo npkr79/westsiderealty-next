@@ -70,6 +70,9 @@ export async function pickTopArticles(
   const SELECT =
     "id, headline, summary, ai_summary, ai_tags, category, sub_category, cities, relevance_score, sentiment, source_name, source_url, image_url, search_query_type";
 
+  // Only pick articles scraped in the last 48 hours — no stale news
+  const cutoff48h = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+
   // Pull a larger pool — positive sentiment only, high relevance, never processed
   const { data, error } = await supabase
     .from("news_articles")
@@ -79,6 +82,7 @@ export async function pickTopArticles(
     .eq("social_post_count", 0)   // hard stop: never regenerate if posts were already made
     .neq("sentiment", "negative")
     .gte("relevance_score", 7.5)
+    .gte("scraped_at", cutoff48h)  // freshness gate: max 48h old
     .order("relevance_score", { ascending: false })
     .limit(40); // Larger pool so we have room after dedup
 
@@ -273,7 +277,7 @@ Return ONLY valid JSON array (no markdown):
         "content-type": "application/json",
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
+        model: "claude-sonnet-4-6",
         max_tokens: 2000,
         system: systemPrompt,
         messages: [{ role: "user", content: userPrompt }],
