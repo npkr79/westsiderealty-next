@@ -199,8 +199,26 @@ export function normalizeHeadline(headline: string): string {
 }
 
 /**
+ * Light Porter-style stemmer — strips common English suffixes so that
+ * "investing"/"invest", "infrastructure"/"infra", "developer"/"develop" etc.
+ * all collapse to the same root for overlap counting.
+ */
+function stemWord(w: string): string {
+  const suffixes = ["tion", "ment", "ing", "ers", "er", "ed", "ly", "al"];
+  for (const s of suffixes) {
+    if (w.endsWith(s) && w.length - s.length >= 4) {
+      return w.slice(0, w.length - s.length);
+    }
+  }
+  // Strip trailing -s only when result is still ≥4 chars and word isn't a stop word
+  if (w.endsWith("s") && w.length > 4) return w.slice(0, -1);
+  return w;
+}
+
+/**
  * Extracts significant keywords from a headline for same-story detection.
  * Filters out short words and common stop words, keeping numbers intact.
+ * Applies light stemming so invest/investing, infra/infrastructure etc. match.
  */
 export function extractKeywords(headline: string): Set<string> {
   const STOP_WORDS = new Set([
@@ -214,7 +232,8 @@ export function extractKeywords(headline: string): Set<string> {
     .replace(/[''']s\b/g, "")   // strip possessives before tokenising ("Kalpataru's" → "Kalpataru")
     .replace(/[^a-z0-9\s]/g, "")
     .split(/\s+/)
-    .filter((w) => w.length >= 4 && !STOP_WORDS.has(w));
+    .filter((w) => w.length >= 4 && !STOP_WORDS.has(w))
+    .map(stemWord);
   return new Set(tokens);
 }
 
@@ -226,22 +245,42 @@ const PLACE_NAMES = new Set([
   "telangana", "karnataka", "rajasthan", "haryana",
 ]);
 
+// Generic abbreviations that are NOT company names — prevents false positives
+// when two unrelated stories both mention e.g. "IPO" or "RBI".
+const GENERIC_ABBREVS = new Set([
+  "IPO", "FDI", "GDP", "GST", "EMI", "RBI", "RERA", "NRI", "MoU",
+  "SC", "HC", "PM", "CM", "CEO", "CFO", "CTO", "CBI", "CCI", "CAG",
+  "IRP", "IBC", "IPC", "USD", "INR", "NGO", "BJP", "INC",
+]);
+
 /**
  * Extracts proper-noun entities (developer / company names) from a headline.
- * A word qualifies if it starts with a capital letter, is ≥6 chars, and is
- * not a known place name. Used to catch same-company stories that are written
- * so differently by different outlets that keyword overlap alone misses them.
+ * Two patterns qualify:
+ *   1. Mixed-case proper noun ≥6 chars starting with uppercase (Kalpataru, Prestige…)
+ *   2. All-caps acronym ≥3 chars that is NOT a generic abbreviation (RMZ, DLF, JLL…)
+ * Place names are excluded from both patterns.
  */
 function extractEntities(headline: string): Set<string> {
-  return new Set(
-    headline
-      .replace(/[''']s\b/g, "")
-      .split(/\s+/)
-      .map((w) => w.replace(/[^a-zA-Z]/g, ""))
-      .filter((w) => w.length >= 6 && /^[A-Z]/.test(w))
-      .map((w) => w.toLowerCase())
-      .filter((w) => !PLACE_NAMES.has(w))
-  );
+  const words = headline
+    .replace(/[''']s\b/g, "")
+    .split(/\s+/)
+    .map((w) => w.replace(/[^a-zA-Z]/g, ""))
+    .filter(Boolean);
+
+  const entities = new Set<string>();
+  for (const w of words) {
+    const lower = w.toLowerCase();
+    if (PLACE_NAMES.has(lower)) continue;
+    // Pattern 1: mixed-case proper noun ≥6 chars
+    if (w.length >= 6 && /^[A-Z]/.test(w)) {
+      entities.add(lower);
+    }
+    // Pattern 2: all-caps company acronym ≥3 chars (RMZ, DLF, JLL…)
+    if (w.length >= 3 && /^[A-Z]+$/.test(w) && !GENERIC_ABBREVS.has(w)) {
+      entities.add(lower);
+    }
+  }
+  return entities;
 }
 
 /**
