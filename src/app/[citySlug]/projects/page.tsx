@@ -58,7 +58,9 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
 export async function generateStaticParams() {
   const { createBuildClient } = await import("@/lib/supabase/buildClient");
   const supabase = createBuildClient();
-  const { data: cities } = await supabase.from("cities").select("url_slug").eq("page_status", "published");
+  // Include all active cities (published + draft) so dynamic city pages render at build time
+  // rather than failing with 500 on first on-demand render
+  const { data: cities } = await supabase.from("cities").select("url_slug");
   return cities?.map((city) => ({ citySlug: city.url_slug })) ?? [];
 }
 
