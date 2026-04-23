@@ -263,6 +263,7 @@ const fetchProjectFromProjectsTable = async (
         micro_market:micro_markets!projects_micromarket_id_fkey(*)
       `)
       .eq("url_slug", projectSlug)
+      .eq("page_status", "published")
       .maybeSingle()
   );
 
