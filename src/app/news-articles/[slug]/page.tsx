@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createServiceClient } from "@/lib/supabase/serviceClient";
+import { NewsArticleShareButtons } from "@/components/news-articles/NewsArticleShareButtons";
 
 export const revalidate = 60;
 
@@ -29,6 +30,8 @@ const CITY_LABELS: Record<string, string> = {
   ahmedabad: "Ahmedabad",
   kochi: "Kochi",
   navi_mumbai_thane: "Navi Mumbai / Thane",
+  maharashtra: "Maharashtra",
+  india: "India",
 };
 
 interface Article {
@@ -562,6 +565,9 @@ export default async function ArticlePage({
             className="article-body"
             dangerouslySetInnerHTML={{ __html: htmlBody }}
           />
+
+          {/* Share buttons */}
+          <NewsArticleShareButtons headline={article.seo_headline} slug={article.slug} />
 
           {/* Bottom CTA */}
           <div

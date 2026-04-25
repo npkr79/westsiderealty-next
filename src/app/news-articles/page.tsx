@@ -35,6 +35,8 @@ const CITY_LABELS: Record<string, string> = {
   ahmedabad: "Ahmedabad",
   kochi: "Kochi",
   navi_mumbai_thane: "Navi Mumbai / Thane",
+  maharashtra: "Maharashtra",
+  india: "India",
 };
 
 interface Article {
