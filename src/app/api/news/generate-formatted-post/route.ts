@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
   const supabase = createServiceClient();
   const { data: article, error } = await supabase
     .from('news_articles')
-    .select('headline, summary, ai_summary')
+    .select('headline, summary, ai_summary, full_text, source_name, source_url, published_at')
     .eq('id', article_id)
     .single();
 
@@ -80,9 +80,28 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Article not found' }, { status: 404 });
   }
 
-  const topic = [article.headline, article.ai_summary || article.summary]
+  const today = new Date();
+  const todayIso = today.toISOString().slice(0, 10);
+  const todayQuarter = `Q${Math.floor(today.getMonth() / 3) + 1} ${today.getFullYear()}`;
+  const publishedIso = article.published_at
+    ? new Date(article.published_at).toISOString().slice(0, 10)
+    : null;
+
+  // Prefer full_text (real article body) over summaries when available.
+  const articleBody =
+    (article.full_text && article.full_text.trim().length > 200)
+      ? article.full_text
+      : (article.ai_summary || article.summary || '');
+
+  const topic = [
+    `Headline: ${article.headline}`,
+    article.source_name ? `Source: ${article.source_name}` : null,
+    publishedIso ? `Published: ${publishedIso}` : null,
+    article.source_url ? `URL: ${article.source_url}` : null,
+    `Article body:\n${articleBody}`,
+  ]
     .filter(Boolean)
-    .join('\n\n');
+    .join('\n');
 
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -93,7 +112,19 @@ export async function POST(request: NextRequest) {
     messages: [
       {
         role: 'user',
-        content: `Generate 4 social media posts for this real estate news topic:\n\n${topic}\n\nReturn a JSON object with exactly these keys: "x", "linkedin", "facebook", "instagram". Each value is the complete post text with Unicode bold formatting and hashtags. Return ONLY the JSON object — no other text, no markdown code fences.`,
+        content: [
+          `Today's date is ${todayIso} (${todayQuarter}).`,
+          `The article below was published on ${publishedIso ?? 'unknown'}.`,
+          `Use ONLY the dates and numbers stated in the article body. If the article says "Jan-Mar" or "Q1" without a year, the year is the year of the published date — never assume a different year.`,
+          `Do NOT invent statistics. If a specific number (sq ft, %, ₹ amount, count) is not in the article body, do not include it in the post.`,
+          `Pull the most concrete numbers (sq ft leased, %, ₹ crore, year-on-year, market share) directly from the article body and feature them as bullets.`,
+          ``,
+          `Generate 4 social media posts for this real estate news article:`,
+          ``,
+          topic,
+          ``,
+          `Return a JSON object with exactly these keys: "x", "linkedin", "facebook", "instagram". Each value is the complete post text with Unicode bold formatting and hashtags. Return ONLY the JSON object — no other text, no markdown code fences.`,
+        ].join('\n'),
       },
     ],
   });

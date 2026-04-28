@@ -532,12 +532,19 @@ export async function insertArticles(
 
   if (relevant.length === 0) return { inserted: 0, skipped, errors };
 
+  // Fetch article bodies in parallel so downstream LLM has actual content,
+  // not just a 130-char snippet. Best-effort: paywalled / SPA pages return null.
+  const { fetchArticleBodies } = await import("./articleBodyFetcher");
+  const urls = relevant.map((a) => a.source_url).filter(Boolean);
+  const bodyByUrl = await fetchArticleBodies(urls, 5);
+
   const rows = relevant.map((a) => ({
     source_name: a.source_name,
     source_url: a.source_url,
     source_type: a.source_type,
     headline: a.headline,
     summary: a.summary,
+    full_text: bodyByUrl.get(a.source_url) ?? null,
     image_url: a.image_url,
     published_at: a.published_at,
     category: a.category,
