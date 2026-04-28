@@ -1261,6 +1261,135 @@ function NewsTab() {
     setTimeout(() => setFormCopiedKey(null), 2000);
   };
 
+  const IMAGE_PROMPT_TEMPLATE = `Create a professional social media post image using the following fixed design system.
+
+Image size must be 940 px width × 788 px height (Facebook post size)
+
+1) Image Size & Layout
+Clean, modern, professional infographic style
+Balanced layout with strong visual hierarchy
+Keep adequate spacing and margins
+Do not overcrowd the design
+Prioritize readability on mobile screens
+
+2) Visual Style (IMPORTANT — ALWAYS FOLLOW)
+Use broad daylight lighting by default
+Avoid dark, sunset, golden hour, or night themes unless explicitly requested
+Use realistic urban / office / infrastructure / business environments
+Use modern, high-quality, editorial-style visuals
+Maintain a corporate, trustworthy, regulatory tone
+
+3) Branding & Logos (MANDATORY)
+
+Include logos as needed:
+Regulatory bodies
+Companies
+Organizations
+Institutions
+
+*Avoid Govt of India logos*
+Do not add any logos on top right of the image. That will be used for my company logo.
+If relevant, include:
+
+Photos of notable people mentioned
+CEO / Minister / Chairman / Founder
+Public figures
+
+Logos and faces must:
+Look realistic
+Be clean and professional
+Be placed naturally (top corner or header area)
+
+4) Text Rules (CRITICAL)
+
+Reduce text on the image.
+Keep content short and punchy.
+
+Follow this exact structure:
+
+Title
+Subtitle
+
+5) Text Styling
+
+Use:
+
+White text for normal content
+Yellow text for highlighted keywords
+Bold emphasis on:
+
+Numbers
+Percentages
+Years
+Key warnings
+Important phrases
+
+Use a dark overlay behind text for readability.
+
+6) Positioning Rules
+
+Place the main title sentence near the bottom of the image.
+
+Maintain:
+
+Clear spacing between the bottom edge and text
+Consistent alignment
+Strong visual balance
+
+7) Content Tone
+
+The tone must be:
+
+Professional
+Regulatory
+Informative
+Credible
+Authoritative
+
+Avoid:
+
+Marketing hype
+Sales language
+Clickbait tone
+
+8) Visual Elements to Use
+
+Use relevant icons such as:
+
+Warning icons
+Growth charts
+Buildings
+Infrastructure
+Money
+Legal symbols
+Checklists
+Government seals
+
+But keep the design clean and minimal.
+
+9) Output Quality
+
+The image must be:
+
+Sharp
+Modern
+Corporate-grade
+Social-media ready
+Readable on mobile
+Professional enough for LinkedIn / Facebook
+
+This is the post:
+`;
+
+  const buildImagePrompt = (postText: string): string => IMAGE_PROMPT_TEMPLATE + postText.trim();
+
+  const copyImagePrompt = async (articleId: string, postText: string) => {
+    const prompt = buildImagePrompt(postText);
+    await navigator.clipboard.writeText(prompt);
+    setFormCopiedKey(`${articleId}-imageprompt`);
+    setTimeout(() => setFormCopiedKey(null), 2000);
+  };
+
   if (loading) return <p className="text-gray-500 text-sm py-8 text-center">Loading news posts…</p>;
 
   if (groups.size === 0) {
@@ -1436,14 +1565,25 @@ function NewsTab() {
                         <div key={key} className="px-4 py-3">
                           <div className="flex items-center justify-between mb-2">
                             <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${color}`}>{label}</span>
-                            <button
-                              onClick={() => copyFormattedPost(articleId, key, text)}
-                              className="text-xs px-3 py-1 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors flex items-center gap-1"
-                            >
-                              {formCopiedKey === copyKey
-                                ? <><Check className="w-3 h-3 text-green-400" /> Copied!</>
-                                : <><Copy className="w-3 h-3" /> Copy</>}
-                            </button>
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => copyImagePrompt(articleId, text)}
+                                className="text-xs px-3 py-1 rounded-lg bg-amber-900/40 hover:bg-amber-800/60 text-amber-300 transition-colors flex items-center gap-1"
+                                title="Copy the full image-generation prompt (design system + this post) for ChatGPT / Gemini"
+                              >
+                                {formCopiedKey === `${articleId}-imageprompt`
+                                  ? <><Check className="w-3 h-3 text-green-400" /> Copied!</>
+                                  : <><Sparkles className="w-3 h-3" /> Image Prompt</>}
+                              </button>
+                              <button
+                                onClick={() => copyFormattedPost(articleId, key, text)}
+                                className="text-xs px-3 py-1 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors flex items-center gap-1"
+                              >
+                                {formCopiedKey === copyKey
+                                  ? <><Check className="w-3 h-3 text-green-400" /> Copied!</>
+                                  : <><Copy className="w-3 h-3" /> Copy</>}
+                              </button>
+                            </div>
                           </div>
                           <pre className="text-xs text-gray-300 whitespace-pre-wrap font-sans leading-relaxed">{text}</pre>
                         </div>
