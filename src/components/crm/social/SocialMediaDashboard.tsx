@@ -1381,7 +1381,60 @@ Professional enough for LinkedIn / Facebook
 This is the post:
 `;
 
-  const buildImagePrompt = (postText: string): string => IMAGE_PROMPT_TEMPLATE + postText.trim();
+  // Extract only the title + subtitle + FIRST content section from a post.
+  // Cuts off at the second bold heading, any "Why This Matters" / "Strategic
+  // Implications" / "Key Takeaway" / hashtag block, whichever comes first.
+  // This keeps image-prompt context short so ChatGPT doesn't try to render
+  // every bullet on the image.
+  const extractFirstSection = (postText: string): string => {
+    const text = postText.trim();
+    if (!text) return text;
+
+    const lines = text.split('\n');
+
+    // Build a regex that detects "second heading"-style lines: short bold
+    // Unicode lines (no bullets, no hashtags). We start counting heading-like
+    // lines from the top — title (1st), subtitle (2nd if present), first
+    // section heading (3rd). Cut when we hit the SECOND section heading.
+    const isBoldHeading = (line: string): boolean => {
+      const t = line.trim();
+      if (t.length < 3 || t.length > 90) return false;
+      if (t.startsWith('•') || t.startsWith('-') || t.startsWith('#')) return false;
+      // Heading lines are typically all-bold (Unicode mathematical bold range)
+      // or contain explicit section markers.
+      const sectionMarkers = /(why this matters|strategic implications|key takeaway|key facts|key data points|implications|impact|takeaway|next steps|what to watch)/i;
+      if (sectionMarkers.test(t)) return true;
+      // Detect lines composed mostly of Unicode mathematical bold chars
+      const boldChars = (t.match(/[𝗔-𝗭𝗮-𝘇𝟬-𝟵]/g) ?? []).length;
+      return boldChars >= Math.max(3, Math.floor(t.replace(/\s/g, '').length * 0.4));
+    };
+
+    // Track heading occurrences. Stop just BEFORE the 2nd section-content heading.
+    // Order: [Title] [Subtitle?] [1st Section Heading] ... bullets ...  STOP at next heading.
+    let headingsSeen = 0;
+    const out: string[] = [];
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const trimmed = line.trim();
+
+      // Hard stop at hashtag block — never include hashtags in image prompt.
+      if (trimmed.startsWith('#')) break;
+
+      if (isBoldHeading(trimmed)) {
+        headingsSeen++;
+        // Title + subtitle + first section heading are all OK (1st, 2nd, 3rd).
+        // The 4th heading-like line is the start of section 2 — stop.
+        if (headingsSeen >= 4) break;
+      }
+
+      out.push(line);
+    }
+
+    return out.join('\n').trim();
+  };
+
+  const buildImagePrompt = (postText: string): string =>
+    IMAGE_PROMPT_TEMPLATE + extractFirstSection(postText);
 
   const copyImagePrompt = async (articleId: string, postText: string) => {
     const prompt = buildImagePrompt(postText);
