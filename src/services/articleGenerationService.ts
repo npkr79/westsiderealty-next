@@ -206,6 +206,7 @@ interface DbNewsArticle {
   headline: string;
   summary: string | null;
   ai_summary: string | null;
+  full_text: string | null;
   source_name: string;
   cities: string[];
   category: string;
@@ -219,7 +220,7 @@ async function getDbNewsForCity(
   const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
   const { data } = await supabase
     .from("news_articles")
-    .select("id, headline, summary, ai_summary, source_name, cities, category, scraped_at")
+    .select("id, headline, summary, ai_summary, full_text, source_name, cities, category, scraped_at")
     .gte("scraped_at", since)
     .gte("relevance_score", 6.0)
     .order("relevance_score", { ascending: false })
@@ -396,8 +397,16 @@ async function generateWithClaude(
 
   const formatDbNews = (articles: DbNewsArticle[], city: City) => {
     if (!articles.length) return "";
-    return `\nSupplemental DB articles for ${CITY_DISPLAY[city]}:\n` +
-      articles.map((a) => `- [${a.source_name}] ${a.headline}${a.ai_summary ? `: ${a.ai_summary}` : ""}`).join("\n");
+    return `\nSupplemental DB articles for ${CITY_DISPLAY[city]} (use the full body for specific numbers; cite source name):\n` +
+      articles
+        .map((a) => {
+          const body =
+            a.full_text && a.full_text.trim().length > 200
+              ? a.full_text.trim().slice(0, 1800)
+              : a.ai_summary || a.summary || "";
+          return `--- [${a.source_name}] ${a.headline} ---\n${body}`;
+        })
+        .join("\n\n");
   };
 
   const userPrompt = `Today produce 2 articles:
