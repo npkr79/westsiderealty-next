@@ -105,10 +105,29 @@ export async function POST(request: NextRequest) {
 
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
+  // Tool-use is the canonical Anthropic pattern for guaranteed structured output.
+  // The model MUST call `submit_posts` with valid JSON matching the schema.
   const response = await client.messages.create({
     model: 'claude-sonnet-4-6',
     max_tokens: 4096,
     system: SYSTEM_PROMPT,
+    tools: [
+      {
+        name: 'submit_posts',
+        description: 'Submit the four social media post variants generated for the article.',
+        input_schema: {
+          type: 'object',
+          properties: {
+            x: { type: 'string', description: 'X (Twitter) post — short and concise.' },
+            linkedin: { type: 'string', description: 'LinkedIn post — professional and insight-driven.' },
+            facebook: { type: 'string', description: 'Facebook post — explanatory and informative.' },
+            instagram: { type: 'string', description: 'Instagram post — engaging and simple.' },
+          },
+          required: ['x', 'linkedin', 'facebook', 'instagram'],
+        },
+      },
+    ],
+    tool_choice: { type: 'tool', name: 'submit_posts' },
     messages: [
       {
         role: 'user',
@@ -119,31 +138,32 @@ export async function POST(request: NextRequest) {
           `Do NOT invent statistics. If a specific number (sq ft, %, ₹ amount, count) is not in the article body, do not include it in the post.`,
           `Pull the most concrete numbers (sq ft leased, %, ₹ crore, year-on-year, market share) directly from the article body and feature them as bullets.`,
           ``,
-          `Generate 4 social media posts for this real estate news article:`,
+          `Generate 4 social media posts for this real estate news article and submit them via the submit_posts tool:`,
           ``,
           topic,
-          ``,
-          `Return a JSON object with exactly these keys: "x", "linkedin", "facebook", "instagram". Each value is the complete post text with Unicode bold formatting and hashtags. Return ONLY the JSON object — no other text, no markdown code fences.`,
         ].join('\n'),
       },
     ],
   });
 
-  const text = response.content[0].type === 'text' ? response.content[0].text : '';
+  // Extract the tool_use block — guaranteed present because tool_choice forced it.
+  const toolUseBlock = response.content.find(
+    (b): b is Extract<typeof b, { type: 'tool_use' }> => b.type === 'tool_use'
+  );
 
-  // Strip possible markdown code fences before JSON parsing
-  const stripped = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim();
-  const jsonMatch = stripped.match(/\{[\s\S]*\}/);
-
-  if (!jsonMatch) {
-    console.error('[generate-formatted-post] Non-JSON response:', text.slice(0, 300));
+  if (!toolUseBlock) {
+    const textBlock = response.content.find((b) => b.type === 'text');
+    const preview = textBlock && textBlock.type === 'text' ? textBlock.text.slice(0, 500) : '';
+    console.error('[generate-formatted-post] No tool_use block. stop_reason:', response.stop_reason, 'text preview:', preview);
     return NextResponse.json({ error: 'Generation failed — unexpected response format' }, { status: 500 });
   }
 
-  try {
-    const posts = JSON.parse(jsonMatch[0]) as { x: string; linkedin: string; facebook: string; instagram: string };
-    return NextResponse.json({ success: true, posts });
-  } catch {
-    return NextResponse.json({ error: 'Failed to parse generated posts' }, { status: 500 });
+  const posts = toolUseBlock.input as { x: string; linkedin: string; facebook: string; instagram: string };
+
+  if (!posts.x || !posts.linkedin || !posts.facebook || !posts.instagram) {
+    console.error('[generate-formatted-post] Tool input missing required keys:', Object.keys(posts || {}));
+    return NextResponse.json({ error: 'Generation failed — missing post variants' }, { status: 500 });
   }
+
+  return NextResponse.json({ success: true, posts });
 }
