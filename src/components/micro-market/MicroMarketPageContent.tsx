@@ -95,6 +95,10 @@ interface LocationData {
   topHospitals: string[];
   nearestMmtsStatus: string | null;
   connectivityDetails: string | null;
+  growthStory?: string | null;
+  infrastructureDetails?: string | null;
+  inventoryDescription?: string | null;
+  itCorridorInfluence?: string | null;
 }
 
 interface MarketMetrics {
@@ -718,6 +722,19 @@ export default function MicroMarketPageContent({
               />
             )}
 
+            {/* IT corridor influence */}
+            {locationData?.itCorridorInfluence && (
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.15em] text-slate-400 mb-2">
+                  IT Corridor Influence
+                </p>
+                <ConnectivityDetails
+                  content={locationData.itCorridorInfluence}
+                  isHtml={hasHtml(locationData.itCorridorInfluence)}
+                />
+              </div>
+            )}
+
             {/* Existing commute matrix */}
             {locationData?.commuteMatrix && locationData.commuteMatrix.length > 0 && (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -783,6 +800,70 @@ export default function MicroMarketPageContent({
             <p className="text-xs text-slate-400">Source: RERA + Market Data</p>
           </div>
         </section>
+
+        {/* Narrative content from micro_markets — growth_story / infrastructure / inventory */}
+        {(locationData?.growthStory || locationData?.infrastructureDetails || locationData?.inventoryDescription) && (
+          <section className="border-t border-slate-200 py-12 md:py-16">
+            <div className="container mx-auto max-w-4xl px-4 space-y-10">
+              {locationData?.growthStory && (
+                <div>
+                  <h2
+                    className="text-2xl md:text-3xl font-semibold text-slate-900 mb-4"
+                    style={{ fontFamily: "'Cormorant Garamond', serif" }}
+                  >
+                    {hero.name} — The Growth Story
+                  </h2>
+                  <div
+                    className={`text-base text-slate-700 leading-relaxed whitespace-pre-line ${
+                      hasHtml(locationData.growthStory) ? "prose prose-slate max-w-none" : ""
+                    }`}
+                    {...(hasHtml(locationData.growthStory)
+                      ? { dangerouslySetInnerHTML: { __html: locationData.growthStory } }
+                      : { children: locationData.growthStory })}
+                  />
+                </div>
+              )}
+
+              {locationData?.infrastructureDetails && (
+                <div>
+                  <h2
+                    className="text-2xl md:text-3xl font-semibold text-slate-900 mb-4"
+                    style={{ fontFamily: "'Cormorant Garamond', serif" }}
+                  >
+                    Infrastructure in {hero.name}
+                  </h2>
+                  <div
+                    className={`text-base text-slate-700 leading-relaxed whitespace-pre-line ${
+                      hasHtml(locationData.infrastructureDetails) ? "prose prose-slate max-w-none" : ""
+                    }`}
+                    {...(hasHtml(locationData.infrastructureDetails)
+                      ? { dangerouslySetInnerHTML: { __html: locationData.infrastructureDetails } }
+                      : { children: locationData.infrastructureDetails })}
+                  />
+                </div>
+              )}
+
+              {locationData?.inventoryDescription && (
+                <div>
+                  <h2
+                    className="text-2xl md:text-3xl font-semibold text-slate-900 mb-4"
+                    style={{ fontFamily: "'Cormorant Garamond', serif" }}
+                  >
+                    What&apos;s Available in {hero.name}
+                  </h2>
+                  <div
+                    className={`text-base text-slate-700 leading-relaxed whitespace-pre-line ${
+                      hasHtml(locationData.inventoryDescription) ? "prose prose-slate max-w-none" : ""
+                    }`}
+                    {...(hasHtml(locationData.inventoryDescription)
+                      ? { dangerouslySetInnerHTML: { __html: locationData.inventoryDescription } }
+                      : { children: locationData.inventoryDescription })}
+                  />
+                </div>
+              )}
+            </div>
+          </section>
+        )}
 
         {/* 5a. GOA PROJECTS — Goa-only project grid from rera_projects + projects tables */}
         {citySlug === "goa" && (

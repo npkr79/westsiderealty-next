@@ -150,6 +150,10 @@ export interface MicroMarketRedesignProps {
     topHospitals: string[];
     nearestMmtsStatus: string | null;
     connectivityDetails: string | null;
+    growthStory?: string | null;
+    infrastructureDetails?: string | null;
+    inventoryDescription?: string | null;
+    itCorridorInfluence?: string | null;
   };
   marketMetrics: { growthStage: string | null; priceCycleStage: string | null } | null;
   aiEnrichment: AiEnrichment | null;
@@ -731,6 +735,89 @@ export default function MicroMarketRedesign({
           )}
         </div>
       </section>
+
+      {/* ── Section 3.5: Narrative — Growth Story / Infrastructure / Inventory ─── */}
+      {(locationData.growthStory || locationData.infrastructureDetails || locationData.inventoryDescription || locationData.itCorridorInfluence) && (
+        <section style={{ background: C.bg, padding: "56px 0" }}>
+          <div style={{ maxWidth: 880, margin: "0 auto", padding: "0 24px" }}>
+            {locationData.growthStory && (
+              <div style={{ marginBottom: 40 }}>
+                <SectionHeading sub={`The arc of why ${marketName} matters now`}>
+                  {marketName} — The Growth Story
+                </SectionHeading>
+                <div
+                  style={{
+                    fontFamily: "'Outfit', sans-serif",
+                    fontSize: 15,
+                    color: C.text,
+                    lineHeight: 1.75,
+                    whiteSpace: "pre-line",
+                  }}
+                >
+                  {locationData.growthStory}
+                </div>
+              </div>
+            )}
+
+            {locationData.itCorridorInfluence && (
+              <div style={{ marginBottom: 40 }}>
+                <SectionHeading sub="How the IT corridor shapes demand here">
+                  IT Corridor Influence
+                </SectionHeading>
+                <div
+                  style={{
+                    fontFamily: "'Outfit', sans-serif",
+                    fontSize: 15,
+                    color: C.text,
+                    lineHeight: 1.75,
+                    whiteSpace: "pre-line",
+                  }}
+                >
+                  {locationData.itCorridorInfluence}
+                </div>
+              </div>
+            )}
+
+            {locationData.infrastructureDetails && (
+              <div style={{ marginBottom: 40 }}>
+                <SectionHeading sub="Roads, water, schools, hospitals — what's delivered vs planned">
+                  Infrastructure in {marketName}
+                </SectionHeading>
+                <div
+                  style={{
+                    fontFamily: "'Outfit', sans-serif",
+                    fontSize: 15,
+                    color: C.text,
+                    lineHeight: 1.75,
+                    whiteSpace: "pre-line",
+                  }}
+                >
+                  {locationData.infrastructureDetails}
+                </div>
+              </div>
+            )}
+
+            {locationData.inventoryDescription && (
+              <div>
+                <SectionHeading sub="Property types, price band, configurations">
+                  What&apos;s Available in {marketName}
+                </SectionHeading>
+                <div
+                  style={{
+                    fontFamily: "'Outfit', sans-serif",
+                    fontSize: 15,
+                    color: C.text,
+                    lineHeight: 1.75,
+                    whiteSpace: "pre-line",
+                  }}
+                >
+                  {locationData.inventoryDescription}
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
 
       {/* ── Section 4: Investment Intelligence ───────────────────────────── */}
       <section style={{ background: C.bgWarm, padding: "56px 0" }}>

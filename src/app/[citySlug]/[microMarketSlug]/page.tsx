@@ -110,7 +110,7 @@ export default async function MicroMarketPage({ params }: PageProps) {
     getMicroMarketMapCenter(cache.id),
     supabase
       .from("micro_markets")
-      .select("faqs, faq_schema_json, commute_matrix, connectivity_details, nearest_mmts_status, top_schools, top_hospitals")
+      .select("faqs, faq_schema_json, commute_matrix, connectivity_details, nearest_mmts_status, top_schools, top_hospitals, growth_story, infrastructure_details, inventory_description, it_corridor_influence")
       .eq("micro_market_name", cache.micro_market_name ?? "")
       .maybeSingle()
       .then(({ data }) => data),
@@ -304,12 +304,17 @@ export default async function MicroMarketPage({ params }: PageProps) {
   };
 
   const mmRaw = mmData as Record<string, unknown> | null;
+  const asStr = (v: unknown): string | null => (typeof v === "string" && v.trim().length > 0 ? v : null);
   const locationData = {
     commuteMatrix: parseCommuteMatrix(mmRaw?.commute_matrix),
     topSchools: parseNames(mmRaw?.top_schools).slice(0, 5),
     topHospitals: parseNames(mmRaw?.top_hospitals).slice(0, 5),
-    nearestMmtsStatus: typeof mmRaw?.nearest_mmts_status === "string" ? mmRaw.nearest_mmts_status : null,
-    connectivityDetails: typeof mmRaw?.connectivity_details === "string" ? mmRaw.connectivity_details : null,
+    nearestMmtsStatus: asStr(mmRaw?.nearest_mmts_status),
+    connectivityDetails: asStr(mmRaw?.connectivity_details),
+    growthStory: asStr(mmRaw?.growth_story),
+    infrastructureDetails: asStr(mmRaw?.infrastructure_details),
+    inventoryDescription: asStr(mmRaw?.inventory_description),
+    itCorridorInfluence: asStr(mmRaw?.it_corridor_influence),
   };
 
   const marketMetrics = metricsData
