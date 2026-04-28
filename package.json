@@ -23,7 +23,13 @@
     "seo:agent": "node --env-file=.env.local scripts/seo-agent/agent.mjs",
     "seo:agent:dry": "node --env-file=.env.local scripts/seo-agent/agent.mjs --dry-run",
     "seo:agent:gsc": "node --env-file=.env.local scripts/seo-agent/agent.mjs --gsc-only",
-    "seo:agent:code": "node --env-file=.env.local scripts/seo-agent/agent.mjs --code-only"
+    "seo:agent:code": "node --env-file=.env.local scripts/seo-agent/agent.mjs --code-only",
+    "seo:fix:long-desc": "node --env-file=.env.local scripts/seo-agent/backfill-long-description.mjs",
+    "seo:fix:long-desc:dry": "node --env-file=.env.local scripts/seo-agent/backfill-long-description.mjs --dry-run",
+    "seo:fix:price-display": "node --env-file=.env.local scripts/seo-agent/backfill-price-display.mjs",
+    "seo:fix:price-display:dry": "node --env-file=.env.local scripts/seo-agent/backfill-price-display.mjs --dry-run",
+    "seo:fix:mm-drafts": "node --env-file=.env.local scripts/seo-agent/draft-micro-market-content.mjs",
+    "reel-ideas": "tsx scripts/trending-reel-ideas.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",
@@ -55,6 +61,7 @@
     "cloudinary": "^2.9.0",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
+    "dotenv": "^17.4.2",
     "embla-carousel-react": "^8.6.0",
     "firebase": "^12.10.0",
     "firebase-admin": "^13.7.0",
