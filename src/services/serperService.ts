@@ -9,12 +9,13 @@ import type { RawArticle } from "@/services/newsScraperService";
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type SerperQueryType =
-  | "national_developer"
-  | "national_infra"
-  | "national_gcc"
-  | "national_launches"
+  | "gcc"
+  | "reits"
+  | "national_re"
+  | "broadsheets_re"
+  | "digital_re"
   | "hyderabad"
-  | "goa";
+  | "infra";
 
 interface SerperNewsItem {
   title: string;
@@ -31,36 +32,48 @@ interface SerperNewsResponse {
 
 // ─── Query definitions ────────────────────────────────────────────────────────
 
+// Sources: gcc-pulse.com, gcc.economictimes.indiatimes.com, moneycontrol.com (GCC tag)
+// Sources: realty.economictimes.indiatimes.com (REITs tag)
+// Sources: realty.economictimes.indiatimes.com/news, moneycontrol.com/RE, economictimes.indiatimes.com/wealth/RE
+// Sources: thehindu.com/RE, business-standard.com/RE, thehindubusinessline.com/RE
+// Sources: therealtytoday.com, cnbctv18.com/RE
+// Sources: realty.economictimes.indiatimes.com/tag/hyderabad
+// Sources: metrorailnews.in, economictimes.indiatimes.com/infra, constructionworld.in (all sections), financialexpress.com/infra
 const SERPER_QUERIES: Array<{ type: SerperQueryType; query: string }> = [
   {
-    type: "national_developer",
+    type: "gcc",
     query:
-      "(real estate developer OR realty OR builder OR housing) India (launches OR revenue OR sales OR investment OR funding OR acquires OR IPO OR pre-sales OR bookings)",
+      "site:gcc-pulse.com OR site:gcc.economictimes.indiatimes.com OR (site:moneycontrol.com gcc)",
   },
   {
-    type: "national_infra",
+    type: "reits",
     query:
-      "(expressway OR metro rail OR airport OR national highway OR railway OR bullet train OR elevated corridor) India (approved OR launched OR completed OR inaugurated OR investment OR crore OR km)",
+      "site:realty.economictimes.indiatimes.com reits",
   },
   {
-    type: "national_gcc",
+    type: "national_re",
     query:
-      '"global capability center" OR "global capability centre" OR "GCC" India (Hyderabad OR Bangalore OR Pune OR Chennai OR Mumbai) (opens OR sets up OR expands OR investment OR hiring OR seats)',
+      "(site:realty.economictimes.indiatimes.com OR site:moneycontrol.com OR site:economictimes.indiatimes.com) \"real estate\"",
   },
   {
-    type: "national_launches",
+    type: "broadsheets_re",
     query:
-      "(residential project launch OR new housing project OR township launch) (Hyderabad OR Mumbai OR Bangalore OR Chennai OR Delhi OR Pune OR Goa) 2025",
+      "(site:thehindu.com OR site:thehindubusinessline.com OR site:business-standard.com) \"real estate\"",
+  },
+  {
+    type: "digital_re",
+    query:
+      "site:therealtytoday.com OR (site:cnbctv18.com \"real estate\")",
   },
   {
     type: "hyderabad",
     query:
-      "Hyderabad (real estate OR property market OR infrastructure OR metro OR IT park OR GCC OR ORR OR Kokapet OR Neopolis OR Financial District OR HMDA)",
+      "site:realty.economictimes.indiatimes.com hyderabad",
   },
   {
-    type: "goa",
+    type: "infra",
     query:
-      "Goa (property OR real estate OR villa OR resort OR investment OR infrastructure OR Mopa airport OR tourism OR coastal)",
+      "site:metrorailnews.in OR site:constructionworld.in OR (site:economictimes.indiatimes.com infrastructure) OR (site:financialexpress.com infrastructure)",
   },
 ];
 
@@ -176,7 +189,7 @@ export async function fetchSerperNews(): Promise<SerperFetchResult> {
   for (const result of results) {
     if (result.status === "rejected") {
       console.error("[Serper] Query failed:", result.reason);
-      queryStats.push({ type: "national_developer", count: 0, error: String(result.reason) });
+      queryStats.push({ type: "gcc", count: 0, error: String(result.reason) });
       continue;
     }
 

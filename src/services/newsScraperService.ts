@@ -23,7 +23,7 @@ export interface RawArticle {
   image_url: string | null;
   published_at: string | null;
   raw_category: string | null;
-  search_query_type?: string; // set by Serper: national_developer | national_infra | national_gcc | national_launches | hyderabad | goa
+  search_query_type?: string; // set by Serper: gcc | reits | national_re | broadsheets_re | digital_re | hyderabad | infra
 }
 
 export interface ClassifiedArticle extends RawArticle {

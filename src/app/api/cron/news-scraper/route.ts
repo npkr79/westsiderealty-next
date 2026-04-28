@@ -44,7 +44,7 @@ async function handler(request: NextRequest) {
     const { articles: rawArticles, queryStats } = await fetchSerperNews();
     const articlesFound = rawArticles.length;
 
-    console.log(`[news-scraper] Serper returned ${articlesFound} total articles across 6 queries`);
+    console.log(`[news-scraper] Serper returned ${articlesFound} total articles across ${queryStats.length} queries`);
 
     // 3. Deduplicate — 3-layer: URL + normalized headline + same-story keyword overlap
     const uniqueArticles = deduplicateItems(rawArticles, existingUrls, existingHeadlines);
