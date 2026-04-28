@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCrmSessionResult } from '@/lib/crm/auth';
 import { createServiceClient } from '@/lib/supabase/serviceClient';
 
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 // Unicode mathematical sans-serif bold character map used in the prompt
 // so Claude knows exactly which characters to produce.
