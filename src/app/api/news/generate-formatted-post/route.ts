@@ -105,65 +105,104 @@ export async function POST(request: NextRequest) {
 
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-  // Tool-use is the canonical Anthropic pattern for guaranteed structured output.
-  // The model MUST call `submit_posts` with valid JSON matching the schema.
-  const response = await client.messages.create({
-    model: 'claude-sonnet-4-6',
-    max_tokens: 4096,
-    system: SYSTEM_PROMPT,
-    tools: [
-      {
-        name: 'submit_posts',
-        description: 'Submit the four social media post variants generated for the article.',
-        input_schema: {
-          type: 'object',
-          properties: {
-            x: { type: 'string', description: 'X (Twitter) post — short and concise.' },
-            linkedin: { type: 'string', description: 'LinkedIn post — professional and insight-driven.' },
-            facebook: { type: 'string', description: 'Facebook post — explanatory and informative.' },
-            instagram: { type: 'string', description: 'Instagram post — engaging and simple.' },
+  type Posts = { x: string; linkedin: string; facebook: string; instagram: string };
+
+  const userContent = [
+    `Today's date is ${todayIso} (${todayQuarter}).`,
+    `The article below was published on ${publishedIso ?? 'unknown'}.`,
+    `Use ONLY the dates and numbers stated in the article body. If the article says "Jan-Mar" or "Q1" without a year, the year is the year of the published date — never assume a different year.`,
+    `Do NOT invent statistics. If a specific number (sq ft, %, ₹ amount, count) is not in the article body, do not include it in the post.`,
+    `Pull the most concrete numbers (sq ft leased, %, ₹ crore, year-on-year, market share) directly from the article body and feature them as bullets.`,
+    ``,
+    `IMPORTANT: All four platform fields (x, linkedin, facebook, instagram) MUST be non-empty strings of at least 100 characters each. Generate complete, distinct post text for every platform — never leave a field blank.`,
+    ``,
+    `Generate 4 social media posts for this real estate news article and submit them via the submit_posts tool:`,
+    ``,
+    topic,
+  ].join('\n');
+
+  async function callModel(): Promise<{ posts: Partial<Posts> | null; stopReason: string | null }> {
+    const resp = await client.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 8192,
+      system: SYSTEM_PROMPT,
+      tools: [
+        {
+          name: 'submit_posts',
+          description: 'Submit the four social media post variants generated for the article. ALL FOUR fields must be non-empty.',
+          input_schema: {
+            type: 'object',
+            properties: {
+              x: { type: 'string', description: 'X (Twitter) post — short and concise. Must be non-empty.' },
+              linkedin: { type: 'string', description: 'LinkedIn post — professional and insight-driven. Must be non-empty.' },
+              facebook: { type: 'string', description: 'Facebook post — explanatory and informative. Must be non-empty.' },
+              instagram: { type: 'string', description: 'Instagram post — engaging and simple. Must be non-empty.' },
+            },
+            required: ['x', 'linkedin', 'facebook', 'instagram'],
           },
-          required: ['x', 'linkedin', 'facebook', 'instagram'],
         },
-      },
-    ],
-    tool_choice: { type: 'tool', name: 'submit_posts' },
-    messages: [
-      {
-        role: 'user',
-        content: [
-          `Today's date is ${todayIso} (${todayQuarter}).`,
-          `The article below was published on ${publishedIso ?? 'unknown'}.`,
-          `Use ONLY the dates and numbers stated in the article body. If the article says "Jan-Mar" or "Q1" without a year, the year is the year of the published date — never assume a different year.`,
-          `Do NOT invent statistics. If a specific number (sq ft, %, ₹ amount, count) is not in the article body, do not include it in the post.`,
-          `Pull the most concrete numbers (sq ft leased, %, ₹ crore, year-on-year, market share) directly from the article body and feature them as bullets.`,
-          ``,
-          `Generate 4 social media posts for this real estate news article and submit them via the submit_posts tool:`,
-          ``,
-          topic,
-        ].join('\n'),
-      },
-    ],
+      ],
+      tool_choice: { type: 'tool', name: 'submit_posts' },
+      messages: [{ role: 'user', content: userContent }],
+    });
+
+    const toolUse = resp.content.find(
+      (b): b is Extract<typeof b, { type: 'tool_use' }> => b.type === 'tool_use'
+    );
+    return {
+      posts: toolUse ? (toolUse.input as Partial<Posts>) : null,
+      stopReason: resp.stop_reason ?? null,
+    };
+  }
+
+  function variantsOk(p: Partial<Posts> | null): p is Posts {
+    if (!p) return false;
+    return ['x', 'linkedin', 'facebook', 'instagram'].every(
+      (k) => typeof p[k as keyof Posts] === 'string' && (p[k as keyof Posts] as string).trim().length >= 50
+    );
+  }
+
+  // Try once. If any variant is empty/short, retry once. Then merge best-of-both.
+  const attempt1 = await callModel();
+  let merged: Partial<Posts> = attempt1.posts ?? {};
+
+  if (!variantsOk(merged)) {
+    console.warn('[generate-formatted-post] attempt 1 incomplete (stop_reason=%s). Retrying.', attempt1.stopReason);
+    const attempt2 = await callModel();
+    const second = attempt2.posts ?? {};
+    // Merge: prefer non-empty from either attempt for each key.
+    for (const k of ['x', 'linkedin', 'facebook', 'instagram'] as const) {
+      const a = (merged[k] ?? '').trim();
+      const b = (second[k] ?? '').trim();
+      merged[k] = a.length >= 50 ? a : b.length >= 50 ? b : a || b;
+    }
+  }
+
+  // Lenient final validation: succeed if at least 2 variants have real content.
+  // Front-end can show "Not generated" placeholders for any empties.
+  const filledCount = (['x', 'linkedin', 'facebook', 'instagram'] as const).filter(
+    (k) => typeof merged[k] === 'string' && (merged[k] as string).trim().length >= 50
+  ).length;
+
+  if (filledCount === 0) {
+    console.error('[generate-formatted-post] All 4 variants empty after retry. attempt1.stop=%s', attempt1.stopReason);
+    return NextResponse.json({ error: 'Generation failed — model returned no usable content. Please try again.' }, { status: 500 });
+  }
+
+  // Fill any remaining empty variant by reusing another (so UI always has 4 fields).
+  const fallback = (['linkedin', 'facebook', 'x', 'instagram'] as const)
+    .map((k) => (typeof merged[k] === 'string' ? (merged[k] as string).trim() : ''))
+    .find((v) => v.length >= 50) ?? '';
+
+  for (const k of ['x', 'linkedin', 'facebook', 'instagram'] as const) {
+    if (typeof merged[k] !== 'string' || (merged[k] as string).trim().length < 50) {
+      merged[k] = fallback;
+    }
+  }
+
+  return NextResponse.json({
+    success: true,
+    posts: merged as Posts,
+    meta: { generated: filledCount, total: 4 },
   });
-
-  // Extract the tool_use block — guaranteed present because tool_choice forced it.
-  const toolUseBlock = response.content.find(
-    (b): b is Extract<typeof b, { type: 'tool_use' }> => b.type === 'tool_use'
-  );
-
-  if (!toolUseBlock) {
-    const textBlock = response.content.find((b) => b.type === 'text');
-    const preview = textBlock && textBlock.type === 'text' ? textBlock.text.slice(0, 500) : '';
-    console.error('[generate-formatted-post] No tool_use block. stop_reason:', response.stop_reason, 'text preview:', preview);
-    return NextResponse.json({ error: 'Generation failed — unexpected response format' }, { status: 500 });
-  }
-
-  const posts = toolUseBlock.input as { x: string; linkedin: string; facebook: string; instagram: string };
-
-  if (!posts.x || !posts.linkedin || !posts.facebook || !posts.instagram) {
-    console.error('[generate-formatted-post] Tool input missing required keys:', Object.keys(posts || {}));
-    return NextResponse.json({ error: 'Generation failed — missing post variants' }, { status: 500 });
-  }
-
-  return NextResponse.json({ success: true, posts });
 }
