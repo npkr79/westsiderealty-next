@@ -1128,11 +1128,20 @@ async function findNextAvailableSlot(): Promise<string> {
   return slotISO(fallback.toISOString().split('T')[0], 4, 0);
 }
 
+interface FormattedPosts {
+  x: string;
+  linkedin: string;
+  facebook: string;
+  instagram: string;
+}
+
 function NewsTab() {
   const [groups, setGroups] = useState<Map<string, NewsPost[]>>(new Map());
   const [loading, setLoading] = useState(true);
   const [actionId, setActionId] = useState<string | null>(null);
   const [scheduleLabels, setScheduleLabels] = useState<Record<string, string>>({});
+  const [formattedPosts, setFormattedPosts] = useState<Map<string, FormattedPosts | 'loading'>>(new Map());
+  const [formCopiedKey, setFormCopiedKey] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -1224,6 +1233,32 @@ function NewsTab() {
     }
     setGroups((prev) => { const m = new Map(prev); m.delete(articleId); return m; });
     setActionId(null);
+  };
+
+  const generateFormattedPosts = async (articleId: string) => {
+    setFormattedPosts((prev) => new Map(prev).set(articleId, 'loading'));
+    try {
+      const res = await fetch('/api/news/generate-formatted-post', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ article_id: articleId }),
+      });
+      const data = await res.json();
+      if (data.success && data.posts) {
+        setFormattedPosts((prev) => new Map(prev).set(articleId, data.posts as FormattedPosts));
+      } else {
+        setFormattedPosts((prev) => { const m = new Map(prev); m.delete(articleId); return m; });
+        alert(data.error ?? 'Generation failed');
+      }
+    } catch {
+      setFormattedPosts((prev) => { const m = new Map(prev); m.delete(articleId); return m; });
+    }
+  };
+
+  const copyFormattedPost = async (articleId: string, platform: string, text: string) => {
+    await navigator.clipboard.writeText(text);
+    setFormCopiedKey(`${articleId}-${platform}`);
+    setTimeout(() => setFormCopiedKey(null), 2000);
   };
 
   if (loading) return <p className="text-gray-500 text-sm py-8 text-center">Loading news posts…</p>;
@@ -1332,7 +1367,7 @@ function NewsTab() {
             )}
 
             {/* Actions */}
-            <div className="flex gap-2 p-4 border-t border-gray-800">
+            <div className="flex gap-2 p-4 border-t border-gray-800 flex-wrap">
               {autoPosts.length > 0 && (
                 <button
                   onClick={() => handleApprove(articleId)}
@@ -1352,6 +1387,25 @@ function NewsTab() {
                 </button>
               )}
               <button
+                onClick={() => {
+                  if (formattedPosts.has(articleId)) {
+                    setFormattedPosts((prev) => { const m = new Map(prev); m.delete(articleId); return m; });
+                  } else {
+                    generateFormattedPosts(articleId);
+                  }
+                }}
+                disabled={isActing || formattedPosts.get(articleId) === 'loading'}
+                className="px-4 py-2 rounded-lg bg-purple-900 hover:bg-purple-800 text-purple-300 text-sm font-medium disabled:opacity-50 transition-colors flex items-center gap-1.5"
+              >
+                {formattedPosts.get(articleId) === 'loading' ? (
+                  <><Loader2 className="w-3 h-3 animate-spin" /> Generating…</>
+                ) : formattedPosts.has(articleId) ? (
+                  'Hide Posts'
+                ) : (
+                  <><Sparkles className="w-3 h-3" /> Format Posts</>
+                )}
+              </button>
+              <button
                 onClick={() => rejectGroup(articleId)}
                 disabled={isActing}
                 className="px-4 py-2 rounded-lg bg-gray-800 hover:bg-red-900 text-gray-400 hover:text-red-300 text-sm font-medium disabled:opacity-50 transition-colors"
@@ -1359,6 +1413,46 @@ function NewsTab() {
                 Reject
               </button>
             </div>
+
+            {/* Formatted Posts Panel */}
+            {formattedPosts.has(articleId) && formattedPosts.get(articleId) !== 'loading' && (() => {
+              const fp = formattedPosts.get(articleId) as FormattedPosts;
+              const platforms: { key: keyof FormattedPosts; label: string; color: string }[] = [
+                { key: 'x',         label: 'X',         color: 'bg-gray-700 text-gray-300' },
+                { key: 'linkedin',  label: 'LinkedIn',  color: 'bg-blue-900 text-blue-300' },
+                { key: 'facebook',  label: 'Facebook',  color: 'bg-indigo-900 text-indigo-300' },
+                { key: 'instagram', label: 'Instagram', color: 'bg-pink-900 text-pink-300' },
+              ];
+              return (
+                <div className="border-t border-purple-900/60 bg-[#0d0d14]">
+                  <p className="text-[10px] text-purple-400 uppercase tracking-wider px-4 pt-3 pb-1">
+                    Formatted Posts — copy-paste ready for all platforms
+                  </p>
+                  <div className="divide-y divide-gray-800/60">
+                    {platforms.map(({ key, label, color }) => {
+                      const text = fp[key];
+                      const copyKey = `${articleId}-${key}`;
+                      return (
+                        <div key={key} className="px-4 py-3">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${color}`}>{label}</span>
+                            <button
+                              onClick={() => copyFormattedPost(articleId, key, text)}
+                              className="text-xs px-3 py-1 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors flex items-center gap-1"
+                            >
+                              {formCopiedKey === copyKey
+                                ? <><Check className="w-3 h-3 text-green-400" /> Copied!</>
+                                : <><Copy className="w-3 h-3" /> Copy</>}
+                            </button>
+                          </div>
+                          <pre className="text-xs text-gray-300 whitespace-pre-wrap font-sans leading-relaxed">{text}</pre>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         );
       })}
