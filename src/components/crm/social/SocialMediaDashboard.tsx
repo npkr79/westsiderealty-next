@@ -1405,7 +1405,11 @@ This is the post:
       const sectionMarkers = /(why this matters|strategic implications|key takeaway|key facts|key data points|implications|impact|takeaway|next steps|what to watch)/i;
       if (sectionMarkers.test(t)) return true;
       // Detect lines composed mostly of Unicode mathematical bold chars
-      const boldChars = (t.match(/[𝗔-𝗭𝗮-𝘇𝟬-𝟵]/g) ?? []).length;
+      // Unicode mathematical sans-serif bold ranges. Need /u flag because the
+      // codepoints are above BMP (surrogate pairs) — without it the engine
+      // treats them as separate UTF-16 units and the range "out of order"
+      // throws at parse time.
+      const boldChars = (t.match(/[\u{1D5D4}-\u{1D5ED}\u{1D5EE}-\u{1D607}\u{1D7EC}-\u{1D7F5}]/gu) ?? []).length;
       return boldChars >= Math.max(3, Math.floor(t.replace(/\s/g, '').length * 0.4));
     };
 
