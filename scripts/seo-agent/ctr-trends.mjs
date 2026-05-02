@@ -269,3 +269,319 @@ export async function getCtrTrends(weekStart) {
 
   return drops;
 }
+
+// ─── getZeroImpressionAlerts ──────────────────────────────────────────────────
+
+/**
+ * Find pages that previously had ≥ minPrevImpressions but now have exactly 0.
+ * The existing getCtrTrends() misses these because it filters on prev_ctr NOT NULL
+ * and a page at 0 impressions produces no CTR to compare.
+ *
+ * Returns { pages: [...], byTemplate: { templateName: { count, lostImpressions, pages } } }
+ */
+export async function getZeroImpressionAlerts(weekStart, minPrevImpressions = 100) {
+  const supabase = makeClient();
+  if (!supabase) return { pages: [], byTemplate: {} };
+
+  const targetWeek = weekStart || isoMonday();
+
+  const { data, error } = await supabase
+    .from("seo_weekly_metrics")
+    .select("page_url, template, prev_impressions, prev_clicks, prev_position, prev_ctr")
+    .eq("week_start", targetWeek)
+    .eq("impressions", 0)
+    .gte("prev_impressions", minPrevImpressions);
+
+  if (error) {
+    console.error("[ctr-trends] Zero-impression alert query error:", error.message);
+    return { pages: [], byTemplate: {} };
+  }
+
+  const pages = (data || [])
+    .map(row => ({
+      pageUrl: row.page_url,
+      template: row.template,
+      prevImpressions: row.prev_impressions,
+      prevClicks: row.prev_clicks,
+      prevPosition: row.prev_position,
+      prevCtr: row.prev_ctr,
+    }))
+    .sort((a, b) => b.prevImpressions - a.prevImpressions);
+
+  const byTemplate = {};
+  for (const p of pages) {
+    if (!byTemplate[p.template]) {
+      byTemplate[p.template] = { count: 0, lostImpressions: 0, pages: [] };
+    }
+    byTemplate[p.template].count++;
+    byTemplate[p.template].lostImpressions += p.prevImpressions;
+    byTemplate[p.template].pages.push(p);
+  }
+
+  console.error(`[ctr-trends] Zero-impression alert: ${pages.length} page(s) dropped to 0`);
+  return { pages, byTemplate };
+}
+
+// ─── getTemplateHealthSummary ─────────────────────────────────────────────────
+
+/**
+ * Aggregate this week's seo_weekly_metrics by template and compute week-over-week
+ * impression/click/CTR/position deltas. Flags templates that lost >alertThreshold
+ * of their impressions (default 25%, or 10% for watchlisted templates).
+ *
+ * @param {string}   weekStart       - ISO Monday date (defaults to current week)
+ * @param {string[]} watchlistTemplates - templates with tighter 10% threshold
+ */
+export async function getTemplateHealthSummary(weekStart, watchlistTemplates = []) {
+  const supabase = makeClient();
+  if (!supabase) return [];
+
+  const targetWeek = weekStart || isoMonday();
+
+  const { data, error } = await supabase
+    .from("seo_weekly_metrics")
+    .select(
+      "template, impressions, clicks, position, prev_impressions, prev_clicks, prev_position"
+    )
+    .eq("week_start", targetWeek);
+
+  if (error) {
+    console.error("[ctr-trends] Template health query error:", error.message);
+    return [];
+  }
+
+  const groups = {};
+  for (const row of data || []) {
+    const t = row.template || "other";
+    if (!groups[t]) {
+      groups[t] = {
+        template: t,
+        pageCount: 0,
+        newPageCount: 0,
+        impressions: 0,
+        clicks: 0,
+        prevImpressions: 0,
+        prevClicks: 0,
+        positions: [],
+        prevPositions: [],
+      };
+    }
+    const g = groups[t];
+    g.pageCount++;
+    g.impressions += row.impressions || 0;
+    g.clicks += row.clicks || 0;
+    if (row.prev_impressions == null) {
+      g.newPageCount++;
+    } else {
+      g.prevImpressions += row.prev_impressions || 0;
+      g.prevClicks += row.prev_clicks || 0;
+    }
+    if (row.position != null) g.positions.push(row.position);
+    if (row.prev_position != null) g.prevPositions.push(row.prev_position);
+  }
+
+  const watchSet = new Set(watchlistTemplates);
+
+  return Object.values(groups)
+    .map(g => {
+      const impDelta =
+        g.prevImpressions > 0
+          ? (g.impressions - g.prevImpressions) / g.prevImpressions
+          : null;
+      const ctr = g.impressions > 0 ? g.clicks / g.impressions : 0;
+      const prevCtr = g.prevImpressions > 0 ? g.prevClicks / g.prevImpressions : 0;
+      const avgPos =
+        g.positions.length > 0
+          ? g.positions.reduce((a, b) => a + b, 0) / g.positions.length
+          : null;
+      const prevAvgPos =
+        g.prevPositions.length > 0
+          ? g.prevPositions.reduce((a, b) => a + b, 0) / g.prevPositions.length
+          : null;
+      const threshold = watchSet.has(g.template) ? 0.10 : 0.25;
+      const alert = impDelta !== null && impDelta < -threshold;
+
+      return {
+        template: g.template,
+        pageCount: g.pageCount,
+        newPageCount: g.newPageCount,
+        impressions: g.impressions,
+        prevImpressions: g.prevImpressions,
+        impDelta,
+        clicks: g.clicks,
+        prevClicks: g.prevClicks,
+        ctr,
+        prevCtr,
+        avgPosition: avgPos,
+        prevAvgPosition: prevAvgPos,
+        onWatchlist: watchSet.has(g.template),
+        alert,
+      };
+    })
+    .sort((a, b) => b.impressions - a.impressions);
+}
+
+// ─── getPage1Crossings ────────────────────────────────────────────────────────
+
+/**
+ * Pages that were on page 1 (avg position ≤ 10) and are now on page 2+ (> 10).
+ * Far more impactful than a 2-spot drift within page 1 — typically cuts impressions 70%+.
+ * Also catches page-2 → page-3 crossings (position 20 → > 20).
+ */
+export async function getPage1Crossings(weekStart) {
+  const supabase = makeClient();
+  if (!supabase) return { page1: [], page2: [] };
+
+  const targetWeek = weekStart || isoMonday();
+
+  // Page 1 → page 2 crossings
+  const { data: p1Data, error: p1Err } = await supabase
+    .from("seo_weekly_metrics")
+    .select(
+      "page_url, template, impressions, clicks, position, prev_impressions, prev_position"
+    )
+    .eq("week_start", targetWeek)
+    .lte("prev_position", 10)
+    .gt("position", 10)
+    .gte("prev_impressions", 50);
+
+  // Page 2 → page 3 crossings
+  const { data: p2Data, error: p2Err } = await supabase
+    .from("seo_weekly_metrics")
+    .select(
+      "page_url, template, impressions, clicks, position, prev_impressions, prev_position"
+    )
+    .eq("week_start", targetWeek)
+    .lte("prev_position", 20)
+    .gt("position", 20)
+    .gte("prev_impressions", 50);
+
+  if (p1Err) console.error("[ctr-trends] Page-1 crossing query error:", p1Err.message);
+  if (p2Err) console.error("[ctr-trends] Page-2 crossing query error:", p2Err.message);
+
+  const mapRow = row => ({
+    pageUrl: row.page_url,
+    template: row.template,
+    impressions: row.impressions,
+    prevImpressions: row.prev_impressions,
+    impDelta: row.prev_impressions > 0
+      ? (row.impressions - row.prev_impressions) / row.prev_impressions
+      : null,
+    position: row.position,
+    prevPosition: row.prev_position,
+    positionDelta: row.position - row.prev_position,
+  });
+
+  const page1 = (p1Data || []).map(mapRow).sort((a, b) => b.prevImpressions - a.prevImpressions);
+  const page2 = (p2Data || []).map(mapRow).sort((a, b) => b.prevImpressions - a.prevImpressions);
+
+  console.error(`[ctr-trends] Page crossings: ${page1.length} fell off page 1, ${page2.length} fell off page 2`);
+  return { page1, page2 };
+}
+
+// ─── getNewVsEstablished ──────────────────────────────────────────────────────
+
+/**
+ * Split this week's metrics into "established" pages (have prior snapshot data)
+ * and "new" pages (first time appearing). Without this split, a wave of new
+ * page indexing masks decay in established rankings.
+ */
+export async function getNewVsEstablished(weekStart) {
+  const supabase = makeClient();
+  if (!supabase) return null;
+
+  const targetWeek = weekStart || isoMonday();
+
+  const { data, error } = await supabase
+    .from("seo_weekly_metrics")
+    .select("impressions, clicks, prev_impressions, prev_clicks")
+    .eq("week_start", targetWeek);
+
+  if (error) {
+    console.error("[ctr-trends] New vs established query error:", error.message);
+    return null;
+  }
+
+  const est = { pages: 0, impressions: 0, clicks: 0, prevImpressions: 0, prevClicks: 0 };
+  const fresh = { pages: 0, impressions: 0, clicks: 0 };
+
+  for (const row of data || []) {
+    if (row.prev_impressions == null) {
+      fresh.pages++;
+      fresh.impressions += row.impressions || 0;
+      fresh.clicks += row.clicks || 0;
+    } else {
+      est.pages++;
+      est.impressions += row.impressions || 0;
+      est.clicks += row.clicks || 0;
+      est.prevImpressions += row.prev_impressions || 0;
+      est.prevClicks += row.prev_clicks || 0;
+    }
+  }
+
+  const estImpDelta =
+    est.prevImpressions > 0
+      ? (est.impressions - est.prevImpressions) / est.prevImpressions
+      : null;
+
+  return {
+    established: {
+      pages: est.pages,
+      impressions: est.impressions,
+      prevImpressions: est.prevImpressions,
+      impDelta: estImpDelta,
+      clicks: est.clicks,
+      prevClicks: est.prevClicks,
+      ctr: est.impressions > 0 ? est.clicks / est.impressions : 0,
+      prevCtr: est.prevImpressions > 0 ? est.prevClicks / est.prevImpressions : 0,
+    },
+    newPages: {
+      pages: fresh.pages,
+      impressions: fresh.impressions,
+      clicks: fresh.clicks,
+      ctr: fresh.impressions > 0 ? fresh.clicks / fresh.impressions : 0,
+    },
+  };
+}
+
+// ─── getDivergenceAlerts ──────────────────────────────────────────────────────
+
+/**
+ * Templates where impressions grew faster than clicks by more than 30pp.
+ * This flags "junk impression" templates — pages appearing in search but not
+ * earning clicks (thin programmatic pages, low-quality AI articles, etc.).
+ * Computed from templateSummary (output of getTemplateHealthSummary).
+ *
+ * @param {Array} templateSummary - output of getTemplateHealthSummary()
+ */
+export function getDivergenceAlerts(templateSummary) {
+  const DIVERGENCE_THRESHOLD = 0.30;
+
+  if (!Array.isArray(templateSummary)) return [];
+
+  return templateSummary
+    .filter(t => {
+      if (t.prevImpressions < 200 || t.impDelta == null) return false;
+      if (t.prevClicks === 0) return t.impDelta > DIVERGENCE_THRESHOLD;
+      const clickDelta = (t.clicks - t.prevClicks) / t.prevClicks;
+      return t.impDelta - clickDelta > DIVERGENCE_THRESHOLD;
+    })
+    .map(t => {
+      const clickDelta =
+        t.prevClicks > 0 ? (t.clicks - t.prevClicks) / t.prevClicks : null;
+      return {
+        template: t.template,
+        pageCount: t.pageCount,
+        impressions: t.impressions,
+        prevImpressions: t.prevImpressions,
+        impDelta: t.impDelta,
+        clicks: t.clicks,
+        prevClicks: t.prevClicks,
+        clickDelta,
+        divergence: clickDelta != null ? t.impDelta - clickDelta : t.impDelta,
+        ctr: t.ctr,
+        prevCtr: t.prevCtr,
+      };
+    })
+    .sort((a, b) => b.divergence - a.divergence);
+}

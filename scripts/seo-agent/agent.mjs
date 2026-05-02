@@ -61,7 +61,16 @@ import { runMetaOptimizer } from "./meta-optimizer.mjs";
 import { runSchemaAudit } from "./schema-gaps.mjs";
 import { runOnPageAudit } from "./on-page-audit.mjs";
 import { runDbContentAudit } from "./db-content-audit.mjs";
-import { storeCtrSnapshot, getCtrTrends } from "./ctr-trends.mjs";
+import {
+  storeCtrSnapshot,
+  getCtrTrends,
+  getZeroImpressionAlerts,
+  getTemplateHealthSummary,
+  getPage1Crossings,
+  getNewVsEstablished,
+  getDivergenceAlerts,
+} from "./ctr-trends.mjs";
+import { getWatchlist, autoUpdateWatchlist } from "./watchlist.mjs";
 import { runCompetitorKeywords } from "./competitor-keywords.mjs";
 import { runContentGaps } from "./content-gaps.mjs";
 import { runFaqGenerator } from "./faq-generator.mjs";
@@ -165,6 +174,20 @@ async function runCodeFix(findings) {
   return { applied: [], total: 0 };
 }
 
+// ─── Watchlist auto-update ────────────────────────────────────────────────────
+
+async function runWatchlistUpdate(codeFix) {
+  // If this run changed any metadata files, add those templates to the watchlist
+  // so next week's health check uses tighter thresholds.
+  try {
+    if (codeFix?.applied?.length > 0 && !DRY_RUN) {
+      await autoUpdateWatchlist();
+    }
+  } catch (err) {
+    console.error("[agent] Watchlist update failed:", err.message);
+  }
+}
+
 // ─── Phase 2: GSC-Driven Optimization ────────────────────────────────────────
 
 async function runGscPhases() {
@@ -182,18 +205,16 @@ async function runGscPhases() {
     ctrResult = { error: err.message, priorityPages: [], siteMetrics: null, templateBreakdown: {} };
   }
 
-  // Meta optimization
-  if (!DRY_RUN && ctrResult && !ctrResult.error) {
-    console.error("\n[agent] ═══ Phase 2b: Meta Optimization ═══");
+  // Meta optimization — DISABLED: bulk title rewrites caused 54 developer pages to drop to
+  // 0 impressions and micro-market pages to fall 2-5 positions (confirmed via GSC 2026-05).
+  // Any title template changes must be made manually and deployed one template at a time.
+  console.error("\n[agent] ═══ Phase 2b: Meta Optimization — SKIPPED (manual review required) ═══");
+  if (false && !DRY_RUN && ctrResult && !ctrResult.error) {
     try {
       metaFixes = await runMetaOptimizer(ctrResult);
     } catch (err) {
       console.error("[agent] Meta optimizer failed:", err.message);
     }
-  } else if (DRY_RUN && ctrResult) {
-    console.error(
-      `[agent] DRY RUN — would optimize ${ctrResult.priorityPages?.length || 0} priority pages`
-    );
   }
 
   // Schema gaps (analysis only — always runs, doesn't write files)
@@ -223,23 +244,63 @@ async function runGscPhases() {
   }
 
   // CTR trend snapshot — store weekly metrics, detect drops vs 4-week baseline
-  console.error("\n[agent] ═══ Phase 2f: CTR Trend Snapshot ═══");
+  console.error("\n[agent] ═══ Phase 2f: CTR Trend Snapshot + Health Reports ═══");
   let ctrTrends = [];
+  let zeroImpressionAlerts = { pages: [], byTemplate: {} };
+  let templateHealth = [];
+  let page1Crossings = { page1: [], page2: [] };
+  let newVsEstablished = null;
+  let divergenceAlerts = [];
+  let activeWatchlist = [];
+
   try {
+    // Load watchlist first — used to tighten thresholds for recently-changed templates
+    activeWatchlist = await getWatchlist();
+    const watchlistTemplates = activeWatchlist.map(w => w.template);
+    if (watchlistTemplates.length > 0) {
+      console.error(`[agent] Watchlist active: ${watchlistTemplates.join(", ")}`);
+    }
+
     if (ctrResult && ctrResult.priorityPages && !DRY_RUN) {
-      const allPageRows = (ctrResult.templateBreakdown
-        ? Object.values(ctrResult.templateBreakdown).flatMap(t => t.pages || [])
-        : []);
-      // Use raw ctrResult rows for full-site snapshot (re-pull 5000 rows if available)
       const snapshotData = ctrResult._allRows || ctrResult.priorityPages;
       await storeCtrSnapshot(snapshotData);
+
       const weekStart = new Date();
       weekStart.setDate(weekStart.getDate() - ((weekStart.getDay() + 6) % 7));
-      ctrTrends = await getCtrTrends(weekStart.toISOString().slice(0, 10));
-      console.error(`[agent] CTR trends: ${ctrTrends.length} pages with drops/improvements`);
+      const weekStartStr = weekStart.toISOString().slice(0, 10);
+
+      // Existing: CTR/position drops vs 4-week baseline
+      ctrTrends = await getCtrTrends(weekStartStr);
+      console.error(`[agent] CTR trends: ${ctrTrends.length} page(s) with drops`);
+
+      // New Report 1: pages that dropped to 0 impressions
+      zeroImpressionAlerts = await getZeroImpressionAlerts(weekStartStr);
+      console.error(`[agent] Zero-impression: ${zeroImpressionAlerts.pages.length} page(s) gone`);
+
+      // New Report 2: template-level health (uses watchlist for tighter thresholds)
+      templateHealth = await getTemplateHealthSummary(weekStartStr, watchlistTemplates);
+      const alertedTemplates = templateHealth.filter(t => t.alert);
+      console.error(`[agent] Template health: ${alertedTemplates.length} template(s) below threshold`);
+
+      // New Report 3: page-1 boundary crossings
+      page1Crossings = await getPage1Crossings(weekStartStr);
+      console.error(`[agent] Page-1 crossings: ${page1Crossings.page1.length} fell off page 1`);
+
+      // New Report 4: new vs established split
+      newVsEstablished = await getNewVsEstablished(weekStartStr);
+      if (newVsEstablished) {
+        const { established: e } = newVsEstablished;
+        console.error(
+          `[agent] Established pages: ${e.impDelta != null ? ((e.impDelta * 100).toFixed(1) + "%") : "n/a"} imp delta`
+        );
+      }
+
+      // New Report 5: impressions-vs-clicks divergence (computed from templateHealth)
+      divergenceAlerts = getDivergenceAlerts(templateHealth);
+      console.error(`[agent] Divergence alerts: ${divergenceAlerts.length} template(s) earning impressions without clicks`);
     }
   } catch (err) {
-    console.error("[agent] CTR trends failed:", err.message);
+    console.error("[agent] CTR trends/health reports failed:", err.message);
   }
 
   // Competitor keyword gap analysis
@@ -331,6 +392,9 @@ async function runGscPhases() {
     ctrResult, metaFixes, schemaGaps, onPageResult,
     dbContentResult, ctrTrends, competitorResult, contentGaps, faqResult, positionResult,
     backlinkResult, serpFeaturesResult, keywordDifficultyResult, contentScorerResult, cruxResult,
+    // New health reports
+    zeroImpressionAlerts, templateHealth, page1Crossings, newVsEstablished,
+    divergenceAlerts, activeWatchlist,
   };
 }
 
@@ -394,14 +458,131 @@ async function submitSitemapToGsc() {
 
 // ─── Phase 5: Generate PR Body ────────────────────────────────────────────────
 
-async function generatePrBody({ codeFindings, codeFix, ctrResult, metaFixes, schemaGaps, onPageResult, dbContentResult, ctrTrends, competitorResult, contentGaps, faqResult, positionResult, backlinkResult, serpFeaturesResult, keywordDifficultyResult, contentScorerResult, cruxResult, indexingResults, sitemapResult }) {
+async function generatePrBody({ codeFindings, codeFix, ctrResult, metaFixes, schemaGaps, onPageResult, dbContentResult, ctrTrends, competitorResult, contentGaps, faqResult, positionResult, backlinkResult, serpFeaturesResult, keywordDifficultyResult, contentScorerResult, cruxResult, indexingResults, sitemapResult, zeroImpressionAlerts, templateHealth, page1Crossings, newVsEstablished, divergenceAlerts, activeWatchlist }) {
   const lines = [];
   const now = new Date().toISOString().slice(0, 10);
+  const pct = (n) => (n >= 0 ? "+" : "") + (n * 100).toFixed(1) + "%";
 
   lines.push(`## SEO Agent Report — ${now}`);
   lines.push("");
   lines.push("> Automated weekly SEO optimization. Review changes before merging.");
   lines.push("");
+
+  // ── CRITICAL ALERTS (always first) ──────────────────────────────────────────
+  const criticalLines = [];
+
+  // Zero-impression pages
+  if (zeroImpressionAlerts?.pages?.length > 0) {
+    const z = zeroImpressionAlerts;
+    const totalLost = z.pages.reduce((s, p) => s + p.prevImpressions, 0);
+    criticalLines.push(`#### 🚨 ${z.pages.length} page(s) dropped to 0 impressions (lost ${totalLost.toLocaleString()} impressions total)`);
+    criticalLines.push("");
+    for (const [tmpl, g] of Object.entries(z.byTemplate)) {
+      criticalLines.push(`**${tmpl}** — ${g.count} page(s), ${g.lostImpressions.toLocaleString()} impressions lost`);
+      for (const p of g.pages.slice(0, 5)) {
+        const short = p.pageUrl.replace("https://www.westsiderealty.in", "");
+        criticalLines.push(`- \`${short}\` — was ${p.prevImpressions} impressions @ pos ${p.prevPosition?.toFixed(1)}`);
+      }
+      if (g.pages.length > 5) criticalLines.push(`- _(and ${g.pages.length - 5} more)_`);
+    }
+    criticalLines.push("");
+  }
+
+  // Template health alerts
+  const templateAlerts = (templateHealth || []).filter(t => t.alert);
+  if (templateAlerts.length > 0) {
+    criticalLines.push(`#### ⚠️ ${templateAlerts.length} template(s) lost >threshold impressions this week`);
+    criticalLines.push("");
+    criticalLines.push("| Template | Pages | Prev Impr | This Impr | Δ | Watchlisted |");
+    criticalLines.push("|----------|-------|-----------|-----------|---|-------------|");
+    for (const t of templateAlerts) {
+      const watchTag = t.onWatchlist ? "🔍 yes" : "no";
+      criticalLines.push(
+        `| ${t.template} | ${t.pageCount} | ${t.prevImpressions.toLocaleString()} | ${t.impressions.toLocaleString()} | ${pct(t.impDelta)} | ${watchTag} |`
+      );
+    }
+    criticalLines.push("");
+  }
+
+  // Page-1 crossings
+  if (page1Crossings?.page1?.length > 0) {
+    criticalLines.push(`#### 📉 ${page1Crossings.page1.length} page(s) fell off page 1 (pos ≤10 → >10)`);
+    criticalLines.push("");
+    criticalLines.push("| Page | Prev Pos | Now Pos | Impr Δ |");
+    criticalLines.push("|------|----------|---------|--------|");
+    for (const p of page1Crossings.page1.slice(0, 10)) {
+      const short = p.pageUrl.replace("https://www.westsiderealty.in", "");
+      criticalLines.push(
+        `| \`${short}\` | ${p.prevPosition?.toFixed(1)} | ${p.position?.toFixed(1)} | ${p.impDelta != null ? pct(p.impDelta) : "—"} |`
+      );
+    }
+    criticalLines.push("");
+  }
+
+  if (criticalLines.length > 0) {
+    lines.push("## 🚨 Critical Alerts");
+    lines.push("");
+    lines.push(...criticalLines);
+    lines.push("---");
+    lines.push("");
+  } else {
+    lines.push("## ✅ No Critical Alerts This Week");
+    lines.push("");
+  }
+
+  // ── Weekly health summary ────────────────────────────────────────────────────
+  if (newVsEstablished) {
+    const { established: e, newPages: n } = newVsEstablished;
+    lines.push("## 📊 Weekly Health Summary");
+    lines.push("");
+    lines.push("| Segment | Pages | Prev Impr | This Impr | Δ | CTR (prev → now) |");
+    lines.push("|---------|-------|-----------|-----------|---|-----------------|");
+    lines.push(
+      `| **Established** (≥4 wks) | ${e.pages} | ${e.prevImpressions.toLocaleString()} | ${e.impressions.toLocaleString()} | ${e.impDelta != null ? pct(e.impDelta) : "—"} | ${(e.prevCtr * 100).toFixed(2)}% → ${(e.ctr * 100).toFixed(2)}% |`
+    );
+    lines.push(
+      `| **New** (first indexed) | ${n.pages} | — | ${n.impressions.toLocaleString()} | new | — → ${(n.ctr * 100).toFixed(2)}% |`
+    );
+    lines.push("");
+  }
+
+  // ── Template breakdown (full table, moved up from buried position) ───────────
+  if (templateHealth?.length > 0) {
+    lines.push("## 📋 Template Health Breakdown");
+    lines.push("");
+    if (activeWatchlist?.length > 0) {
+      lines.push(`> 🔍 Watchlisted templates (10% threshold): **${activeWatchlist.map(w => w.template).join(", ")}**`);
+      lines.push("");
+    }
+    lines.push("| Template | Pages | New | Prev Impr | This Impr | Δ | Prev CTR | Now CTR |");
+    lines.push("|----------|-------|-----|-----------|-----------|---|----------|---------|");
+    for (const t of templateHealth) {
+      const alertFlag = t.alert ? " ⚠️" : "";
+      const watchFlag = t.onWatchlist ? " 🔍" : "";
+      lines.push(
+        `| ${t.template}${alertFlag}${watchFlag} | ${t.pageCount} | ${t.newPageCount} | ${t.prevImpressions.toLocaleString()} | ${t.impressions.toLocaleString()} | ${t.impDelta != null ? pct(t.impDelta) : "—"} | ${(t.prevCtr * 100).toFixed(2)}% | ${(t.ctr * 100).toFixed(2)}% |`
+      );
+    }
+    lines.push("");
+  }
+
+  // ── Divergence alerts ────────────────────────────────────────────────────────
+  if (divergenceAlerts?.length > 0) {
+    lines.push("## ⚡ Impression-vs-Click Divergence");
+    lines.push("");
+    lines.push("> These templates are gaining impressions but not proportional clicks — possible thin content or title mismatch.");
+    lines.push("");
+    lines.push("| Template | Impr Δ | Click Δ | Divergence | CTR (prev → now) |");
+    lines.push("|----------|--------|---------|------------|-----------------|");
+    for (const d of divergenceAlerts) {
+      lines.push(
+        `| ${d.template} | ${pct(d.impDelta)} | ${d.clickDelta != null ? pct(d.clickDelta) : "—"} | ${pct(d.divergence)} | ${(d.prevCtr * 100).toFixed(2)}% → ${(d.ctr * 100).toFixed(2)}% |`
+      );
+    }
+    lines.push("");
+  }
+
+  lines.push("---");
 
   // ── Site metrics ──
   if (ctrResult?.siteMetrics) {
@@ -926,6 +1107,12 @@ async function main() {
   let onPageResult = { summary: {}, findings: [] };
   let dbContentResult = { summary: { totalIssues: 0, critical: 0, high: 0 }, issues: [] };
   let ctrTrends = [];
+  let zeroImpressionAlerts = { pages: [], byTemplate: {} };
+  let templateHealth = [];
+  let page1Crossings = { page1: [], page2: [] };
+  let newVsEstablished = null;
+  let divergenceAlerts = [];
+  let activeWatchlist = [];
   let competitorResult = { gscOpportunities: 0, totalGaps: 0, topOpportunities: [] };
   let contentGaps = { quickWins: [], missingPages: [], decliningPages: [], ctrOpportunities: [], summary: {} };
   let faqResult = { projectFaqFileWritten: false, microMarketFaqFileWritten: false };
@@ -938,10 +1125,11 @@ async function main() {
   let indexingResults = [];
   let sitemapResult = null;
 
-  // Phase 1: Code audit
+  // Phase 1: Code audit + watchlist update
   if (!GSC_ONLY) {
     codeFindings = await runCodeAudit();
     codeFix = await runCodeFix(codeFindings);
+    await runWatchlistUpdate(codeFix);
   }
 
   // Phase 2: GSC-driven + intelligence phases
@@ -953,6 +1141,12 @@ async function main() {
     onPageResult = gscResults.onPageResult;
     dbContentResult = gscResults.dbContentResult;
     ctrTrends = gscResults.ctrTrends;
+    zeroImpressionAlerts = gscResults.zeroImpressionAlerts;
+    templateHealth = gscResults.templateHealth;
+    page1Crossings = gscResults.page1Crossings;
+    newVsEstablished = gscResults.newVsEstablished;
+    divergenceAlerts = gscResults.divergenceAlerts;
+    activeWatchlist = gscResults.activeWatchlist;
     competitorResult = gscResults.competitorResult;
     contentGaps = gscResults.contentGaps;
     faqResult = gscResults.faqResult;
@@ -980,6 +1174,8 @@ async function main() {
     dbContentResult, ctrTrends, competitorResult, contentGaps, faqResult, positionResult,
     backlinkResult, serpFeaturesResult, keywordDifficultyResult, contentScorerResult, cruxResult,
     indexingResults, sitemapResult,
+    zeroImpressionAlerts, templateHealth, page1Crossings, newVsEstablished,
+    divergenceAlerts, activeWatchlist,
   });
 
   if (!DRY_RUN) {
@@ -1004,6 +1200,12 @@ async function main() {
     dbContentIssues: dbContentResult?.summary?.totalIssues || 0,
     dbContentCritical: dbContentResult?.summary?.critical || 0,
     ctrDropAlerts: ctrTrends?.length || 0,
+    zeroImpressionPages: zeroImpressionAlerts?.pages?.length || 0,
+    templateAlerts: (templateHealth || []).filter(t => t.alert).length,
+    page1Falls: page1Crossings?.page1?.length || 0,
+    divergenceAlerts: divergenceAlerts?.length || 0,
+    establishedImpDelta: newVsEstablished?.established?.impDelta ?? null,
+    watchlistTemplates: activeWatchlist?.length || 0,
     keywordGaps: competitorResult?.totalGaps || 0,
     quickWins: contentGaps?.quickWins?.length || 0,
     missingLocalities: contentGaps?.missingPages?.length || 0,

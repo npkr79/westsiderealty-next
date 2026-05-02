@@ -425,15 +425,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       }
     });
 
-    // Landing Pages
-    landingPagesResult.data?.forEach((lp) => {
-      urls.push({
-        url: `${baseUrl}/landing/${lp.uri}`,
-        lastModified: lp.updated_at ? new Date(lp.updated_at) : new Date(),
-        changeFrequency: "weekly",
-        priority: 0.9,
-      });
-    });
+    // Landing pages are excluded from the sitemap — /landing/ is disallowed in robots.txt
 
     // Blog articles (rendered at /insights/[slug])
     blogsResult.data?.forEach((b) => {

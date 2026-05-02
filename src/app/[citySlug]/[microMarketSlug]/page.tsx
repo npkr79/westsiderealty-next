@@ -55,9 +55,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const marketName = cache.micro_market_name || microMarketSlug;
 
   const priceMin = cache.price_per_sqft_min;
-  const priceSignal = priceMin
-    ? ` — ₹${Math.round(priceMin / 1000)}k/sqft Onwards`
-    : "";
+  const priceMax = cache.price_per_sqft_max;
+  const priceRange =
+    priceMin && priceMax
+      ? ` — ₹${priceMin.toLocaleString()}-${priceMax.toLocaleString()}/sqft`
+      : "";
 
   const { data: heroProject } = await supabase
     .from("advisor_project_intelligence")
@@ -69,17 +71,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     .limit(1)
     .maybeSingle();
 
-  const rawHook = cache.hero_hook || "";
-  const cleanHook = rawHook.replace(/<[^>]+>/g, "").trim();
-  const description =
-    cleanHook ||
-    `Flats & apartments in ${marketName}, ${cityName}. RERA-verified projects, current prices, and expert market analysis by Westside Realty.`;
-
   return buildMetadata({
-    title: `Flats in ${marketName}, ${cityName}${priceSignal} | Westside Realty`,
-    description,
+    title: `${marketName} Real Estate${priceRange} | ${cityName} | Westside Realty`,
+    description:
+      cache.hero_hook ||
+      `Discover projects in ${marketName}, ${cityName}. Price trends, growth analysis & RERA-verified listings. Expert market intelligence by Westside Realty.`,
     canonicalUrl: `https://www.westsiderealty.in/${citySlug}/${microMarketSlug}`,
-    keywords: `flats in ${marketName}, ${marketName} apartments, buy flat ${marketName}, ${marketName} property price, ${marketName} ${cityName}, rera projects ${marketName}`,
+    keywords: `${marketName} real estate, ${marketName} apartments, buy flat ${marketName}, ${marketName} property price, ${marketName} ${cityName}, rera projects ${marketName}`,
     imageUrl: (heroProject?.hero_image_url as string | null) ?? undefined,
   });
 }
