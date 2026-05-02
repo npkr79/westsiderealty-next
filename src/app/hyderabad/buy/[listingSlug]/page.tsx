@@ -1,7 +1,7 @@
 // Wrapper route for /hyderabad/buy/[listingSlug]
 // This is more specific than /hyderabad/[slug]/[category] so it matches first
 import { Metadata } from 'next';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 // createClient imported dynamically where needed
 import { optimizeSupabaseImage } from '@/utils/imageOptimization';
 import PropertyDetailsClient from '@/components/property/PropertyDetailsClient';
@@ -141,13 +141,24 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
-// ISR: render on-demand, cache for 1 hour. No pre-building at deploy time.
-export const revalidate = 3600;
-
-// Return empty — all listing pages render on first visit via ISR (dynamicParams=true by default)
+// Pre-build all active Hyderabad listing pages at deploy time using seo_slug.
+// 166 pages is trivial build cost; pre-rendering ensures Google sees canonical URLs
+// immediately after deploy rather than waiting for first-visitor cold render.
 export async function generateStaticParams() {
-  return [];
+  const { createBuildClient } = await import('@/lib/supabase/buildClient');
+  const supabase = createBuildClient();
+
+  const { data: properties } = await supabase
+    .from('hyderabad_properties')
+    .select('seo_slug, slug')
+    .eq('status', 'active');
+
+  if (!properties) return [];
+
+  return properties.map((p) => ({ listingSlug: p.seo_slug || p.slug }));
 }
+
+export const revalidate = 3600;
 
 // Helper functions for JSON-LD
 function generatePropertyJsonLd(property: any) {
@@ -287,6 +298,12 @@ export default async function PropertyDetailsPage({ params }: PageProps) {
 
   if (!property) {
     notFound();
+  }
+
+  // Redirect old slug-based URLs to the canonical seo_slug form.
+  // The sitemap and all internal links use seo_slug; slug is the legacy DB key.
+  if (property.seo_slug && listingSlug !== property.seo_slug) {
+    redirect(`/hyderabad/buy/${property.seo_slug}`);
   }
 
   // Fetch developer_slug if missing but developer_name exists
