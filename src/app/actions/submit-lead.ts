@@ -6,6 +6,9 @@ import { extractLeadAttribution } from "@/lib/crm/leadAttribution";
 import { mapBehaviorToLead } from "@/services/behaviorLeadMappingService";
 import { toBudgetNumber } from "@/lib/crm/budget";
 import { onNewLeadAutomation } from "@/services/whatsappAutomationService";
+import { sendLeadAlertWhatsApp } from "@/lib/crm/whatsappAlert";
+
+const ADMIN_WHATSAPP = process.env.ADMIN_WHATSAPP_NUMBER ?? "9866085831";
 
 export type LeadType =
   | "PROJECT_INTEREST"
@@ -230,6 +233,53 @@ export async function submitLead(formData: SubmitLeadData): Promise<SubmitLeadRe
         });
       } catch (e) {
         console.warn("[submitLead] routeLeadByOwnership failed (non-critical):", e instanceof Error ? e.message : e);
+      }
+
+      // Project-based routing: if attribution_metadata has a project_name,
+      // look up the assigned agent from crm_meta_form_routing and assign directly.
+      const projectName = formData.attribution_metadata?.project_name as string | undefined;
+      if (projectName) {
+        try {
+          const supabase = createServiceClient();
+          const { data: projectRoute } = await supabase
+            .from("crm_meta_form_routing")
+            .select("agent_id")
+            .eq("project_tag", projectName)
+            .eq("is_active", true)
+            .maybeSingle();
+
+          if (projectRoute?.agent_id) {
+            const agentId = String(projectRoute.agent_id);
+
+            await supabase
+              .from("crm_leads")
+              .update({ assigned_to: agentId, assignment_status: "assigned" })
+              .eq("id", inserted.id);
+
+            await supabase.from("crm_lead_assignments").insert({
+              lead_id: String(inserted.id),
+              assigned_to: agentId,
+              assigned_by: null,
+              reason: `Auto-assigned via project routing: ${projectName}`,
+            });
+
+            const { data: agentData } = await supabase
+              .from("crm_users")
+              .select("whatsapp_number")
+              .eq("id", agentId)
+              .maybeSingle();
+
+            const alertLabel = `${projectName} | Website Enquiry`;
+            if (agentData?.whatsapp_number) {
+              sendLeadAlertWhatsApp(agentData.whatsapp_number, formData.name, normalizedPhone, alertLabel).catch(() => {});
+            }
+            if (ADMIN_WHATSAPP) {
+              sendLeadAlertWhatsApp(ADMIN_WHATSAPP, formData.name, normalizedPhone, alertLabel).catch(() => {});
+            }
+          }
+        } catch (e) {
+          console.warn("[submitLead] project routing failed (non-critical):", e instanceof Error ? e.message : e);
+        }
       }
 
       console.log("[WA Debug] Attempting instant greeting for lead:", inserted?.id, normalizedPhone);
