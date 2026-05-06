@@ -309,7 +309,7 @@ export function areSameStory(h1: string, h2: string): boolean {
   let shared = 0;
   for (const w of w1) {
     if (w2.has(w)) shared++;
-    if (shared >= 4) return true;
+    if (shared >= 3) return true;
   }
   return false;
 }
@@ -610,7 +610,7 @@ export async function fetchExistingUrls(
 export async function fetchExistingIdentifiers(
   supabase: SupabaseClient
 ): Promise<{ urls: Set<string>; headlines: Set<string> }> {
-  const cutoff = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
+  const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
   const { data } = await supabase
     .from("news_articles")
     .select("source_url, headline")

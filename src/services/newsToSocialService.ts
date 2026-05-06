@@ -118,7 +118,7 @@ export async function pickTopArticles(
       .from("news_articles")
       .select("headline")
       .eq("is_rejected", true)
-      .gte("updated_at", cutoff30d),
+      .gte("scraped_at", cutoff30d),
     supabase
       .from("social_posts")
       .select("news_articles(headline)")
