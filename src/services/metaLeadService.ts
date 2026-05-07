@@ -7,7 +7,7 @@ import { sendLeadAlertWhatsApp } from "@/lib/crm/whatsappAlert";
 
 const GRAPH_API_BASE = "https://graph.facebook.com";
 const GRAPH_VERSION = process.env.META_GRAPH_API_VERSION ?? "v21.0";
-const ADMIN_WHATSAPP = process.env.ADMIN_WHATSAPP_NUMBER ?? "9866085831";
+const ADMIN_WHATSAPP = process.env.ADMIN_WHATSAPP_NUMBER ?? "919866085831";
 
 interface MetaWebhookValue {
   leadgen_id?: string;

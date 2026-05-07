@@ -8,7 +8,7 @@ import { toBudgetNumber } from "@/lib/crm/budget";
 import { onNewLeadAutomation } from "@/services/whatsappAutomationService";
 import { sendLeadAlertWhatsApp } from "@/lib/crm/whatsappAlert";
 
-const ADMIN_WHATSAPP = process.env.ADMIN_WHATSAPP_NUMBER ?? "9866085831";
+const ADMIN_WHATSAPP = process.env.ADMIN_WHATSAPP_NUMBER ?? "919866085831";
 
 export type LeadType =
   | "PROJECT_INTEREST"
