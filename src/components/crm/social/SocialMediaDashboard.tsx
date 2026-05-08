@@ -1250,8 +1250,9 @@ function NewsTab() {
         setFormattedPosts((prev) => { const m = new Map(prev); m.delete(articleId); return m; });
         alert(data.error ?? 'Generation failed');
       }
-    } catch {
+    } catch (err) {
       setFormattedPosts((prev) => { const m = new Map(prev); m.delete(articleId); return m; });
+      alert('Network error — could not reach the server. Please try again.\n' + (err instanceof Error ? err.message : String(err)));
     }
   };
 

@@ -88,10 +88,12 @@ export async function POST(request: NextRequest) {
     : null;
 
   // Prefer full_text (real article body) over summaries when available.
-  const articleBody =
+  // Truncate to ~6 000 chars to avoid pushing total prompt past Anthropic's limits.
+  const rawBody =
     (article.full_text && article.full_text.trim().length > 200)
       ? article.full_text
       : (article.ai_summary || article.summary || '');
+  const articleBody = rawBody.length > 6000 ? rawBody.slice(0, 6000) + '…' : rawBody;
 
   const topic = [
     `Headline: ${article.headline}`,
@@ -163,18 +165,31 @@ export async function POST(request: NextRequest) {
   }
 
   // Try once. If any variant is empty/short, retry once. Then merge best-of-both.
-  const attempt1 = await callModel();
+  let attempt1: { posts: Partial<Posts> | null; stopReason: string | null };
+  try {
+    attempt1 = await callModel();
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error('[generate-formatted-post] callModel attempt 1 threw:', msg);
+    return NextResponse.json({ error: `Claude API error: ${msg}` }, { status: 500 });
+  }
   let merged: Partial<Posts> = attempt1.posts ?? {};
 
   if (!variantsOk(merged)) {
     console.warn('[generate-formatted-post] attempt 1 incomplete (stop_reason=%s). Retrying.', attempt1.stopReason);
-    const attempt2 = await callModel();
-    const second = attempt2.posts ?? {};
-    // Merge: prefer non-empty from either attempt for each key.
-    for (const k of ['x', 'linkedin', 'facebook', 'instagram'] as const) {
-      const a = (merged[k] ?? '').trim();
-      const b = (second[k] ?? '').trim();
-      merged[k] = a.length >= 50 ? a : b.length >= 50 ? b : a || b;
+    try {
+      const attempt2 = await callModel();
+      const second = attempt2.posts ?? {};
+      // Merge: prefer non-empty from either attempt for each key.
+      for (const k of ['x', 'linkedin', 'facebook', 'instagram'] as const) {
+        const a = (merged[k] ?? '').trim();
+        const b = (second[k] ?? '').trim();
+        merged[k] = a.length >= 50 ? a : b.length >= 50 ? b : a || b;
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn('[generate-formatted-post] callModel attempt 2 threw:', msg);
+      // Use whatever attempt 1 returned — it may still have some usable variants
     }
   }
 
