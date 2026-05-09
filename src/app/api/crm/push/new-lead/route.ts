@@ -337,24 +337,49 @@ export async function POST(request: NextRequest) {
     }
 
     if (source === 'meta') {
-      const propertyInterest = await extractPropertyFromFormName(leadMeta.fb_form_name || '');
+      // Bug fix 1: prefer project_name stored directly in attribution_metadata
+      // (set by metaLeadService when form routing matches); fall back to AI extraction
+      const propertyInterest =
+        (typeof leadMeta.project_name === 'string' && leadMeta.project_name.trim())
+          ? leadMeta.project_name.trim()
+          : await extractPropertyFromFormName(leadMeta.fb_form_name || '');
+
       let fieldData: Array<{ field_name: string; values: string[] }> = [];
       try {
         const rawFieldData = leadMeta.field_data;
         if (Array.isArray(rawFieldData)) {
+          // Already in expected array format
           fieldData = rawFieldData;
         } else if (typeof rawFieldData === 'string') {
           const parsed = JSON.parse(rawFieldData);
           fieldData = Array.isArray(parsed) ? parsed : [];
+        } else if (typeof rawFieldData === 'object' && rawFieldData !== null) {
+          // Bug fix 2: field_data stored as Record<string,string> by buildFieldMap()
+          fieldData = Object.entries(rawFieldData as Record<string, unknown>).map(
+            ([field_name, val]) => ({ field_name, values: [String(val ?? '')] })
+          );
         }
       } catch {
         fieldData = [];
       }
+      const SKIP_FIELDS = new Set(['full_name', 'phone_number', 'email', 'phone', 'mobile',
+                                    'first_name', 'last_name', 'email_address',
+                                    'best_whatsapp_number_to_reach_you']);
       const formResponses = fieldData
-        .filter(f => !['full_name', 'phone_number', 'email', 'phone'].includes(f.field_name.toLowerCase()))
-        .map(f => `${f.field_name}: ${f.values?.[0] || 'N/A'}`)
+        .filter(f => {
+          const key = f.field_name.toLowerCase().replace(/[^a-z0-9]/g, '_');
+          return !SKIP_FIELDS.has(key) && !SKIP_FIELDS.has(f.field_name.toLowerCase());
+        })
+        .map(f => {
+          // Pretty-print field name: remove trailing ?, replace _ with space, title-case
+          const label = f.field_name
+            .replace(/\?+$/, '')
+            .replace(/_/g, ' ')
+            .replace(/\b\w/g, (c) => c.toUpperCase());
+          return `${label}: ${f.values?.[0] || 'N/A'}`;
+        })
         .slice(0, 3)
-        .join(', ') || 'Not specified';
+        .join(' | ') || 'Not specified';
       return {
         campaign: 'alert_meta_v1',
         params: [agentName, lead.name || 'Unknown', phone, propertyInterest, formResponses, crmLink],
