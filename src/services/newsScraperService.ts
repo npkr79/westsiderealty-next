@@ -286,49 +286,67 @@ function extractEntities(headline: string): Set<string> {
 /**
  * Returns true if two headlines are likely the same story.
  *
- * Two signals (either alone is sufficient):
- *  1. Same developer/company name: a significant proper noun (≥6 chars, not a
- *     city/place) appears in both headlines — catches multi-outlet coverage of
- *     the same company event even when phrasing differs completely.
- *  2. Keyword overlap: ≥4 shared significant keywords (raised from 3 to reduce
- *     false positives on short, generic headlines).
+ * @param strict - When true (used for checking against rejected/processed articles):
+ *   a single shared entity OR ≥3 shared keywords is enough to block.
+ *   When false (default, used for within-batch and DB dedup):
+ *   requires entity + ≥2 shared keywords, OR ≥4 keywords alone.
+ *   The stricter non-strict mode prevents different Prestige/Godrej stories
+ *   from being incorrectly merged just because they share a company name.
  */
-export function areSameStory(h1: string, h2: string): boolean {
+export function areSameStory(h1: string, h2: string, strict = false): boolean {
   const w1 = extractKeywords(h1);
   const w2 = extractKeywords(h2);
   if (w1.size === 0 || w2.size === 0) return false;
 
-  // Signal 1: shared company/developer name
-  const e1 = extractEntities(h1);
-  const e2 = extractEntities(h2);
-  for (const e of e1) {
-    if (e2.has(e)) return true;
-  }
-
-  // Signal 2: general keyword overlap
+  // Count shared keywords first (used by both signals)
   let shared = 0;
   for (const w of w1) {
     if (w2.has(w)) shared++;
-    if (shared >= 3) return true;
   }
-  return false;
+
+  // Check for any shared entity
+  const e1 = extractEntities(h1);
+  const e2 = extractEntities(h2);
+  let hasSharedEntity = false;
+  for (const e of e1) {
+    if (e2.has(e)) { hasSharedEntity = true; break; }
+  }
+
+  if (strict) {
+    // Aggressive: entity alone OR ≥3 keywords — used when checking against
+    // already-rejected / already-processed stories. Better to over-block.
+    if (hasSharedEntity) return true;
+    return shared >= 3;
+  } else {
+    // Conservative: entity + ≥2 keywords OR ≥4 keywords alone — used for
+    // within-batch dedup and new-vs-DB checks to avoid false merges.
+    if (hasSharedEntity && shared >= 2) return true;
+    return shared >= 4;
+  }
 }
 
 /**
- * Three-layer deduplication:
+ * Four-layer deduplication:
+ *  0. Blocked stories: headlines of rejected/processed articles (strict match)
  *  1. Exact URL match (against DB + within batch)
  *  2. Exact normalized headline match (against DB + within batch)
  *  3. Same-story keyword overlap (within batch + against DB headlines)
+ *
+ * @param blockedHeadlines - Normalized headlines of is_rejected=true or
+ *   is_processed=true articles from the last 90 days. Checked with strict=true
+ *   so same-story articles from different outlets are also blocked.
  */
 export function deduplicateItems(
   items: RawArticle[],
   existingUrls: Set<string>,
-  existingHeadlines?: Set<string>
+  existingHeadlines?: Set<string>,
+  blockedHeadlines?: Set<string>
 ): RawArticle[] {
   const seenUrls = new Set(existingUrls);
-  // Build a set of existing normalized headlines from DB for exact match
   const seenNormHeadlines = new Set<string>(existingHeadlines ?? []);
-  // Keep a list of already-accepted headlines for same-story fuzzy check
+  // Pre-build array once for fuzzy checks (avoids repeated spread inside loop)
+  const existingHeadlineList = existingHeadlines ? [...existingHeadlines] : [];
+  const blockedHeadlineList = blockedHeadlines ? [...blockedHeadlines] : [];
   const acceptedHeadlines: string[] = [];
 
   const unique: RawArticle[] = [];
@@ -337,17 +355,29 @@ export function deduplicateItems(
     const url = item.source_url.trim();
     const normHeadline = normalizeHeadline(item.headline);
 
+    // Layer 0: blocked stories (already rejected or processed/posted by the user)
+    // Uses strict=true — a shared entity alone is enough to block re-appearance
+    if (blockedHeadlineList.length > 0) {
+      const isBlocked = blockedHeadlineList.some((bh) =>
+        areSameStory(item.headline, bh, true)
+      );
+      if (isBlocked) continue;
+    }
+
     // Layer 1: exact URL
     if (seenUrls.has(url)) continue;
+
     // Layer 2: exact normalized headline (catches same headline, different URL)
     if (seenNormHeadlines.has(normHeadline)) continue;
-    // Layer 3: same-story keyword overlap against DB headlines
-    if (existingHeadlines) {
-      const isDuplicate = [...existingHeadlines].some((eh) =>
+
+    // Layer 3: same-story fuzzy check against DB headlines (conservative match)
+    if (existingHeadlineList.length > 0) {
+      const isDuplicate = existingHeadlineList.some((eh) =>
         areSameStory(item.headline, eh)
       );
       if (isDuplicate) continue;
     }
+
     // Layer 3b: same-story check within this batch's accepted articles
     if (acceptedHeadlines.some((ah) => areSameStory(item.headline, ah))) continue;
 
@@ -522,10 +552,13 @@ export async function insertArticles(
   supabase: SupabaseClient,
   articles: ClassifiedArticle[]
 ): Promise<{ inserted: number; skipped: number; errors: string[] }> {
-  // Only keep positive/neutral articles with strong relevance — never save negative news
-  const relevant = articles.filter(
-    (a) => a.sentiment !== 'negative' && a.relevance_score >= 6.5
-  );
+  // Only keep positive/neutral articles with strong relevance — never save negative news.
+  // Infra sources publish a lot of non-RE content; require a higher bar for those.
+  const relevant = articles.filter((a) => {
+    if (a.sentiment === 'negative') return false;
+    const minScore = a.search_query_type === 'infra' ? 8.0 : 6.5;
+    return a.relevance_score >= minScore;
+  });
   const skipped = articles.length - relevant.length;
   const errors: string[] = [];
   let inserted = 0;
@@ -609,16 +642,35 @@ export async function fetchExistingUrls(
 
 export async function fetchExistingIdentifiers(
   supabase: SupabaseClient
-): Promise<{ urls: Set<string>; headlines: Set<string> }> {
-  const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-  const { data } = await supabase
+): Promise<{ urls: Set<string>; headlines: Set<string>; blocked: Set<string> }> {
+  // 30-day window for general dedup (URL + headline exact match + fuzzy match).
+  // .limit(5000) overrides Supabase's default 1000-row cap.
+  const cutoff30 = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const { data: recent } = await supabase
     .from("news_articles")
     .select("source_url, headline")
-    .gte("scraped_at", cutoff);
+    .gte("scraped_at", cutoff30)
+    .limit(5000);
 
-  const urls = new Set((data ?? []).map((r: { source_url: string }) => r.source_url));
+  const urls = new Set((recent ?? []).map((r: { source_url: string }) => r.source_url));
   const headlines = new Set(
-    (data ?? []).map((r: { headline: string }) => normalizeHeadline(r.headline))
+    (recent ?? []).map((r: { headline: string }) => normalizeHeadline(r.headline))
   );
-  return { urls, headlines };
+
+  // 90-day window for blocked stories: articles the user already rejected or
+  // marked as processed (posted). These are checked with strict matching so
+  // the same story from a different outlet is also blocked.
+  const cutoff90 = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
+  const { data: blockedData } = await supabase
+    .from("news_articles")
+    .select("headline")
+    .gte("scraped_at", cutoff90)
+    .or("is_rejected.eq.true,is_processed.eq.true")
+    .limit(5000);
+
+  const blocked = new Set(
+    (blockedData ?? []).map((r: { headline: string }) => normalizeHeadline(r.headline))
+  );
+
+  return { urls, headlines, blocked };
 }

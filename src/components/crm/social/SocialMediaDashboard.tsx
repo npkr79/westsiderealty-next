@@ -1213,6 +1213,12 @@ function NewsTab() {
         })
       )
     );
+    // Mark the news article as processed so it won't re-appear in tomorrow's scrape
+    await fetch('/api/news/articles', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: articleId, is_processed: true }),
+    });
     setGroups((prev) => { const m = new Map(prev); m.delete(articleId); return m; });
     setActionId(null);
   };

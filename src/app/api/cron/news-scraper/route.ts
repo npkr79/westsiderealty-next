@@ -35,19 +35,22 @@ async function handler(request: NextRequest) {
   const supabase = createServiceClient();
 
   try {
-    // 1. Fetch existing URLs + headlines for deduplication (last 14 days)
-    const { urls: existingUrls, headlines: existingHeadlines } =
+    // 1. Fetch existing URLs + headlines for deduplication (last 30 days)
+    //    and blocked headlines (rejected/processed in last 90 days)
+    const { urls: existingUrls, headlines: existingHeadlines, blocked: blockedHeadlines } =
       await fetchExistingIdentifiers(supabase);
 
-    // 2. Fetch news via Serper (6 queries in parallel)
+    console.log(`[news-scraper] Dedup sets: ${existingUrls.size} URLs, ${existingHeadlines.size} headlines, ${blockedHeadlines.size} blocked`);
+
+    // 2. Fetch news via Serper (7 queries in parallel)
     console.log("[news-scraper] Fetching news via Serper...");
     const { articles: rawArticles, queryStats } = await fetchSerperNews();
     const articlesFound = rawArticles.length;
 
     console.log(`[news-scraper] Serper returned ${articlesFound} total articles across ${queryStats.length} queries`);
 
-    // 3. Deduplicate — 3-layer: URL + normalized headline + same-story keyword overlap
-    const uniqueArticles = deduplicateItems(rawArticles, existingUrls, existingHeadlines);
+    // 3. Deduplicate — 4-layer: blocked stories + URL + normalized headline + same-story fuzzy
+    const uniqueArticles = deduplicateItems(rawArticles, existingUrls, existingHeadlines, blockedHeadlines);
     const duplicatesSkipped = articlesFound - uniqueArticles.length;
 
     console.log(`[news-scraper] ${uniqueArticles.length} unique articles after dedup (${duplicatesSkipped} skipped)`);
