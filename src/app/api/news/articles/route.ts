@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/serviceClient";
 
 // ---------------------------------------------------------------------------
 // GET /api/news/articles
@@ -63,7 +64,7 @@ export async function GET(request: NextRequest) {
 // ---------------------------------------------------------------------------
 
 export async function PATCH(request: NextRequest) {
-  const supabase = await createClient();
+  const supabase = createServiceClient();
 
   try {
     const body = await request.json();

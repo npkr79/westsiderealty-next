@@ -1203,16 +1203,21 @@ function NewsTab() {
 
   const markManualPosted = async (articleId: string) => {
     setActionId(articleId);
-    const posts = (groups.get(articleId) ?? []).filter((p) => p.status === 'manual_ready');
-    await Promise.all(
-      posts.map((p) =>
+    const allPosts = groups.get(articleId) ?? [];
+    const manualPosts = allPosts.filter((p) => p.status === 'manual_ready');
+    const autoPosts = allPosts.filter((p) => p.status === 'pending_review');
+    await Promise.all([
+      // Mark manual posts as published
+      ...manualPosts.map((p) =>
         fetch('/api/social/posts', {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ id: p.id, status: 'published', posted_at: new Date().toISOString() }),
         })
-      )
-    );
+      ),
+      // Delete any lingering pending_review posts so they don't resurface on reload
+      ...autoPosts.map((p) => fetch(`/api/social/posts?id=${p.id}`, { method: 'DELETE' })),
+    ]);
     // Mark the news article as processed so it won't re-appear in tomorrow's scrape
     await fetch('/api/news/articles', {
       method: 'PATCH',
