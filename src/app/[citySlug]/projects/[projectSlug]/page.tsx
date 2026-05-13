@@ -33,11 +33,12 @@ export async function generateStaticParams() {
   const { createBuildClient } = await import('@/lib/supabase/buildClient');
   const supabase = createBuildClient();
 
-  // Pre-build only top 50 projects — all others render on first visit via ISR
+  // Pre-build only top 50 published projects — all others render on first visit via ISR
   const { data: projects } = await supabase
     .from("projects")
     .select("url_slug, city:cities(url_slug)")
     .not("url_slug", "is", null)
+    .eq("page_status", "published")
     .limit(50);
 
   return (projects ?? [])
