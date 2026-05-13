@@ -64,6 +64,9 @@ const nextConfig: NextConfig = {
 
   async redirects() {
     return [
+      // Unpublished / removed project pages — redirect to city projects index
+      { source: "/hyderabad/projects/e-celosia", destination: "/hyderabad/projects", permanent: false },
+
       // Slug aliases — add more as needed when DB slug ≠ expected URL
       { source: "/developers/rajapushpa", destination: "/developers/rajapushpa-group", permanent: true },
       { source: "/developers/my-home-constructions", destination: "/developers/my-home-group", permanent: true },
