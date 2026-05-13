@@ -1701,7 +1701,7 @@ const ARTICLE_CITY_LABELS: Record<string, string> = {
   ahmedabad: 'Ahmedabad', kochi: 'Kochi', navi_mumbai_thane: 'Navi Mumbai / Thane',
 };
 
-type ShareStatus = 'idle' | 'posting' | 'success' | 'error';
+type ShareStatus = 'idle' | 'posting' | 'success' | 'error' | 'copied';
 interface ShareState { facebook: ShareStatus; linkedin: ShareStatus; facebookError?: string; linkedinError?: string; }
 
 function ArticlesTab() {
@@ -1782,6 +1782,27 @@ function ArticlesTab() {
         [articleId]: { ...(prev[articleId] ?? { facebook: 'idle', linkedin: 'idle' }), [key]: 'error', [errKey]: e instanceof Error ? e.message : 'Network error' },
       }));
     }
+  }
+
+  function shareLinkedInCompanyPage(article: GeneratedArticle) {
+    if (!article.slug) return;
+    const articleUrl = `https://www.westsiderealty.in/news-articles/${article.slug}`;
+    const cityTag = ({ hyderabad:'Hyderabad', goa:'Goa', mumbai:'Mumbai', delhi_ncr:'DelhiNCR', bengaluru:'Bengaluru', pune:'Pune', chennai:'Chennai', kolkata:'Kolkata', ahmedabad:'Ahmedabad', kochi:'Kochi', navi_mumbai_thane:'NaviMumbai', maharashtra:'Maharashtra', india:'India' } as Record<string,string>)[article.city] ?? '';
+    const mmTag = article.micro_market?.replace(/[^a-zA-Z0-9\s]/g,'').replace(/\s+/g,'') ?? '';
+    const tags = ['RealEstate','REMAX','WestsideRealty', ...(cityTag ? [cityTag] : []), ...(mmTag ? [mmTag] : [])].map(t=>`#${t}`).join(' ');
+    const caption = `${article.seo_headline}\n\n${article.meta_description}\n\nRead more: ${articleUrl}\n\n${tags}`;
+    navigator.clipboard.writeText(caption).catch(() => {});
+    window.open('https://www.linkedin.com/company/104834326/admin/page-posts/', '_blank');
+    setShareStates((prev) => ({
+      ...prev,
+      [article.id]: { ...(prev[article.id] ?? { facebook: 'idle', linkedin: 'idle' }), linkedin: 'copied' },
+    }));
+    setTimeout(() => {
+      setShareStates((prev) => ({
+        ...prev,
+        [article.id]: { ...(prev[article.id] ?? { facebook: 'idle', linkedin: 'idle' }), linkedin: 'idle' },
+      }));
+    }, 4000);
   }
 
   function readTime(body: string) {
@@ -1985,23 +2006,20 @@ function ArticlesTab() {
                               </div>
                             </div>
                             <button
-                              onClick={() => shareToPage(article.id, 'LinkedIn')}
-                              disabled={ss.linkedin === 'posting' || ss.linkedin === 'success'}
-                              className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-60 flex items-center gap-1.5 ${
-                                ss.linkedin === 'success' ? 'bg-green-900 text-green-300' :
-                                ss.linkedin === 'error' ? 'bg-red-900 text-red-300 hover:bg-red-800' :
-                                'bg-blue-800 hover:bg-blue-700 text-white'
+                              onClick={() => shareLinkedInCompanyPage(article)}
+                              disabled={ss.linkedin === 'copied'}
+                              className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-80 flex items-center gap-1.5 ${
+                                ss.linkedin === 'copied' ? 'bg-green-900 text-green-300' : 'bg-blue-800 hover:bg-blue-700 text-white'
                               }`}
                             >
-                              {ss.linkedin === 'posting' && <Loader2 size={11} className="animate-spin" />}
-                              {ss.linkedin === 'success' ? '✓ Posted!' : ss.linkedin === 'error' ? 'Retry' : 'Post Now'}
+                              {ss.linkedin === 'copied' ? '✓ Copied!' : 'Copy & Open Page ↗'}
                             </button>
                           </div>
-                          {ss.linkedin === 'error' && ss.linkedinError && (
-                            <p className="text-[10px] text-red-400 bg-red-950/40 rounded px-2 py-1">{ss.linkedinError}</p>
+                          {ss.linkedin === 'copied' && (
+                            <p className="text-[10px] text-green-400 bg-green-950/40 rounded px-2 py-1">Caption copied to clipboard — paste it in the LinkedIn compose box on your company page.</p>
                           )}
 
-                          <p className="text-[10px] text-gray-600 pt-1">Posts the article headline, description, and link with company hashtags.</p>
+                          <p className="text-[10px] text-gray-600 pt-1">Facebook posts directly. LinkedIn opens your company page — caption is copied to clipboard, just paste and post.</p>
                         </div>
                       )}
                     </div>
