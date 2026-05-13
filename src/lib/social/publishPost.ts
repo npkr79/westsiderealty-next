@@ -8,7 +8,7 @@ function captionWithHashtags(caption: string, hashtags: string[] | null): string
 
 // Convert **marked** text to Unicode mathematical bold characters
 // Facebook and LinkedIn render these natively as bold
-function applyBoldUnicode(text: string): string {
+export function applyBoldUnicode(text: string): string {
   return text.replace(/\*\*(.+?)\*\*/g, (_, inner: string) =>
     inner.split('').map((char) => {
       const code = char.charCodeAt(0);
@@ -90,9 +90,6 @@ function buildOauthHeader(
 export async function publishPost(post: SocialPost): Promise<PublishResult> {
   const fbPageId = process.env.FACEBOOK_PAGE_ID;
   const fbToken = process.env.FACEBOOK_PAGE_ACCESS_TOKEN;
-  const liClientId = process.env.LINKEDIN_CLIENT_ID;
-  const liClientSecret = process.env.LINKEDIN_CLIENT_SECRET;
-  const liCompanyId = process.env.LINKEDIN_COMPANY_ID;
   const xApiKey = process.env.TWITTER_API_KEY;
   const xApiSecret = process.env.TWITTER_API_SECRET;
   const xAccessToken = process.env.TWITTER_ACCESS_TOKEN;

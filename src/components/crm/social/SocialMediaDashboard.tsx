@@ -1701,12 +1701,17 @@ const ARTICLE_CITY_LABELS: Record<string, string> = {
   ahmedabad: 'Ahmedabad', kochi: 'Kochi', navi_mumbai_thane: 'Navi Mumbai / Thane',
 };
 
+type ShareStatus = 'idle' | 'posting' | 'success' | 'error';
+interface ShareState { facebook: ShareStatus; linkedin: ShareStatus; facebookError?: string; linkedinError?: string; }
+
 function ArticlesTab() {
   const [articles, setArticles] = useState<GeneratedArticle[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'draft' | 'published'>('draft');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [actingId, setActingId] = useState<string | null>(null);
+  const [shareStates, setShareStates] = useState<Record<string, ShareState>>({});
+  const [shareOpenId, setShareOpenId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -1743,6 +1748,39 @@ function ArticlesTab() {
       }
     } finally {
       setActingId(null);
+    }
+  }
+
+  async function shareToPage(articleId: string, platform: 'Facebook' | 'LinkedIn') {
+    const key = platform.toLowerCase() as 'facebook' | 'linkedin';
+    const errKey = `${key}Error` as 'facebookError' | 'linkedinError';
+    setShareStates((prev) => ({
+      ...prev,
+      [articleId]: { ...(prev[articleId] ?? { facebook: 'idle', linkedin: 'idle' }), [key]: 'posting' },
+    }));
+    try {
+      const res = await fetch('/api/social/share-article', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ article_id: articleId, platform }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setShareStates((prev) => ({
+          ...prev,
+          [articleId]: { ...(prev[articleId] ?? { facebook: 'idle', linkedin: 'idle' }), [key]: 'success' },
+        }));
+      } else {
+        setShareStates((prev) => ({
+          ...prev,
+          [articleId]: { ...(prev[articleId] ?? { facebook: 'idle', linkedin: 'idle' }), [key]: 'error', [errKey]: data.error ?? 'Failed' },
+        }));
+      }
+    } catch (e) {
+      setShareStates((prev) => ({
+        ...prev,
+        [articleId]: { ...(prev[articleId] ?? { facebook: 'idle', linkedin: 'idle' }), [key]: 'error', [errKey]: e instanceof Error ? e.message : 'Network error' },
+      }));
     }
   }
 
@@ -1882,18 +1920,93 @@ function ArticlesTab() {
                   </div>
                 )}
 
-                {filter === 'published' && article.slug && (
-                  <div className="flex gap-2 p-3 border-t border-gray-800">
-                    <a
-                      href={`/news-articles/${article.slug}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex-1 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm font-medium text-center transition-colors"
-                    >
-                      View on Website ↗
-                    </a>
-                  </div>
-                )}
+                {filter === 'published' && article.slug && (() => {
+                  const ss = shareStates[article.id] ?? { facebook: 'idle', linkedin: 'idle' };
+                  const isShareOpen = shareOpenId === article.id;
+                  return (
+                    <div className="border-t border-gray-800">
+                      {/* Primary actions row */}
+                      <div className="flex gap-2 p-3">
+                        <a
+                          href={`/news-articles/${article.slug}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex-1 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm font-medium text-center transition-colors"
+                        >
+                          View on Website ↗
+                        </a>
+                        <button
+                          onClick={() => setShareOpenId(isShareOpen ? null : article.id)}
+                          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${isShareOpen ? 'bg-blue-900 text-blue-300' : 'bg-gray-800 hover:bg-blue-900/50 text-gray-400 hover:text-blue-300'}`}
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                          Share to Pages
+                        </button>
+                      </div>
+
+                      {/* Share to Pages panel */}
+                      {isShareOpen && (
+                        <div className="mx-3 mb-3 bg-gray-950 rounded-xl p-4 border border-gray-800 space-y-3">
+                          <p className="text-[10px] text-gray-500 uppercase tracking-wider">Post to Company Pages</p>
+
+                          {/* Facebook */}
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-2">
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="#1877F2"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                              <div>
+                                <p className="text-xs text-white font-medium">REMAX Westside Realty</p>
+                                <p className="text-[10px] text-gray-500">facebook.com/REMAXWestsideRealty</p>
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => shareToPage(article.id, 'Facebook')}
+                              disabled={ss.facebook === 'posting' || ss.facebook === 'success'}
+                              className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-60 flex items-center gap-1.5 ${
+                                ss.facebook === 'success' ? 'bg-green-900 text-green-300' :
+                                ss.facebook === 'error' ? 'bg-red-900 text-red-300 hover:bg-red-800' :
+                                'bg-blue-800 hover:bg-blue-700 text-white'
+                              }`}
+                            >
+                              {ss.facebook === 'posting' && <Loader2 size={11} className="animate-spin" />}
+                              {ss.facebook === 'success' ? '✓ Posted!' : ss.facebook === 'error' ? 'Retry' : 'Post Now'}
+                            </button>
+                          </div>
+                          {ss.facebook === 'error' && ss.facebookError && (
+                            <p className="text-[10px] text-red-400 bg-red-950/40 rounded px-2 py-1">{ss.facebookError}</p>
+                          )}
+
+                          {/* LinkedIn */}
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-2">
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="#0A66C2"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+                              <div>
+                                <p className="text-xs text-white font-medium">REMAX Westside Realty</p>
+                                <p className="text-[10px] text-gray-500">linkedin.com/company/104834326</p>
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => shareToPage(article.id, 'LinkedIn')}
+                              disabled={ss.linkedin === 'posting' || ss.linkedin === 'success'}
+                              className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-60 flex items-center gap-1.5 ${
+                                ss.linkedin === 'success' ? 'bg-green-900 text-green-300' :
+                                ss.linkedin === 'error' ? 'bg-red-900 text-red-300 hover:bg-red-800' :
+                                'bg-blue-800 hover:bg-blue-700 text-white'
+                              }`}
+                            >
+                              {ss.linkedin === 'posting' && <Loader2 size={11} className="animate-spin" />}
+                              {ss.linkedin === 'success' ? '✓ Posted!' : ss.linkedin === 'error' ? 'Retry' : 'Post Now'}
+                            </button>
+                          </div>
+                          {ss.linkedin === 'error' && ss.linkedinError && (
+                            <p className="text-[10px] text-red-400 bg-red-950/40 rounded px-2 py-1">{ss.linkedinError}</p>
+                          )}
+
+                          <p className="text-[10px] text-gray-600 pt-1">Posts the article headline, description, and link with company hashtags.</p>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             );
           })}
