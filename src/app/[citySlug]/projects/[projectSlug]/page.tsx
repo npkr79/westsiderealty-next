@@ -295,6 +295,11 @@ export default async function ProjectDetailPage({ params }: PageProps) {
     project = await projectService.getOldProjectBySlug(citySlug, projectSlug);
   }
 
+  // Unpublished projects (page_status = 'draft') should return 404
+  if (project && (project as any).page_status === 'draft') {
+    notFound();
+  }
+
   if (!project) {
     // Check if the project exists under a different city slug and redirect
     const resolvedCity = await projectService.findProjectCityBySlug(projectSlug);
