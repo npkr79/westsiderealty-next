@@ -3,6 +3,12 @@
     "src/app/api/advisor/chat/route.ts": {
       "maxDuration": 30
     },
+    "src/app/api/social/generate-images-for-article/route.ts": {
+      "maxDuration": 120
+    },
+    "src/app/api/social/generate-image/route.ts": {
+      "maxDuration": 120
+    },
     "src/app/api/cron/link-checker/route.ts": {
       "maxDuration": 300
     },
