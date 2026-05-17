@@ -469,7 +469,6 @@ export async function generateImage(article: NewsArticle): Promise<GeneratedImag
         n: 1,
         size: apiSize,
         quality: "hd",
-        response_format: "b64_json",
       }),
     });
 
@@ -479,9 +478,9 @@ export async function generateImage(article: NewsArticle): Promise<GeneratedImag
     }
 
     const imageData = await imageRes.json();
-    const base64Image: string = imageData.data?.[0]?.b64_json;
-    if (!base64Image) throw new Error(`dall-e-3 returned no image data (${apiSize})`);
-    const rawImageBuffer = Buffer.from(base64Image, "base64");
+    const imageUrl: string = imageData.data?.[0]?.url;
+    if (!imageUrl) throw new Error(`dall-e-3 returned no image URL (${apiSize})`);
+    const rawImageBuffer = Buffer.from(await (await fetch(imageUrl)).arrayBuffer());
 
     // ── Step 2: Resize to target dimensions + composite logo top-right ─────
     const logoResized = await sharp(logoBuffer)
@@ -559,16 +558,16 @@ export async function generateSingleImage(
   const imageRes = await fetch("https://api.openai.com/v1/images/generations", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${openaiKey}` },
-    body: JSON.stringify({ model: "dall-e-3", prompt, n: 1, size: apiSize, quality: "hd", response_format: "b64_json" }),
+    body: JSON.stringify({ model: "dall-e-3", prompt, n: 1, size: apiSize, quality: "hd" }),
   });
   if (!imageRes.ok) {
     const errText = await imageRes.text();
     throw new Error(`dall-e-3 error (${apiSize}): ${errText.slice(0, 200)}`);
   }
   const imageData = await imageRes.json();
-  const base64Image: string = imageData.data?.[0]?.b64_json;
-  if (!base64Image) throw new Error(`dall-e-3 returned no image data (${apiSize})`);
-  const rawImageBuffer = Buffer.from(base64Image, "base64");
+  const imageUrl: string = imageData.data?.[0]?.url;
+  if (!imageUrl) throw new Error(`dall-e-3 returned no image URL (${apiSize})`);
+  const rawImageBuffer = Buffer.from(await (await fetch(imageUrl)).arrayBuffer());
 
   const logoResized = await sharp(logoBuffer).resize(logoMaxWidth, null, { fit: "inside" }).toBuffer();
   const logoW = (await sharp(logoResized).metadata()).width ?? logoMaxWidth;
