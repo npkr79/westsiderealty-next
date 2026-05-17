@@ -1157,7 +1157,9 @@ interface NewsFormatResult {
   landscapeUrl: string;
 }
 
-type NewsFormatState = { step: string } | NewsFormatResult;
+// While polling: step + captions (images still loading)
+// When done: full result with images
+type NewsFormatState = { step: string; captions?: NewsFormatResult['captions'] } | NewsFormatResult;
 
 interface ScheduledSlot {
   id: string;
@@ -1227,25 +1229,57 @@ function NewsTab() {
   const setStep = (articleId: string, step: string) =>
     setFormatStates((prev) => new Map(prev).set(articleId, { step }));
 
-  const fetchImage = async (articleId: string, variant: 'portrait' | 'landscape'): Promise<string> => {
-    const res = await fetch('/api/social/generate-images-for-article', {
+  // Trigger background image generation (returns immediately, after() does the work server-side)
+  const triggerImageGen = async (articleId: string, variant: 'portrait' | 'landscape') => {
+    await fetch('/api/social/generate-images-for-article', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ article_id: articleId, variant }),
     });
-    const text = await res.text();
-    let data: { success?: boolean; url?: string; error?: string };
-    try { data = JSON.parse(text); } catch {
-      throw new Error(`Image API error (${res.status}): ${text.slice(0, 200)}`);
-    }
-    if (!data.success || !data.url) throw new Error(data.error ?? `${variant} image generation failed`);
-    return data.url;
+  };
+
+  // Poll social_posts for this article until both portrait + landscape URLs are set
+  const pollImages = (articleId: string, captions: NewsFormatResult['captions']) => {
+    let attempts = 0;
+    const maxAttempts = 40; // 40 × 5s = ~3.5 min max wait
+
+    const check = async () => {
+      attempts++;
+      try {
+        const res = await fetch(`/api/social/posts?news_article_id=${articleId}`);
+        const data = await res.json();
+        const posts: NewsPost[] = data.posts ?? [];
+        const fbPost = posts.find((p) => p.platform === 'Facebook');
+        const xPost = posts.find((p) => p.platform === 'X');
+        const portraitUrl = fbPost?.image_url && fbPost.image_url !== 'generating' ? fbPost.image_url : null;
+        const landscapeUrl = xPost?.image_url && xPost.image_url !== 'generating' ? xPost.image_url : null;
+
+        if (portraitUrl && landscapeUrl) {
+          // Both images ready — update state
+          setFormatStates((prev) => new Map(prev).set(articleId, { captions, portraitUrl, landscapeUrl }));
+          return;
+        }
+        // Update step label with what's still pending (keep captions visible)
+        const pending = [!portraitUrl && 'portrait', !landscapeUrl && 'landscape'].filter(Boolean).join(' + ');
+        setFormatStates((prev) => new Map(prev).set(articleId, { step: `Generating ${pending} image…`, captions }));
+      } catch { /* network blip — keep polling */ }
+
+      if (attempts < maxAttempts) {
+        setTimeout(check, 5000);
+      } else {
+        // Timed out — clear loading so user can retry
+        setFormatStates((prev) => { const m = new Map(prev); m.delete(articleId); return m; });
+        alert('Image generation timed out. Please try again.');
+      }
+    };
+
+    setTimeout(check, 5000); // first check after 5s
   };
 
   const formatPosts = async (articleId: string) => {
     setStep(articleId, 'Writing captions…');
     try {
-      // Step 1: Generate captions
+      // Step 1: Generate captions (fast ~15s)
       const captionRes = await fetch('/api/news/generate-formatted-post', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1261,26 +1295,25 @@ function NewsTab() {
       }
       const captions = captionData.posts;
 
-      // Step 2a: Portrait image (FB + Instagram) — separate call to stay under 60s timeout
-      setStep(articleId, 'Generating portrait image (1/2)…');
-      const portraitUrl = await fetchImage(articleId, 'portrait');
+      // Step 2: Fire off both image generation jobs in background (non-blocking)
+      setStep(articleId, 'Generating images…');
+      await Promise.all([
+        triggerImageGen(articleId, 'portrait'),
+        triggerImageGen(articleId, 'landscape'),
+      ]);
 
-      // Step 2b: Landscape image (X + LinkedIn)
-      setStep(articleId, 'Generating landscape image (2/2)…');
-      const landscapeUrl = await fetchImage(articleId, 'landscape');
-
-      // Step 3: Mark article as processed in DB (prevents re-appearing)
+      // Step 3: Mark article as processed + get next slot
       await fetch('/api/news/articles', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: articleId, is_processed: true }),
       });
-
-      // Step 4: Default schedule time = next available slot
       const nextSlot = await findNextAvailableSlot();
       setScheduleTime((prev) => ({ ...prev, [articleId]: utcToISTLocal(nextSlot) }));
 
-      setFormatStates((prev) => new Map(prev).set(articleId, { captions, portraitUrl, landscapeUrl }));
+      // Step 4: Show captions immediately while images generate in background
+      setFormatStates((prev) => new Map(prev).set(articleId, { step: 'Generating images…', captions }));
+      pollImages(articleId, captions);
     } catch (err) {
       setFormatStates((prev) => { const m = new Map(prev); m.delete(articleId); return m; });
       alert('Format Posts failed: ' + (err instanceof Error ? err.message : String(err)));
@@ -1410,8 +1443,12 @@ function NewsTab() {
         const formatState = formatStates.get(articleId);
         const isFormatting = !!formatState && 'step' in formatState;
         const formatStep = isFormatting ? (formatState as { step: string }).step : null;
+        const pollingCaptions = isFormatting ? (formatState as { step: string; captions?: NewsFormatResult['captions'] }).captions : null;
         const isFormatted = !!formatState && !('step' in formatState);
         const result = isFormatted ? (formatState as NewsFormatResult) : null;
+        // Show panel if either fully formatted OR captions are ready (images still loading)
+        const showPanel = isFormatted || !!pollingCaptions;
+        const panelCaptions = result?.captions ?? pollingCaptions ?? null;
         const isRejecting = rejectingId === articleId;
         const isScheduling = schedulingId === articleId;
         const isPosting = postedId === articleId;
@@ -1452,23 +1489,29 @@ function NewsTab() {
               </div>
             )}
 
-            {/* Formatted content panel */}
-            {result && (
+            {/* Formatted content panel — shown as soon as captions are ready, images load async */}
+            {showPanel && panelCaptions && (
               <div className="border-t border-gray-800">
 
                 {/* ── Facebook & Instagram ─────────────────────────── */}
                 <div className="border-b border-gray-800">
                   <p className="text-[10px] text-indigo-400 uppercase tracking-wider px-4 pt-3 pb-2 font-semibold">Facebook & Instagram — Portrait 1080×1350</p>
 
-                  {/* Portrait image */}
+                  {/* Portrait image or loading skeleton */}
                   <div className="px-4 pb-3">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={result.portraitUrl}
-                      alt="Portrait"
-                      className="w-full max-h-72 object-cover rounded-lg cursor-pointer"
-                      onClick={() => window.open(result.portraitUrl, '_blank')}
-                    />
+                    {result?.portraitUrl ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img
+                        src={result.portraitUrl}
+                        alt="Portrait"
+                        className="w-full max-h-72 object-cover rounded-lg cursor-pointer"
+                        onClick={() => window.open(result.portraitUrl, '_blank')}
+                      />
+                    ) : (
+                      <div className="w-full h-40 rounded-lg bg-gray-800 flex items-center justify-center gap-2 text-gray-500 text-xs">
+                        <Loader2 size={14} className="animate-spin" /> {formatStep ?? 'Generating image…'}
+                      </div>
+                    )}
                   </div>
 
                   {/* Facebook caption */}
@@ -1476,13 +1519,13 @@ function NewsTab() {
                     <div className="flex items-center justify-between">
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${PLATFORM_COLORS['Facebook']}`}>Facebook</span>
                       <button
-                        onClick={() => copyText(result.captions.facebook, `${articleId}-fb`)}
+                        onClick={() => copyText(panelCaptions.facebook, `${articleId}-fb`)}
                         className="text-xs px-2 py-1 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 flex items-center gap-1 transition-colors"
                       >
                         {copiedKey === `${articleId}-fb` ? <><Check size={11} className="text-green-400" /> Copied!</> : <><Copy size={11} /> Copy</>}
                       </button>
                     </div>
-                    <pre className="text-xs text-gray-300 whitespace-pre-wrap font-sans leading-relaxed max-h-32 overflow-y-auto">{result.captions.facebook}</pre>
+                    <pre className="text-xs text-gray-300 whitespace-pre-wrap font-sans leading-relaxed max-h-32 overflow-y-auto">{panelCaptions.facebook}</pre>
                   </div>
 
                   {/* Instagram caption */}
@@ -1490,13 +1533,13 @@ function NewsTab() {
                     <div className="flex items-center justify-between">
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${PLATFORM_COLORS['Instagram']}`}>Instagram</span>
                       <button
-                        onClick={() => copyText(result.captions.instagram, `${articleId}-insta`)}
+                        onClick={() => copyText(panelCaptions.instagram, `${articleId}-insta`)}
                         className="text-xs px-2 py-1 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 flex items-center gap-1 transition-colors"
                       >
                         {copiedKey === `${articleId}-insta` ? <><Check size={11} className="text-green-400" /> Copied!</> : <><Copy size={11} /> Copy</>}
                       </button>
                     </div>
-                    <pre className="text-xs text-gray-300 whitespace-pre-wrap font-sans leading-relaxed max-h-32 overflow-y-auto">{result.captions.instagram}</pre>
+                    <pre className="text-xs text-gray-300 whitespace-pre-wrap font-sans leading-relaxed max-h-32 overflow-y-auto">{panelCaptions.instagram}</pre>
                   </div>
 
                   {/* Schedule picker */}
@@ -1512,10 +1555,10 @@ function NewsTab() {
                     </div>
                     <button
                       onClick={() => scheduleFbInsta(articleId)}
-                      disabled={isScheduling || !scheduleTime[articleId]}
+                      disabled={isScheduling || !scheduleTime[articleId] || !result?.portraitUrl}
                       className="mt-4 flex items-center gap-1.5 px-4 py-2 rounded-lg bg-green-700 hover:bg-green-600 disabled:opacity-50 text-white text-sm font-medium transition-colors"
                     >
-                      {isScheduling ? <><Loader2 size={12} className="animate-spin" /> Scheduling…</> : '✓ Schedule FB + Instagram'}
+                      {isScheduling ? <><Loader2 size={12} className="animate-spin" /> Scheduling…</> : !result?.portraitUrl ? 'Waiting for image…' : '✓ Schedule FB + Instagram'}
                     </button>
                   </div>
                 </div>
@@ -1524,15 +1567,21 @@ function NewsTab() {
                 <div>
                   <p className="text-[10px] text-gray-400 uppercase tracking-wider px-4 pt-3 pb-2 font-semibold">X & LinkedIn — Landscape 1200×675</p>
 
-                  {/* Landscape image */}
+                  {/* Landscape image or loading skeleton */}
                   <div className="px-4 pb-3">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={result.landscapeUrl}
-                      alt="Landscape"
-                      className="w-full max-h-52 object-cover rounded-lg cursor-pointer"
-                      onClick={() => window.open(result.landscapeUrl, '_blank')}
-                    />
+                    {result?.landscapeUrl ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img
+                        src={result.landscapeUrl}
+                        alt="Landscape"
+                        className="w-full max-h-52 object-cover rounded-lg cursor-pointer"
+                        onClick={() => window.open(result.landscapeUrl, '_blank')}
+                      />
+                    ) : (
+                      <div className="w-full h-28 rounded-lg bg-gray-800 flex items-center justify-center gap-2 text-gray-500 text-xs">
+                        <Loader2 size={14} className="animate-spin" /> {formatStep ?? 'Generating image…'}
+                      </div>
+                    )}
                   </div>
 
                   {/* X caption */}
@@ -1541,21 +1590,23 @@ function NewsTab() {
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${PLATFORM_COLORS['X']}`}>X</span>
                       <div className="flex items-center gap-1.5">
                         <button
-                          onClick={() => copyText(result.captions.x, `${articleId}-x`)}
+                          onClick={() => copyText(panelCaptions.x, `${articleId}-x`)}
                           className="text-xs px-2 py-1 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 flex items-center gap-1 transition-colors"
                         >
                           {copiedKey === `${articleId}-x` ? <><Check size={11} className="text-green-400" /> Copied!</> : <><Copy size={11} /> Copy post</>}
                         </button>
-                        <a
-                          href={result.landscapeUrl}
-                          download={`x-${articleId}.jpg`}
-                          className="text-xs px-2 py-1 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 flex items-center gap-1 transition-colors"
-                        >
-                          ↓ Image
-                        </a>
+                        {result?.landscapeUrl && (
+                          <a
+                            href={result.landscapeUrl}
+                            download={`x-${articleId}.jpg`}
+                            className="text-xs px-2 py-1 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 flex items-center gap-1 transition-colors"
+                          >
+                            ↓ Image
+                          </a>
+                        )}
                       </div>
                     </div>
-                    <pre className="text-xs text-gray-300 whitespace-pre-wrap font-sans leading-relaxed max-h-32 overflow-y-auto">{result.captions.x}</pre>
+                    <pre className="text-xs text-gray-300 whitespace-pre-wrap font-sans leading-relaxed max-h-32 overflow-y-auto">{panelCaptions.x}</pre>
                   </div>
 
                   {/* LinkedIn caption */}
@@ -1564,31 +1615,33 @@ function NewsTab() {
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${PLATFORM_COLORS['LinkedIn']}`}>LinkedIn</span>
                       <div className="flex items-center gap-1.5">
                         <button
-                          onClick={() => copyText(result.captions.linkedin, `${articleId}-li`)}
+                          onClick={() => copyText(panelCaptions.linkedin, `${articleId}-li`)}
                           className="text-xs px-2 py-1 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 flex items-center gap-1 transition-colors"
                         >
                           {copiedKey === `${articleId}-li` ? <><Check size={11} className="text-green-400" /> Copied!</> : <><Copy size={11} /> Copy post</>}
                         </button>
-                        <a
-                          href={result.landscapeUrl}
-                          download={`linkedin-${articleId}.jpg`}
-                          className="text-xs px-2 py-1 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 flex items-center gap-1 transition-colors"
-                        >
-                          ↓ Image
-                        </a>
+                        {result?.landscapeUrl && (
+                          <a
+                            href={result.landscapeUrl}
+                            download={`linkedin-${articleId}.jpg`}
+                            className="text-xs px-2 py-1 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 flex items-center gap-1 transition-colors"
+                          >
+                            ↓ Image
+                          </a>
+                        )}
                       </div>
                     </div>
-                    <pre className="text-xs text-gray-300 whitespace-pre-wrap font-sans leading-relaxed max-h-32 overflow-y-auto">{result.captions.linkedin}</pre>
+                    <pre className="text-xs text-gray-300 whitespace-pre-wrap font-sans leading-relaxed max-h-32 overflow-y-auto">{panelCaptions.linkedin}</pre>
                   </div>
 
                   {/* Posted button */}
                   <div className="px-4 pb-4">
                     <button
                       onClick={() => markPosted(articleId)}
-                      disabled={isPosting}
+                      disabled={isPosting || !result?.landscapeUrl}
                       className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-blue-700 hover:bg-blue-600 disabled:opacity-50 text-white text-sm font-medium transition-colors"
                     >
-                      {isPosting ? <><Loader2 size={12} className="animate-spin" /> Saving…</> : '✓ Posted on X & LinkedIn'}
+                      {isPosting ? <><Loader2 size={12} className="animate-spin" /> Saving…</> : !result?.landscapeUrl ? 'Waiting for image…' : '✓ Posted on X & LinkedIn'}
                     </button>
                   </div>
                 </div>

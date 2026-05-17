@@ -6,6 +6,7 @@ export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const statusParam = searchParams.get('status');
   const platform = searchParams.get('platform');
+  const newsArticleId = searchParams.get('news_article_id');
 
   const supabase = createServiceClient();
   let query = supabase
@@ -24,6 +25,10 @@ export async function GET(request: NextRequest) {
 
   if (platform) {
     query = query.eq('platform', platform);
+  }
+
+  if (newsArticleId) {
+    query = query.eq('news_article_id', newsArticleId);
   }
 
   const { data, error } = await query;

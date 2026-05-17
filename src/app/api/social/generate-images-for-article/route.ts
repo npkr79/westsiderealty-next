@@ -1,14 +1,16 @@
+import { after } from 'next/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { getCrmSessionResult } from '@/lib/crm/auth';
 import { createServiceClient } from '@/lib/supabase/serviceClient';
 import { generateSingleImage } from '@/services/newsToSocialService';
 
-export const maxDuration = 120;
+export const maxDuration = 300;
 
 // POST /api/social/generate-images-for-article
-// Generates ONE image variant per call to stay within Vercel's 60s timeout.
-// Pass variant: "portrait" (1080×1350, FB+Instagram) or "landscape" (1200×675, X+LinkedIn).
-// Returns the URL only — does NOT save to social_posts DB.
+// Returns immediately with { status: 'generating' }.
+// Image generation runs in the background via after() — no HTTP timeout possible.
+// When done, saves image_url directly to the matching social_posts rows.
+// Frontend polls GET /api/social/posts?news_article_id= to detect completion.
 export async function POST(request: NextRequest) {
   const session = await getCrmSessionResult();
   if (!session.user || session.user.role !== 'admin') {
@@ -40,12 +42,38 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Article not found' }, { status: 404 });
   }
 
-  try {
-    const url = await generateSingleImage(article, variant);
-    return NextResponse.json({ success: true, url, variant });
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    console.error(`[generate-images-for-article] ${variant}:`, msg);
-    return NextResponse.json({ error: msg }, { status: 500 });
-  }
+  // Mark image_url as 'generating' on the relevant social_posts rows so the
+  // frontend can distinguish "not started" from "in progress".
+  const platforms = variant === 'portrait' ? ['Facebook', 'Instagram'] : ['X', 'LinkedIn'];
+  await supabase
+    .from('social_posts')
+    .update({ image_url: 'generating' })
+    .eq('news_article_id', article_id)
+    .in('platform', platforms);
+
+  // Run the actual generation AFTER the response is sent — no HTTP timeout.
+  after(async () => {
+    try {
+      const url = await generateSingleImage(article, variant);
+      const svc = createServiceClient();
+      await svc
+        .from('social_posts')
+        .update({ image_url: url })
+        .eq('news_article_id', article_id)
+        .in('platform', platforms);
+      console.log(`[image-gen] ${variant} done for article ${article_id}:`, url.slice(-40));
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error(`[image-gen] ${variant} failed for article ${article_id}:`, msg);
+      // Clear 'generating' sentinel so the frontend knows it failed
+      const svc = createServiceClient();
+      await svc
+        .from('social_posts')
+        .update({ image_url: null })
+        .eq('news_article_id', article_id)
+        .in('platform', platforms);
+    }
+  });
+
+  return NextResponse.json({ status: 'generating', variant });
 }
