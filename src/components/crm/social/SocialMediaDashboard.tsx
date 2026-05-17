@@ -1233,11 +1233,15 @@ function NewsTab() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ article_id: articleId }),
       });
-      const captionData = await captionRes.json();
+      const captionText = await captionRes.text();
+      let captionData: { success?: boolean; posts?: { x: string; linkedin: string; facebook: string; instagram: string }; error?: string };
+      try { captionData = JSON.parse(captionText); } catch {
+        throw new Error(`Caption API error (${captionRes.status}): ${captionText.slice(0, 200)}`);
+      }
       if (!captionData.success || !captionData.posts) {
         throw new Error(captionData.error ?? 'Caption generation failed');
       }
-      const captions = captionData.posts as { x: string; linkedin: string; facebook: string; instagram: string };
+      const captions = captionData.posts;
 
       // Step 2: Generate images (portrait + landscape)
       const imgRes = await fetch('/api/social/generate-images-for-article', {
@@ -1245,7 +1249,11 @@ function NewsTab() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ article_id: articleId }),
       });
-      const imgData = await imgRes.json();
+      const imgText = await imgRes.text();
+      let imgData: { success?: boolean; portraitUrl?: string; landscapeUrl?: string; error?: string };
+      try { imgData = JSON.parse(imgText); } catch {
+        throw new Error(`Image API error (${imgRes.status}): ${imgText.slice(0, 200)}`);
+      }
       if (!imgData.success) throw new Error(imgData.error ?? 'Image generation failed');
 
       // Step 3: Mark article as processed in DB (prevents re-appearing)
