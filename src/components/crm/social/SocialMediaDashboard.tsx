@@ -1157,7 +1157,7 @@ interface NewsFormatResult {
   landscapeUrl: string;
 }
 
-type NewsFormatState = 'loading' | NewsFormatResult;
+type NewsFormatState = { step: string } | NewsFormatResult;
 
 interface ScheduledSlot {
   id: string;
@@ -1224,8 +1224,26 @@ function NewsTab() {
     setRejectingId(null);
   };
 
+  const setStep = (articleId: string, step: string) =>
+    setFormatStates((prev) => new Map(prev).set(articleId, { step }));
+
+  const fetchImage = async (articleId: string, variant: 'portrait' | 'landscape'): Promise<string> => {
+    const res = await fetch('/api/social/generate-images-for-article', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ article_id: articleId, variant }),
+    });
+    const text = await res.text();
+    let data: { success?: boolean; url?: string; error?: string };
+    try { data = JSON.parse(text); } catch {
+      throw new Error(`Image API error (${res.status}): ${text.slice(0, 200)}`);
+    }
+    if (!data.success || !data.url) throw new Error(data.error ?? `${variant} image generation failed`);
+    return data.url;
+  };
+
   const formatPosts = async (articleId: string) => {
-    setFormatStates((prev) => new Map(prev).set(articleId, 'loading'));
+    setStep(articleId, 'Writing captions…');
     try {
       // Step 1: Generate captions
       const captionRes = await fetch('/api/news/generate-formatted-post', {
@@ -1243,18 +1261,13 @@ function NewsTab() {
       }
       const captions = captionData.posts;
 
-      // Step 2: Generate images (portrait + landscape)
-      const imgRes = await fetch('/api/social/generate-images-for-article', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ article_id: articleId }),
-      });
-      const imgText = await imgRes.text();
-      let imgData: { success?: boolean; portraitUrl?: string; landscapeUrl?: string; error?: string };
-      try { imgData = JSON.parse(imgText); } catch {
-        throw new Error(`Image API error (${imgRes.status}): ${imgText.slice(0, 200)}`);
-      }
-      if (!imgData.success) throw new Error(imgData.error ?? 'Image generation failed');
+      // Step 2a: Portrait image (FB + Instagram) — separate call to stay under 60s timeout
+      setStep(articleId, 'Generating portrait image (1/2)…');
+      const portraitUrl = await fetchImage(articleId, 'portrait');
+
+      // Step 2b: Landscape image (X + LinkedIn)
+      setStep(articleId, 'Generating landscape image (2/2)…');
+      const landscapeUrl = await fetchImage(articleId, 'landscape');
 
       // Step 3: Mark article as processed in DB (prevents re-appearing)
       await fetch('/api/news/articles', {
@@ -1267,11 +1280,7 @@ function NewsTab() {
       const nextSlot = await findNextAvailableSlot();
       setScheduleTime((prev) => ({ ...prev, [articleId]: utcToISTLocal(nextSlot) }));
 
-      setFormatStates((prev) => new Map(prev).set(articleId, {
-        captions,
-        portraitUrl: imgData.portraitUrl,
-        landscapeUrl: imgData.landscapeUrl,
-      }));
+      setFormatStates((prev) => new Map(prev).set(articleId, { captions, portraitUrl, landscapeUrl }));
     } catch (err) {
       setFormatStates((prev) => { const m = new Map(prev); m.delete(articleId); return m; });
       alert('Format Posts failed: ' + (err instanceof Error ? err.message : String(err)));
@@ -1280,7 +1289,7 @@ function NewsTab() {
 
   const scheduleFbInsta = async (articleId: string) => {
     const result = formatStates.get(articleId);
-    if (!result || result === 'loading') return;
+    if (!result || 'step' in result) return;
     const rawTime = scheduleTime[articleId];
     if (!rawTime) return;
     const scheduledAt = istLocalToUTC(rawTime);
@@ -1331,8 +1340,8 @@ function NewsTab() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           id: xPost.id,
-          caption: result && result !== 'loading' ? result.captions.x : undefined,
-          image_url: result && result !== 'loading' ? result.landscapeUrl : undefined,
+          caption: result && !('step' in result) ? result.captions.x : undefined,
+          image_url: result && !('step' in result) ? result.landscapeUrl : undefined,
           status: 'published',
           posted_at: now,
         }),
@@ -1342,8 +1351,8 @@ function NewsTab() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           id: liPost.id,
-          caption: result && result !== 'loading' ? result.captions.linkedin : undefined,
-          image_url: result && result !== 'loading' ? result.landscapeUrl : undefined,
+          caption: result && !('step' in result) ? result.captions.linkedin : undefined,
+          image_url: result && !('step' in result) ? result.landscapeUrl : undefined,
           status: 'published',
           posted_at: now,
         }),
@@ -1399,8 +1408,9 @@ function NewsTab() {
         const headline = posts[0]?.content_idea ?? 'Untitled';
         const articleSummary = posts[0]?.news_articles?.ai_summary ?? posts[0]?.news_articles?.summary ?? null;
         const formatState = formatStates.get(articleId);
-        const isFormatting = formatState === 'loading';
-        const isFormatted = formatState && formatState !== 'loading';
+        const isFormatting = !!formatState && 'step' in formatState;
+        const formatStep = isFormatting ? (formatState as { step: string }).step : null;
+        const isFormatted = !!formatState && !('step' in formatState);
         const result = isFormatted ? (formatState as NewsFormatResult) : null;
         const isRejecting = rejectingId === articleId;
         const isScheduling = schedulingId === articleId;
@@ -1429,7 +1439,7 @@ function NewsTab() {
                   className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-purple-700 hover:bg-purple-600 disabled:opacity-50 text-white text-sm font-medium transition-colors"
                 >
                   {isFormatting
-                    ? <><Loader2 className="w-3 h-3 animate-spin" /> Generating…</>
+                    ? <><Loader2 className="w-3 h-3 animate-spin" /> {formatStep ?? 'Generating…'}</>
                     : <><Sparkles className="w-3 h-3" /> Format Posts</>}
                 </button>
                 <button

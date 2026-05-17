@@ -530,6 +530,66 @@ export async function generateImage(article: NewsArticle): Promise<GeneratedImag
   return { portraitUrl, landscapeUrl };
 }
 
+// Single-variant image generation — used by the split API route to stay within
+// Vercel's 60-second function timeout (generating both in one call exceeds it).
+export async function generateSingleImage(
+  article: NewsArticle,
+  variant: "portrait" | "landscape"
+): Promise<string> {
+  const openaiKey = process.env.OPENAI_API_KEY;
+  if (!openaiKey) throw new Error("OPENAI_API_KEY not configured");
+
+  const postText = [
+    article.headline,
+    article.ai_summary ?? article.summary ?? "",
+  ].filter(Boolean).join("\n\n");
+
+  const prompt = STYLE_WRAPPER.replace("{post_text}", postText);
+  const logoBuffer = await fetch(LOGO_URL).then((r) => r.arrayBuffer()).then((ab) => Buffer.from(ab));
+
+  const [apiSize, targetW, targetH, logoMaxWidth] =
+    variant === "portrait"
+      ? ["1024x1792", 1080, 1350, 140]
+      : ["1792x1024", 1200,  675, 120];
+
+  console.log(`[NewsToSocial] Generating ${variant} image for:`, article.headline.slice(0, 60));
+
+  const imageRes = await fetch("https://api.openai.com/v1/images/generations", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${openaiKey}` },
+    body: JSON.stringify({ model: "gpt-image-2", prompt, n: 1, size: apiSize, quality: "high", output_format: "jpeg" }),
+  });
+  if (!imageRes.ok) {
+    const errText = await imageRes.text();
+    throw new Error(`gpt-image-2 error (${apiSize}): ${errText.slice(0, 200)}`);
+  }
+  const imageData = await imageRes.json();
+  const base64Image: string = imageData.data?.[0]?.b64_json;
+  if (!base64Image) throw new Error(`gpt-image-2 returned no image data (${apiSize})`);
+  const rawImageBuffer = Buffer.from(base64Image, "base64");
+
+  const logoResized = await sharp(logoBuffer).resize(logoMaxWidth, null, { fit: "inside" }).toBuffer();
+  const logoW = (await sharp(logoResized).metadata()).width ?? logoMaxWidth;
+
+  const compositedBuffer = await sharp(rawImageBuffer)
+    .resize(targetW, targetH, { fit: "cover", position: "centre" })
+    .composite([{ input: logoResized, top: 16, left: targetW - logoW - 16 }])
+    .jpeg({ quality: 92 })
+    .toBuffer();
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const uploadResult = await new Promise<any>((resolve, reject) => {
+    const uploadStream = cloudinary.uploader.upload_stream(
+      { folder: `news-posts/${article.id}`, public_id: variant, overwrite: true, resource_type: "image" },
+      (error, result) => { if (error) reject(error); else resolve(result); }
+    );
+    uploadStream.end(compositedBuffer);
+  });
+
+  console.log(`[NewsToSocial] ${variant} image ready:`, uploadResult.secure_url.slice(-40));
+  return uploadResult.secure_url;
+}
+
 // ---------------------------------------------------------------------------
 // Insert social_posts rows + mark article processed
 // ---------------------------------------------------------------------------
