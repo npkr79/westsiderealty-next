@@ -1239,9 +1239,10 @@ function NewsTab() {
   };
 
   // Poll social_posts for this article until both portrait + landscape URLs are set
+  // Poll until portrait image is ready (used for all platforms), 8 min timeout
   const pollImages = (articleId: string, captions: NewsFormatResult['captions']) => {
     let attempts = 0;
-    const maxAttempts = 40; // 40 × 5s = ~3.5 min max wait
+    const maxAttempts = 96; // 96 × 5s = 8 min
 
     const check = async () => {
       attempts++;
@@ -1250,30 +1251,29 @@ function NewsTab() {
         const data = await res.json();
         const posts: NewsPost[] = data.posts ?? [];
         const fbPost = posts.find((p) => p.platform === 'Facebook');
-        const xPost = posts.find((p) => p.platform === 'X');
         const portraitUrl = fbPost?.image_url && fbPost.image_url !== 'generating' ? fbPost.image_url : null;
-        const landscapeUrl = xPost?.image_url && xPost.image_url !== 'generating' ? xPost.image_url : null;
 
-        if (portraitUrl && landscapeUrl) {
-          // Both images ready — update state
-          setFormatStates((prev) => new Map(prev).set(articleId, { captions, portraitUrl, landscapeUrl }));
+        if (portraitUrl) {
+          // Image ready — use same URL for both portrait and landscape slots
+          setFormatStates((prev) => new Map(prev).set(articleId, { captions, portraitUrl, landscapeUrl: portraitUrl }));
           return;
         }
-        // Update step label with what's still pending (keep captions visible)
-        const pending = [!portraitUrl && 'portrait', !landscapeUrl && 'landscape'].filter(Boolean).join(' + ');
-        setFormatStates((prev) => new Map(prev).set(articleId, { step: `Generating ${pending} image…`, captions }));
+        const elapsed = Math.round((attempts * 5) / 60);
+        setFormatStates((prev) => new Map(prev).set(articleId, {
+          step: `Generating image… (${elapsed > 0 ? elapsed + 'm' : 'just started'})`,
+          captions,
+        }));
       } catch { /* network blip — keep polling */ }
 
       if (attempts < maxAttempts) {
         setTimeout(check, 5000);
       } else {
-        // Timed out — clear loading so user can retry
         setFormatStates((prev) => { const m = new Map(prev); m.delete(articleId); return m; });
-        alert('Image generation timed out. Please try again.');
+        alert('Image generation timed out after 8 minutes. Please try again.');
       }
     };
 
-    setTimeout(check, 5000); // first check after 5s
+    setTimeout(check, 5000);
   };
 
   const formatPosts = async (articleId: string) => {
@@ -1295,12 +1295,9 @@ function NewsTab() {
       }
       const captions = captionData.posts;
 
-      // Step 2: Fire off both image generation jobs in background (non-blocking)
-      setStep(articleId, 'Generating images…');
-      await Promise.all([
-        triggerImageGen(articleId, 'portrait'),
-        triggerImageGen(articleId, 'landscape'),
-      ]);
+      // Step 2: Fire off ONE image generation job (portrait, used for all platforms)
+      setStep(articleId, 'Generating image…');
+      await triggerImageGen(articleId, 'portrait');
 
       // Step 3: Mark article as processed + get next slot
       await fetch('/api/news/articles', {
