@@ -1135,19 +1135,54 @@ interface FormattedPosts {
   instagram: string;
 }
 
+// ── Timezone helpers (IST) ────────────────────────────────────────────────────
+
+function utcToISTLocal(isoUtc: string): string {
+  // Returns datetime-local string (YYYY-MM-DDTHH:MM) treated as IST
+  const d = new Date(new Date(isoUtc).getTime() + 5.5 * 60 * 60 * 1000);
+  return d.toISOString().slice(0, 16);
+}
+
+function istLocalToUTC(localIST: string): string {
+  // Parses datetime-local value as IST, returns UTC ISO
+  return new Date(new Date(localIST + ':00Z').getTime() - 5.5 * 60 * 60 * 1000).toISOString();
+}
+
+// ── NewsTab state types ───────────────────────────────────────────────────────
+
+interface NewsFormatResult {
+  captions: { x: string; linkedin: string; facebook: string; instagram: string };
+  portraitUrl: string;
+  landscapeUrl: string;
+}
+
+type NewsFormatState = 'loading' | NewsFormatResult;
+
+interface ScheduledSlot {
+  id: string;
+  platform: string;
+  content_idea: string | null;
+  scheduled_at: string;
+}
+
 function NewsTab() {
   const [groups, setGroups] = useState<Map<string, NewsPost[]>>(new Map());
   const [loading, setLoading] = useState(true);
-  const [actionId, setActionId] = useState<string | null>(null);
-  const [scheduleLabels, setScheduleLabels] = useState<Record<string, string>>({});
-  const [formattedPosts, setFormattedPosts] = useState<Map<string, FormattedPosts | 'loading'>>(new Map());
-  const [formCopiedKey, setFormCopiedKey] = useState<string | null>(null);
+  const [scheduledSlots, setScheduledSlots] = useState<ScheduledSlot[]>([]);
+  const [slotsOpen, setSlotsOpen] = useState(false);
+  const [formatStates, setFormatStates] = useState<Map<string, NewsFormatState>>(new Map());
+  const [scheduleTime, setScheduleTime] = useState<Record<string, string>>({});
+  const [schedulingId, setSchedulingId] = useState<string | null>(null);
+  const [postedId, setPostedId] = useState<string | null>(null);
+  const [rejectingId, setRejectingId] = useState<string | null>(null);
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [r1, r2] = await Promise.all([
+    const [r1, r2, r3] = await Promise.all([
       fetch('/api/social/posts?status=pending_review').then((r) => r.json()),
       fetch('/api/social/posts?status=manual_ready').then((r) => r.json()),
+      fetch('/api/social/posts?status=scheduled').then((r) => r.json()),
     ]);
     const newsPosts: NewsPost[] = [
       ...(r1.posts ?? []).filter((p: NewsPost) => p.post_category === 'news'),
@@ -1160,508 +1195,383 @@ function NewsTab() {
       map.get(key)!.push(post);
     }
     setGroups(map);
+    const upcoming: ScheduledSlot[] = (r3.posts ?? [])
+      .filter((p: NewsPost) => p.post_category === 'news' && (p.platform === 'Facebook' || p.platform === 'Instagram') && p.scheduled_at)
+      .sort((a: NewsPost, b: NewsPost) => new Date(a.scheduled_at!).getTime() - new Date(b.scheduled_at!).getTime());
+    setScheduledSlots(upcoming);
     setLoading(false);
   }, []);
 
   useEffect(() => { load(); }, [load]);
 
-  const [copiedId, setCopiedId] = useState<string | null>(null);
-
-  const copyToClipboard = async (post: NewsPost) => {
-    const text = post.caption + (post.hashtags?.length ? '\n\n' + post.hashtags.map((h) => `#${h}`).join(' ') : '');
+  const copyText = async (text: string, key: string) => {
     await navigator.clipboard.writeText(text);
-    setCopiedId(post.id);
-    setTimeout(() => setCopiedId(null), 2000);
-  };
-
-  const scheduleGroup = async (articleId: string, scheduledAt: string) => {
-    // Only schedule FB/Instagram (pending_review) — skip manual_ready posts
-    const posts = (groups.get(articleId) ?? []).filter((p) => p.status === 'pending_review');
-    await Promise.all(
-      posts.map((p) =>
-        fetch('/api/social/posts', {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id: p.id, status: 'scheduled', scheduled_at: scheduledAt }),
-        })
-      )
-    );
-    await load();
-  };
-
-  const handleApprove = async (articleId: string) => {
-    setActionId(articleId);
-    const scheduledAt = await findNextAvailableSlot();
-    await scheduleGroup(articleId, scheduledAt);
-    const label = new Date(scheduledAt).toLocaleString('en-IN', {
-      timeZone: 'Asia/Kolkata',
-      day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: true,
-    }) + ' IST';
-    setScheduleLabels((prev) => ({ ...prev, [articleId]: label }));
-    setActionId(null);
-  };
-
-  const markManualPosted = async (articleId: string) => {
-    setActionId(articleId);
-    const allPosts = groups.get(articleId) ?? [];
-    const manualPosts = allPosts.filter((p) => p.status === 'manual_ready');
-    const autoPosts = allPosts.filter((p) => p.status === 'pending_review');
-    await Promise.all([
-      // Mark manual posts as published
-      ...manualPosts.map((p) =>
-        fetch('/api/social/posts', {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id: p.id, status: 'published', posted_at: new Date().toISOString() }),
-        })
-      ),
-      // Delete any lingering pending_review posts so they don't resurface on reload
-      ...autoPosts.map((p) => fetch(`/api/social/posts?id=${p.id}`, { method: 'DELETE' })),
-    ]);
-    // Mark the news article as processed so it won't re-appear in tomorrow's scrape
-    await fetch('/api/news/articles', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: articleId, is_processed: true }),
-    });
-    setGroups((prev) => { const m = new Map(prev); m.delete(articleId); return m; });
-    setActionId(null);
+    setCopiedKey(key);
+    setTimeout(() => setCopiedKey(null), 2000);
   };
 
   const rejectGroup = async (articleId: string) => {
-    setActionId(articleId);
+    setRejectingId(articleId);
     const posts = groups.get(articleId) ?? [];
-    // Delete all social posts
     await Promise.all(posts.map((p) => fetch(`/api/social/posts?id=${p.id}`, { method: 'DELETE' })));
-    // Mark the news article as rejected so it won't be re-generated
-    const newsArticleId = posts[0]?.news_article_id;
-    if (newsArticleId) {
-      await fetch('/api/news/articles', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: newsArticleId, is_rejected: true }),
-      });
-    }
+    await fetch('/api/news/articles', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: articleId, is_rejected: true }),
+    });
     setGroups((prev) => { const m = new Map(prev); m.delete(articleId); return m; });
-    setActionId(null);
+    setRejectingId(null);
   };
 
-  const generateFormattedPosts = async (articleId: string) => {
-    setFormattedPosts((prev) => new Map(prev).set(articleId, 'loading'));
+  const formatPosts = async (articleId: string) => {
+    setFormatStates((prev) => new Map(prev).set(articleId, 'loading'));
     try {
-      const res = await fetch('/api/news/generate-formatted-post', {
+      // Step 1: Generate captions
+      const captionRes = await fetch('/api/news/generate-formatted-post', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ article_id: articleId }),
       });
-      const data = await res.json();
-      if (data.success && data.posts) {
-        setFormattedPosts((prev) => new Map(prev).set(articleId, data.posts as FormattedPosts));
-      } else {
-        setFormattedPosts((prev) => { const m = new Map(prev); m.delete(articleId); return m; });
-        alert(data.error ?? 'Generation failed');
+      const captionData = await captionRes.json();
+      if (!captionData.success || !captionData.posts) {
+        throw new Error(captionData.error ?? 'Caption generation failed');
       }
+      const captions = captionData.posts as { x: string; linkedin: string; facebook: string; instagram: string };
+
+      // Step 2: Generate images (portrait + landscape)
+      const imgRes = await fetch('/api/social/generate-images-for-article', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ article_id: articleId }),
+      });
+      const imgData = await imgRes.json();
+      if (!imgData.success) throw new Error(imgData.error ?? 'Image generation failed');
+
+      // Step 3: Mark article as processed in DB (prevents re-appearing)
+      await fetch('/api/news/articles', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: articleId, is_processed: true }),
+      });
+
+      // Step 4: Default schedule time = next available slot
+      const nextSlot = await findNextAvailableSlot();
+      setScheduleTime((prev) => ({ ...prev, [articleId]: utcToISTLocal(nextSlot) }));
+
+      setFormatStates((prev) => new Map(prev).set(articleId, {
+        captions,
+        portraitUrl: imgData.portraitUrl,
+        landscapeUrl: imgData.landscapeUrl,
+      }));
     } catch (err) {
-      setFormattedPosts((prev) => { const m = new Map(prev); m.delete(articleId); return m; });
-      alert('Network error — could not reach the server. Please try again.\n' + (err instanceof Error ? err.message : String(err)));
+      setFormatStates((prev) => { const m = new Map(prev); m.delete(articleId); return m; });
+      alert('Format Posts failed: ' + (err instanceof Error ? err.message : String(err)));
     }
   };
 
-  const copyFormattedPost = async (articleId: string, platform: string, text: string) => {
-    await navigator.clipboard.writeText(text);
-    setFormCopiedKey(`${articleId}-${platform}`);
-    setTimeout(() => setFormCopiedKey(null), 2000);
+  const scheduleFbInsta = async (articleId: string) => {
+    const result = formatStates.get(articleId);
+    if (!result || result === 'loading') return;
+    const rawTime = scheduleTime[articleId];
+    if (!rawTime) return;
+    const scheduledAt = istLocalToUTC(rawTime);
+    setSchedulingId(articleId);
+    const posts = groups.get(articleId) ?? [];
+    const fbPost = posts.find((p) => p.platform === 'Facebook');
+    const instaPost = posts.find((p) => p.platform === 'Instagram');
+    await Promise.all([
+      fbPost && fetch('/api/social/posts', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: fbPost.id,
+          caption: result.captions.facebook,
+          image_url: result.portraitUrl,
+          scheduled_at: scheduledAt,
+          status: 'scheduled',
+        }),
+      }),
+      instaPost && fetch('/api/social/posts', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: instaPost.id,
+          caption: result.captions.instagram,
+          image_url: result.portraitUrl,
+          scheduled_at: scheduledAt,
+          status: 'scheduled',
+        }),
+      }),
+    ].filter(Boolean));
+    setGroups((prev) => { const m = new Map(prev); m.delete(articleId); return m; });
+    setFormatStates((prev) => { const m = new Map(prev); m.delete(articleId); return m; });
+    setSchedulingId(null);
+    await load(); // refresh scheduled slots panel
   };
 
-  const IMAGE_PROMPT_TEMPLATE = `Create a professional social media post image using the following fixed design system.
-
-Image size must be 940 px width × 788 px height (Facebook post size)
-
-1) Image Size & Layout
-Clean, modern, professional infographic style
-Balanced layout with strong visual hierarchy
-Keep adequate spacing and margins
-Do not overcrowd the design
-Prioritize readability on mobile screens
-
-2) Visual Style (IMPORTANT — ALWAYS FOLLOW)
-Use broad daylight lighting by default
-Avoid dark, sunset, golden hour, or night themes unless explicitly requested
-Use realistic urban / office / infrastructure / business environments
-Use modern, high-quality, editorial-style visuals
-Maintain a corporate, trustworthy, regulatory tone
-
-3) Branding & Logos (MANDATORY)
-
-Include logos as needed:
-Regulatory bodies
-Companies
-Organizations
-Institutions
-
-*Avoid Govt of India logos*
-Do not add any logos on top right of the image. That will be used for my company logo.
-If relevant, include:
-
-Photos of notable people mentioned
-CEO / Minister / Chairman / Founder
-Public figures
-
-Logos and faces must:
-Look realistic
-Be clean and professional
-Be placed naturally (top corner or header area)
-
-4) Text Rules (CRITICAL)
-
-Reduce text on the image.
-Keep content short and punchy.
-
-Follow this exact structure:
-
-Title
-Subtitle
-
-5) Text Styling
-
-Use:
-
-White text for normal content
-Yellow text for highlighted keywords
-Bold emphasis on:
-
-Numbers
-Percentages
-Years
-Key warnings
-Important phrases
-
-Use a dark overlay behind text for readability.
-
-6) Positioning Rules
-
-Place the main title sentence near the bottom of the image.
-
-Maintain:
-
-Clear spacing between the bottom edge and text
-Consistent alignment
-Strong visual balance
-
-7) Content Tone
-
-The tone must be:
-
-Professional
-Regulatory
-Informative
-Credible
-Authoritative
-
-Avoid:
-
-Marketing hype
-Sales language
-Clickbait tone
-
-8) Visual Elements to Use
-
-Use relevant icons such as:
-
-Warning icons
-Growth charts
-Buildings
-Infrastructure
-Money
-Legal symbols
-Checklists
-Government seals
-
-But keep the design clean and minimal.
-
-9) Output Quality
-
-The image must be:
-
-Sharp
-Modern
-Corporate-grade
-Social-media ready
-Readable on mobile
-Professional enough for LinkedIn / Facebook
-
-This is the post:
-`;
-
-  // Extract only the title + subtitle + FIRST content section from a post.
-  // Cuts off at the second bold heading, any "Why This Matters" / "Strategic
-  // Implications" / "Key Takeaway" / hashtag block, whichever comes first.
-  // This keeps image-prompt context short so ChatGPT doesn't try to render
-  // every bullet on the image.
-  const extractFirstSection = (postText: string): string => {
-    const text = postText.trim();
-    if (!text) return text;
-
-    const lines = text.split('\n');
-
-    // Build a regex that detects "second heading"-style lines: short bold
-    // Unicode lines (no bullets, no hashtags). We start counting heading-like
-    // lines from the top — title (1st), subtitle (2nd if present), first
-    // section heading (3rd). Cut when we hit the SECOND section heading.
-    const isBoldHeading = (line: string): boolean => {
-      const t = line.trim();
-      if (t.length < 3 || t.length > 90) return false;
-      if (t.startsWith('•') || t.startsWith('-') || t.startsWith('#')) return false;
-      // Heading lines are typically all-bold (Unicode mathematical bold range)
-      // or contain explicit section markers.
-      const sectionMarkers = /(why this matters|strategic implications|key takeaway|key facts|key data points|implications|impact|takeaway|next steps|what to watch)/i;
-      if (sectionMarkers.test(t)) return true;
-      // Detect lines composed mostly of Unicode mathematical bold chars
-      // Unicode mathematical sans-serif bold ranges. Need /u flag because the
-      // codepoints are above BMP (surrogate pairs) — without it the engine
-      // treats them as separate UTF-16 units and the range "out of order"
-      // throws at parse time.
-      const boldChars = (t.match(/[\u{1D5D4}-\u{1D5ED}\u{1D5EE}-\u{1D607}\u{1D7EC}-\u{1D7F5}]/gu) ?? []).length;
-      return boldChars >= Math.max(3, Math.floor(t.replace(/\s/g, '').length * 0.4));
-    };
-
-    // Track heading occurrences. Stop just BEFORE the 2nd section-content heading.
-    // Order: [Title] [Subtitle?] [1st Section Heading] ... bullets ...  STOP at next heading.
-    let headingsSeen = 0;
-    const out: string[] = [];
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
-      const trimmed = line.trim();
-
-      // Hard stop at hashtag block — never include hashtags in image prompt.
-      if (trimmed.startsWith('#')) break;
-
-      if (isBoldHeading(trimmed)) {
-        headingsSeen++;
-        // Title + subtitle + first section heading are all OK (1st, 2nd, 3rd).
-        // The 4th heading-like line is the start of section 2 — stop.
-        if (headingsSeen >= 4) break;
-      }
-
-      out.push(line);
-    }
-
-    return out.join('\n').trim();
+  const markPosted = async (articleId: string) => {
+    setPostedId(articleId);
+    const result = formatStates.get(articleId);
+    const posts = groups.get(articleId) ?? [];
+    const xPost = posts.find((p) => p.platform === 'X');
+    const liPost = posts.find((p) => p.platform === 'LinkedIn');
+    const now = new Date().toISOString();
+    await Promise.all([
+      xPost && fetch('/api/social/posts', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: xPost.id,
+          caption: result && result !== 'loading' ? result.captions.x : undefined,
+          image_url: result && result !== 'loading' ? result.landscapeUrl : undefined,
+          status: 'published',
+          posted_at: now,
+        }),
+      }),
+      liPost && fetch('/api/social/posts', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: liPost.id,
+          caption: result && result !== 'loading' ? result.captions.linkedin : undefined,
+          image_url: result && result !== 'loading' ? result.landscapeUrl : undefined,
+          status: 'published',
+          posted_at: now,
+        }),
+      }),
+    ].filter(Boolean));
+    setGroups((prev) => { const m = new Map(prev); m.delete(articleId); return m; });
+    setFormatStates((prev) => { const m = new Map(prev); m.delete(articleId); return m; });
+    setPostedId(null);
   };
 
-  const buildImagePrompt = (postText: string): string =>
-    IMAGE_PROMPT_TEMPLATE + extractFirstSection(postText);
-
-  const copyImagePrompt = async (articleId: string, postText: string) => {
-    const prompt = buildImagePrompt(postText);
-    await navigator.clipboard.writeText(prompt);
-    setFormCopiedKey(`${articleId}-imageprompt`);
-    setTimeout(() => setFormCopiedKey(null), 2000);
-  };
-
-  if (loading) return <p className="text-gray-500 text-sm py-8 text-center">Loading news posts…</p>;
+  if (loading) return <p className="text-gray-500 text-sm py-8 text-center">Loading news…</p>;
 
   if (groups.size === 0) {
     return (
       <div className="text-center py-16">
-        <p className="text-gray-400 text-sm">No news posts pending review.</p>
-        <p className="text-gray-600 text-xs mt-1">Run the cron or POST to /api/cron/news-to-social to generate.</p>
+        <p className="text-gray-400 text-sm">No news pending review.</p>
+        <p className="text-gray-600 text-xs mt-1">Cron runs overnight — check back tomorrow morning.</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <p className="text-xs text-gray-500">
-        {groups.size} article{groups.size !== 1 ? 's' : ''} ready
-        &nbsp;·&nbsp; FB/Insta: approve to auto-schedule &nbsp;·&nbsp; X/LinkedIn: copy &amp; post manually, then click Posted
-      </p>
+    <div className="space-y-4">
+
+      {/* ── Scheduled slots panel ─────────────────────────────────────── */}
+      {scheduledSlots.length > 0 && (
+        <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+          <button
+            onClick={() => setSlotsOpen((v) => !v)}
+            className="w-full flex items-center justify-between px-4 py-3 text-xs text-gray-400 hover:text-gray-200 transition-colors"
+          >
+            <span className="font-medium uppercase tracking-wider">Scheduled FB/Instagram slots ({scheduledSlots.length})</span>
+            {slotsOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+          </button>
+          {slotsOpen && (
+            <div className="border-t border-gray-800 divide-y divide-gray-800/60">
+              {scheduledSlots.map((s) => (
+                <div key={s.id} className="px-4 py-2 flex items-center gap-3">
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium shrink-0 ${PLATFORM_COLORS[s.platform] ?? 'bg-gray-700 text-gray-300'}`}>{s.platform}</span>
+                  <span className="text-xs text-gray-400 shrink-0">{toIST(s.scheduled_at)}</span>
+                  <span className="text-xs text-gray-600 truncate">{s.content_idea ?? '—'}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      <p className="text-xs text-gray-500">{groups.size} article{groups.size !== 1 ? 's' : ''} ready for review</p>
+
+      {/* ── Article list ──────────────────────────────────────────────── */}
       {Array.from(groups.entries()).map(([articleId, posts]) => {
         const headline = posts[0]?.content_idea ?? 'Untitled';
-        const imageUrl = posts[0]?.image_url;
-        const isActing = actionId === articleId;
-        const autoPosts = posts.filter((p) => p.status === 'pending_review');
-        const manualPosts = posts.filter((p) => p.status === 'manual_ready');
-        const scheduledLabel = scheduleLabels[articleId];
+        const formatState = formatStates.get(articleId);
+        const isFormatting = formatState === 'loading';
+        const isFormatted = formatState && formatState !== 'loading';
+        const result = isFormatted ? (formatState as NewsFormatResult) : null;
+        const isRejecting = rejectingId === articleId;
+        const isScheduling = schedulingId === articleId;
+        const isPosting = postedId === articleId;
+
         return (
-          <div key={articleId} className="bg-gray-900 rounded-xl overflow-hidden border border-gray-800">
-            {/* Image + headline */}
-            <div className="border-b border-gray-800">
-              <div
-                className="relative w-full overflow-hidden cursor-pointer bg-gray-800"
-                style={{ minHeight: '200px', maxHeight: '280px' }}
-                onClick={() => imageUrl && window.open(imageUrl, '_blank')}
-                title={imageUrl ? 'Click to view full image' : undefined}
-              >
-                {imageUrl ? (
-                  <>
-                    <img
-                      src={imageUrl}
-                      alt=""
-                      className="w-full object-cover"
-                      style={{ minHeight: '200px', maxHeight: '280px' }}
-                    />
-                    <div className="absolute bottom-0 left-0 right-0 h-28 bg-gradient-to-t from-black/70 to-transparent pointer-events-none" />
-                    <div className="absolute top-2 right-2 opacity-0 hover:opacity-100 transition-opacity">
-                      <span className="bg-black/60 text-white text-xs px-2 py-1 rounded">Open full size ↗</span>
-                    </div>
-                  </>
-                ) : (
-                  <div className="flex items-center justify-center h-full" style={{ minHeight: '200px' }}>
-                    <span className="text-gray-600 text-sm">Generating image…</span>
-                  </div>
-                )}
-              </div>
-              <div className="p-4">
-                <p className="text-sm font-medium text-white leading-snug">{headline}</p>
-                {scheduledLabel && (
-                  <p className="text-xs text-green-400 mt-1">✓ FB/Insta scheduled for {scheduledLabel}</p>
-                )}
-              </div>
+          <div key={articleId} className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+
+            {/* Headline row */}
+            <div className="p-4">
+              <p className="text-sm font-medium text-white leading-snug">{headline}</p>
+              {posts[0]?.created_at && (
+                <p className="text-xs text-gray-600 mt-1">{toIST(posts[0].created_at)}</p>
+              )}
             </div>
 
-            {/* Auto platforms: FB + Instagram */}
-            {autoPosts.length > 0 && (
-              <div>
-                <p className="text-[10px] text-gray-500 uppercase tracking-wider px-4 pt-3 pb-1">Auto-publish — Facebook & Instagram</p>
-                <div className="divide-y divide-gray-800">
-                  {autoPosts.map((post) => (
-                    <div key={post.id} className="px-4 py-3">
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${PLATFORM_COLORS[post.platform] ?? 'bg-gray-700 text-gray-300'}`}>{post.platform}</span>
-                      <p className="text-xs text-gray-300 mt-1">{renderCaption(post.caption ?? '')}</p>
-                      {post.hashtags && post.hashtags.length > 0 && (
-                        <p className="text-xs text-blue-500 mt-1">{post.hashtags.map((h) => `#${h}`).join(' ')}</p>
-                      )}
-                    </div>
-                  ))}
-                </div>
+            {/* Actions row — only shown before Format Posts */}
+            {!isFormatted && (
+              <div className="flex gap-2 px-4 pb-4">
+                <button
+                  onClick={() => formatPosts(articleId)}
+                  disabled={isFormatting || isRejecting}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-purple-700 hover:bg-purple-600 disabled:opacity-50 text-white text-sm font-medium transition-colors"
+                >
+                  {isFormatting
+                    ? <><Loader2 className="w-3 h-3 animate-spin" /> Generating…</>
+                    : <><Sparkles className="w-3 h-3" /> Format Posts</>}
+                </button>
+                <button
+                  onClick={() => rejectGroup(articleId)}
+                  disabled={isFormatting || isRejecting}
+                  className="px-4 py-2 rounded-lg bg-gray-800 hover:bg-red-900 text-gray-400 hover:text-red-300 text-sm font-medium disabled:opacity-50 transition-colors"
+                >
+                  {isRejecting ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Reject'}
+                </button>
               </div>
             )}
 
-            {/* Manual platforms: X + LinkedIn */}
-            {manualPosts.length > 0 && (
+            {/* Formatted content panel */}
+            {result && (
               <div className="border-t border-gray-800">
-                <p className="text-[10px] text-gray-500 uppercase tracking-wider px-4 pt-3 pb-1">Manual post — X & LinkedIn</p>
-                <div className="divide-y divide-gray-800">
-                  {manualPosts.map((post) => (
-                    <div key={post.id} className="px-4 py-3">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${PLATFORM_COLORS[post.platform] ?? 'bg-gray-700 text-gray-300'}`}>{post.platform}</span>
-                        <button
-                          onClick={() => copyToClipboard(post)}
-                          className="text-xs px-3 py-1 rounded-lg bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors"
-                        >
-                          {copiedId === post.id ? '✓ Copied!' : 'Copy text'}
-                        </button>
-                      </div>
-                      <p className="text-xs text-gray-300 mt-1">{renderCaption(post.caption ?? '')}</p>
-                      {post.hashtags && post.hashtags.length > 0 && (
-                        <p className="text-xs text-blue-500 mt-1">{post.hashtags.map((h) => `#${h}`).join(' ')}</p>
-                      )}
+
+                {/* ── Facebook & Instagram ─────────────────────────── */}
+                <div className="border-b border-gray-800">
+                  <p className="text-[10px] text-indigo-400 uppercase tracking-wider px-4 pt-3 pb-2 font-semibold">Facebook & Instagram — Portrait 1080×1350</p>
+
+                  {/* Portrait image */}
+                  <div className="px-4 pb-3">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={result.portraitUrl}
+                      alt="Portrait"
+                      className="w-full max-h-72 object-cover rounded-lg cursor-pointer"
+                      onClick={() => window.open(result.portraitUrl, '_blank')}
+                    />
+                  </div>
+
+                  {/* Facebook caption */}
+                  <div className="px-4 pb-3 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${PLATFORM_COLORS['Facebook']}`}>Facebook</span>
+                      <button
+                        onClick={() => copyText(result.captions.facebook, `${articleId}-fb`)}
+                        className="text-xs px-2 py-1 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 flex items-center gap-1 transition-colors"
+                      >
+                        {copiedKey === `${articleId}-fb` ? <><Check size={11} className="text-green-400" /> Copied!</> : <><Copy size={11} /> Copy</>}
+                      </button>
                     </div>
-                  ))}
-                </div>
-              </div>
-            )}
+                    <pre className="text-xs text-gray-300 whitespace-pre-wrap font-sans leading-relaxed max-h-32 overflow-y-auto">{result.captions.facebook}</pre>
+                  </div>
 
-            {/* Actions */}
-            <div className="flex gap-2 p-4 border-t border-gray-800 flex-wrap">
-              {autoPosts.length > 0 && (
-                <button
-                  onClick={() => handleApprove(articleId)}
-                  disabled={isActing}
-                  className="flex-1 py-2 rounded-lg bg-green-700 hover:bg-green-600 text-white text-sm font-medium disabled:opacity-50 transition-colors"
-                >
-                  {isActing ? 'Scheduling…' : '✓ Approve & Schedule'}
-                </button>
-              )}
-              {manualPosts.length > 0 && (
-                <button
-                  onClick={() => markManualPosted(articleId)}
-                  disabled={isActing}
-                  className="flex-1 py-2 rounded-lg bg-blue-700 hover:bg-blue-600 text-white text-sm font-medium disabled:opacity-50 transition-colors"
-                >
-                  {isActing ? 'Saving…' : '✓ Posted'}
-                </button>
-              )}
-              <button
-                onClick={() => {
-                  if (formattedPosts.has(articleId)) {
-                    setFormattedPosts((prev) => { const m = new Map(prev); m.delete(articleId); return m; });
-                  } else {
-                    generateFormattedPosts(articleId);
-                  }
-                }}
-                disabled={isActing || formattedPosts.get(articleId) === 'loading'}
-                className="px-4 py-2 rounded-lg bg-purple-900 hover:bg-purple-800 text-purple-300 text-sm font-medium disabled:opacity-50 transition-colors flex items-center gap-1.5"
-              >
-                {formattedPosts.get(articleId) === 'loading' ? (
-                  <><Loader2 className="w-3 h-3 animate-spin" /> Generating…</>
-                ) : formattedPosts.has(articleId) ? (
-                  'Hide Posts'
-                ) : (
-                  <><Sparkles className="w-3 h-3" /> Format Posts</>
-                )}
-              </button>
-              <button
-                onClick={() => rejectGroup(articleId)}
-                disabled={isActing}
-                className="px-4 py-2 rounded-lg bg-gray-800 hover:bg-red-900 text-gray-400 hover:text-red-300 text-sm font-medium disabled:opacity-50 transition-colors"
-              >
-                Reject
-              </button>
-            </div>
+                  {/* Instagram caption */}
+                  <div className="px-4 pb-3 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${PLATFORM_COLORS['Instagram']}`}>Instagram</span>
+                      <button
+                        onClick={() => copyText(result.captions.instagram, `${articleId}-insta`)}
+                        className="text-xs px-2 py-1 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 flex items-center gap-1 transition-colors"
+                      >
+                        {copiedKey === `${articleId}-insta` ? <><Check size={11} className="text-green-400" /> Copied!</> : <><Copy size={11} /> Copy</>}
+                      </button>
+                    </div>
+                    <pre className="text-xs text-gray-300 whitespace-pre-wrap font-sans leading-relaxed max-h-32 overflow-y-auto">{result.captions.instagram}</pre>
+                  </div>
 
-            {/* Formatted Posts Panel */}
-            {formattedPosts.has(articleId) && formattedPosts.get(articleId) !== 'loading' && (() => {
-              const fp = formattedPosts.get(articleId) as FormattedPosts;
-              const platforms: { key: keyof FormattedPosts; label: string; color: string }[] = [
-                { key: 'x',         label: 'X',         color: 'bg-gray-700 text-gray-300' },
-                { key: 'linkedin',  label: 'LinkedIn',  color: 'bg-blue-900 text-blue-300' },
-                { key: 'facebook',  label: 'Facebook',  color: 'bg-indigo-900 text-indigo-300' },
-                { key: 'instagram', label: 'Instagram', color: 'bg-pink-900 text-pink-300' },
-              ];
-              return (
-                <div className="border-t border-purple-900/60 bg-[#0d0d14]">
-                  <p className="text-[10px] text-purple-400 uppercase tracking-wider px-4 pt-3 pb-1">
-                    Formatted Posts — copy-paste ready for all platforms
-                  </p>
-                  <div className="divide-y divide-gray-800/60">
-                    {platforms.map(({ key, label, color }) => {
-                      const text = fp[key];
-                      const copyKey = `${articleId}-${key}`;
-                      return (
-                        <div key={key} className="px-4 py-3">
-                          <div className="flex items-center justify-between mb-2">
-                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${color}`}>{label}</span>
-                            <div className="flex items-center gap-2">
-                              <button
-                                onClick={() => copyImagePrompt(articleId, text)}
-                                className="text-xs px-3 py-1 rounded-lg bg-amber-900/40 hover:bg-amber-800/60 text-amber-300 transition-colors flex items-center gap-1"
-                                title="Copy the full image-generation prompt (design system + this post) for ChatGPT / Gemini"
-                              >
-                                {formCopiedKey === `${articleId}-imageprompt`
-                                  ? <><Check className="w-3 h-3 text-green-400" /> Copied!</>
-                                  : <><Sparkles className="w-3 h-3" /> Image Prompt</>}
-                              </button>
-                              <button
-                                onClick={() => copyFormattedPost(articleId, key, text)}
-                                className="text-xs px-3 py-1 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors flex items-center gap-1"
-                              >
-                                {formCopiedKey === copyKey
-                                  ? <><Check className="w-3 h-3 text-green-400" /> Copied!</>
-                                  : <><Copy className="w-3 h-3" /> Copy</>}
-                              </button>
-                            </div>
-                          </div>
-                          <pre className="text-xs text-gray-300 whitespace-pre-wrap font-sans leading-relaxed">{text}</pre>
-                        </div>
-                      );
-                    })}
+                  {/* Schedule picker */}
+                  <div className="px-4 pb-4 flex items-center gap-2 flex-wrap">
+                    <div className="flex flex-col gap-0.5">
+                      <label className="text-[10px] text-gray-500">Schedule time (IST)</label>
+                      <input
+                        type="datetime-local"
+                        value={scheduleTime[articleId] ?? ''}
+                        onChange={(e) => setScheduleTime((prev) => ({ ...prev, [articleId]: e.target.value }))}
+                        className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-indigo-500"
+                      />
+                    </div>
+                    <button
+                      onClick={() => scheduleFbInsta(articleId)}
+                      disabled={isScheduling || !scheduleTime[articleId]}
+                      className="mt-4 flex items-center gap-1.5 px-4 py-2 rounded-lg bg-green-700 hover:bg-green-600 disabled:opacity-50 text-white text-sm font-medium transition-colors"
+                    >
+                      {isScheduling ? <><Loader2 size={12} className="animate-spin" /> Scheduling…</> : '✓ Schedule FB + Instagram'}
+                    </button>
                   </div>
                 </div>
-              );
-            })()}
+
+                {/* ── X & LinkedIn ────────────────────────────────── */}
+                <div>
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wider px-4 pt-3 pb-2 font-semibold">X & LinkedIn — Landscape 1200×675</p>
+
+                  {/* Landscape image */}
+                  <div className="px-4 pb-3">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={result.landscapeUrl}
+                      alt="Landscape"
+                      className="w-full max-h-52 object-cover rounded-lg cursor-pointer"
+                      onClick={() => window.open(result.landscapeUrl, '_blank')}
+                    />
+                  </div>
+
+                  {/* X caption */}
+                  <div className="px-4 pb-3 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${PLATFORM_COLORS['X']}`}>X</span>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => copyText(result.captions.x, `${articleId}-x`)}
+                          className="text-xs px-2 py-1 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 flex items-center gap-1 transition-colors"
+                        >
+                          {copiedKey === `${articleId}-x` ? <><Check size={11} className="text-green-400" /> Copied!</> : <><Copy size={11} /> Copy post</>}
+                        </button>
+                        <a
+                          href={result.landscapeUrl}
+                          download={`x-${articleId}.jpg`}
+                          className="text-xs px-2 py-1 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 flex items-center gap-1 transition-colors"
+                        >
+                          ↓ Image
+                        </a>
+                      </div>
+                    </div>
+                    <pre className="text-xs text-gray-300 whitespace-pre-wrap font-sans leading-relaxed max-h-32 overflow-y-auto">{result.captions.x}</pre>
+                  </div>
+
+                  {/* LinkedIn caption */}
+                  <div className="px-4 pb-3 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${PLATFORM_COLORS['LinkedIn']}`}>LinkedIn</span>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => copyText(result.captions.linkedin, `${articleId}-li`)}
+                          className="text-xs px-2 py-1 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 flex items-center gap-1 transition-colors"
+                        >
+                          {copiedKey === `${articleId}-li` ? <><Check size={11} className="text-green-400" /> Copied!</> : <><Copy size={11} /> Copy post</>}
+                        </button>
+                        <a
+                          href={result.landscapeUrl}
+                          download={`linkedin-${articleId}.jpg`}
+                          className="text-xs px-2 py-1 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 flex items-center gap-1 transition-colors"
+                        >
+                          ↓ Image
+                        </a>
+                      </div>
+                    </div>
+                    <pre className="text-xs text-gray-300 whitespace-pre-wrap font-sans leading-relaxed max-h-32 overflow-y-auto">{result.captions.linkedin}</pre>
+                  </div>
+
+                  {/* Posted button */}
+                  <div className="px-4 pb-4">
+                    <button
+                      onClick={() => markPosted(articleId)}
+                      disabled={isPosting}
+                      className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-blue-700 hover:bg-blue-600 disabled:opacity-50 text-white text-sm font-medium transition-colors"
+                    >
+                      {isPosting ? <><Loader2 size={12} className="animate-spin" /> Saving…</> : '✓ Posted on X & LinkedIn'}
+                    </button>
+                  </div>
+                </div>
+
+              </div>
+            )}
           </div>
         );
       })}
