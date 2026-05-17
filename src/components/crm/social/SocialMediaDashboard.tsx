@@ -1065,6 +1065,7 @@ function HistoryTab() {
 interface NewsPost extends SavedPost {
   news_article_id?: string;
   post_category?: string;
+  news_articles?: { ai_summary: string | null; summary: string | null } | null;
 }
 
 const PLATFORM_COLORS: Record<string, string> = {
@@ -1388,6 +1389,7 @@ function NewsTab() {
       {/* ── Article list ──────────────────────────────────────────────── */}
       {Array.from(groups.entries()).map(([articleId, posts]) => {
         const headline = posts[0]?.content_idea ?? 'Untitled';
+        const articleSummary = posts[0]?.news_articles?.ai_summary ?? posts[0]?.news_articles?.summary ?? null;
         const formatState = formatStates.get(articleId);
         const isFormatting = formatState === 'loading';
         const isFormatted = formatState && formatState !== 'loading';
@@ -1402,6 +1404,9 @@ function NewsTab() {
             {/* Headline row */}
             <div className="p-4">
               <p className="text-sm font-medium text-white leading-snug">{headline}</p>
+              {articleSummary && (
+                <p className="text-xs text-gray-400 mt-1.5 leading-relaxed line-clamp-2">{articleSummary}</p>
+              )}
               {posts[0]?.created_at && (
                 <p className="text-xs text-gray-600 mt-1">{toIST(posts[0].created_at)}</p>
               )}

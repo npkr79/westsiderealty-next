@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
   const supabase = createServiceClient();
   let query = supabase
     .from('social_posts')
-    .select('*')
+    .select('*, news_articles(ai_summary, summary)')
     .order('created_at', { ascending: false });
 
   if (statusParam) {
