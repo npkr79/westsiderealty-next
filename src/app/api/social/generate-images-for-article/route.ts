@@ -3,7 +3,7 @@ import { getCrmSessionResult } from '@/lib/crm/auth';
 import { createServiceClient } from '@/lib/supabase/serviceClient';
 import { generateSingleImage } from '@/services/newsToSocialService';
 
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 // POST /api/social/generate-images-for-article
 // Generates ONE image variant per call to stay within Vercel's 60s timeout.

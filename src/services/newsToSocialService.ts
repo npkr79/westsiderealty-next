@@ -522,8 +522,8 @@ export async function generateImage(article: NewsArticle): Promise<GeneratedImag
   // Portrait  1024×1792 → 1080×1350  (Facebook + Instagram, 4:5)
   // Landscape 1792×1024 → 1200×675   (X + LinkedIn, 16:9)
   const [portraitUrl, landscapeUrl] = await Promise.all([
-    generateAndUpload("1024x1792", 1080, 1350, 140, "portrait"),
-    generateAndUpload("1792x1024", 1200,  675, 120, "landscape"),
+    generateAndUpload("1024x1536", 1080, 1350, 140, "portrait"),
+    generateAndUpload("1536x1024", 1200,  675, 120, "landscape"),
   ]);
 
   console.log("[NewsToSocial] Both images ready — portrait:", portraitUrl.slice(-40), "landscape:", landscapeUrl.slice(-40));
@@ -547,10 +547,12 @@ export async function generateSingleImage(
   const prompt = STYLE_WRAPPER.replace("{post_text}", postText);
   const logoBuffer = await fetch(LOGO_URL).then((r) => r.arrayBuffer()).then((ab) => Buffer.from(ab));
 
+  // gpt-image-2 valid sizes: 1024x1024, 1024x1536 (portrait), 1536x1024 (landscape)
+  // Sharp resizes to final social media dimensions after generation
   const [apiSize, targetW, targetH, logoMaxWidth] =
     variant === "portrait"
-      ? ["1024x1792", 1080, 1350, 140]
-      : ["1792x1024", 1200,  675, 120];
+      ? ["1024x1536", 1080, 1350, 140]   // → 1080×1350 (FB + Instagram 4:5)
+      : ["1536x1024", 1200,  675, 120];  // → 1200×675  (X + LinkedIn 16:9)
 
   console.log(`[NewsToSocial] Generating ${variant} image for:`, article.headline.slice(0, 60));
 
