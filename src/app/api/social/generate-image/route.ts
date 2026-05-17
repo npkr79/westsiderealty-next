@@ -47,24 +47,39 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Article not found' }, { status: 404 });
   }
 
-  let image_url: string;
+  let images: { portraitUrl: string; landscapeUrl: string };
   try {
-    image_url = await generateImage(article);
+    images = await generateImage(article);
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     console.error('[social/generate-image] generateImage error:', msg);
     return NextResponse.json({ error: 'Image generation failed', detail: msg }, { status: 500 });
   }
 
-  // Update this post AND all sibling posts for the same article
-  const { error: updateErr } = await supabase
-    .from('social_posts')
-    .update({ image_url, updated_at: new Date().toISOString() })
-    .eq('news_article_id', post.news_article_id);
+  const now = new Date().toISOString();
+  const articleId = post.news_article_id;
 
-  if (updateErr) {
-    console.error('[social/generate-image] Update error:', updateErr);
-  }
+  // Portrait (1080×1350) → Facebook + Instagram
+  // Landscape (1200×675) → X + LinkedIn
+  const [portraitUpdate, landscapeUpdate] = await Promise.all([
+    supabase
+      .from('social_posts')
+      .update({ image_url: images.portraitUrl, updated_at: now })
+      .eq('news_article_id', articleId)
+      .in('platform', ['Facebook', 'Instagram']),
+    supabase
+      .from('social_posts')
+      .update({ image_url: images.landscapeUrl, updated_at: now })
+      .eq('news_article_id', articleId)
+      .in('platform', ['X', 'LinkedIn']),
+  ]);
 
-  return NextResponse.json({ success: true, image_url });
+  if (portraitUpdate.error) console.error('[social/generate-image] Portrait update error:', portraitUpdate.error);
+  if (landscapeUpdate.error) console.error('[social/generate-image] Landscape update error:', landscapeUpdate.error);
+
+  return NextResponse.json({
+    success: true,
+    portrait_url: images.portraitUrl,
+    landscape_url: images.landscapeUrl,
+  });
 }

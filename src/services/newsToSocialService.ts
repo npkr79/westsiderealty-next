@@ -89,11 +89,16 @@ export interface PlatformCaption {
   hashtags: string[];
 }
 
+export interface GeneratedImages {
+  portraitUrl: string;  // 1080×1350 — Facebook + Instagram
+  landscapeUrl: string; // 1200×675  — X + LinkedIn
+}
+
 export interface NewsPostResult {
   article_id: string;
   headline: string;
   captions: PlatformCaption[];
-  image_url: string | null;
+  images: GeneratedImages | null;
   post_ids: string[];
 }
 
@@ -428,7 +433,7 @@ function applyHeadlineOverlay(cloudinaryUrl: string, headline: string): string {
 // Generate and upload image
 // ---------------------------------------------------------------------------
 
-export async function generateImage(article: NewsArticle): Promise<string> {
+export async function generateImage(article: NewsArticle): Promise<GeneratedImages> {
   const openaiKey = process.env.OPENAI_API_KEY;
   if (!openaiKey) throw new Error("OPENAI_API_KEY not configured");
 
@@ -438,79 +443,91 @@ export async function generateImage(article: NewsArticle): Promise<string> {
   ].filter(Boolean).join("\n\n");
 
   const prompt = STYLE_WRAPPER.replace("{post_text}", postText);
-  console.log("[NewsToSocial] Generating image for:", article.headline.slice(0, 60));
+  console.log("[NewsToSocial] Generating portrait + landscape images for:", article.headline.slice(0, 60));
 
-  // ── Step 1: Generate image with gpt-image-2 ───────────────────────────────
-  const imageRes = await fetch("https://api.openai.com/v1/images/generations", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${openaiKey}`,
-    },
-    body: JSON.stringify({
-      model: "gpt-image-2",
-      prompt,
-      n: 1,
-      size: "1024x1024",
-      quality: "high",
-      output_format: "jpeg",
-    }),
-  });
-
-  if (!imageRes.ok) {
-    const errText = await imageRes.text();
-    throw new Error(`gpt-image-2 error: ${errText.slice(0, 200)}`);
-  }
-
-  const imageData = await imageRes.json();
-  const base64Image: string = imageData.data?.[0]?.b64_json;
-  if (!base64Image) throw new Error("gpt-image-2 returned no image data");
-  const rawImageBuffer = Buffer.from(base64Image, "base64");
-
-  // ── Step 2: Resize to 940×788 (Facebook post) + composite REMAX logo top-right ──
-  // The AI generates the image at 1024×1024 and we crop/resize to the target dimensions.
-  // Text (title, subtitle, dark overlay) is already embedded by the AI — no text overlay needed.
-  console.log("[NewsToSocial] Resizing to 940×788 and compositing logo...");
-  const IMG_W = 940;
-  const IMG_H = 788;
-
+  // Pre-fetch logo once — reused for both images
   const logoBuffer = await fetch(LOGO_URL).then((r) => r.arrayBuffer()).then((ab) => Buffer.from(ab));
 
-  const logoResized = await sharp(logoBuffer)
-    .resize(140, null, { fit: "inside" })
-    .toBuffer();
-  const logoWidth = (await sharp(logoResized).metadata()).width ?? 140;
-
-  const compositedBuffer = await sharp(rawImageBuffer)
-    .resize(IMG_W, IMG_H, { fit: "cover", position: "centre" })
-    .composite([
-      { input: logoResized, top: 16, left: IMG_W - logoWidth - 16 },
-    ])
-    .jpeg({ quality: 92 })
-    .toBuffer();
-
-  // ── Step 3: Upload to Cloudinary ──────────────────────────────────────────
-  console.log("[NewsToSocial] Uploading to Cloudinary...");
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const uploadResult = await new Promise<any>((resolve, reject) => {
-    const uploadStream = cloudinary.uploader.upload_stream(
-      {
-        folder: `news-posts/${article.id}`,
-        public_id: "main",
-        overwrite: true,
-        resource_type: "image",
+  // Helper: generate → resize → composite logo → upload to Cloudinary
+  const generateAndUpload = async (
+    apiSize: string,          // size sent to OpenAI API
+    targetW: number,          // final output width
+    targetH: number,          // final output height
+    logoMaxWidth: number,     // logo width for this format
+    publicId: string          // Cloudinary public_id
+  ): Promise<string> => {
+    // ── Step 1: Generate with gpt-image-2 ──────────────────────────────────
+    const imageRes = await fetch("https://api.openai.com/v1/images/generations", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${openaiKey}`,
       },
-      (error, result) => {
-        if (error) reject(error);
-        else resolve(result);
-      }
-    );
-    uploadStream.end(compositedBuffer);
-  });
+      body: JSON.stringify({
+        model: "gpt-image-2",
+        prompt,
+        n: 1,
+        size: apiSize,
+        quality: "high",
+        output_format: "jpeg",
+      }),
+    });
 
-  const finalUrl = uploadResult.secure_url;
-  console.log("[NewsToSocial] Image ready:", finalUrl);
-  return finalUrl;
+    if (!imageRes.ok) {
+      const errText = await imageRes.text();
+      throw new Error(`gpt-image-2 error (${apiSize}): ${errText.slice(0, 200)}`);
+    }
+
+    const imageData = await imageRes.json();
+    const base64Image: string = imageData.data?.[0]?.b64_json;
+    if (!base64Image) throw new Error(`gpt-image-2 returned no image data (${apiSize})`);
+    const rawImageBuffer = Buffer.from(base64Image, "base64");
+
+    // ── Step 2: Resize to target dimensions + composite logo top-right ─────
+    const logoResized = await sharp(logoBuffer)
+      .resize(logoMaxWidth, null, { fit: "inside" })
+      .toBuffer();
+    const logoW = (await sharp(logoResized).metadata()).width ?? logoMaxWidth;
+
+    const compositedBuffer = await sharp(rawImageBuffer)
+      .resize(targetW, targetH, { fit: "cover", position: "centre" })
+      .composite([
+        { input: logoResized, top: 16, left: targetW - logoW - 16 },
+      ])
+      .jpeg({ quality: 92 })
+      .toBuffer();
+
+    // ── Step 3: Upload to Cloudinary ────────────────────────────────────────
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const uploadResult = await new Promise<any>((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        {
+          folder: `news-posts/${article.id}`,
+          public_id: publicId,
+          overwrite: true,
+          resource_type: "image",
+        },
+        (error, result) => {
+          if (error) reject(error);
+          else resolve(result);
+        }
+      );
+      uploadStream.end(compositedBuffer);
+    });
+
+    return uploadResult.secure_url;
+  };
+
+  // Generate both sizes in parallel
+  // Portrait  1024×1792 → 1080×1350  (Facebook + Instagram, 4:5)
+  // Landscape 1792×1024 → 1200×675   (X + LinkedIn, 16:9)
+  const [portraitUrl, landscapeUrl] = await Promise.all([
+    generateAndUpload("1024x1792", 1080, 1350, 140, "portrait"),
+    generateAndUpload("1792x1024", 1200,  675, 120, "landscape"),
+  ]);
+
+  console.log("[NewsToSocial] Both images ready — portrait:", portraitUrl.slice(-40), "landscape:", landscapeUrl.slice(-40));
+  return { portraitUrl, landscapeUrl };
 }
 
 // ---------------------------------------------------------------------------
@@ -534,11 +551,14 @@ export async function createSocialPosts(
   supabase: SupabaseClient,
   article: NewsArticle,
   captions: PlatformCaption[],
-  imageUrl: string | null
+  images: GeneratedImages | null
 ): Promise<string[]> {
   const scheduledAt = todayAt7pmIST();
   const now = new Date().toISOString();
 
+  // Portrait (4:5)  → Facebook, Instagram
+  // Landscape (16:9) → X, LinkedIn
+  const PORTRAIT_PLATFORMS = ["Facebook", "Instagram"];
   // FB/Instagram: pending_review → user approves → scheduled → auto-published
   // X/LinkedIn: manual_ready → user copies and posts manually
   const AUTO_PLATFORMS = ["Facebook", "Instagram"];
@@ -546,7 +566,11 @@ export async function createSocialPosts(
     content_idea: article.headline,
     caption: c.caption,
     hashtags: c.hashtags,
-    image_url: imageUrl,
+    image_url: images
+      ? PORTRAIT_PLATFORMS.includes(c.platform)
+        ? images.portraitUrl
+        : images.landscapeUrl
+      : null,
     platform: c.platform,
     content_type: "post",
     status: AUTO_PLATFORMS.includes(c.platform) ? "pending_review" : "manual_ready",
@@ -594,7 +618,7 @@ export async function processArticle(
     article_id: article.id,
     headline: article.headline,
     captions,
-    image_url: null,
+    images: null,
     post_ids: postIds,
   };
 }
