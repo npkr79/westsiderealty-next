@@ -388,7 +388,7 @@ export async function generateImage(article: NewsArticle): Promise<string> {
   const prompt = STYLE_WRAPPER.replace("{post_text}", postText);
   console.log("[NewsToSocial] Generating image for:", article.headline.slice(0, 60));
 
-  // ── Step 1: Generate image with gpt-image-1 ───────────────────────────────
+  // ── Step 1: Generate image with gpt-image-2 ───────────────────────────────
   const imageRes = await fetch("https://api.openai.com/v1/images/generations", {
     method: "POST",
     headers: {
@@ -396,7 +396,7 @@ export async function generateImage(article: NewsArticle): Promise<string> {
       Authorization: `Bearer ${openaiKey}`,
     },
     body: JSON.stringify({
-      model: "gpt-image-1",
+      model: "gpt-image-2",
       prompt,
       n: 1,
       size: "1024x1536",
@@ -407,12 +407,12 @@ export async function generateImage(article: NewsArticle): Promise<string> {
 
   if (!imageRes.ok) {
     const errText = await imageRes.text();
-    throw new Error(`gpt-image-1 error: ${errText.slice(0, 200)}`);
+    throw new Error(`gpt-image-2 error: ${errText.slice(0, 200)}`);
   }
 
   const imageData = await imageRes.json();
   const base64Image: string = imageData.data?.[0]?.b64_json;
-  if (!base64Image) throw new Error("gpt-image-1 returned no image data");
+  if (!base64Image) throw new Error("gpt-image-2 returned no image data");
   const rawImageBuffer = Buffer.from(base64Image, "base64");
 
   // ── Step 2: Composite REMAX logo (top-right) + dark gradient (bottom) ────
