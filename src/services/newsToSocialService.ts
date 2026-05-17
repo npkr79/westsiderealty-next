@@ -3,12 +3,50 @@ import sharp from "sharp";
 import { v2 as cloudinary } from "cloudinary";
 import { areSameStory } from "@/services/newsScraperService";
 
-const STYLE_WRAPPER = `Create a photorealistic image that visually represents this Indian social media post. Style: cinematic editorial photography, natural lighting, warm color grade. No text in the image.
+const STYLE_WRAPPER = `Create a professional social media post image (940px × 788px Facebook post size) for a real estate news update.
 
-POST:
-{post_text}
+VISUAL STYLE
+- Clean, modern, professional infographic style
+- Broad daylight lighting — avoid dark, sunset, golden hour, or night themes
+- Realistic urban / office / infrastructure / business environments
+- Modern, high-quality, editorial-style visuals
+- Corporate, trustworthy, credible tone
 
-Generate one image matching the subject and emotional tone of the post.`;
+LAYOUT & SPACING
+- Balanced layout with strong visual hierarchy
+- Adequate spacing and margins
+- Do not overcrowd the design
+- Prioritise readability on mobile screens
+
+BRANDING
+- Do NOT place any logo or branding in the top-right corner (reserved for company logo added separately)
+- If relevant, include logos of regulatory bodies, companies, or institutions mentioned — placed naturally in header area
+- If a notable person is mentioned (CEO / Minister / Chairman / Founder), include a realistic photo of them
+- Avoid Government of India logos
+
+TEXT ON IMAGE
+- Keep text short and punchy — title and subtitle only
+- Place the main title near the bottom of the image
+- White text for normal content; yellow text for highlighted keywords, numbers, percentages, and years
+- Bold emphasis on numbers, percentages, years, key warnings, and important phrases
+- Use a dark overlay behind text for readability
+- Maintain clear spacing between the bottom edge and text
+
+VISUAL ELEMENTS
+- Use relevant icons: warning icons, growth charts, buildings, infrastructure, money symbols, legal symbols, checklists
+- Keep the design clean and minimal — no clutter
+
+TONE
+- Professional, regulatory, informative, credible, authoritative
+- No marketing hype, sales language, or clickbait
+
+OUTPUT
+- Sharp, modern, corporate-grade, social-media ready
+- Readable on mobile
+- Professional enough for LinkedIn and Facebook
+
+POST CONTENT:
+{post_text}`;
 
 // ---------------------------------------------------------------------------
 // Cloudinary config (call once at module level)
@@ -220,41 +258,55 @@ export async function generateCaptions(
     .join("\n");
 
   const systemPrompt = `You are a social media content writer for REMAX Westside Realty, a premium real estate agency in Hyderabad, India.
-Your role is to share real estate news in a clear, factual, and professional way — informing followers without making unverified claims about price growth, investment returns, or market outcomes.
+Your role is to create professional, factual social media posts about real estate news.
 
 TONE RULES:
-- Report the event as it happened — facts only, no speculation presented as certainty
-- You may reference well-known general market principles (e.g. "infrastructure projects have historically influenced surrounding property demand") but NEVER confirm or assure specific future outcomes for a specific location
-- NEVER say: "early movers will benefit", "prices will surge", "this creates premium opportunities", "demand is rising here", "now is the time to invest"
-- DO say: "historically, such developments have influenced surrounding demand", "analysts generally note that...", "this may be worth watching for buyers tracking this corridor"
-- Keep energy in the writing through the significance of the news itself — not through hype or manufactured urgency
-- NEVER use direct sales CTAs: "Contact us", "Book a consultation", "Call now", "DM us to invest"
-- The brand signature is the only CTA needed`;
+- Professional, neutral, informational — no emojis unless requested
+- Facts first, then impact, then takeaway
+- No speculation presented as certainty
+- NEVER say: "early movers will benefit", "prices will surge", "now is the time to invest"
+- NEVER use direct sales CTAs: "Contact us", "Book a consultation", "Call now"
+- The brand signature is the only CTA needed
 
-  const userPrompt = `Generate social media captions for all 4 platforms for this real estate news article:
+UNICODE BOLD FORMATTING (MANDATORY):
+- Use Lingojam Unicode bold (𝗹𝗶𝗸𝗲 𝘁𝗵𝗶𝘀) for: titles, subtitles, all headings, sub-headings, key numbers, percentages, years, and important keywords
+- Do NOT bold the entire post — only titles, headings, key numbers, and key phrases
+- All bold text must be Unicode style, not Markdown asterisks
+- Posts must be fully copy-paste ready for social media`;
+
+  const userPrompt = `Create social media posts for X, LinkedIn, Facebook, and Instagram for this real estate news article:
 
 ${context}
 
-RULES per platform:
-- LinkedIn: 250-400 chars, state the key fact clearly, add brief context on what this type of development generally means for surrounding areas (as a market observation, not a promise), 3-4 hashtags, NO emojis, end with "— REMAX Westside Realty"
-- Instagram: 180-280 chars, lead with the key fact, add one general market observation using hedged language, emoji-rich (use 🏛️🏙️📋🔍📊🏗️ etc. — no rocket/fire emojis unless genuinely warranted), 8-10 hashtags, end with "— REMAX Westside Realty"
-- Facebook: 220-360 chars, explain the news event conversationally, add one general observation about how similar developments have historically played out — presented as context, not prediction, 5-6 hashtags, end with "— REMAX Westside Realty"
-- X: 220-380 chars, factual and concise — state what happened and why it is noteworthy for those tracking the market, 3-4 hashtags, NO emojis, end with "— REMAX Westside Realty"
+POST STRUCTURE — use this exact structure for every platform:
+[Unicode Bold Title]
+[Unicode Bold Subtitle]
 
-FACT-FIRST FORMULA: [What happened, exactly] → [Why it is significant as a fact] → [General market context using hedged language — "historically...", "analysts generally note...", "may be worth watching"]
+[Unicode Bold Heading]
+• Bullet point explaining the news or update
+• Keep sentences short
+• Highlight key numbers in Unicode bold
 
-SIGNATURE FORMATTING — critical:
-- The signature must be on its own paragraph separated by a blank line
-- In the caption JSON value, put \\n\\n before the signature
-- Example: "Full caption with market insight and momentum.\\n\\n— REMAX Westside Realty"
+[Unicode Bold Second Heading]
+• Explain impact or implications
+• Use practical insights
 
-FORMATTING — use **double asterisks** to mark text that should appear bold (applies to ALL platforms):
-- Wrap the opening news headline/key fact sentence in **double asterisks**
-  Example: **Hyderabad home sales hit 9,541 units in Q1 2026 — prices up 9% YoY** 🏙️📈 The rest of the body.
-- Wrap the closing signature: **— REMAX Westside Realty**
-- Body/explanation sentences: plain text, no asterisks
+𝗞𝗲𝘆 𝗧𝗮𝗸𝗲𝗮𝘄𝗮𝘆
+• 2–3 short summary lines
 
-Return ONLY valid JSON array (no markdown):
+— REMAX Westside Realty
+
+PLATFORM RULES:
+- X: short and concise, 3-4 hashtags
+- LinkedIn: professional and insight-driven, 3-4 hashtags
+- Facebook: explanatory and informative, 5-6 hashtags
+- Instagram: engaging and simple, 8-10 hashtags
+
+SIGNATURE FORMATTING:
+- Signature must be on its own paragraph separated by a blank line
+- In the JSON caption value use \\n\\n before the signature
+
+Return ONLY a valid JSON array (no markdown, no code fences):
 [
   {
     "platform": "LinkedIn",
@@ -399,7 +451,7 @@ export async function generateImage(article: NewsArticle): Promise<string> {
       model: "gpt-image-2",
       prompt,
       n: 1,
-      size: "1024x1536",
+      size: "1024x1024",
       quality: "high",
       output_format: "jpeg",
     }),
@@ -415,25 +467,24 @@ export async function generateImage(article: NewsArticle): Promise<string> {
   if (!base64Image) throw new Error("gpt-image-2 returned no image data");
   const rawImageBuffer = Buffer.from(base64Image, "base64");
 
-  // ── Step 2: Composite REMAX logo (top-right) + dark gradient (bottom) ────
-  console.log("[NewsToSocial] Compositing logo + gradient...");
-  const IMG_W = 1024;
-  const IMG_H = 1536;
+  // ── Step 2: Resize to 940×788 (Facebook post) + composite REMAX logo top-right ──
+  // The AI generates the image at 1024×1024 and we crop/resize to the target dimensions.
+  // Text (title, subtitle, dark overlay) is already embedded by the AI — no text overlay needed.
+  console.log("[NewsToSocial] Resizing to 940×788 and compositing logo...");
+  const IMG_W = 940;
+  const IMG_H = 788;
 
-  const [logoBuffer, gradientBuffer] = await Promise.all([
-    fetch(LOGO_URL).then((r) => r.arrayBuffer()).then((ab) => Buffer.from(ab)),
-    buildGradientStripBuffer(IMG_W, IMG_H),
-  ]);
+  const logoBuffer = await fetch(LOGO_URL).then((r) => r.arrayBuffer()).then((ab) => Buffer.from(ab));
 
   const logoResized = await sharp(logoBuffer)
-    .resize(160, null, { fit: "inside" })
+    .resize(140, null, { fit: "inside" })
     .toBuffer();
-  const logoWidth = (await sharp(logoResized).metadata()).width ?? 160;
+  const logoWidth = (await sharp(logoResized).metadata()).width ?? 140;
 
   const compositedBuffer = await sharp(rawImageBuffer)
+    .resize(IMG_W, IMG_H, { fit: "cover", position: "centre" })
     .composite([
-      { input: gradientBuffer, top: IMG_H - 280, left: 0 },
-      { input: logoResized, top: 20, left: IMG_W - logoWidth - 20 },
+      { input: logoResized, top: 16, left: IMG_W - logoWidth - 16 },
     ])
     .jpeg({ quality: 92 })
     .toBuffer();
@@ -457,8 +508,7 @@ export async function generateImage(article: NewsArticle): Promise<string> {
     uploadStream.end(compositedBuffer);
   });
 
-  // ── Step 4: Yellow headline text via Cloudinary transform ────────────────
-  const finalUrl = applyHeadlineOverlay(uploadResult.secure_url, article.headline);
+  const finalUrl = uploadResult.secure_url;
   console.log("[NewsToSocial] Image ready:", finalUrl);
   return finalUrl;
 }
