@@ -456,7 +456,7 @@ export async function generateImage(article: NewsArticle): Promise<GeneratedImag
     logoMaxWidth: number,     // logo width for this format
     publicId: string          // Cloudinary public_id
   ): Promise<string> => {
-    // ── Step 1: Generate with gpt-image-2 ──────────────────────────────────
+    // ── Step 1: Generate with dall-e-3 ────────────────────────────────────
     const imageRes = await fetch("https://api.openai.com/v1/images/generations", {
       method: "POST",
       headers: {
@@ -464,23 +464,23 @@ export async function generateImage(article: NewsArticle): Promise<GeneratedImag
         Authorization: `Bearer ${openaiKey}`,
       },
       body: JSON.stringify({
-        model: "gpt-image-2",
+        model: "dall-e-3",
         prompt,
         n: 1,
         size: apiSize,
-        quality: "high",
-        output_format: "jpeg",
+        quality: "hd",
+        response_format: "b64_json",
       }),
     });
 
     if (!imageRes.ok) {
       const errText = await imageRes.text();
-      throw new Error(`gpt-image-2 error (${apiSize}): ${errText.slice(0, 200)}`);
+      throw new Error(`dall-e-3 error (${apiSize}): ${errText.slice(0, 200)}`);
     }
 
     const imageData = await imageRes.json();
     const base64Image: string = imageData.data?.[0]?.b64_json;
-    if (!base64Image) throw new Error(`gpt-image-2 returned no image data (${apiSize})`);
+    if (!base64Image) throw new Error(`dall-e-3 returned no image data (${apiSize})`);
     const rawImageBuffer = Buffer.from(base64Image, "base64");
 
     // ── Step 2: Resize to target dimensions + composite logo top-right ─────
@@ -559,15 +559,15 @@ export async function generateSingleImage(
   const imageRes = await fetch("https://api.openai.com/v1/images/generations", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${openaiKey}` },
-    body: JSON.stringify({ model: "gpt-image-2", prompt, n: 1, size: apiSize, quality: "high", output_format: "jpeg" }),
+    body: JSON.stringify({ model: "dall-e-3", prompt, n: 1, size: apiSize, quality: "hd", response_format: "b64_json" }),
   });
   if (!imageRes.ok) {
     const errText = await imageRes.text();
-    throw new Error(`gpt-image-2 error (${apiSize}): ${errText.slice(0, 200)}`);
+    throw new Error(`dall-e-3 error (${apiSize}): ${errText.slice(0, 200)}`);
   }
   const imageData = await imageRes.json();
   const base64Image: string = imageData.data?.[0]?.b64_json;
-  if (!base64Image) throw new Error(`gpt-image-2 returned no image data (${apiSize})`);
+  if (!base64Image) throw new Error(`dall-e-3 returned no image data (${apiSize})`);
   const rawImageBuffer = Buffer.from(base64Image, "base64");
 
   const logoResized = await sharp(logoBuffer).resize(logoMaxWidth, null, { fit: "inside" }).toBuffer();
