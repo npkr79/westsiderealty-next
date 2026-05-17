@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { NextRequest, NextResponse } from 'next/server';
 import { getCrmSessionResult } from '@/lib/crm/auth';
 import { createServiceClient } from '@/lib/supabase/serviceClient';
+import { buildImagePrompt } from '@/services/newsToSocialService';
 
 export const maxDuration = 300;
 
@@ -215,9 +216,15 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  const imagePrompt = buildImagePrompt(
+    article.headline,
+    article.ai_summary ?? article.summary ?? ''
+  );
+
   return NextResponse.json({
     success: true,
     posts: merged as Posts,
+    image_prompt: imagePrompt,
     meta: { generated: filledCount, total: 4 },
   });
 }

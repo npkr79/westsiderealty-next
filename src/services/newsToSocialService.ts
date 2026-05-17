@@ -48,6 +48,12 @@ OUTPUT
 POST CONTENT:
 {post_text}`;
 
+// Exported so caption route can include the prompt in its response
+export function buildImagePrompt(headline: string, summary: string): string {
+  const postText = [headline, summary].filter(Boolean).join("\n\n");
+  return STYLE_WRAPPER.replace("{post_text}", postText);
+}
+
 // ---------------------------------------------------------------------------
 // Cloudinary config (call once at module level)
 // ---------------------------------------------------------------------------
