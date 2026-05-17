@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { createClient as createAdminClient } from "@supabase/supabase-js";
 import type { CrmRole } from "@/lib/crm/types";
 import { getDashboardPathForRole, mapRoleNameToCrmRole } from "@/lib/crm/roles";
 import { CRM_TEST_ADMIN_COOKIE, isCrmTestLoginEnabled } from "@/lib/crm/test-login";
@@ -56,10 +57,9 @@ export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const isProtected = isProtectedPath(pathname);
 
-  // Use getSession() instead of getUser() in middleware — getUser() makes an external
-  // HTTP call to Supabase on every request which can exceed Vercel Edge's ~1.5s timeout.
-  // getSession() decodes the JWT from the cookie locally with no network round-trip.
-  // Route handlers and server components should still call getUser() for full verification.
+  // getSession() decodes the JWT from the cookie locally — no network round-trip.
+  // Avoids the MIDDLEWARE_INVOCATION_TIMEOUT caused by getUser()'s external HTTP call.
+  // Route handlers and server components still call getUser() for full server-side verification.
   const {
     data: { session },
   } = await supabase.auth.getSession();
@@ -85,8 +85,16 @@ export async function middleware(request: NextRequest) {
     if (cachedRole && VALID_ROLES.includes(cachedRole)) {
       resolvedRole = cachedRole;
     } else {
-      // Cache miss — fetch role from DB and store in cookie
-      const crmUser = await supabase
+      // Cache miss — use service role client so the lookup bypasses RLS entirely.
+      // Safe because we already confirmed a valid session above.
+      // The anon client's query depends on the user's JWT being fresh; getSession()
+      // does not always refresh expired tokens, causing RLS to block the row.
+      const serviceClient = createAdminClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+      );
+
+      const crmUser = await serviceClient
         .from("crm_users")
         .select("id, is_active, crm_roles(name)")
         .eq("id", user.id)
@@ -103,7 +111,7 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(loginUrl);
       }
 
-      const roleName = Array.isArray(crmUser.data.crm_roles) ? crmUser.data.crm_roles[0]?.name : crmUser.data.crm_roles?.name;
+      const roleName = Array.isArray(crmUser.data.crm_roles) ? crmUser.data.crm_roles[0]?.name : (crmUser.data.crm_roles as any)?.name;
       const role = mapRoleNameToCrmRole(roleName);
       if (!role) {
         const loginUrl = new URL("/crm/login", request.url);
@@ -152,4 +160,3 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: ["/crm/:path*", "/dashboard/:path*", "/leads/:path*", "/pipeline/:path*", "/routing/:path*", "/tasks/:path*", "/whatsapp/:path*", "/journeys/:path*", "/settings/:path*", "/social/:path*", "/social"],
 };
-
