@@ -56,9 +56,14 @@ export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const isProtected = isProtectedPath(pathname);
 
+  // Use getSession() instead of getUser() in middleware — getUser() makes an external
+  // HTTP call to Supabase on every request which can exceed Vercel Edge's ~1.5s timeout.
+  // getSession() decodes the JWT from the cookie locally with no network round-trip.
+  // Route handlers and server components should still call getUser() for full verification.
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    data: { session },
+  } = await supabase.auth.getSession();
+  const user = session?.user ?? null;
 
   const hasTestAdminCookie = isCrmTestLoginEnabled && request.cookies.get(CRM_TEST_ADMIN_COOKIE)?.value === "1";
   const activeRole: CrmRole | null = hasTestAdminCookie ? "admin" : null;
