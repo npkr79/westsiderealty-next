@@ -110,7 +110,9 @@ function markdownToHtml(md: string): string {
     // Ordered list items
     .replace(/^\d+\. (.+)$/gm, "<li class=\"ordered\">$1</li>")
     // Inline code
-    .replace(/`([^`]+)`/g, "<code>$1</code>");
+    .replace(/`([^`]+)`/g, "<code>$1</code>")
+    // Inline links  [text](url)
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
 
   // Wrap consecutive <li> in <ul> or <ol>
   html = html
