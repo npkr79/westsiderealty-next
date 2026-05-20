@@ -27,17 +27,27 @@ async function run() {
     .update({ is_processed: true, processed_at: new Date().toISOString() })
     .in('id', articles.map((a) => a.id));
 
+  // Process all articles in parallel — Claude caption calls are independent
+  // and each takes ~15-30s, so sequential processing on 6 articles easily
+  // exceeds the 300s function limit. Parallel keeps total wall time ~30s.
+  const settled = await Promise.allSettled(
+    articles.map((article) => {
+      console.log('[news-to-social] Processing:', article.headline.slice(0, 80));
+      return processArticle(supabase, article);
+    })
+  );
+
   const results: NewsPostResult[] = [];
   const errors: string[] = [];
   const failedIds: string[] = [];
 
-  for (const article of articles) {
-    try {
-      console.log('[news-to-social] Processing:', article.headline.slice(0, 80));
-      const result = await processArticle(supabase, article);
-      results.push(result);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
+  for (let i = 0; i < settled.length; i++) {
+    const outcome = settled[i];
+    const article = articles[i];
+    if (outcome.status === 'fulfilled') {
+      results.push(outcome.value);
+    } else {
+      const msg = outcome.reason instanceof Error ? outcome.reason.message : String(outcome.reason);
       console.error('[news-to-social] Failed article', article.id, msg);
       errors.push(`${article.source_name} — ${article.headline.slice(0, 60)}: ${msg}`);
       failedIds.push(article.id);
