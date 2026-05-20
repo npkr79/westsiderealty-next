@@ -119,10 +119,12 @@ export async function pickTopArticles(
   const SELECT =
     "id, headline, summary, ai_summary, ai_tags, category, sub_category, cities, relevance_score, sentiment, source_name, source_url, image_url, search_query_type";
 
-  // Only pick articles published in the last 24 hours — no stale news.
-  // Use published_at (the article's actual publication date) not scraped_at,
-  // so articles from days ago that the scraper finds late are still excluded.
-  const cutoff24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  // Use scraped_at (when WE found the article) for the freshness gate, not
+  // published_at. Articles are often 1-3 days old when scrapers find them, so
+  // gating on published_at causes freshly-scraped articles to be permanently
+  // skipped if the cron runs even one day after the scraper.
+  // 48h window gives the cron two chances (today + tomorrow) to pick each article.
+  const cutoff48h = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
 
   // Pull a larger pool — positive sentiment only, high relevance, never processed
   const { data, error } = await supabase
@@ -133,7 +135,7 @@ export async function pickTopArticles(
     .eq("social_post_count", 0)   // hard stop: never regenerate if posts were already made
     .neq("sentiment", "negative")
     .gte("relevance_score", 7.5)
-    .gte("published_at", cutoff24h)  // freshness gate: published within last 24h
+    .gte("scraped_at", cutoff48h)  // freshness gate: scraped within last 48h
     .order("relevance_score", { ascending: false })
     .limit(40); // Larger pool so we have room after dedup
 
