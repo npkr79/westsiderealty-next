@@ -77,6 +77,7 @@ export interface NewsArticle {
   headline: string;
   summary: string | null;
   ai_summary: string | null;
+  full_text: string | null;
   ai_tags: string[];
   category: string;
   sub_category: string | null;
@@ -87,6 +88,7 @@ export interface NewsArticle {
   source_url: string;
   image_url: string | null;
   search_query_type?: string | null;
+  editorial_override?: boolean | null;
 }
 
 export interface PlatformCaption {
@@ -117,7 +119,7 @@ export async function pickTopArticles(
   count = 4
 ): Promise<NewsArticle[]> {
   const SELECT =
-    "id, headline, summary, ai_summary, ai_tags, category, sub_category, cities, relevance_score, sentiment, source_name, source_url, image_url, search_query_type";
+    "id, headline, summary, ai_summary, full_text, ai_tags, category, sub_category, cities, relevance_score, sentiment, source_name, source_url, image_url, search_query_type, editorial_override";
 
   // Use scraped_at (when WE found the article) for the freshness gate, not
   // published_at. Articles are often 1-3 days old when scrapers find them, so
@@ -126,14 +128,15 @@ export async function pickTopArticles(
   // 48h window gives the cron two chances (today + tomorrow) to pick each article.
   const cutoff48h = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
 
-  // Pull a larger pool — positive sentiment only, high relevance, never processed
+  // Pull a larger pool — positive/neutral sentiment or editorial_override, high relevance, never processed
+  // editorial_override=true articles (high-signal policy/regulatory) are included even if negative
   const { data, error } = await supabase
     .from("news_articles")
     .select(SELECT)
     .eq("is_processed", false)
     .eq("is_rejected", false)
     .eq("social_post_count", 0)   // hard stop: never regenerate if posts were already made
-    .neq("sentiment", "negative")
+    .or("sentiment.neq.negative,editorial_override.eq.true")
     .gte("relevance_score", 7.5)
     .gte("scraped_at", cutoff48h)  // freshness gate: scraped within last 48h
     .order("relevance_score", { ascending: false })
@@ -211,37 +214,10 @@ export async function pickTopArticles(
     // else: skip this article — same story already represented by a higher-scored one
   }
 
-  // ── Pick top articles with city diversity ─────────────────────────────────
-  const picked: NewsArticle[] = [];
-  const used = new Set<string>();
-
-  // Reserve 1 slot each for Hyderabad and Goa.
-  // Prefer articles from dedicated Serper city queries first (search_query_type),
-  // fall back to articles where Claude tagged the city.
-  for (const city of ["hyderabad", "goa"]) {
-    const fromCityQuery = uniquePool.find(
-      (a) => !used.has(a.id) && a.search_query_type === city
-    );
-    const fromCityTag = uniquePool.find(
-      (a) => !used.has(a.id) && a.cities?.includes(city)
-    );
-    const match = fromCityQuery ?? fromCityTag;
-    if (match) {
-      picked.push(match);
-      used.add(match.id);
-    }
-  }
-
-  // Fill remaining slots with top-scored articles not already picked
-  for (const article of uniquePool) {
-    if (picked.length >= count) break;
-    if (!used.has(article.id)) {
-      picked.push(article);
-      used.add(article.id);
-    }
-  }
-
-  return picked;
+  // Pick top articles purely by relevance_score — no city-slot reservation.
+  // We are national-level; artificially reserving slots for specific cities
+  // reduces overall quality. Best story wins regardless of geography.
+  return uniquePool.slice(0, count);
 }
 
 // ---------------------------------------------------------------------------
@@ -258,14 +234,21 @@ export async function generateCaptions(
   const anthropicKey = process.env.ANTHROPIC_API_KEY;
   if (!anthropicKey) throw new Error("ANTHROPIC_API_KEY not configured");
 
+  // Prefer full_text (real article body) — gives Claude concrete numbers and
+  // dates to quote. Fall back to ai_summary then summary. Truncate to ~6000 chars.
+  const rawBody =
+    article.full_text && article.full_text.trim().length > 200
+      ? article.full_text
+      : article.ai_summary ?? article.summary ?? "";
+  const articleBody = rawBody.length > 6000 ? rawBody.slice(0, 6000) + "…" : rawBody;
+
   const context = [
     `Headline: ${article.headline}`,
-    article.ai_summary ? `AI Summary: ${article.ai_summary}` : "",
-    article.summary ? `Source Summary: ${article.summary}` : "",
+    `Source: ${article.source_name}`,
     `Category: ${article.category}`,
     article.cities.length ? `Cities: ${article.cities.join(", ")}` : "",
     article.ai_tags.length ? `Tags: ${article.ai_tags.join(", ")}` : "",
-    `Source: ${article.source_name}`,
+    articleBody ? `Article body:\n${articleBody}` : "",
   ]
     .filter(Boolean)
     .join("\n");

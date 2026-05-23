@@ -1062,10 +1062,27 @@ function HistoryTab() {
 
 // ── Tab: News ─────────────────────────────────────────────────────────────────
 
+interface FitnessBrief {
+  fitness: 'STRONG' | 'WORKABLE' | 'THIN' | 'SKIP';
+  thesis: string;
+  data_hooks: string[];
+  non_obvious_read: string;
+  conviction_match: string;
+  saturation: 'LOW' | 'MEDIUM' | 'HIGH';
+  weakness: string;
+  flags?: string[];
+}
+
 interface NewsPost extends SavedPost {
   news_article_id?: string;
   post_category?: string;
-  news_articles?: { ai_summary: string | null; summary: string | null } | null;
+  news_articles?: {
+    ai_summary: string | null;
+    summary: string | null;
+    brief: FitnessBrief | null;
+    is_quarantined: boolean | null;
+    editorial_override: boolean | null;
+  } | null;
 }
 
 const PLATFORM_COLORS: Record<string, string> = {
@@ -1165,12 +1182,35 @@ interface ScheduledSlot {
   scheduled_at: string;
 }
 
+interface FounderPostState {
+  step?: string;            // loading step label
+  post_text?: string;       // finished post
+  social_post_id?: string;
+  brief?: FitnessBrief;
+}
+
+function fitnessBadge(fitness: FitnessBrief['fitness']): React.ReactNode {
+  const map: Record<FitnessBrief['fitness'], string> = {
+    STRONG: 'bg-green-900 text-green-300',
+    WORKABLE: 'bg-yellow-900 text-yellow-300',
+    THIN: 'bg-gray-800 text-gray-400',
+    SKIP: 'bg-red-900 text-red-400',
+  };
+  return (
+    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${map[fitness]}`}>
+      {fitness}
+    </span>
+  );
+}
+
 function NewsTab() {
   const [groups, setGroups] = useState<Map<string, NewsPost[]>>(new Map());
   const [loading, setLoading] = useState(true);
   const [scheduledSlots, setScheduledSlots] = useState<ScheduledSlot[]>([]);
   const [slotsOpen, setSlotsOpen] = useState(false);
   const [formatStates, setFormatStates] = useState<Map<string, NewsFormatState>>(new Map());
+  const [founderStates, setFounderStates] = useState<Map<string, FounderPostState>>(new Map());
+  const [founderNotes, setFounderNotes] = useState<Record<string, string>>({});
   const [scheduleTime, setScheduleTime] = useState<Record<string, string>>({});
   const [schedulingId, setSchedulingId] = useState<string | null>(null);
   const [postedId, setPostedId] = useState<string | null>(null);
@@ -1225,6 +1265,30 @@ function NewsTab() {
 
   const setStep = (articleId: string, step: string) =>
     setFormatStates((prev) => new Map(prev).set(articleId, { step }));
+
+  const writeFounderPost = async (articleId: string) => {
+    setFounderStates((prev) => new Map(prev).set(articleId, { step: 'Writing founder post…' }));
+    try {
+      const res = await fetch('/api/news/generate-founder-post', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          article_id: articleId,
+          reviewer_note: founderNotes[articleId] ?? '',
+        }),
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error ?? 'Founder post generation failed');
+      setFounderStates((prev) => new Map(prev).set(articleId, {
+        post_text: data.post_text,
+        social_post_id: data.social_post_id,
+        brief: data.brief,
+      }));
+    } catch (err) {
+      setFounderStates((prev) => { const m = new Map(prev); m.delete(articleId); return m; });
+      alert('Founder Post failed: ' + (err instanceof Error ? err.message : String(err)));
+    }
+  };
 
   /* IMAGE GENERATION COMMENTED OUT — manual image creation workflow
   const triggerImageGen = async (articleId: string, variant: 'portrait' | 'landscape') => { ... };
@@ -1381,20 +1445,36 @@ function NewsTab() {
       {Array.from(groups.entries()).map(([articleId, posts]) => {
         const headline = posts[0]?.content_idea ?? 'Untitled';
         const articleSummary = posts[0]?.news_articles?.ai_summary ?? posts[0]?.news_articles?.summary ?? null;
+        const brief: FitnessBrief | null = posts[0]?.news_articles?.brief ?? null;
+        const isQuarantined = posts[0]?.news_articles?.is_quarantined ?? false;
+        const isEditorialOverride = posts[0]?.news_articles?.editorial_override ?? false;
         const formatState = formatStates.get(articleId);
         const isFormatting = !!formatState && 'step' in formatState;
         const formatStep = isFormatting ? (formatState as { step: string }).step : null;
         const isFormatted = !!formatState && !('step' in formatState);
         const result = isFormatted ? (formatState as NewsFormatResult) : null;
+        const founderState = founderStates.get(articleId);
+        const isWritingFounder = !!founderState && 'step' in founderState;
+        const founderResult = founderState && !('step' in founderState) ? founderState as FounderPostState : null;
         const isRejecting = rejectingId === articleId;
         const isScheduling = schedulingId === articleId;
         const isPosting = postedId === articleId;
+        const canWriteFounder = brief && (brief.fitness === 'STRONG' || brief.fitness === 'WORKABLE');
 
         return (
           <div key={articleId} className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
 
             {/* Headline row */}
             <div className="p-4">
+              <div className="flex items-start gap-2 flex-wrap mb-1">
+                {brief && fitnessBadge(brief.fitness)}
+                {isEditorialOverride && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-900 text-amber-300">EDITORIAL</span>
+                )}
+                {isQuarantined && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-950 text-red-400">QUARANTINED</span>
+                )}
+              </div>
               <p className="text-sm font-medium text-white leading-snug">{headline}</p>
               {articleSummary && (
                 <p className="text-xs text-gray-400 mt-1.5 leading-relaxed line-clamp-2">{articleSummary}</p>
@@ -1404,9 +1484,25 @@ function NewsTab() {
               )}
             </div>
 
+            {/* Fitness Brief panel */}
+            {brief && brief.fitness !== 'SKIP' && (
+              <div className="border-t border-gray-800 px-4 py-3 space-y-2 bg-gray-950/40">
+                <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Fitness Brief</p>
+                <p className="text-xs text-gray-200 leading-relaxed"><span className="text-gray-500">Thesis: </span>{brief.thesis}</p>
+                {brief.data_hooks?.length > 0 && (
+                  <p className="text-xs text-gray-400"><span className="text-gray-500">Data: </span>{brief.data_hooks.join(' · ')}</p>
+                )}
+                <p className="text-xs text-gray-400"><span className="text-gray-500">Angle: </span>{brief.non_obvious_read}</p>
+                <p className="text-xs text-gray-500"><span className="text-gray-600">Weakness: </span>{brief.weakness}</p>
+                {brief.flags && brief.flags.length > 0 && (
+                  <p className="text-[10px] text-amber-500">{brief.flags.join(' · ')}</p>
+                )}
+              </div>
+            )}
+
             {/* Actions row — only shown before Format Posts */}
             {!isFormatted && (
-              <div className="flex gap-2 px-4 pb-4">
+              <div className="flex gap-2 px-4 pb-4 flex-wrap">
                 <button
                   onClick={() => formatPosts(articleId)}
                   disabled={isFormatting || isRejecting}
@@ -1422,6 +1518,52 @@ function NewsTab() {
                   className="px-4 py-2 rounded-lg bg-gray-800 hover:bg-red-900 text-gray-400 hover:text-red-300 text-sm font-medium disabled:opacity-50 transition-colors"
                 >
                   {isRejecting ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Reject'}
+                </button>
+              </div>
+            )}
+
+            {/* Founder Voice panel — shown when brief is STRONG/WORKABLE and no format in progress */}
+            {canWriteFounder && !isFormatted && !founderResult && (
+              <div className="border-t border-gray-800 px-4 py-3 space-y-2">
+                <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Founder Voice Post</p>
+                <textarea
+                  value={founderNotes[articleId] ?? ''}
+                  onChange={(e) => setFounderNotes((prev) => ({ ...prev, [articleId]: e.target.value }))}
+                  rows={2}
+                  placeholder="Optional note for the writer — e.g. 'Lead with the absorption rate, not the price'"
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500 resize-none"
+                />
+                <button
+                  onClick={() => writeFounderPost(articleId)}
+                  disabled={isWritingFounder || isFormatting}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-indigo-700 hover:bg-indigo-600 disabled:opacity-50 text-white text-sm font-medium transition-colors"
+                >
+                  {isWritingFounder
+                    ? <><Loader2 className="w-3 h-3 animate-spin" /> {founderState?.step ?? 'Writing…'}</>
+                    : <><Sparkles className="w-3 h-3" /> Write Founder Post</>}
+                </button>
+              </div>
+            )}
+
+            {/* Founder post result */}
+            {founderResult?.post_text && (
+              <div className="border-t border-gray-800 px-4 py-3 space-y-2 bg-indigo-950/20">
+                <div className="flex items-center justify-between">
+                  <p className="text-[10px] text-indigo-400 uppercase tracking-wider font-semibold">Founder Post (LinkedIn)</p>
+                  <button
+                    onClick={() => copyText(founderResult.post_text!, `${articleId}-founder`)}
+                    className="text-xs px-2 py-1 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 flex items-center gap-1 transition-colors"
+                  >
+                    {copiedKey === `${articleId}-founder` ? <><Check size={11} className="text-green-400" /> Copied!</> : <><Copy size={11} /> Copy</>}
+                  </button>
+                </div>
+                <pre className="text-xs text-gray-200 whitespace-pre-wrap font-sans leading-relaxed">{founderResult.post_text}</pre>
+                <button
+                  onClick={() => writeFounderPost(articleId)}
+                  disabled={isWritingFounder}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-400 text-xs font-medium transition-colors"
+                >
+                  <RefreshCw size={11} /> Rewrite
                 </button>
               </div>
             )}

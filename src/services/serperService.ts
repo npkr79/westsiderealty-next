@@ -15,7 +15,9 @@ export type SerperQueryType =
   | "broadsheets_re"
   | "digital_re"
   | "hyderabad"
-  | "infra";
+  | "infra"
+  | "goa"
+  | "nri_luxury";
 
 interface SerperNewsItem {
   title: string;
@@ -39,6 +41,8 @@ interface SerperNewsResponse {
 // Sources: therealtytoday.com, cnbctv18.com/RE
 // Sources: realty.economictimes.indiatimes.com/tag/hyderabad
 // Sources: metrorailnews.in, economictimes.indiatimes.com/infra, constructionworld.in (all sections), financialexpress.com/infra
+// Sources: goa real estate — TOI Goa, Herald Goa, realty.economictimes (goa), moneycontrol (goa)
+// Sources: NRI/luxury — nrirealtytimes.com, realty.economictimes (nri OR luxury), housing.com (luxury)
 const SERPER_QUERIES: Array<{ type: SerperQueryType; query: string }> = [
   {
     type: "gcc",
@@ -74,6 +78,16 @@ const SERPER_QUERIES: Array<{ type: SerperQueryType; query: string }> = [
     type: "infra",
     query:
       "site:metrorailnews.in OR site:constructionworld.in OR (site:economictimes.indiatimes.com infrastructure) OR (site:financialexpress.com infrastructure)",
+  },
+  {
+    type: "goa",
+    query:
+      "(site:timesofindia.com OR site:heraldgoa.in OR site:realty.economictimes.indiatimes.com OR site:moneycontrol.com) (goa \"real estate\" OR goa property OR goa villa OR goa luxury)",
+  },
+  {
+    type: "nri_luxury",
+    query:
+      "site:nrirealtytimes.com OR (site:realty.economictimes.indiatimes.com (nri OR luxury OR \"ultra luxury\")) OR (site:housing.com luxury) OR (site:moneycontrol.com \"nri investment\" real estate)",
   },
 ];
 
@@ -168,13 +182,13 @@ export interface SerperFetchResult {
 }
 
 /**
- * Runs all 6 Serper news queries in parallel.
+ * Runs all Serper news queries in parallel (currently 9).
  * Returns deduplicated RawArticle[] (by URL, across all queries).
  */
 export async function fetchSerperNews(): Promise<SerperFetchResult> {
   const queryStats: SerperFetchResult["queryStats"] = [];
 
-  // Run all 6 queries in parallel
+  // Run all queries in parallel
   const results = await Promise.allSettled(
     SERPER_QUERIES.map(async ({ type, query }) => {
       const items = await searchSerperNews(query);

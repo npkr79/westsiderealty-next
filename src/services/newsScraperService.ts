@@ -5,15 +5,6 @@ import { SupabaseClient } from "@supabase/supabase-js";
 // Types
 // ---------------------------------------------------------------------------
 
-export interface NewsSource {
-  id: string;
-  name: string;
-  url: string;
-  source_type: string;
-  category: string | null;
-  is_active: boolean;
-}
-
 export interface RawArticle {
   source_name: string;
   source_url: string;
@@ -23,7 +14,7 @@ export interface RawArticle {
   image_url: string | null;
   published_at: string | null;
   raw_category: string | null;
-  search_query_type?: string; // set by Serper: gcc | reits | national_re | broadsheets_re | digital_re | hyderabad | infra
+  search_query_type?: string; // set by Serper: gcc | reits | national_re | broadsheets_re | digital_re | hyderabad | infra | goa | nri_luxury
 }
 
 export interface ClassifiedArticle extends RawArticle {
@@ -34,153 +25,12 @@ export interface ClassifiedArticle extends RawArticle {
   sentiment: 'positive' | 'negative' | 'neutral';
   ai_summary: string;
   ai_tags: string[];
+  editorial_override: boolean; // true = high editorial value despite negative/neutral framing
 }
 
 // ---------------------------------------------------------------------------
-// RSS Feed Fetcher
+// (RSS feed functions removed — Serper API replaced RSS in Jan 2026)
 // ---------------------------------------------------------------------------
-
-/**
- * Extracts text content between XML tags (handles CDATA sections too).
- */
-function extractTag(xml: string, tag: string): string {
-  // Try CDATA first
-  const cdataRe = new RegExp(`<${tag}[^>]*>\\s*<!\\[CDATA\\[([\\s\\S]*?)\\]\\]>\\s*<\\/${tag}>`, "i");
-  const cdataMatch = xml.match(cdataRe);
-  if (cdataMatch) return cdataMatch[1].trim();
-
-  // Plain text
-  const plainRe = new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`, "i");
-  const plainMatch = xml.match(plainRe);
-  if (plainMatch) return plainMatch[1].replace(/<[^>]+>/g, "").trim();
-
-  return "";
-}
-
-/**
- * Extracts the first image URL from an RSS <item> block.
- */
-function extractImageUrl(itemXml: string): string | null {
-  // <media:content url="..." />
-  const mediaMatch = itemXml.match(/<media:content[^>]+url=["']([^"']+)["']/i);
-  if (mediaMatch) return mediaMatch[1];
-
-  // <enclosure url="..." type="image/..." />
-  const enclosureMatch = itemXml.match(/<enclosure[^>]+url=["']([^"']+)["'][^>]+type=["']image[^"']*["']/i);
-  if (enclosureMatch) return enclosureMatch[1];
-
-  // <img src="..." /> inside description/content
-  const imgMatch = itemXml.match(/<img[^>]+src=["']([^"']+)["']/i);
-  if (imgMatch) return imgMatch[1];
-
-  return null;
-}
-
-/**
- * Parses an RSS/Atom XML string and returns raw article items.
- */
-function parseRSS(xml: string, source: NewsSource): RawArticle[] {
-  const articles: RawArticle[] = [];
-
-  // Split on <item> or <entry> (Atom)
-  const itemRegex = /<(item|entry)[\s>]([\s\S]*?)<\/\1>/gi;
-  let match: RegExpExecArray | null;
-
-  while ((match = itemRegex.exec(xml)) !== null) {
-    const itemXml = match[2];
-
-    const headline =
-      extractTag(itemXml, "title") ||
-      extractTag(itemXml, "h1");
-    if (!headline) continue;
-
-    // Link: <link> or <link href="..." /> (Atom)
-    let link = extractTag(itemXml, "link");
-    if (!link) {
-      const hrefMatch = itemXml.match(/<link[^>]+href=["']([^"']+)["']/i);
-      if (hrefMatch) link = hrefMatch[1];
-    }
-    if (!link) continue;
-
-    // Published date
-    const pubDate =
-      extractTag(itemXml, "pubDate") ||
-      extractTag(itemXml, "published") ||
-      extractTag(itemXml, "updated") ||
-      extractTag(itemXml, "dc:date");
-
-    const summary =
-      extractTag(itemXml, "description") ||
-      extractTag(itemXml, "summary") ||
-      extractTag(itemXml, "content:encoded") ||
-      null;
-
-    articles.push({
-      source_name: source.name,
-      source_url: link.trim(),
-      source_type: source.source_type,
-      headline: headline.trim(),
-      summary: summary ? summary.substring(0, 1000) : null,
-      image_url: extractImageUrl(itemXml),
-      published_at: pubDate ? new Date(pubDate).toISOString() : null,
-      raw_category: source.category,
-    });
-  }
-
-  return articles;
-}
-
-/**
- * Determines if an article is within the last 48 hours.
- */
-function isRecent(article: RawArticle): boolean {
-  if (!article.published_at) return true; // include if no date (err on the side of inclusion)
-  const cutoff = Date.now() - 48 * 60 * 60 * 1000;
-  return new Date(article.published_at).getTime() >= cutoff;
-}
-
-/**
- * Fetches and parses all active RSS feeds in parallel with a 15s timeout.
- */
-export async function fetchAllRSSFeeds(sources: NewsSource[]): Promise<{
-  articles: RawArticle[];
-  errors: { source: string; error: string }[];
-}> {
-  const results = await Promise.allSettled(
-    sources.map(async (source) => {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 8_000);
-      try {
-        const res = await fetch(source.url, {
-          signal: controller.signal,
-          headers: { "User-Agent": "WestsideRealty-NewsScraper/1.0" },
-        });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const xml = await res.text();
-        const articles = parseRSS(xml, source).filter(isRecent);
-        return { source: source.name, articles };
-      } finally {
-        clearTimeout(timeout);
-      }
-    })
-  );
-
-  const articles: RawArticle[] = [];
-  const errors: { source: string; error: string }[] = [];
-
-  results.forEach((result, i) => {
-    if (result.status === "fulfilled") {
-      articles.push(...result.value.articles);
-    } else {
-      errors.push({
-        source: sources[i].name,
-        error: result.reason?.message ?? String(result.reason),
-      });
-    }
-  });
-
-  return { articles, errors };
-}
 
 // ---------------------------------------------------------------------------
 // Deduplication
@@ -413,6 +263,7 @@ interface ClassificationResult {
   cities: string[];
   ai_summary: string;
   ai_tags: string[];
+  editorial_override: boolean; // true = high-value signal despite negative/neutral framing
 }
 
 /**
@@ -455,6 +306,13 @@ EXPLICIT REJECT LIST — always score 1-3 and mark "negative":
 - Builder delays, stalled projects
 - Any news that would make a buyer feel scared or at risk
 
+EDITORIAL OVERRIDE — set editorial_override: true when an article has HIGH SIGNAL VALUE for a sophisticated investor/advisor even though it is negative/neutral in tone. Examples:
+- A major policy shift that changes market dynamics (new RERA rule, RBI lending cap)
+- Regulatory crackdown that all serious buyers must know (blanket ban, court stay on projects)
+- A structural market correction story (not a single project delay — a sector-wide trend)
+- A Goa/NRI-specific regulation that affects foreign ownership or pricing
+DO NOT set editorial_override: true for: individual fraud cases, single demolition orders, routine complaints, or any story that is just bad news for one builder. Brand-toxic = false. Editorial-signal = true.
+
 CATEGORIES: ${CATEGORIES.join(", ")}
 CITY SLUGS (use exact slugs): ${CITY_SLUGS.join(", ")}
 
@@ -465,8 +323,9 @@ For each article, respond with a JSON array (same order as input) where each ele
   "category": <one of the categories above>,
   "sub_category": <optional specific sub-topic, e.g. "metro_rail", "home_loans", "premium_launch">,
   "cities": <array of city slugs from the list above, empty array if national/unclear>,
-  "ai_summary": <one exciting sentence about why this matters for buyers/investors, max 150 chars>,
-  "ai_tags": <array of 3-5 lowercase tags>
+  "ai_summary": <one sentence about why this matters for buyers/investors, max 150 chars>,
+  "ai_tags": <array of 3-5 lowercase tags>,
+  "editorial_override": <true only for high-signal policy/regulatory news despite negative framing, false otherwise>
 }
 
 Articles to classify:
@@ -518,6 +377,7 @@ export async function classifyArticles(
           sentiment: result.sentiment ?? 'neutral',
           ai_summary: result.ai_summary ?? article.headline,
           ai_tags: Array.isArray(result.ai_tags) ? result.ai_tags : [],
+          editorial_override: result.editorial_override === true,
         });
       });
     } catch (err) {
@@ -533,6 +393,7 @@ export async function classifyArticles(
           sentiment: 'neutral',
           ai_summary: article.headline,
           ai_tags: [],
+          editorial_override: false,
         });
       });
     }
@@ -552,10 +413,12 @@ export async function insertArticles(
   supabase: SupabaseClient,
   articles: ClassifiedArticle[]
 ): Promise<{ inserted: number; skipped: number; errors: string[] }> {
-  // Only keep positive/neutral articles with strong relevance — never save negative news.
-  // Infra sources publish a lot of non-RE content; require a higher bar for those.
+  // Only keep articles with strong relevance. Negative sentiment is blocked
+  // UNLESS editorial_override is true (high-signal policy/regulatory news that
+  // advisors must know even if it's not FOMO-inducing for buyers).
+  // Infra sources publish a lot of non-RE content — require a higher bar there.
   const relevant = articles.filter((a) => {
-    if (a.sentiment === 'negative') return false;
+    if (a.sentiment === 'negative' && !a.editorial_override) return false;
     const minScore = a.search_query_type === 'infra' ? 8.0 : 6.5;
     return a.relevance_score >= minScore;
   });
@@ -588,6 +451,7 @@ export async function insertArticles(
     ai_summary: a.ai_summary,
     ai_tags: a.ai_tags,
     search_query_type: a.search_query_type ?? null,
+    editorial_override: a.editorial_override ?? false,
     is_processed: false,
     is_rejected: false,
   }));

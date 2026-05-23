@@ -1,0 +1,158 @@
+{
+  "_comment": "Conviction map for Fitness Brief (Stage A). Defines the micro-markets, themes, and buyer personas Westside Realty has a clear advisory point of view on. Stage A uses this to score article 'conviction_match'.",
+  "_version": "1.0.0",
+  "_updated": "2026-05-23",
+
+  "hyderabad": {
+    "label": "Hyderabad",
+    "priority": "primary",
+    "micro_markets": [
+      {
+        "slug": "gachibowli",
+        "label": "Gachibowli",
+        "thesis": "GCC hub with sustained rental demand; strong end-use absorption from IT/tech workforce",
+        "buyer_segments": ["it_professional", "investor_rental_yield"],
+        "conviction": "strong"
+      },
+      {
+        "slug": "financial_district",
+        "label": "Financial District",
+        "thesis": "Premium office micro-market; luxury residential demand from senior corporate and NRI",
+        "buyer_segments": ["nri", "luxury_end_user", "investor_capital_appreciation"],
+        "conviction": "strong"
+      },
+      {
+        "slug": "kokapet",
+        "label": "Kokapet",
+        "thesis": "Emerging luxury corridor; plotted development and premium apartments attracting HNI investors",
+        "buyer_segments": ["hni_investor", "luxury_end_user"],
+        "conviction": "strong"
+      },
+      {
+        "slug": "narsingi",
+        "label": "Narsingi",
+        "thesis": "West Hyderabad growth pocket; ORR connectivity driving villa and plotted demand",
+        "buyer_segments": ["upgrade_buyer", "investor_capital_appreciation"],
+        "conviction": "moderate"
+      },
+      {
+        "slug": "kompally",
+        "label": "Kompally",
+        "thesis": "North Hyderabad affordable growth zone; strong first-home demand from pharma/manufacturing sector",
+        "buyer_segments": ["first_home_buyer", "investor_rental_yield"],
+        "conviction": "moderate"
+      },
+      {
+        "slug": "shamshabad",
+        "label": "Shamshabad / ORR South",
+        "thesis": "Airport proximity and HMDA plots driving land appreciation; long-horizon investor play",
+        "buyer_segments": ["land_investor", "nri"],
+        "conviction": "moderate"
+      }
+    ],
+    "macro_themes": [
+      "gcc_expansion",
+      "metro_phase2",
+      "orr_corridors",
+      "hyderabad_it_demand",
+      "telangana_policy",
+      "pharma_city_industrial"
+    ]
+  },
+
+  "goa": {
+    "label": "Goa",
+    "priority": "secondary",
+    "micro_markets": [
+      {
+        "slug": "north_goa",
+        "label": "North Goa (Calangute / Candolim / Anjuna belt)",
+        "thesis": "Airbnb-grade villa belt; sustained NRI and DFI demand; higher cap rates than Mumbai beach-facing",
+        "buyer_segments": ["nri", "hni_investor", "short_term_rental_investor"],
+        "conviction": "strong"
+      },
+      {
+        "slug": "south_goa",
+        "label": "South Goa (Palolem / Benaulim / Colva belt)",
+        "thesis": "Lower density, higher land appreciation; boutique resort and eco-villa demand from Europeans and NRI",
+        "buyer_segments": ["nri", "hni_investor", "lifestyle_buyer"],
+        "conviction": "moderate"
+      },
+      {
+        "slug": "north_goa_hinterland",
+        "label": "Goa Hinterland (Siolim / Assagao / Mapusa)",
+        "thesis": "Urban spillover from north Goa coast; lower entry price, rapid gentrification, remote-work buyers",
+        "buyer_segments": ["lifestyle_buyer", "remote_work_buyer", "investor_capital_appreciation"],
+        "conviction": "moderate"
+      }
+    ],
+    "macro_themes": [
+      "nri_investment",
+      "goa_property_law",
+      "fema_repatriation",
+      "tourism_policy",
+      "goa_luxury_villa",
+      "coastal_regulation_zone"
+    ]
+  },
+
+  "mumbai": {
+    "label": "Mumbai",
+    "priority": "watch",
+    "micro_markets": [
+      {
+        "slug": "bkc",
+        "label": "BKC / Kurla",
+        "thesis": "Prime commercial micro-market; REIT-grade office demand; residential premium for C-suite buyers",
+        "buyer_segments": ["nri", "hni_investor"],
+        "conviction": "watch"
+      },
+      {
+        "slug": "thane_kalyan_corridor",
+        "label": "Thane / Kalyan Corridor",
+        "thesis": "Metro connectivity unlocking mid-income demand; fastest-growing residential belt in MMR",
+        "buyer_segments": ["first_home_buyer", "investor_rental_yield"],
+        "conviction": "watch"
+      }
+    ],
+    "macro_themes": [
+      "mumbai_metro",
+      "mmr_reits",
+      "slum_redevelopment",
+      "bmc_policy"
+    ]
+  },
+
+  "national": {
+    "label": "National / Pan-India",
+    "priority": "context",
+    "macro_themes": [
+      "rbi_rate_policy",
+      "rera_amendments",
+      "fdi_real_estate",
+      "nri_investment_india",
+      "affordable_housing_policy",
+      "luxury_market_trends",
+      "reit_performance",
+      "gcc_india_expansion",
+      "india_office_absorption",
+      "residential_sales_data"
+    ]
+  },
+
+  "buyer_segments": {
+    "_comment": "Canonical buyer segment definitions. Stage A maps articles to these for conviction_match scoring.",
+    "it_professional": "Mid-to-senior IT/GCC employee, age 28-40, primary residence buyer",
+    "nri": "Non-Resident Indian seeking investment or retirement property in India",
+    "hni_investor": "High-net-worth individual, portfolio diversification into real estate",
+    "luxury_end_user": "Buyer upgrading to premium/luxury residential (₹2Cr+)",
+    "first_home_buyer": "First-time homebuyer, typically mid-income, EMI-sensitive",
+    "upgrade_buyer": "Existing homeowner moving to a larger/better-located property",
+    "investor_rental_yield": "Investor prioritising steady rental income (yield > appreciation)",
+    "investor_capital_appreciation": "Investor prioritising long-term price appreciation over yield",
+    "land_investor": "Investor in plots/agricultural land, long horizon (5-10 years)",
+    "short_term_rental_investor": "Airbnb/vacation rental investor, Goa/Coorg/hill station focus",
+    "lifestyle_buyer": "Buyer motivated by lifestyle factors — sea view, hills, low density",
+    "remote_work_buyer": "Work-from-anywhere professional seeking quality-of-life over commute"
+  }
+}

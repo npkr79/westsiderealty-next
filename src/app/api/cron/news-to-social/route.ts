@@ -5,6 +5,7 @@ import {
   processArticle,
   type NewsPostResult,
 } from '@/services/newsToSocialService';
+import { generateBriefsBatch } from '@/services/fitnessBriefService';
 
 export const maxDuration = 300;
 
@@ -26,6 +27,14 @@ async function run() {
     .from('news_articles')
     .update({ is_processed: true, processed_at: new Date().toISOString() })
     .in('id', articles.map((a) => a.id));
+
+  // Stage A — run Fitness Briefs in parallel with caption generation.
+  // Best-effort: brief failures don't block post creation.
+  generateBriefsBatch(supabase, articles).then((briefs) => {
+    console.log('[news-to-social] Stage A complete —', briefs.size, 'briefs generated');
+  }).catch((err) => {
+    console.error('[news-to-social] Stage A batch error:', err instanceof Error ? err.message : err);
+  });
 
   // Process all articles in parallel — Claude caption calls are independent
   // and each takes ~15-30s, so sequential processing on 6 articles easily
