@@ -248,8 +248,7 @@ export async function POST(request: NextRequest) {
     const naveenProperties = ['my home tridasa', 'myhome tridasa'];
 
     if (srinivasProperties.some(p => propertyName.includes(p))) {
-      targets.push({ name: 'Srinivas', phone: SRINIVAS_WHATSAPP });
-      agentWhatsappForAssignment = SRINIVAS_WHATSAPP;
+      // Srinivas WhatsApp alerts removed
     } else if (krishnaProperties.some(p => propertyName.includes(p))) {
       targets.push({ name: 'Krishna', phone: KRISHNA_WHATSAPP });
       agentWhatsappForAssignment = KRISHNA_WHATSAPP;
@@ -284,7 +283,7 @@ export async function POST(request: NextRequest) {
     } else if (isCommercial) {
       targets.push({ name: 'Krishna', phone: '919666845340' });
     } else if (isResidential) {
-      targets.push({ name: 'Srinivas', phone: '918520099841' });
+      // Srinivas WhatsApp alerts removed
     }
     targets.push(adminTarget);
 

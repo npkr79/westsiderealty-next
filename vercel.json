@@ -59,28 +59,8 @@
       "schedule": "0 0 1 */3 *"
     },
     {
-      "path": "/api/cron/news-scraper",
-      "schedule": "30 0 * * *"
-    },
-    {
       "path": "/api/cron/generate-articles",
       "schedule": "30 1 * * *"
-    },
-    {
-      "path": "/api/cron/news-to-social",
-      "schedule": "40 0 * * *"
-    },
-    {
-      "path": "/api/cron/publish-news-posts",
-      "schedule": "10 4 * * *"
-    },
-    {
-      "path": "/api/cron/publish-news-posts",
-      "schedule": "10 8 * * *"
-    },
-    {
-      "path": "/api/cron/publish-news-posts",
-      "schedule": "40 13,15 * * *"
     }
   ]
 }
