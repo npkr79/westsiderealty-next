@@ -4,6 +4,7 @@ import { mapBehaviorToLead } from "@/services/behaviorLeadMappingService";
 import { runStageAutomation } from "@/services/stageAutomationService";
 import { sanitizeLeadPayload } from "@/lib/crm/sanitizeLeadPayload";
 import { sendLeadAlertWhatsApp } from "@/lib/crm/whatsappAlert";
+import { applyCampaignLeadRules, isTargetMetaCampaignLead, resolveKrishnaAgentId } from "@/services/campaignLeadRulesService";
 
 const GRAPH_API_BASE = "https://graph.facebook.com";
 const GRAPH_VERSION = process.env.META_GRAPH_API_VERSION ?? "v21.0";
@@ -217,6 +218,16 @@ export async function processMetaLead(
     projectName = formRoute?.project_tag ? String(formRoute.project_tag) : null;
   }
 
+  const targetCampaignMetadata = {
+    attribution_metadata: {
+      campaign_id: leadData.campaign_id,
+    },
+  };
+  const campaignAgentId = isTargetMetaCampaignLead(targetCampaignMetadata)
+    ? await resolveKrishnaAgentId()
+    : null;
+  const assignedAgentId = campaignAgentId ?? formAgentId;
+
   const crmPayload = sanitizeLeadPayload({
     name: name.trim() || "Meta Lead",
     phone: phone.trim(),
@@ -226,8 +237,8 @@ export async function processMetaLead(
     meta_leadgen_id: leadgenId,
     source_type: "meta",
     source_channel: "facebook_lead_ads",
-    assignment_status: formAgentId ? "assigned" : "pending",
-    ...(formAgentId ? { assigned_to: formAgentId } : {}),
+    assignment_status: assignedAgentId ? "assigned" : "pending",
+    ...(assignedAgentId ? { assigned_to: assignedAgentId } : {}),
     attribution_metadata: {
       source: "meta_lead_ads",
       leadgen_id: leadgenId,
@@ -247,7 +258,7 @@ export async function processMetaLead(
     const { data: insertedLead, error: insertError } = await supabase
       .from("crm_leads")
       .insert(crmPayload)
-      .select("id")
+      .select("id,name,phone,email,source_type,source_channel,assigned_to,attribution_metadata,created_at")
       .single();
 
     if (insertError || !insertedLead) {
@@ -262,7 +273,21 @@ export async function processMetaLead(
 
     const crmLeadId = String(insertedLead.id);
 
-    if (formAgentId) {
+    const campaignRuleResult = await applyCampaignLeadRules({
+      id: String(insertedLead.id),
+      name: insertedLead.name,
+      phone: insertedLead.phone,
+      email: insertedLead.email,
+      source_type: insertedLead.source_type,
+      source_channel: insertedLead.source_channel,
+      assigned_to: insertedLead.assigned_to,
+      attribution_metadata: insertedLead.attribution_metadata as Record<string, unknown> | null,
+      created_at: insertedLead.created_at,
+    });
+
+    if (campaignRuleResult.matched) {
+      // Campaign rule handled assignment; DB webhook/push handles lead alerts.
+    } else if (formAgentId) {
       // Form routing matched — skip ownership lookup, just log assignment
       try {
         await supabase.from("crm_lead_assignments").insert({
