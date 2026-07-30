@@ -35,7 +35,7 @@ async function getFocusProjects(): Promise<FocusProject[]> {
     const { data, error } = await supabase
       .from("advisor_project_intelligence")
       .select(
-        "id, project_name, project_slug, project_type, current_status, developer_brand, micro_market, micro_market_slug, city, city_slug, current_price_per_sqft_min, current_price_per_sqft_max, total_units, primary_differentiator, investment_verdict, quality_score, needs_review, hero_image_url, listing_url_slug, unit_configs, price_min_cr"
+        "id, project_name, project_slug, project_type, current_status, developer_brand, developer_brand_slug, micro_market, micro_market_slug, city, city_slug, locality, current_price_per_sqft_min, current_price_per_sqft_max, total_units, primary_differentiator, investment_verdict, quality_score, needs_review, hero_image_url, listing_url_slug, unit_configs, price_min_cr, price_max_cr, rera_id, rera_verified, possession_date, land_area_acres, total_towers, total_floors_max, official_website, gallery_image_urls, special_amenities, sports_amenities, clubhouse_sqft"
       )
       .eq("is_focus_project", true)
       .eq("sale_status", "active")
@@ -48,8 +48,7 @@ async function getFocusProjects(): Promise<FocusProject[]> {
 
     const projects = (data ?? []) as FocusProject[];
 
-    // Secondary: fetch min_area from projects table for linked projects
-    // Used to compute "From ₹X Cr" total flat price instead of per-sqft
+    // Secondary: fetch linked project details in one batch for table details/export.
     const linkedSlugs = projects
       .map((p) => p.listing_url_slug)
       .filter((s): s is string => !!s);
@@ -57,24 +56,33 @@ async function getFocusProjects(): Promise<FocusProject[]> {
     if (linkedSlugs.length > 0) {
       const { data: projectRows } = await supabase
         .from("projects")
-        .select("url_slug, min_area, max_area")
+        .select("url_slug, project_overview_seo, meta_description, unit_size_range, price_range_text, completion_status, total_land_area, total_towers, total_units, brochure_url, floor_plan_images, gallery_images_json, amenities_json, google_maps_embed_url, hero_image_url")
         .in("url_slug", linkedSlugs);
 
       const areaMap = new Map(
-        (projectRows ?? []).map((r: { url_slug: string; min_area: number | null; max_area: number | null }) => [
+        (projectRows ?? []).map((r: Record<string, unknown> & { url_slug: string }) => [
           r.url_slug,
-          { min_area: r.min_area, max_area: r.max_area },
+          r,
         ])
       );
 
-      // Attach area data → compute min_flat_price
+      // Attach project detail fields and compute a card price where possible.
       for (const p of projects) {
         if (p.listing_url_slug && areaMap.has(p.listing_url_slug)) {
-          const { min_area, max_area } = areaMap.get(p.listing_url_slug)!;
-          p.min_area_sqft = min_area ?? null;
-          p.max_area_sqft = max_area ?? null;
-          if (p.current_price_per_sqft_min && min_area) {
-            p.min_flat_price = Math.round(p.current_price_per_sqft_min * min_area);
+          const detail = areaMap.get(p.listing_url_slug)!;
+          p.project_detail = detail as FocusProject["project_detail"];
+
+          const sizeText = typeof detail.unit_size_range === "string" ? detail.unit_size_range : "";
+          const numbers = Array.from(sizeText.replace(/,/g, "").matchAll(/(\d+(?:\.\d+)?)/g))
+            .map((m) => Number(m[1]))
+            .filter((n) => Number.isFinite(n) && n >= 100 && n <= 20000);
+
+          if (numbers.length > 0) {
+            p.min_area_sqft = Math.min(...numbers);
+            p.max_area_sqft = Math.max(...numbers);
+          }
+          if (p.current_price_per_sqft_min && p.min_area_sqft) {
+            p.min_flat_price = Math.round(p.current_price_per_sqft_min * p.min_area_sqft);
           }
         }
       }
