@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import CommercialEnquiryForm from "./CommercialEnquiryForm";
 import { JsonLd } from "@/components/common/SEO";
 
@@ -78,11 +79,13 @@ export default function CommercialInvestmentsPage() {
         .ci-reasons-grid  { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: ${T.border}; }
         .ci-process-grid  { display: grid; grid-template-columns: repeat(3, 1fr); gap: 56px; }
         .ci-stats-compare { display: grid; grid-template-columns: 1fr auto 1fr; gap: 24px; align-items: center; max-width: 860px; margin: 0 auto 72px; }
+        .ci-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 80px; align-items: start; }
         @media (max-width: 900px) {
           .ci-corridor-grid { grid-template-columns: 1fr 1fr !important; }
           .ci-reasons-grid  { grid-template-columns: 1fr 1fr !important; }
           .ci-process-grid  { grid-template-columns: 1fr !important; gap: 40px; }
           .ci-stats-compare { grid-template-columns: 1fr !important; }
+          .ci-form-grid { grid-template-columns: 1fr !important; gap: 40px !important; }
         }
         @media (max-width: 640px) {
           .ci-stages-grid   { grid-template-columns: 1fr !important; }
@@ -132,6 +135,14 @@ export default function CommercialInvestmentsPage() {
           <a href="#invest" style={{ display: "inline-block", background: T.gold, color: T.dark, padding: "16px 40px", fontSize: 12, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", textDecoration: "none" }}>
             Explore Opportunities →
           </a>
+
+          <p style={{ fontSize: 13, color: "rgba(245,240,232,0.48)", lineHeight: 1.75, maxWidth: 560, margin: "24px 0 0" }}>
+            Looking for space for your company instead of an investment asset? Share a brief for{" "}
+            <Link href="/commercial/hyderabad/office-space-for-lease" style={{ color: T.gold, fontWeight: 600, textDecoration: "none" }}>
+              corporate office leasing in Hyderabad
+            </Link>
+            .
+          </p>
         </div>
       </section>
 
@@ -141,10 +152,10 @@ export default function CommercialInvestmentsPage() {
         <div style={{ maxWidth: 1100, margin: "0 auto", paddingTop: "clamp(64px,8vw,112px)" }}>
           <Eyebrow>West Hyderabad Corridor</Eyebrow>
           <h2 style={{ fontFamily: T.serif, fontSize: "clamp(30px,3.5vw,50px)", fontWeight: 300, textAlign: "center", lineHeight: 1.18, color: T.cream, maxWidth: 700, margin: "0 auto 20px" }}>
-            Five kilometres that define<br /><em style={{ color: T.gold, fontStyle: "italic" }}>India's most dynamic office market.</em>
+            Five kilometres that define<br /><em style={{ color: T.gold, fontStyle: "italic" }}>India&apos;s most dynamic office market.</em>
           </h2>
           <p style={{ fontSize: 15, fontWeight: 300, lineHeight: 1.85, color: "rgba(245,240,232,0.55)", textAlign: "center", maxWidth: 620, margin: "0 auto 56px" }}>
-            From Banjara Hills to Kokapet, the western corridor hosts 80% of Hyderabad's Grade A office stock. HITEC City Grade A rents have climbed to ₹90–95/sqft/month. The ORR corridor and Kokapet are the next frontier.
+            From Banjara Hills to Kokapet, the western corridor hosts 80% of Hyderabad&apos;s Grade A office stock. HITEC City Grade A rents have climbed to ₹90–95/sqft/month. The ORR corridor and Kokapet are the next frontier.
           </p>
 
           <div className="ci-corridor-grid">
@@ -302,12 +313,12 @@ export default function CommercialInvestmentsPage() {
       <section id="invest" style={{ background: T.dark, padding: "clamp(64px,8vw,112px) clamp(24px,6vw,96px)" }}>
         <GoldLine />
         <div style={{ maxWidth: 1100, margin: "0 auto", paddingTop: "clamp(64px,8vw,112px)" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 80, alignItems: "start" }}>
+          <div className="ci-form-grid">
             {/* Left: copy */}
             <div>
               <Eyebrow>Private Consultation</Eyebrow>
               <h2 style={{ fontFamily: T.serif, fontSize: "clamp(30px,3.5vw,50px)", fontWeight: 300, lineHeight: 1.15, color: T.cream, margin: "0 0 20px" }}>
-                Tell us what you're<br /><em style={{ color: T.gold, fontStyle: "italic" }}>looking to build.</em>
+                Tell us what you&apos;re<br /><em style={{ color: T.gold, fontStyle: "italic" }}>looking to build.</em>
               </h2>
               <p style={{ fontSize: 15, fontWeight: 300, lineHeight: 1.85, color: "rgba(245,240,232,0.55)", margin: "0 0 40px" }}>
                 Share your investment profile. Our commercial specialist will reach out within 4 hours with curated options matched to your capital and timeline.

@@ -227,6 +227,22 @@ export default async function InsightsPage() {
             Institutional-grade research on Hyderabad real estate — written for
             serious buyers and investors.
           </p>
+          <p
+            style={{
+              fontFamily: "'Outfit', sans-serif",
+              fontSize: 14,
+              color: "rgba(255,255,255,0.46)",
+              lineHeight: 1.7,
+              maxWidth: 640,
+              margin: "18px 0 0",
+            }}
+          >
+            For corporate occupiers, Westside also supports{" "}
+            <Link href="/commercial/hyderabad/office-space-for-lease" style={{ color: C.goldLight, fontWeight: 700, textDecoration: "none" }}>
+              office space for lease in Hyderabad
+            </Link>{" "}
+            through a requirement-led advisory process.
+          </p>
         </div>
       </section>
 

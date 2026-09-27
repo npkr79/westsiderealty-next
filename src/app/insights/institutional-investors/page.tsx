@@ -194,6 +194,21 @@ export default function InstitutionalInvestorsPage() {
               not a cyclical trend — it is a structural rerating of Hyderabad as a
               top-tier global commercial real estate destination.
             </p>
+            <p
+              style={{
+                fontFamily: "'Outfit', sans-serif",
+                fontSize: 14,
+                color: C.textMuted,
+                lineHeight: 1.7,
+                margin: "16px 0 0",
+              }}
+            >
+              Companies evaluating tenant-side expansion can separately use Westside&apos;s{" "}
+              <Link href="/commercial/hyderabad/office-space-for-lease" style={{ color: C.gold, fontWeight: 700, textDecoration: "none" }}>
+                Hyderabad office leasing advisory
+              </Link>{" "}
+              to compare suitable corporate office options.
+            </p>
           </div>
         </div>
       </section>

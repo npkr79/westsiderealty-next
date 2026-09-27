@@ -108,7 +108,7 @@ export default function RootLayout({
           <Layout header={<HeaderServer />}>{children}</Layout>
         </ClientProviders>
         <AdvisorChat />
-        <GoogleAnalytics gaId="G-GYG41B6D00" />
+        <GoogleAnalytics gaId="AW-16563417230" />
         <Analytics />
         {/* Meta Pixel — afterInteractive so it never blocks render */}
         <Script
@@ -133,4 +133,3 @@ export default function RootLayout({
     </html>
   );
 }
-

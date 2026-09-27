@@ -203,6 +203,21 @@ export default function GccHyderabadPage() {
               premium residential real estate in corridors like Kokapet, Financial
               District, and Gachibowli.
             </p>
+            <p
+              style={{
+                fontFamily: "'Outfit', sans-serif",
+                fontSize: 14,
+                color: C.textMuted,
+                lineHeight: 1.7,
+                margin: "16px 0 0",
+              }}
+            >
+              For occupier-side expansion, Westside also evaluates{" "}
+              <Link href="/commercial/hyderabad/office-space-for-lease" style={{ color: C.gold, fontWeight: 700, textDecoration: "none" }}>
+                office space requirements in Hyderabad
+              </Link>{" "}
+              across Grade-A corridors and landlords.
+            </p>
           </div>
         </div>
       </section>
