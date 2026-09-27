@@ -125,18 +125,28 @@ export default function FooterSection() {
             <h4 className="text-base font-semibold text-luxury-gold" style={{ fontFamily: "'Cormorant Garamond', serif" }}>Properties</h4>
             <ul className="space-y-2 text-sm" style={{ fontFamily: "'Outfit', sans-serif" }}>
               <li>
-                <Link href="/hyderabad/buy" className="hover:text-luxury-gold transition-colors">
+                <Link href="/portfolio?city=hyderabad" className="hover:text-luxury-gold transition-colors">
                   Hyderabad Properties
                 </Link>
               </li>
               <li>
-                <Link href="/goa/buy" className="hover:text-luxury-gold transition-colors">
+                <Link href="/portfolio?city=goa" className="hover:text-luxury-gold transition-colors">
                   Goa Properties
                 </Link>
               </li>
               <li>
+                <Link href="/commercial/hyderabad" className="hover:text-luxury-gold transition-colors">
+                  Commercial Hyderabad
+                </Link>
+              </li>
+              <li>
+                <Link href="/commercial/hyderabad/managed-office-space" className="hover:text-luxury-gold transition-colors">
+                  Managed Offices
+                </Link>
+              </li>
+              <li>
                 <Link href="/commercial/pre-leased-mumbai" className="hover:text-luxury-gold transition-colors">
-                  Commercial Properties
+                  Pre-Leased Mumbai
                 </Link>
               </li>
               <li>

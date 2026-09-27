@@ -53,7 +53,7 @@ const STATIC_NAV_ITEMS: NavItem[] = [
     cta: { label: "View all developers →", href: "/developers" },
   },
   {
-    label: "Portfolio",
+    label: "Inventory",
     href: "/portfolio",
   },
   {
@@ -72,13 +72,17 @@ const STATIC_NAV_ITEMS: NavItem[] = [
   },
   {
     label: "Commercial",
-    href: "/commercial-investments",
-    description: "Pre-leased commercial investment opportunities across Mumbai, Hyderabad & Goa",
+    href: "/commercial/hyderabad",
+    description: "Hyderabad office leasing, managed offices, office purchase and commercial investment advisory",
     links: [
-      { label: "Pre-Leased Mumbai", href: "/commercial/pre-leased-mumbai", badge: "NEW" },
-      { label: "All Commercial", href: "/commercial-investments" },
+      { label: "Commercial Hyderabad", href: "/commercial/hyderabad", badge: "NEW" },
+      { label: "Office Leasing", href: "/commercial/hyderabad/office-space-for-lease" },
+      { label: "Managed Offices", href: "/commercial/hyderabad/managed-office-space", badge: "NEW" },
+      { label: "Office for Sale", href: "/commercial/hyderabad/office-space-for-sale", badge: "NEW" },
+      { label: "Commercial Investments", href: "/commercial-investments" },
+      { label: "Pre-Leased Mumbai", href: "/commercial/pre-leased-mumbai" },
     ],
-    cta: { label: "View commercial opportunities →", href: "/commercial/pre-leased-mumbai" },
+    cta: { label: "Share commercial requirement →", href: "/commercial/hyderabad" },
   },
   {
     label: "Insights",
@@ -145,7 +149,10 @@ const Header = ({ navMarkets = [] }: HeaderProps) => {
   const pathname = usePathname();
 
   useEffect(() => {
-    setIsMounted(true);
+    let isActive = true;
+    queueMicrotask(() => {
+      if (isActive) setIsMounted(true);
+    });
     const defaultLogo = "/agency_logo.png";
     const loadLogo = async () => {
       try {
@@ -157,6 +164,9 @@ const Header = ({ navMarkets = [] }: HeaderProps) => {
       }
     };
     loadLogo();
+    return () => {
+      isActive = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -180,7 +190,7 @@ const Header = ({ navMarkets = [] }: HeaderProps) => {
         <div className="container relative flex h-16 items-center justify-between">
 
           {/* Logo */}
-          <Link href="/" className="flex items-center h-16" style={{ width: "auto", maxWidth: "200px" }}>
+          <Link href="/" className="flex h-16 flex-none items-center" style={{ width: "auto", maxWidth: "200px" }}>
             {!imgError && headerLogo ? (
               <Image
                 src={headerLogo}
@@ -203,14 +213,14 @@ const Header = ({ navMarkets = [] }: HeaderProps) => {
 
           {/* Desktop nav — centered */}
           {isMounted && (
-            <nav className="hidden lg:flex absolute left-1/2 -translate-x-1/2">
-              <ul className="flex items-center gap-0.5">
+            <nav className="hidden min-w-0 flex-1 justify-center px-2 lg:flex xl:px-4">
+              <ul className="flex min-w-0 items-center gap-0.5 whitespace-nowrap">
                 {NAV_ITEMS.map((item) => (
                   <li key={item.href} className="relative group">
                     <Link
                       href={item.href}
                       className={cn(
-                        "flex items-center gap-1 rounded-md px-3.5 py-2 text-[12px] font-semibold uppercase tracking-[0.16em] transition-all duration-200",
+                        "flex items-center gap-1 rounded-md px-2 py-2 text-[11px] font-semibold uppercase tracking-[0.13em] transition-all duration-200 xl:px-2.5 2xl:px-3.5 2xl:text-[12px] 2xl:tracking-[0.16em]",
                         isActive(item.href)
                           ? "text-white bg-white/10"
                           : "text-slate-300 hover:text-white hover:bg-white/8"
@@ -311,7 +321,7 @@ const Header = ({ navMarkets = [] }: HeaderProps) => {
           )}
 
           {/* Right side */}
-          <div className="hidden lg:flex items-center gap-4">
+          <div className="hidden flex-none items-center gap-3 lg:flex 2xl:gap-4">
             {/* Live indicator */}
             <div className="flex items-center gap-1.5">
               <span className="relative flex h-2 w-2">
@@ -324,7 +334,7 @@ const Header = ({ navMarkets = [] }: HeaderProps) => {
             {/* Gold CTA */}
             <Link
               href="/contact"
-              className="rounded-full px-4 py-1.5 text-[11px] font-bold uppercase tracking-[0.12em] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(200,169,110,0.4)]"
+              className="whitespace-nowrap rounded-full px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.1em] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(200,169,110,0.4)] 2xl:px-4 2xl:text-[11px] 2xl:tracking-[0.12em]"
               style={{
                 background: "linear-gradient(135deg, #c8a96e 0%, #a8843e 100%)",
                 color: "#0a0a0a",

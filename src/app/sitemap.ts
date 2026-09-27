@@ -12,6 +12,50 @@ type ProjectSmartLinkRow = {
   configurations?: unknown;
 };
 
+type CityRelation = { url_slug?: string | null } | { url_slug?: string | null }[] | null;
+
+type MicroMarketSitemapRow = {
+  id?: string | null;
+  city_id?: string | null;
+  url_slug?: string | null;
+  updated_at?: string | null;
+  cities?: CityRelation;
+};
+
+type ProjectSitemapRow = {
+  url_slug?: string | null;
+  updated_at?: string | null;
+  city?: CityRelation;
+};
+
+type FocusProjectSitemapRow = {
+  project_slug?: string | null;
+  city_slug?: string | null;
+  listing_url_slug?: string | null;
+  updated_at?: string | null;
+};
+
+type ConfigurationRow = {
+  bhk_config?: unknown;
+  bhk?: unknown;
+  unit_type?: unknown;
+  configuration?: unknown;
+  config?: unknown;
+  bedrooms?: unknown;
+};
+
+function getCitySlug(cities: CityRelation | undefined): string | null {
+  const city = Array.isArray(cities) ? cities[0] : cities;
+  return city?.url_slug ?? null;
+}
+
+function getConfigText(config: unknown): string {
+  if (!config || typeof config !== "object") return "";
+  const row = config as ConfigurationRow;
+  const value = row.bhk_config ?? row.bhk ?? row.unit_type ?? row.configuration ?? row.config ?? row.bedrooms ?? "";
+  return String(value);
+}
+
 function slugify(value: string): string {
   return value
     .toLowerCase()
@@ -145,6 +189,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       { url: `${baseUrl}/buying-requirement`, lastModified: STATIC_DATE, changeFrequency: "monthly", priority: 0.8 },
       { url: `${baseUrl}/hyderabad/landowner-investor-share-flats`, lastModified: STATIC_DATE, changeFrequency: "weekly", priority: 0.7 },
       { url: `${baseUrl}/commercial-investments`, lastModified: STATIC_DATE, changeFrequency: "weekly", priority: 0.9 },
+      { url: `${baseUrl}/commercial/hyderabad`, lastModified: STATIC_DATE, changeFrequency: "weekly", priority: 0.9 },
+      { url: `${baseUrl}/commercial/hyderabad/office-space-for-lease`, lastModified: STATIC_DATE, changeFrequency: "weekly", priority: 0.85 },
+      { url: `${baseUrl}/commercial/hyderabad/office-space-for-sale`, lastModified: STATIC_DATE, changeFrequency: "weekly", priority: 0.85 },
+      { url: `${baseUrl}/commercial/hyderabad/managed-office-space`, lastModified: STATIC_DATE, changeFrequency: "weekly", priority: 0.85 },
       { url: `${baseUrl}/kokapet-gandipet-luxury-villas`, lastModified: STATIC_DATE, changeFrequency: "weekly", priority: 0.9 },
       { url: `${baseUrl}/apartment-intelligence`, lastModified: STATIC_DATE, changeFrequency: "weekly", priority: 0.8 },
       { url: `${baseUrl}/villa-intelligence`, lastModified: STATIC_DATE, changeFrequency: "weekly", priority: 0.8 },
@@ -183,8 +231,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     });
 
     // Micro-markets
-    microMarketsResult.data?.forEach((mm: any) => {
-      const citySlug = Array.isArray(mm.cities) ? mm.cities[0]?.url_slug : mm.cities?.url_slug;
+    microMarketsResult.data?.forEach((mm: MicroMarketSitemapRow) => {
+      const citySlug = getCitySlug(mm.cities);
       console.log("Processing Market:", mm.url_slug, "City Slug:", citySlug);
       if (!citySlug) {
         console.warn(`[Sitemap] Skipping market ${mm.url_slug} - No City Slug found.`);
@@ -215,47 +263,50 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         const batch = topMarkets.slice(i, i + batchSize);
         
         await Promise.all(
-          batch.map(async (mm: any) => {
+          batch.map(async (mm: MicroMarketSitemapRow) => {
             try {
-              const citySlug = Array.isArray(mm.cities) ? mm.cities[0]?.url_slug : mm.cities?.url_slug;
+              const citySlug = getCitySlug(mm.cities);
               console.log("Processing Market:", mm.url_slug, "City Slug:", citySlug);
               if (!citySlug) {
                 console.warn(`[Sitemap] Skipping market ${mm.url_slug} - No City Slug found.`);
                 return;
               }
               if (!mm.url_slug || !mm.city_id || !mm.id) return;
+              const marketSlug = mm.url_slug;
+              const microMarketId = mm.id;
+              const cityId = mm.city_id;
 
               // Get locality stats to determine valid filters
-              const stats = await getLocalityStats(mm.id, mm.city_id);
+              const stats = await getLocalityStats(microMarketId, cityId);
               console.log(
-                `[sitemap] Stats for ${mm.url_slug}: residential=${stats.residentialTypes.length}, commercial=${stats.commercialTypes.length}, price=${stats.priceRanges.length}, status=${stats.statuses.length}, totalProjects=${stats.totalProjects}`
+                `[sitemap] Stats for ${marketSlug}: residential=${stats.residentialTypes.length}, commercial=${stats.commercialTypes.length}, price=${stats.priceRanges.length}, status=${stats.statuses.length}, totalProjects=${stats.totalProjects}`
               );
               
               // Generate URLs for each valid filter
               // Residential types
               stats.residentialTypes.forEach((type: string) => {
-                const filterSlug = generateFilterSlug("residential", type, mm.url_slug);
+                const filterSlug = generateFilterSlug("residential", type, marketSlug);
                 smartLinkSet.add(`${baseUrl}/homes/${filterSlug}`);
                 console.log(`[Sitemap] Added link: ${filterSlug}`);
               });
 
               // Commercial types
               stats.commercialTypes.forEach((type: string) => {
-                const filterSlug = generateFilterSlug("commercial", type, mm.url_slug);
+                const filterSlug = generateFilterSlug("commercial", type, marketSlug);
                 smartLinkSet.add(`${baseUrl}/homes/${filterSlug}`);
                 console.log(`[Sitemap] Added link: ${filterSlug}`);
               });
 
               // Price ranges
               stats.priceRanges.forEach((range: string) => {
-                const filterSlug = generateFilterSlug("price", range, mm.url_slug);
+                const filterSlug = generateFilterSlug("price", range, marketSlug);
                 smartLinkSet.add(`${baseUrl}/homes/${filterSlug}`);
                 console.log(`[Sitemap] Added link: ${filterSlug}`);
               });
 
               // Status filters
               stats.statuses.forEach((status: string) => {
-                const filterSlug = generateFilterSlug("status", status, mm.url_slug);
+                const filterSlug = generateFilterSlug("status", status, marketSlug);
                 smartLinkSet.add(`${baseUrl}/homes/${filterSlug}`);
                 console.log(`[Sitemap] Added link: ${filterSlug}`);
               });
@@ -267,17 +318,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
               const { data: projects } = await supabase
                 .from("projects")
                 .select("property_types, configurations")
-                .eq("micro_market_id", mm.id)
-                .eq("city_id", mm.city_id)
+                .eq("micro_market_id", microMarketId)
+                .eq("city_id", cityId)
                 .or("status.ilike.published,status.ilike.%under construction%");
               console.log(
-                `[sitemap] Projects for ${mm.url_slug}: ${projects?.length || 0}`
+                `[sitemap] Projects for ${marketSlug}: ${projects?.length || 0}`
               );
 
               (projects as ProjectSmartLinkRow[] | null | undefined)?.forEach((project, idx) => {
                 if (idx === 0) {
                   console.log(
-                    `[sitemap] Sample project for ${mm.url_slug}: property_types=${JSON.stringify(project.property_types)}, configurations=${JSON.stringify(project.configurations)}`
+                    `[sitemap] Sample project for ${marketSlug}: property_types=${JSON.stringify(project.property_types)}, configurations=${JSON.stringify(project.configurations)}`
                   );
                 }
                 const types = parseJsonb(project.property_types, []);
@@ -291,7 +342,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
                 });
 
                 const configs = parseJsonb(project.configurations, []);
-                const configArray = asArray<any>(configs);
+                const configArray = asArray<unknown>(configs);
                 configArray.forEach((config) => {
                   if (!config) return;
                   if (typeof config === "string") {
@@ -299,14 +350,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
                     if (bhkToken) bhkSet.add(bhkToken);
                     return;
                   }
-                  const configText =
-                    config.bhk_config ||
-                    config.bhk ||
-                    config.unit_type ||
-                    config.configuration ||
-                    config.config ||
-                    config.bedrooms ||
-                    "";
+                  const configText = getConfigText(config);
                   if (configText) {
                     const bhkToken = extractBhkToken(String(configText));
                     if (bhkToken) bhkSet.add(bhkToken);
@@ -320,14 +364,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
                 const pluralType = pluralize(typeSlug);
 
                 // Generic fallback: /homes/apartments-in-{market}
-                const genericSlug = `${pluralType}-in-${slugify(mm.url_slug)}`;
+                const genericSlug = `${pluralType}-in-${slugify(marketSlug)}`;
                 smartLinkSet.add(`${baseUrl}/homes/${genericSlug}`);
 
                 bhkSet.forEach((bhkToken) => {
                   // Ensure no redundancy like 3-bhk-3-bhk-apartments
                   const safeType = typeSlug.replace(/\d+-\+?-?bhk/gi, "").trim();
                   const safePlural = pluralize(slugify(safeType || typeSlug));
-                  const combinedSlug = `${bhkToken}-${safePlural}-in-${slugify(mm.url_slug)}`;
+                  const combinedSlug = `${bhkToken}-${safePlural}-in-${slugify(marketSlug)}`;
                   smartLinkSet.add(`${baseUrl}/homes/${combinedSlug}`);
                 });
               });
@@ -354,9 +398,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // Projects (main listings)
     const listingProjectSet = new Set<string>();
     if (projectsResult.data) {
-      projectsResult.data.forEach((p: any) => {
-        const cityData = Array.isArray(p.city) ? p.city[0] : p.city;
-        const citySlug = cityData?.url_slug;
+      projectsResult.data.forEach((p: ProjectSitemapRow) => {
+        const citySlug = getCitySlug(p.city);
         if (p.url_slug && citySlug) {
           const key = `${citySlug}/${p.url_slug}`;
           listingProjectSet.add(key);
@@ -379,12 +422,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       .eq("is_focus_project", true)
       .eq("sale_status", "active");
 
-    (focusProjects ?? []).forEach((fp: any) => {
-      if (fp.listing_url_slug) {
+    (focusProjects ?? []).forEach((fp: FocusProjectSitemapRow) => {
+      const listingUrlSlug = fp.listing_url_slug;
+      if (listingUrlSlug) {
         // Already included via the projects table query — bump priority to 0.9 for focus projects
         // (they rank higher because we actively market them)
         const existingIdx = urls.findIndex(
-          (u) => u.url.includes(fp.listing_url_slug)
+          (u) => u.url.includes(listingUrlSlug)
         );
         if (existingIdx >= 0) urls[existingIdx].priority = 0.9;
         return;
@@ -412,7 +456,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       if (!listingProjectSet.has(key)) {
         // Check if this is a focus project (already handled above) — skip if so
         const isFocus = (focusProjects ?? []).some(
-          (fp: any) => fp.project_slug === projectSlug && fp.city_slug === citySlug
+          (fp: FocusProjectSitemapRow) => fp.project_slug === projectSlug && fp.city_slug === citySlug
         );
         if (!isFocus) {
           urls.push({
