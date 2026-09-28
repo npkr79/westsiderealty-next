@@ -1,0 +1,9 @@
+url,event,page_type,commercial_intent,location_scope,extra_param,pii,result
+/commercial/hyderabad/office-space-for-lease/gachibowli-financial-district,corporate_leasing_primary_cta,office_leasing_corridor,office_lease,gachibowli_financial_district,cta_location=hero,none,pass
+/commercial/hyderabad/office-space-for-lease/gachibowli-financial-district,corporate_leasing_form_start,office_leasing_corridor,office_lease,gachibowli_financial_district,,none,pass
+/commercial/hyderabad/office-space-for-lease/gachibowli-financial-district,corporate_leasing_location_selected,office_leasing_corridor,office_lease,gachibowli_financial_district,location_selection=gachibowli_financial_district,none,pass
+/commercial/hyderabad/office-space-for-lease/gachibowli-financial-district,corporate_leasing_area_selected,office_leasing_corridor,office_lease,gachibowli_financial_district,area_band=25000_50000,none,pass
+/commercial/hyderabad/office-space-for-lease/hitec-city-madhapur,corporate_leasing_primary_cta,office_leasing_corridor,office_lease,hitec_city_madhapur,cta_location=hero,none,pass
+/commercial/hyderabad/office-space-for-lease/hitec-city-madhapur,corporate_leasing_form_start,office_leasing_corridor,office_lease,hitec_city_madhapur,,none,pass
+/commercial/hyderabad/office-space-for-lease/hitec-city-madhapur,corporate_leasing_location_selected,office_leasing_corridor,office_lease,hitec_city_madhapur,location_selection=hitec_city_madhapur,none,pass
+/commercial/hyderabad/office-space-for-lease/hitec-city-madhapur,corporate_leasing_area_selected,office_leasing_corridor,office_lease,hitec_city_madhapur,area_band=10000_25000,none,pass

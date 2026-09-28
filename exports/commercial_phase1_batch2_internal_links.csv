@@ -1,0 +1,8 @@
+source,target,anchor_context,result
+/commercial/hyderabad/office-space-for-lease,/commercial/hyderabad/office-space-for-lease/gachibowli-financial-district,Corridor Leasing Guides card,present
+/commercial/hyderabad/office-space-for-lease,/commercial/hyderabad/office-space-for-lease/hitec-city-madhapur,Corridor Leasing Guides card,present
+/commercial/hyderabad/office-space-for-lease/gachibowli-financial-district,/commercial/hyderabad/office-space-for-lease,breadcrumb/footer related path,present
+/commercial/hyderabad/office-space-for-lease/gachibowli-financial-district,/commercial/hyderabad/office-space-for-lease/hitec-city-madhapur,hero and nearby related path,present
+/commercial/hyderabad/office-space-for-lease/hitec-city-madhapur,/commercial/hyderabad/office-space-for-lease,breadcrumb/footer related path,present
+/commercial/hyderabad/office-space-for-lease/hitec-city-madhapur,/commercial/hyderabad/office-space-for-lease/gachibowli-financial-district,hero and nearby related path,present
+header/footer primary navigation,new corridor URLs,not added per scoped UX/SEO instruction,not added

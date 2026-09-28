@@ -191,6 +191,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       { url: `${baseUrl}/commercial-investments`, lastModified: STATIC_DATE, changeFrequency: "weekly", priority: 0.9 },
       { url: `${baseUrl}/commercial/hyderabad`, lastModified: STATIC_DATE, changeFrequency: "weekly", priority: 0.9 },
       { url: `${baseUrl}/commercial/hyderabad/office-space-for-lease`, lastModified: STATIC_DATE, changeFrequency: "weekly", priority: 0.85 },
+      { url: `${baseUrl}/commercial/hyderabad/office-space-for-lease/gachibowli-financial-district`, lastModified: STATIC_DATE, changeFrequency: "weekly", priority: 0.8 },
+      { url: `${baseUrl}/commercial/hyderabad/office-space-for-lease/hitec-city-madhapur`, lastModified: STATIC_DATE, changeFrequency: "weekly", priority: 0.8 },
       { url: `${baseUrl}/commercial/hyderabad/office-space-for-sale`, lastModified: STATIC_DATE, changeFrequency: "weekly", priority: 0.85 },
       { url: `${baseUrl}/commercial/hyderabad/managed-office-space`, lastModified: STATIC_DATE, changeFrequency: "weekly", priority: 0.85 },
       { url: `${baseUrl}/kokapet-gandipet-luxury-villas`, lastModified: STATIC_DATE, changeFrequency: "weekly", priority: 0.9 },

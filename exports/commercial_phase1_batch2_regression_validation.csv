@@ -1,0 +1,13 @@
+route,status,notes
+/commercial/hyderabad,200,local env-backed production server smoke passed
+/commercial/hyderabad/office-space-for-lease,200,local env-backed production server smoke passed
+/commercial/hyderabad/office-space-for-sale,200,local env-backed production server smoke passed
+/commercial/hyderabad/managed-office-space,200,local env-backed production server smoke passed
+/commercial-investments,200,local env-backed production server smoke passed
+/commercial/pre-leased-mumbai,200,local env-backed production server smoke passed
+/,200,local env-backed production server smoke passed
+/portfolio,200,local env-backed production server smoke passed
+/contact,200,local env-backed production server smoke passed
+/insights,200,local env-backed production server smoke passed
+parent page H1/title/hero/form,unchanged,only child-link section added
+sitemap protected commercial URLs,exact loc count 1,exact XML loc matching used

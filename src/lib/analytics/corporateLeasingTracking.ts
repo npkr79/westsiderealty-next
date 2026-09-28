@@ -17,14 +17,23 @@ const LOCATIONS = {
   Raidurg: "raidurg",
   "Kokapet / Neopolis": "kokapet_neopolis",
   "Other / Flexible": "other_flexible",
+  gachibowli_financial_district: "gachibowli_financial_district",
+  hitec_city_madhapur: "hitec_city_madhapur",
 } as const;
 
+type CorporateLeasingContext = {
+  page_path?: string;
+  page_type?: "office_leasing_corridor";
+  commercial_intent?: "office_lease";
+  location_scope?: "gachibowli_financial_district" | "hitec_city_madhapur";
+};
+
 type EventParameters = {
-  corporate_leasing_primary_cta: { cta_location: "hero" };
-  corporate_leasing_form_start: Record<string, never>;
-  corporate_leasing_form_submit_success: Record<string, never>;
-  corporate_leasing_area_selected: { area_band: string };
-  corporate_leasing_location_selected: { location_selection: string };
+  corporate_leasing_primary_cta: { cta_location: "hero" } & CorporateLeasingContext;
+  corporate_leasing_form_start: CorporateLeasingContext;
+  corporate_leasing_form_submit_success: CorporateLeasingContext;
+  corporate_leasing_area_selected: { area_band: string } & CorporateLeasingContext;
+  corporate_leasing_location_selected: { location_selection: string } & CorporateLeasingContext;
 };
 type EventName = keyof EventParameters;
 type PendingEvent = { name: EventName; parameters: Record<string, string>; expiresAt: number };
@@ -70,13 +79,21 @@ function flush() {
 export function trackCorporateLeasingEvent<E extends EventName>(name: E, parameters: EventParameters[E]): void {
   try {
     if (typeof window === "undefined") return;
+    const contextualPagePath = typeof parameters.page_path === "string" && parameters.page_path.startsWith("/commercial/hyderabad/office-space-for-lease")
+      ? parameters.page_path
+      : PAGE_PATH;
     const safe: Record<string, string> = {
       send_to: MEASUREMENT_ID,
-      page_path: PAGE_PATH,
+      page_path: contextualPagePath,
       // Override automatic URL context for these custom events only; no query/PII leakage.
-      page_location: `https://www.westsiderealty.in${PAGE_PATH}`,
+      page_location: `https://www.westsiderealty.in${contextualPagePath}`,
       page_referrer: "",
     };
+    if (parameters.page_type === "office_leasing_corridor") safe.page_type = "office_leasing_corridor";
+    if (parameters.commercial_intent === "office_lease") safe.commercial_intent = "office_lease";
+    if (parameters.location_scope === "gachibowli_financial_district" || parameters.location_scope === "hitec_city_madhapur") {
+      safe.location_scope = parameters.location_scope;
+    }
     switch (name) {
       case "corporate_leasing_primary_cta":
         if (!("cta_location" in parameters) || parameters.cta_location !== "hero") return;

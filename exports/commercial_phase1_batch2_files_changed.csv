@@ -1,0 +1,9 @@
+status,file,purpose
+modified,src/app/commercial/hyderabad/office-space-for-lease/page.tsx,Minimal parent child-link section only; parent title/H1/hero/form unchanged.
+modified,src/app/sitemap.ts,Added exactly two Batch 2 corridor URLs to static sitemap list.
+modified,src/lib/analytics/corporateLeasingTracking.ts,Extended existing corporate_leasing_* allowlist with optional corridor context while preserving parent defaults.
+added,src/app/commercial/hyderabad/office-space-for-lease/_data/corridorPages.ts,"Shared corridor content, metadata and form context for both pages."
+added,src/app/commercial/hyderabad/office-space-for-lease/_components/OfficeLeasingCorridorPage.tsx,Shared server-rendered corridor page component with WebPage and BreadcrumbList schema only.
+added,src/app/commercial/hyderabad/office-space-for-lease/_components/OfficeLeasingCorridorClient.tsx,Shared client CTA/form using submitLead and CORPORATE_OFFICE_LEASING.
+added,src/app/commercial/hyderabad/office-space-for-lease/gachibowli-financial-district/page.tsx,New corridor route for Gachibowli / Financial District / Nanakramguda.
+added,src/app/commercial/hyderabad/office-space-for-lease/hitec-city-madhapur/page.tsx,New corridor route for HITEC City / Madhapur.

@@ -363,6 +363,29 @@ export default function HyderabadOfficeLeasingPage() {
         </div>
       </section>
 
+
+      <section className="bg-[#101010] px-5 py-14 sm:px-8 lg:px-10">
+        <div className="mx-auto grid max-w-7xl gap-6 border border-white/10 bg-[#141414] p-6 lg:grid-cols-[0.72fr_1.28fr] lg:p-8">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#c8a96e]">Corridor Leasing Guides</p>
+            <h2 className="mt-4 text-2xl font-semibold text-white sm:text-3xl">Need a location-specific office search?</h2>
+            <p className="mt-4 text-sm leading-7 text-slate-400">
+              Start with the broad Hyderabad leasing page, or use a corridor guide when your requirement is already focused on a western office cluster.
+            </p>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Link href="/commercial/hyderabad/office-space-for-lease/gachibowli-financial-district" className="group border border-white/10 bg-[#101010] p-5 transition hover:border-[#c8a96e]/60">
+              <h3 className="text-lg font-semibold text-white group-hover:text-[#c8a96e]">Gachibowli / Financial District</h3>
+              <p className="mt-3 text-sm leading-7 text-slate-400">For corporate office searches around Gachibowli, Financial District and Nanakramguda.</p>
+            </Link>
+            <Link href="/commercial/hyderabad/office-space-for-lease/hitec-city-madhapur" className="group border border-white/10 bg-[#101010] p-5 transition hover:border-[#c8a96e]/60">
+              <h3 className="text-lg font-semibold text-white group-hover:text-[#c8a96e]">HITEC City / Madhapur</h3>
+              <p className="mt-3 text-sm leading-7 text-slate-400">For office requirements in Hyderabad&apos;s mature technology and business-services corridor.</p>
+            </Link>
+          </div>
+        </div>
+      </section>
+
       <section className="bg-[#0d0d0d] px-5 py-16 sm:px-8 lg:px-10 lg:py-20">
         <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[0.8fr_1.2fr]">
           <div>

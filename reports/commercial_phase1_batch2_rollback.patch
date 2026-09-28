@@ -1,0 +1,104 @@
+diff --git a/src/app/commercial/hyderabad/office-space-for-lease/page.tsx b/src/app/commercial/hyderabad/office-space-for-lease/page.tsx
+index 6df4a11..fd05535 100644
+--- a/src/app/commercial/hyderabad/office-space-for-lease/page.tsx
++++ b/src/app/commercial/hyderabad/office-space-for-lease/page.tsx
+@@ -363,6 +363,29 @@ export default function HyderabadOfficeLeasingPage() {
+         </div>
+       </section>
+ 
++
++      <section className="bg-[#101010] px-5 py-14 sm:px-8 lg:px-10">
++        <div className="mx-auto grid max-w-7xl gap-6 border border-white/10 bg-[#141414] p-6 lg:grid-cols-[0.72fr_1.28fr] lg:p-8">
++          <div>
++            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#c8a96e]">Corridor Leasing Guides</p>
++            <h2 className="mt-4 text-2xl font-semibold text-white sm:text-3xl">Need a location-specific office search?</h2>
++            <p className="mt-4 text-sm leading-7 text-slate-400">
++              Start with the broad Hyderabad leasing page, or use a corridor guide when your requirement is already focused on a western office cluster.
++            </p>
++          </div>
++          <div className="grid gap-4 sm:grid-cols-2">
++            <Link href="/commercial/hyderabad/office-space-for-lease/gachibowli-financial-district" className="group border border-white/10 bg-[#101010] p-5 transition hover:border-[#c8a96e]/60">
++              <h3 className="text-lg font-semibold text-white group-hover:text-[#c8a96e]">Gachibowli / Financial District</h3>
++              <p className="mt-3 text-sm leading-7 text-slate-400">For corporate office searches around Gachibowli, Financial District and Nanakramguda.</p>
++            </Link>
++            <Link href="/commercial/hyderabad/office-space-for-lease/hitec-city-madhapur" className="group border border-white/10 bg-[#101010] p-5 transition hover:border-[#c8a96e]/60">
++              <h3 className="text-lg font-semibold text-white group-hover:text-[#c8a96e]">HITEC City / Madhapur</h3>
++              <p className="mt-3 text-sm leading-7 text-slate-400">For office requirements in Hyderabad&apos;s mature technology and business-services corridor.</p>
++            </Link>
++          </div>
++        </div>
++      </section>
++
+       <section className="bg-[#0d0d0d] px-5 py-16 sm:px-8 lg:px-10 lg:py-20">
+         <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[0.8fr_1.2fr]">
+           <div>
+diff --git a/src/app/sitemap.ts b/src/app/sitemap.ts
+index 0b95624..787e76c 100644
+--- a/src/app/sitemap.ts
++++ b/src/app/sitemap.ts
+@@ -191,6 +191,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+       { url: `${baseUrl}/commercial-investments`, lastModified: STATIC_DATE, changeFrequency: "weekly", priority: 0.9 },
+       { url: `${baseUrl}/commercial/hyderabad`, lastModified: STATIC_DATE, changeFrequency: "weekly", priority: 0.9 },
+       { url: `${baseUrl}/commercial/hyderabad/office-space-for-lease`, lastModified: STATIC_DATE, changeFrequency: "weekly", priority: 0.85 },
++      { url: `${baseUrl}/commercial/hyderabad/office-space-for-lease/gachibowli-financial-district`, lastModified: STATIC_DATE, changeFrequency: "weekly", priority: 0.8 },
++      { url: `${baseUrl}/commercial/hyderabad/office-space-for-lease/hitec-city-madhapur`, lastModified: STATIC_DATE, changeFrequency: "weekly", priority: 0.8 },
+       { url: `${baseUrl}/commercial/hyderabad/office-space-for-sale`, lastModified: STATIC_DATE, changeFrequency: "weekly", priority: 0.85 },
+       { url: `${baseUrl}/commercial/hyderabad/managed-office-space`, lastModified: STATIC_DATE, changeFrequency: "weekly", priority: 0.85 },
+       { url: `${baseUrl}/kokapet-gandipet-luxury-villas`, lastModified: STATIC_DATE, changeFrequency: "weekly", priority: 0.9 },
+diff --git a/src/lib/analytics/corporateLeasingTracking.ts b/src/lib/analytics/corporateLeasingTracking.ts
+index 53423e8..c12bccc 100644
+--- a/src/lib/analytics/corporateLeasingTracking.ts
++++ b/src/lib/analytics/corporateLeasingTracking.ts
+@@ -17,14 +17,23 @@ const LOCATIONS = {
+   Raidurg: "raidurg",
+   "Kokapet / Neopolis": "kokapet_neopolis",
+   "Other / Flexible": "other_flexible",
++  gachibowli_financial_district: "gachibowli_financial_district",
++  hitec_city_madhapur: "hitec_city_madhapur",
+ } as const;
+ 
++type CorporateLeasingContext = {
++  page_path?: string;
++  page_type?: "office_leasing_corridor";
++  commercial_intent?: "office_lease";
++  location_scope?: "gachibowli_financial_district" | "hitec_city_madhapur";
++};
++
+ type EventParameters = {
+-  corporate_leasing_primary_cta: { cta_location: "hero" };
+-  corporate_leasing_form_start: Record<string, never>;
+-  corporate_leasing_form_submit_success: Record<string, never>;
+-  corporate_leasing_area_selected: { area_band: string };
+-  corporate_leasing_location_selected: { location_selection: string };
++  corporate_leasing_primary_cta: { cta_location: "hero" } & CorporateLeasingContext;
++  corporate_leasing_form_start: CorporateLeasingContext;
++  corporate_leasing_form_submit_success: CorporateLeasingContext;
++  corporate_leasing_area_selected: { area_band: string } & CorporateLeasingContext;
++  corporate_leasing_location_selected: { location_selection: string } & CorporateLeasingContext;
+ };
+ type EventName = keyof EventParameters;
+ type PendingEvent = { name: EventName; parameters: Record<string, string>; expiresAt: number };
+@@ -70,13 +79,21 @@ function flush() {
+ export function trackCorporateLeasingEvent<E extends EventName>(name: E, parameters: EventParameters[E]): void {
+   try {
+     if (typeof window === "undefined") return;
++    const contextualPagePath = typeof parameters.page_path === "string" && parameters.page_path.startsWith("/commercial/hyderabad/office-space-for-lease")
++      ? parameters.page_path
++      : PAGE_PATH;
+     const safe: Record<string, string> = {
+       send_to: MEASUREMENT_ID,
+-      page_path: PAGE_PATH,
++      page_path: contextualPagePath,
+       // Override automatic URL context for these custom events only; no query/PII leakage.
+-      page_location: `https://www.westsiderealty.in${PAGE_PATH}`,
++      page_location: `https://www.westsiderealty.in${contextualPagePath}`,
+       page_referrer: "",
+     };
++    if (parameters.page_type === "office_leasing_corridor") safe.page_type = "office_leasing_corridor";
++    if (parameters.commercial_intent === "office_lease") safe.commercial_intent = "office_lease";
++    if (parameters.location_scope === "gachibowli_financial_district" || parameters.location_scope === "hitec_city_madhapur") {
++      safe.location_scope = parameters.location_scope;
++    }
+     switch (name) {
+       case "corporate_leasing_primary_cta":
+         if (!("cta_location" in parameters) || parameters.cta_location !== "hero") return;

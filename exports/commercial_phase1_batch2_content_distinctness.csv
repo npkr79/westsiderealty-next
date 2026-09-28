@@ -1,0 +1,2 @@
+comparison,method,score,result,notes
+gachibowli_financial_district vs hitec_city_madhapur,Jaccard token overlap after removing H1/location/core office terms,0.329,pass,"Gachibowli/FD copy emphasizes ORR, institutional landlords, Nanakramguda and large-format expansion; HITEC/Madhapur emphasizes mature technology ecosystem, employee familiarity, metro/access, building age and managed/fitted choices."
