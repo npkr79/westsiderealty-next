@@ -340,6 +340,11 @@ export default function MicroMarketRedesign({
   const [amenityTab, setAmenityTab] = useState<"schools" | "healthcare" | "shopping">("schools");
 
   const marketName = hero.name;
+  const normalizedMarketSlug = viewModel.urlSlug?.toLowerCase() ?? "";
+  const normalizedMarketName = marketName.toLowerCase();
+  const showGodrejNeopolisPrelaunch =
+    citySlug === "hyderabad" &&
+    (normalizedMarketSlug === "neopolis" || normalizedMarketSlug === "kokapet" || normalizedMarketName.includes("neopolis") || normalizedMarketName.includes("kokapet"));
   const rawHook = hero.hook || aiEnrichment?.market_summary || advisorMarket?.description || null;
   // hero_hook is sometimes stored as HTML in the DB — strip tags for plain-text display
   const hook = rawHook ? stripHtml(rawHook) : null;
@@ -973,6 +978,36 @@ export default function MicroMarketRedesign({
                 Capital conviction: <strong style={{ color: C.text }}>{developerCapital.capitalConvictionBand}</strong>
               </p>
             )}
+          </div>
+        </section>
+      )}
+
+      {showGodrejNeopolisPrelaunch && (
+        <section style={{ background: C.bgWarm, padding: "52px 0 0" }}>
+          <div style={{ maxWidth: 1160, margin: "0 auto", padding: "0 24px" }}>
+            <div
+              style={{
+                background: "#fff",
+                border: `1px solid ${C.border}`,
+                borderRadius: 22,
+                padding: 24,
+                display: "grid",
+                gridTemplateColumns: "minmax(0, 1fr) auto",
+                gap: 18,
+                alignItems: "center",
+              }}
+            >
+              <div>
+                <p style={{ margin: "0 0 8px", fontFamily: "'Outfit', sans-serif", fontSize: 11, fontWeight: 800, letterSpacing: "0.16em", color: C.gold, textTransform: "uppercase" }}>Pre-launch project</p>
+                <h2 style={{ margin: "0 0 8px", fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: "clamp(24px, 3vw, 34px)", color: C.text, fontWeight: 600 }}>Godrej Neopolis in Neopolis / Kokapet</h2>
+                <p style={{ margin: 0, fontFamily: "'Outfit', sans-serif", fontSize: 14, color: C.textMuted, lineHeight: 1.65 }}>
+                  Track expected price, EOI information and 3 & 4 BHK pre-launch details separately from the RERA-verified project list below.
+                </p>
+              </div>
+              <Link href="/hyderabad/projects/godrej-neopolis" style={{ color: "#fff", background: C.gold, borderRadius: 999, padding: "12px 20px", textDecoration: "none", fontFamily: "'Outfit', sans-serif", fontSize: 13, fontWeight: 800, whiteSpace: "nowrap" }}>
+                View Godrej Neopolis →
+              </Link>
+            </div>
           </div>
         </section>
       )}

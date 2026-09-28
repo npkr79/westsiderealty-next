@@ -10,6 +10,21 @@ import { buildProjectUrl } from "@/lib/routes";
 const SUPABASE_IMG =
   "https://imqlfztriragzypplbqa.supabase.co/storage/v1/object/public/project-hero-images";
 
+
+type HomepageSearchResult = {
+  id?: string | number;
+  project_name?: string;
+  url_slug?: string;
+  city_slug?: string;
+  city?: { url_slug?: string | null } | null;
+  micro_market?: string | { micro_market_name?: string | null } | null;
+  developer_brand?: string | null;
+  developer?: { developer_name?: string | null } | null;
+  completion_status?: string | null;
+  status?: string | null;
+  price_range_text?: string | null;
+};
+
 const C = {
   bg: "#FAFAF7",
   bgWarm: "#F5F3EE",
@@ -190,6 +205,19 @@ const MARKETS = [
 ];
 
 const FEATURED_PROJECTS = [
+  {
+    name: "Godrej Neopolis",
+    location: "Neopolis / Kokapet",
+    config: "3 & 4 BHK",
+    price: "Expected ₹13,000–14,000/sqft",
+    tag: "Pre-launch · EOI stage",
+    appreciation: null,
+    gradientFrom: "#1A1A1F",
+    gradientTo: "#5B4630",
+    slug: "godrej-neopolis",
+    img: null,
+    statusLabel: "PRE-LAUNCH",
+  },
   {
     name: "One by MSN",
     location: "Neopolis",
@@ -432,7 +460,7 @@ export default function HomepageRedesign() {
   // ── Natural language search ───────────────────────────────────────────────
   const [searchQuery, setSearchQuery] = useState("");
   const [searchLoading, setSearchLoading] = useState(false);
-  const [searchResults, setSearchResults] = useState<any[] | null>(null);
+  const [searchResults, setSearchResults] = useState<HomepageSearchResult[] | null>(null);
   const [searchOverview, setSearchOverview] = useState<string | null>(null);
   const [searchOverviewLoading, setSearchOverviewLoading] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
@@ -495,7 +523,7 @@ export default function HomepageRedesign() {
         return;
       }
 
-      const sliced = (results as any[]).slice(0, 9);
+      const sliced = (Array.isArray(results) ? (results as HomepageSearchResult[]) : []).slice(0, 9);
       setSearchResults(sliced);
       setTimeout(() => searchResultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 100);
 
@@ -1018,8 +1046,9 @@ export default function HomepageRedesign() {
 
                 {/* Google-style project list */}
                 <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-                  {searchResults.map((p: any, idx: number) => {
+                  {searchResults.map((p, idx) => {
                     const citySlug = p.city?.url_slug ?? p.city_slug ?? "hyderabad";
+                    const projectSlug = p.url_slug ?? "";
                     const microMarketName = typeof p.micro_market === "string"
                       ? p.micro_market
                       : p.micro_market?.micro_market_name ?? null;
@@ -1028,7 +1057,7 @@ export default function HomepageRedesign() {
                     const metaParts = [microMarketName, developerName].filter(Boolean);
                     return (
                       <div
-                        key={p.url_slug ?? p.id}
+                        key={p.url_slug ?? p.id ?? p.project_name ?? idx}
                         style={{
                           padding: "14px 0",
                           borderBottom: idx < searchResults.length - 1 ? `1px solid ${C.border}` : "none",
@@ -1036,7 +1065,7 @@ export default function HomepageRedesign() {
                       >
                         <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
                           <Link
-                            href={buildProjectUrl(citySlug, p.url_slug)}
+                            href={buildProjectUrl(citySlug, projectSlug)}
                             style={{
                               fontFamily: "'Outfit', sans-serif",
                               fontSize: 16,
@@ -1049,7 +1078,7 @@ export default function HomepageRedesign() {
                             onMouseEnter={(e) => (e.currentTarget.style.borderBottomColor = C.gold)}
                             onMouseLeave={(e) => (e.currentTarget.style.borderBottomColor = "transparent")}
                           >
-                            {p.project_name}
+                            {p.project_name ?? "Project"}
                           </Link>
                           {status && (
                             <span style={{ fontFamily: "'Outfit', sans-serif", fontSize: 11, background: C.bgWarm, color: C.textMuted, padding: "2px 8px", borderRadius: 100, border: `1px solid ${C.border}` }}>
@@ -1473,7 +1502,7 @@ export default function HomepageRedesign() {
                           letterSpacing: "0.06em",
                         }}
                       >
-                        RERA VERIFIED
+                        {p.statusLabel ?? "RERA VERIFIED"}
                       </span>
                     </div>
 
@@ -1709,7 +1738,7 @@ export default function HomepageRedesign() {
                         fontFamily: "'DM Mono', monospace",
                       }}
                     >
-                      "{q}"
+                      &ldquo;{q}&rdquo;
                     </span>
                   </div>
                 ))}

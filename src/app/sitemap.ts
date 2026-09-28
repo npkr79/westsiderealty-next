@@ -200,6 +200,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       { url: `${baseUrl}/villa-intelligence`, lastModified: STATIC_DATE, changeFrequency: "weekly", priority: 0.8 },
       { url: `${baseUrl}/residential-intelligence`, lastModified: STATIC_DATE, changeFrequency: "weekly", priority: 0.8 },
       { url: `${baseUrl}/hyderabad/buy`, lastModified: STATIC_DATE, changeFrequency: "daily", priority: 0.8 },
+      { url: `${baseUrl}/hyderabad/projects/godrej-neopolis`, lastModified: STATIC_DATE, changeFrequency: "weekly", priority: 0.85 },
       { url: `${baseUrl}/hyderabad/shares`, lastModified: STATIC_DATE, changeFrequency: "weekly", priority: 0.7 },
       { url: `${baseUrl}/insights`, lastModified: STATIC_DATE, changeFrequency: "weekly", priority: 0.7 },
       { url: `${baseUrl}/portfolio`, lastModified: new Date(), changeFrequency: "daily", priority: 0.9 },

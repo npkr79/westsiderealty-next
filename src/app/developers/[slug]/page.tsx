@@ -531,6 +531,7 @@ export default async function DeveloperDetailPage({ params }: { params: Promise<
   };
 
   const isGoa = developerCity === "goa";
+  const showGodrejNeopolisPrelaunch = slug === "godrej-properties";
   const cityLabel = isGoa ? "Goa" : "Hyderabad";
 
   // Possession buckets for Goa
@@ -1010,6 +1011,22 @@ export default async function DeveloperDetailPage({ params }: { params: Promise<
                     )}
                   </div>
                 )}
+              </div>
+            </div>
+          </section>
+        )}
+
+        {showGodrejNeopolisPrelaunch && (
+          <section style={{ background: C.bgWarm, padding: "56px 24px" }}>
+            <div style={{ maxWidth: 960, margin: "0 auto" }}>
+              <SectionHeading eyebrow="Pre-launch" title="Godrej Neopolis Kokapet" />
+              <div style={{ background: C.bgCard, border: `1px solid ${C.border}`, borderRadius: 20, padding: 24 }}>
+                <p style={{ margin: "0 0 14px", color: C.textMuted, lineHeight: 1.7 }}>
+                  Godrej Neopolis is a pre-launch residential project in Neopolis / Kokapet with expected 3 & 4 BHK residences, EOI-stage information and RERA registration expected in the first week of October 2026. It is listed here separately from the RERA-record portfolio below.
+                </p>
+                <Link href="/hyderabad/projects/godrej-neopolis" style={{ color: C.gold, fontWeight: 800, textDecoration: "none" }}>
+                  View Godrej Neopolis pre-launch details →
+                </Link>
               </div>
             </div>
           </section>
