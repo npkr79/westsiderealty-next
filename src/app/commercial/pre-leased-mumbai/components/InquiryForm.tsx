@@ -30,12 +30,13 @@ export default function InquiryForm() {
     setError("");
 
     // GA4 event
-    if (typeof window !== "undefined" && (window as any).gtag) {
-      (window as any).gtag("event", "commercial_inquiry_submit", {
-        property_ref: form.property,
-        investment_range: form.investmentRange,
-      });
-    }
+    const gtag = typeof window !== "undefined"
+      ? (window as Window & { gtag?: (...args: unknown[]) => void }).gtag
+      : undefined;
+    gtag?.("event", "commercial_inquiry_submit", {
+      property_ref: form.property,
+      investment_range: form.investmentRange,
+    });
 
     const result = await submitLead({
       name: form.name,
@@ -55,7 +56,7 @@ export default function InquiryForm() {
     if (result.success) {
       setSubmitted(true);
     } else {
-      setError("Something went wrong. Please try WhatsApp or call us directly.");
+      setError("Something went wrong. Please try again or submit the contact form.");
     }
   };
 
@@ -111,7 +112,7 @@ export default function InquiryForm() {
           >
             <p style={{ fontSize: 20, color: "#c8a96e", fontWeight: 700, marginBottom: 8 }}>Thank you — we&apos;ll be in touch shortly.</p>
             <p style={{ fontSize: 14, color: "rgba(255,255,255,0.55)", margin: 0 }}>
-              Our advisory team typically responds within 4 hours on business days. For immediate assistance, reach us on WhatsApp below.
+              Our advisory team typically responds within 4 hours on business days.
             </p>
           </div>
         ) : (

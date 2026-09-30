@@ -236,6 +236,6 @@ export const FAQS: FAQ[] = [
   {
     question: "How do I proceed with one of these opportunities?",
     answer:
-      "Submit an inquiry using the form below or reach us via WhatsApp. Our team will share the detailed fact sheet (Excel with financial projections, lease deed summary, photos, and site visit scheduling) for the mandates you are interested in. NDA applies to exclusive mandates (Options 8 and 9).",
+      "Submit an inquiry using the form below. Our team will share the detailed fact sheet (Excel with financial projections, lease deed summary, photos, and site visit scheduling) for the mandates you are interested in. NDA applies to exclusive mandates (Options 8 and 9).",
   },
 ];

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { MapPin, Clock, Phone, MessageCircle, Mail, Send, CheckCircle, Loader2 } from "lucide-react";
+import { MapPin, Clock, Mail, Send, CheckCircle, Loader2 } from "lucide-react";
 import { JsonLd } from "@/components/common/SEO";
 import { submitLead } from "@/app/actions/submit-lead";
 // ─── Design tokens (matches HomepageRedesign / MicroMarketRedesign) ──────────
@@ -31,7 +31,6 @@ const CONTACT_SCHEMA = {
   mainEntity: {
     "@type": "RealEstateAgent",
     name: "RE/MAX Westside Realty",
-    telephone: "+91-83677-24368",
     address: {
       "@type": "PostalAddress",
       streetAddress: "415, 4th Floor, Kokapet Terminal, Kokapet",
@@ -68,8 +67,9 @@ export default function ContactPage() {
       });
       if (!result.success) throw new Error(result.error || "Submission failed");
       setSubmitted(true);
-    } catch (err: any) {
-      setError(err?.message || "Something went wrong. Please try again.");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Something went wrong. Please try again.";
+      setError(message);
     } finally {
       setSubmitting(false);
     }
@@ -118,10 +118,10 @@ export default function ContactPage() {
               Westside Realty · Hyderabad
             </p>
             <h1 style={{ fontFamily: FONT_SERIF, fontSize: "clamp(2.4rem, 5vw, 3.5rem)", fontWeight: 600, color: "#FFFFFF", lineHeight: 1.15, marginBottom: 20 }}>
-              Let's Talk Real Estate
+              Let&apos;s Talk Real Estate
             </h1>
             <p style={{ fontFamily: FONT_SANS, fontSize: 17, color: "rgba(255,255,255,0.55)", maxWidth: 520, margin: "0 auto 40px" }}>
-              Whether you're buying, investing, or just exploring — our advisors will give you a straight, data-backed answer. No pressure.
+              Whether you&apos;re buying, investing, or just exploring — our advisors will give you a straight, data-backed answer. No pressure.
             </p>
 
             {/* Quick contact chips */}
@@ -164,7 +164,7 @@ export default function ContactPage() {
               ) : (
                 <>
                   <h2 style={{ fontFamily: FONT_SERIF, fontSize: "1.6rem", fontWeight: 600, color: C.text, marginBottom: 8 }}>Send a Message</h2>
-                  <p style={{ fontFamily: FONT_SANS, fontSize: 14, color: C.textMuted, marginBottom: 32 }}>Fill in your details and we'll get back to you shortly.</p>
+                  <p style={{ fontFamily: FONT_SANS, fontSize: 14, color: C.textMuted, marginBottom: 32 }}>Fill in your details and we&apos;ll get back to you shortly.</p>
 
                   <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}
@@ -235,11 +235,6 @@ export default function ContactPage() {
                       icon: <Clock size={18} color={C.gold} />,
                       title: "Business Hours",
                       lines: ["Monday – Saturday", "9:00 AM – 7:00 PM"],
-                    },
-                    {
-                      icon: <Phone size={18} color={C.gold} />,
-                      title: "Phone",
-                      lines: ["+91 83677 24368"],
                     },
                   ].map((item) => (
                     <div key={item.title} style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
