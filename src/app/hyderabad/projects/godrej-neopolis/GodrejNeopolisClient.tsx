@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { submitLead } from "@/app/actions/submit-lead";
+import { submitLead } from "@/lib/analytics/submitTrackedLead";
 import { trackGodrejNeopolisEvent } from "@/lib/analytics/godrejNeopolisTracking";
 
 type Intent = "general_prelaunch" | "price" | "eoi" | "3bhk" | "4bhk" | "floor_plan";
@@ -187,7 +187,7 @@ export function GodrejNeopolisLeadForm() {
           cta_intent: intent,
         },
         details,
-      });
+      }, "godrej_neopolis_client");
 
       if (!result.success) throw new Error(result.error || "Unable to submit your enquiry right now.");
       trackGodrejNeopolisEvent("godrej_neopolis_form_submit_success", {

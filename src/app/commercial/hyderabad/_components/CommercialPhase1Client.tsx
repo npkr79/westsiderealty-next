@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRef, useState } from "react";
 import { CheckCircle2 } from "lucide-react";
-import { submitLead, type LeadType } from "@/app/actions/submit-lead";
+import { submitLead, type LeadType } from "@/lib/analytics/submitTrackedLead";
 import { trackCommercialPhase1Event } from "@/lib/analytics/commercialPhase1Tracking";
 
 type PageType = "commercial_hyderabad_hub" | "commercial_office_sale" | "managed_office";
@@ -307,7 +307,7 @@ export function HubRequirementForm() {
           timeline: form.timeline || null,
           ...campaign,
         },
-      });
+      }, "commercial_phase1client");
 
       if (!result.success) {
         setError(result.error || "We could not submit this requirement. Please try again.");
@@ -489,7 +489,7 @@ export function OfficeSaleRequirementForm() {
           budget_band: form.budget || null,
           ...campaign,
         },
-      });
+      }, "commercial_phase1client_2");
 
       if (!result.success) {
         setError(result.error || "We could not submit this requirement. Please try again.");
@@ -655,7 +655,7 @@ export function ManagedOfficeRequirementForm() {
           rent_budget: form.budget.trim() || null,
           ...campaign,
         },
-      });
+      }, "commercial_phase1client_3");
 
       if (!result.success) {
         setError(result.error || "We could not submit this requirement. Please try again.");

@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Shield } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { submitLead } from "@/app/actions/submit-lead";
+import { submitLead } from "@/lib/analytics/submitTrackedLead";
 
 interface AerocidadeHeroProps {
   data: {
@@ -54,7 +54,7 @@ export default function AerocidadeHero({ data }: AerocidadeHeroProps) {
         type: "GOA_PROPERTY",
         source_page: sourcePage,
         details,
-      });
+      }, "aerocidade_hero");
 
       if (!result.success) {
         throw new Error(result.error || "Failed to submit form");

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { CheckCircle2 } from "lucide-react";
-import { submitLead } from "@/app/actions/submit-lead";
+import { submitLead } from "@/lib/analytics/submitTrackedLead";
 import type { LandingPage } from "@/types/landingPage";
 
 interface GoaLeadFormProps {
@@ -48,7 +48,7 @@ export default function GoaLeadForm({ landingPage }: GoaLeadFormProps) {
         type: "GOA_PROPERTY",
         source_page: sourcePage,
         details,
-      });
+      }, "goa_lead_form");
 
       if (!result.success) {
         throw new Error(result.error || "Failed to submit form");

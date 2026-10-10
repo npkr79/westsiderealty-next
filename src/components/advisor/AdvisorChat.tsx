@@ -2,7 +2,8 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
-import { submitAdvisorLead } from "@/app/actions/submit-advisor-lead";
+import { trackSuccessfulLead } from "@/lib/analytics/leadTracking";
+import { submitAdvisorLead } from "@/lib/analytics/submitTrackedLead";
 
 // ─── Price Breakdown Table ─────────────────────────────────────────────────────
 
@@ -116,6 +117,7 @@ interface Message {
 }
 
 interface ApiResponse {
+  lead_receipts?: string[];
   message: string;
   conversation_id?: string;
   intent?: string;
@@ -261,6 +263,11 @@ export default function AdvisorChat() {
         }),
         });
         const data: ApiResponse = await res.json();
+        for (const receipt of data.lead_receipts ?? []) {
+          trackSuccessfulLead({ success: true, analyticsReceipt: receipt }, {
+            name: "", phone: "", type: "GENERAL_CONTACT", source_page: window.location.pathname,
+          }, "advisor_chat_contact");
+        }
         setMessages([{ role: "assistant", content: data.message || GENERIC_GREETING.content }]);
         if (data.conversation_id) setConversationId(data.conversation_id);
         if (data.projects_discussed?.length) setAllProjectsDiscussed(data.projects_discussed);
@@ -292,6 +299,11 @@ export default function AdvisorChat() {
         }),
       });
       const data: ApiResponse = await res.json();
+      for (const receipt of data.lead_receipts ?? []) {
+        trackSuccessfulLead({ success: true, analyticsReceipt: receipt }, {
+          name: "", phone: "", type: "GENERAL_CONTACT", source_page: window.location.pathname,
+        }, "advisor_chat_contact");
+      }
       setMessages([{ role: "assistant", content: data.message || GENERIC_GREETING.content }]);
       if (data.conversation_id) setConversationId(data.conversation_id);
       if (data.projects_discussed?.length) setAllProjectsDiscussed(data.projects_discussed);
@@ -365,6 +377,11 @@ export default function AdvisorChat() {
       });
 
       const data: ApiResponse = await res.json();
+      for (const receipt of data.lead_receipts ?? []) {
+        trackSuccessfulLead({ success: true, analyticsReceipt: receipt }, {
+          name: "", phone: "", type: "GENERAL_CONTACT", source_page: window.location.pathname,
+        }, "advisor_chat_contact");
+      }
 
       if (!res.ok || data.error) {
         setLastFailedText(text);

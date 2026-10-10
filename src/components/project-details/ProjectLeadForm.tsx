@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Building2, Loader2, CheckCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { submitLead } from "@/app/actions/submit-lead";
+import { submitLead } from "@/lib/analytics/submitTrackedLead";
 import { z } from "zod";
 import { buildProjectsIndexUrl } from "@/lib/routes";
 import { getAdvisoryTrackingContext, trackListingsEvent } from "@/lib/analytics/listingsTracking";
@@ -183,7 +183,7 @@ export default function ProjectLeadForm({
           city: leadContext.city,
         } : null,
         details,
-      });
+      }, "project_lead_form");
 
       if (!result.success) {
         throw new Error(result.error || "Failed to submit form");

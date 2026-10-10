@@ -10,7 +10,7 @@ import { MessageSquare, Send, Loader2, CheckCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { contactService } from "@/services/admin/contactService";
 import { locationSettingsService } from "@/services/admin/locationSettingsService";
-import { submitLead } from "@/app/actions/submit-lead";
+import { submitLead } from "@/lib/analytics/submitTrackedLead";
 
 interface ContactFormProps {
   propertyId?: string;
@@ -94,7 +94,7 @@ export default function ContactForm({ propertyId, agentId, projectName }: Contac
         type: leadType,
         source_page: sourcePage,
         details,
-      });
+      }, "contact_form");
 
       if (!result.success) {
         throw new Error(result.error || "Failed to submit form");

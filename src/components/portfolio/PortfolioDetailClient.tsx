@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { submitLead } from "@/app/actions/submit-lead";
+import { submitLead } from "@/lib/analytics/submitTrackedLead";
 import type { FocusProjectDetail } from "@/app/portfolio/[slug]/page";
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
@@ -116,7 +116,7 @@ function LeadForm({ project }: { project: FocusProjectDetail }) {
           source_type: "website",
           source_name: "focus-project-advisor",
         },
-      });
+      }, "portfolio_detail_client");
       if (!result.success) {
         setError(result.error || "Something went wrong. Please try again.");
         return;

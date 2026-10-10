@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { submitLead } from "@/app/actions/submit-lead";
+import { submitLead } from "@/lib/analytics/submitTrackedLead";
 
 function parseBudgetRange(label: string): { min: number | null; max: number | null } {
   const map: Record<string, { min: number; max: number | null }> = {
@@ -64,7 +64,7 @@ export default function CommercialEnquiryForm() {
           investment_stage: formData.stage || null,
           notes: `Commercial Investment Enquiry | Budget: ${formData.budget} | Stage: ${formData.stage} | Timeline: ${formData.timeline} | Message: ${formData.message}`,
         },
-      });
+      }, "commercial_enquiry_form");
 
       if (!result.success) {
         setErrorMessage(result.error || "Something went wrong. Please try again.");

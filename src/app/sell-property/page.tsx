@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { submitLead } from "@/app/actions/submit-lead";
+import { submitLead } from "@/lib/analytics/submitTrackedLead";
 type PropertyType = "apartment" | "villa" | "plot" | "commercial" | null;
 
 interface SellPropertyFormData {
@@ -78,7 +78,7 @@ export default function SellPropertyPage() {
         type: "SELLER_VALUATION",
         source_page: sourcePage,
         details,
-      });
+      }, "sell_property");
 
       if (!result.success) {
         throw new Error(result.error || "Failed to submit form");

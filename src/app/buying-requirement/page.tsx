@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { submitLead } from "@/app/actions/submit-lead";
+import { submitLead } from "@/lib/analytics/submitTrackedLead";
 
 type PropertyType = "apartment" | "villa" | "commercial" | "plot";
 
@@ -95,7 +95,7 @@ export default function BuyingRequirementPage() {
         type: "BUYER_REQUIREMENT",
         source_page: sourcePage,
         details,
-      });
+      }, "buying_requirement");
 
       if (!result.success) {
         throw new Error(result.error || "Failed to submit form");

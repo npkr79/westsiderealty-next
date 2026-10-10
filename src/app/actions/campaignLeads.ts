@@ -4,6 +4,7 @@ import { submitLead } from "@/app/actions/submit-lead";
 
 export interface CampaignLeadResponse {
   success: boolean;
+  analyticsReceipt?: string;
   message: string;
 }
 
@@ -46,6 +47,7 @@ export async function submitGodrejLead(formData: FormData): Promise<CampaignLead
 
     return {
       success: true,
+      analyticsReceipt: response.analyticsReceipt,
       message: "Thank you! Our team will contact you shortly.",
     };
   } catch (error: any) {

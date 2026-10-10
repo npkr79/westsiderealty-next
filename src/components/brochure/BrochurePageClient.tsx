@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { submitLead } from "@/app/actions/submit-lead";
+import { submitLead } from "@/lib/analytics/submitTrackedLead";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -112,7 +112,7 @@ function EnquireModal({ project, token, onClose }: { project: Project; token: st
           source_type: "website",
           source_name: "goa-focus-project",
         },
-      });
+      }, "brochure_page_client");
       if (!res.success) { setErr(res.error ?? "Something went wrong."); return; }
       setDone(true);
     } catch { setErr("Something went wrong."); }

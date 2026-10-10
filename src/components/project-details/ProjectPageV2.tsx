@@ -8,7 +8,7 @@ import type { ProjectWithRelations, AdvisorProjectEnrichment } from "@/services/
 import type { ProjectInsights } from "@/services/projectInsightsService";
 import type { ProjectPageContext } from "@/services/projectService";
 import { computeProjectStatus } from "@/lib/project-utils";
-import { submitLead } from "@/app/actions/submit-lead";
+import { submitLead } from "@/lib/analytics/submitTrackedLead";
 import { optimizeSupabaseImage, getHeroImageUrl } from "@/utils/imageOptimization";
 import { buildProjectUrl } from "@/lib/routes";
 import { GoogleMap, Marker, useJsApiLoader } from "@react-google-maps/api";
@@ -169,7 +169,7 @@ function InlineLeadForm({
           notes: `Enquiry for ${projectName}${reraId ? ` (RERA: ${reraId})` : ""}`,
           location_preference: locationPreference || "",
         },
-      });
+      }, "project_page_v2");
       setSubmitted(true);
     } catch {
       setSubmitted(true);
@@ -413,7 +413,7 @@ function ExpertModal({ projectName, projectId, developerName, leadContext, onClo
           city: leadContext.city,
         } : null,
         details: { project_name: projectName, project_id: projectId, developer_name: developerName, goal },
-      });
+      }, "project_page_v2_2");
       if (!result.success) {
         setErrorMsg(result.error || "Something went wrong. Please try again.");
         return;

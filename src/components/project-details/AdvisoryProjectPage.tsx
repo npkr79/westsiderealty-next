@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { submitLead } from "@/app/actions/submit-lead";
+import { submitLead } from "@/lib/analytics/submitTrackedLead";
 import {
   formatSegment,
   formatStatus,
@@ -309,7 +309,7 @@ function InquiryForm({
         type: "GOA_PROPERTY",
         source_page: `/${citySlug}/projects/${projectSlug}`,
         details: { project_name: projectName, micro_market: microMarket, city: citySlug, page_type: "advisory_project_page" },
-      });
+      }, "advisory_project_page");
       setSubmitted(true);
     } catch { setError("Something went wrong. Please try again."); }
     finally { setSubmitting(false); }

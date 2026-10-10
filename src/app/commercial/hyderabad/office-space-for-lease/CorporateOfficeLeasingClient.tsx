@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { CheckCircle2, MapPin } from "lucide-react";
-import { submitLead } from "@/app/actions/submit-lead";
+import { submitLead } from "@/lib/analytics/submitTrackedLead";
 import { trackCorporateLeasingEvent } from "@/lib/analytics/corporateLeasingTracking";
 
 const AREA_RANGES = [
@@ -337,7 +337,7 @@ export function CorporateOfficeLeasingForm() {
           seats: form.seats.trim() || null,
           ...campaign,
         },
-      });
+      }, "corporate_office_leasing_client");
 
       if (!result.success) {
         setError(result.error || "We could not submit this requirement. Please try again.");

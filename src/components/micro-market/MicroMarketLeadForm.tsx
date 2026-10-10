@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Loader2, CheckCircle } from "lucide-react";
-import { submitLead } from "@/app/actions/submit-lead";
+import { submitLead } from "@/lib/analytics/submitTrackedLead";
 
 const GOLD = "#c9a96e";
 const NAVY = "#0a0f1e";
@@ -66,7 +66,7 @@ export default function MicroMarketLeadForm({
           budgetBand: budget,
           budgetRange: budget,
         },
-      });
+      }, "micro_market_lead_form");
       if (result.success) {
         setStatus("success");
       } else {

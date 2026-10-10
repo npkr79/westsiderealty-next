@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { MapPin, Clock, Mail, Send, CheckCircle, Loader2 } from "lucide-react";
 import { JsonLd } from "@/components/common/SEO";
-import { submitLead } from "@/app/actions/submit-lead";
+import { submitLead } from "@/lib/analytics/submitTrackedLead";
 // ─── Design tokens (matches HomepageRedesign / MicroMarketRedesign) ──────────
 const C = {
   bg: "#FAFAF7",
@@ -64,7 +64,7 @@ export default function ContactPage() {
         type: "GENERAL_CONTACT",
         source_page: "/contact",
         details: { message: formData.message, interest: formData.interest },
-      });
+      }, "contact");
       if (!result.success) throw new Error(result.error || "Submission failed");
       setSubmitted(true);
     } catch (err: unknown) {

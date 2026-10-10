@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { submitLead } from "@/app/actions/submit-lead";
+import { submitLead } from "@/lib/analytics/submitTrackedLead";
 import type {
   AdvisorProjectEnrichment,
   AdvisorConfig,
@@ -657,7 +657,7 @@ export default function ProjectPageRedesign({
           notes: `Enquiry for ${projectName}${project.rera_id ? ` (RERA: ${project.rera_id})` : ""}`,
           location_preference: microMarketName || citySlug,
         },
-      });
+      }, "project_page_redesign");
       setSubmitted(true);
     } catch {
       setSubmitted(true);

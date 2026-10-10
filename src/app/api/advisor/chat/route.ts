@@ -253,7 +253,8 @@ interface ToolContext {
 async function executeAdvisorTools(
   toolUseBlocks: ToolUseBlock[],
   ctx: ToolContext
-): Promise<{ results: ToolResultBlock[]; contactLogged: boolean; webSearchFired: boolean }> {
+): Promise<{ results: ToolResultBlock[]; contactLogged: boolean; webSearchFired: boolean; leadReceipts: string[] }> {
+  const leadReceipts: string[] = [];
   let contactLogged = false;
   let webSearchFired = false;
 
@@ -341,6 +342,8 @@ async function executeAdvisorTools(
               break;
             }
 
+            if (result.analyticsReceipt) leadReceipts.push(result.analyticsReceipt);
+
             // Mark conversation status
             if (ctx.conversationId) {
               ctx.supabase
@@ -368,7 +371,7 @@ async function executeAdvisorTools(
     })
   );
 
-  return { results, contactLogged, webSearchFired };
+  return { results, contactLogged, webSearchFired, leadReceipts };
 }
 
 // ─── Supabase conversation logging ────────────────────────────────────────────
@@ -475,6 +478,7 @@ async function logMessageTurn(
 
 export async function POST(request: NextRequest) {
   const start = Date.now();
+  let leadReceipts: string[] = [];
 
   try {
     const body = await request.json();
@@ -551,12 +555,13 @@ export async function POST(request: NextRequest) {
       toolsUsed = toolUseBlocks.map((b) => b.name);
 
       // Execute all tool calls in parallel
-      const { results, contactLogged: cl, webSearchFired: wsf } =
+      const { results, contactLogged: cl, webSearchFired: wsf, leadReceipts: receipts } =
         await executeAdvisorTools(toolUseBlocks, {
           supabase,
           conversationId: conversationUuid,
           sourcePage,
         });
+      leadReceipts = receipts;
       contactLogged = cl;
       webSearchFired = wsf;
 
@@ -622,6 +627,7 @@ export async function POST(request: NextRequest) {
       message: responseText,
       intent: toolsUsed[0] ?? "general",
       tools_used: toolsUsed,
+      lead_receipts: leadReceipts,
       data_stats: {
         tools_called: toolsUsed.length,
         web_search_fired: webSearchFired,
@@ -635,6 +641,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         error: err instanceof Error ? err.message : "Advisor error",
+        lead_receipts: leadReceipts,
         latency_ms: Date.now() - start,
       },
       { status: 500 }

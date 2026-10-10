@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { submitLead } from "@/app/actions/submit-lead";
+import { submitLead } from "@/lib/analytics/submitTrackedLead";
 
 interface LuxuryLeadFormProps {
   sourceLabel: string;
@@ -40,7 +40,7 @@ export default function LuxuryLeadForm({ sourceLabel }: LuxuryLeadFormProps) {
           budgetRange: formData.budgetRange || null,
           purchaseTimeline: formData.purchaseTimeline || null,
         },
-      });
+      }, "luxury_lead");
 
       if (!result.success) {
         throw new Error(result.error || "Submission failed");

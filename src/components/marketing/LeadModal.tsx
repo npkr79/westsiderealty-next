@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { CheckCircle2, X } from "lucide-react";
-import { submitGodrejLead } from "@/app/actions/campaignLeads";
+import { submitGodrejLead } from "@/lib/analytics/submitTrackedLead";
 
 interface LeadModalProps {
   isOpen: boolean;

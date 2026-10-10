@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { submitLead } from "@/app/actions/submit-lead";
+import { submitLead } from "@/lib/analytics/submitTrackedLead";
 
 const investorTypes = ["Sovereign Fund", "Private Equity", "Family Office", "Pension Fund", "Insurance Capital"];
 
@@ -42,7 +42,7 @@ export default function InstitutionalLeadForm() {
           investorType,
           source: "institutional-investment-commercial-page",
         },
-      });
+      }, "institutional_lead_form");
 
       if (!result.success) {
         throw new Error(result.error || "Unable to submit at this time.");

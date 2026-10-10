@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { submitLead } from "@/app/actions/submit-lead";
+import { submitLead } from "@/lib/analytics/submitTrackedLead";
 
 export default function VillaEnquiryForm() {
   const [submitting, setSubmitting] = useState(false);
@@ -35,7 +35,7 @@ export default function VillaEnquiryForm() {
           location_preference: formData.location || null,
           notes: `Luxury Villa Enquiry | Budget: ${formData.budget} | Location: ${formData.location} | Requirements: ${formData.requirements}`,
         },
-      });
+      }, "villa_enquiry");
 
       if (!result.success) {
         setErrorMessage(result.error || "Something went wrong. Please try again.");

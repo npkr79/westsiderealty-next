@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { CheckCircle2 } from "lucide-react";
-import { submitLead } from "@/app/actions/submit-lead";
+import { submitLead } from "@/lib/analytics/submitTrackedLead";
 import { trackCorporateLeasingEvent } from "@/lib/analytics/corporateLeasingTracking";
 import type { CorridorPageData } from "../_data/corridorPages";
 
@@ -171,7 +171,7 @@ export function OfficeLeasingCorridorForm({ corridor }: { corridor: CorridorCont
           ...sharedContext,
         },
         attribution_metadata: sharedContext,
-      });
+      }, "office_leasing_corridor_client");
 
       if (!result.success) {
         setError(result.error || "We could not submit this requirement. Please try again.");

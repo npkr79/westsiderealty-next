@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useId } from "react";
-import { submitLead } from "@/app/actions/submit-lead";
+import { submitLead } from "@/lib/analytics/submitTrackedLead";
 import { PROPERTY_OPTIONS } from "../data";
 
 const INVESTMENT_RANGES = ["₹10–25 Cr", "₹25–50 Cr", "₹50 Cr+"];
@@ -29,15 +29,6 @@ export default function InquiryForm() {
     setSubmitting(true);
     setError("");
 
-    // GA4 event
-    const gtag = typeof window !== "undefined"
-      ? (window as Window & { gtag?: (...args: unknown[]) => void }).gtag
-      : undefined;
-    gtag?.("event", "commercial_inquiry_submit", {
-      property_ref: form.property,
-      investment_range: form.investmentRange,
-    });
-
     const result = await submitLead({
       name: form.name,
       phone: form.phone,
@@ -50,11 +41,18 @@ export default function InquiryForm() {
         message: form.message,
         page_type: "pre_leased_mumbai_commercial",
       },
-    });
+    }, "inquiry_form");
 
     setSubmitting(false);
     if (result.success) {
       setSubmitted(true);
+      try {
+        const gtag = (window as Window & { gtag?: (...args: unknown[]) => void }).gtag;
+        gtag?.("event", "commercial_inquiry_submit", {
+          property_ref: form.property,
+          investment_range: form.investmentRange,
+        });
+      } catch { /* Analytics cannot affect the saved enquiry. */ }
     } else {
       setError("Something went wrong. Please try again or submit the contact form.");
     }

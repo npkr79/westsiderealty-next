@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { submitLead, type LeadType } from "@/app/actions/submit-lead";
+import { submitLead, type LeadType } from "@/lib/analytics/submitTrackedLead";
 
 interface InlineLeadFormProps {
   sourcePage: string;
@@ -31,7 +31,7 @@ export function InlineLeadForm({
     if (!name.trim() || !phone.trim()) { setError("Name and phone are required."); return; }
     setSubmitting(true);
     setError("");
-    const result = await submitLead({ name: name.trim(), phone: phone.trim(), type: leadType, source_page: sourcePage, details });
+    const result = await submitLead({ name: name.trim(), phone: phone.trim(), type: leadType, source_page: sourcePage, details }, "inline_lead_form");
     setSubmitting(false);
     if (result.success) setSubmitted(true);
     else setError("Something went wrong. Please try again.");

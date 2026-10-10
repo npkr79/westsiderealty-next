@@ -33,6 +33,7 @@ export interface SubmitLeadData {
 
 export interface SubmitLeadResponse {
   success: boolean;
+  analyticsReceipt?: string; // Random acknowledgement; never a CRM ID or GA4 parameter.
   error?: string;
 }
 
@@ -291,7 +292,10 @@ export async function submitLead(formData: SubmitLeadData): Promise<SubmitLeadRe
       }).catch(e => console.warn("[WA Greeting] submit-lead failed:", e));
     }
 
-    return { success: true };
+    // Analytics acknowledgement only after a confirmed insert. No changes to persistence/routing.
+    let analyticsReceipt: string | undefined;
+    try { if (inserted?.id) analyticsReceipt = crypto.randomUUID(); } catch { /* Non-critical. */ }
+    return { success: true, analyticsReceipt };
   } catch (error: unknown) {
     console.error("Unexpected error in submitLead:", error);
     return {

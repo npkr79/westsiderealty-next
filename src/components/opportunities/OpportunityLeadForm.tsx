@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { submitLead } from "@/app/actions/submit-lead";
+import { submitLead } from "@/lib/analytics/submitTrackedLead";
 import type { DevelopmentOpportunity } from "@/lib/opportunities/types";
 
 interface Props {
@@ -80,7 +80,7 @@ export function OpportunityLeadForm({ opportunity, variant = "panel" }: Props) {
           opportunity_city_slug: opportunity.city_slug,
           deal_stage: opportunity.stage,
         },
-      });
+      }, "opportunity_lead_form");
 
       if (res.success) {
         setStatus("ok");
