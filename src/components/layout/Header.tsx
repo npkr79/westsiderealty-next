@@ -72,9 +72,10 @@ const STATIC_NAV_ITEMS: NavItem[] = [
   },
   {
     label: "Commercial",
-    href: "/commercial/hyderabad",
-    description: "Hyderabad office leasing, managed offices, office purchase and commercial investment advisory",
+    href: "/commercial",
+    description: "Commercial sales, investment and office advisory across Hyderabad and Bengaluru",
     links: [
+      { label: "Commercial Overview", href: "/commercial", badge: "NEW" },
       { label: "Commercial Hyderabad", href: "/commercial/hyderabad", badge: "NEW" },
       { label: "Office Leasing", href: "/commercial/hyderabad/office-space-for-lease" },
       { label: "Managed Offices", href: "/commercial/hyderabad/managed-office-space", badge: "NEW" },
@@ -82,7 +83,7 @@ const STATIC_NAV_ITEMS: NavItem[] = [
       { label: "Commercial Investments", href: "/commercial-investments" },
       { label: "Pre-Leased Mumbai", href: "/commercial/pre-leased-mumbai" },
     ],
-    cta: { label: "Share commercial requirement →", href: "/commercial/hyderabad" },
+    cta: { label: "Share commercial requirement →", href: "/commercial#commercial-requirement" },
   },
   {
     label: "Insights",

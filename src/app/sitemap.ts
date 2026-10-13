@@ -188,6 +188,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       { url: `${baseUrl}/sell-property`, lastModified: STATIC_DATE, changeFrequency: "monthly", priority: 0.8 },
       { url: `${baseUrl}/buying-requirement`, lastModified: STATIC_DATE, changeFrequency: "monthly", priority: 0.8 },
       { url: `${baseUrl}/hyderabad/landowner-investor-share-flats`, lastModified: STATIC_DATE, changeFrequency: "weekly", priority: 0.7 },
+      { url: `${baseUrl}/commercial`, lastModified: STATIC_DATE, changeFrequency: "weekly", priority: 0.9 },
       { url: `${baseUrl}/commercial-investments`, lastModified: STATIC_DATE, changeFrequency: "weekly", priority: 0.9 },
       { url: `${baseUrl}/commercial/hyderabad`, lastModified: STATIC_DATE, changeFrequency: "weekly", priority: 0.9 },
       { url: `${baseUrl}/commercial/hyderabad/office-space-for-lease`, lastModified: STATIC_DATE, changeFrequency: "weekly", priority: 0.85 },

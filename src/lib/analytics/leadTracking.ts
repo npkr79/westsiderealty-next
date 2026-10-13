@@ -66,7 +66,7 @@ export function leadParameters(data: SubmitLeadData, formId: string): Record<str
   if (project) parameters.project_slug = project;
   const city = slug(meta.city) ?? slug(details.city) ?? projectRoute?.[1] ??
     (source.startsWith("/commercial/hyderabad") ? "hyderabad" : source === "/commercial/pre-leased-mumbai" ? "mumbai" : undefined);
-  if (city && ["hyderabad", "goa", "dubai", "mumbai"].includes(city)) parameters.city = city;
+  if (city && ["hyderabad", "bengaluru", "goa", "dubai", "mumbai"].includes(city)) parameters.city = city;
   // Metadata micro_market is supplied by project records. Avoid free-text location_preference.
   const locality = typeof meta.micro_market === "string" ? meta.micro_market : details.micro_market;
   if (typeof locality === "string" && /^[a-zA-Z -/]{1,80}$/.test(locality)) {

@@ -135,6 +135,11 @@ export default function FooterSection() {
                 </Link>
               </li>
               <li>
+                <Link href="/commercial" className="hover:text-luxury-gold transition-colors">
+                  Commercial Advisory
+                </Link>
+              </li>
+              <li>
                 <Link href="/commercial/hyderabad" className="hover:text-luxury-gold transition-colors">
                   Commercial Hyderabad
                 </Link>
