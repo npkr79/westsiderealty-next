@@ -234,19 +234,28 @@ export default function CommercialLandingPage() {
           </div>
           <div className="grid gap-4 sm:grid-cols-3">
             {[
-              [Search, "Requirement first", "Budget, city, acquisition purpose and acceptable timeline."],
-              [MapPinned, "Market fit", "Corridor, building quality, access and tenant or end-use suitability."],
-              [ShieldCheck, "Diligence lens", "Title, lease quality, charges, handover and negotiation support."],
-            ].map(([Icon, title, text]) => {
-              const LucideIcon = Icon as typeof Search;
-              return (
-                <div key={String(title)} className="rounded-sm border border-white/15 bg-white/8 p-5">
-                  <LucideIcon className="h-5 w-5 text-[#9dd3f0]" />
-                  <h3 className="mt-4 text-lg font-semibold">{title}</h3>
-                  <p className="mt-3 text-sm leading-7 text-slate-300">{text}</p>
-                </div>
-              );
-            })}
+              {
+                icon: <Search key="requirement-icon" className="h-5 w-5 text-[#9dd3f0]" />,
+                title: "Requirement first",
+                text: "Budget, city, acquisition purpose and acceptable timeline.",
+              },
+              {
+                icon: <MapPinned key="market-icon" className="h-5 w-5 text-[#9dd3f0]" />,
+                title: "Market fit",
+                text: "Corridor, building quality, access and tenant or end-use suitability.",
+              },
+              {
+                icon: <ShieldCheck key="diligence-icon" className="h-5 w-5 text-[#9dd3f0]" />,
+                title: "Diligence lens",
+                text: "Title, lease quality, charges, handover and negotiation support.",
+              },
+            ].map((item) => (
+              <div key={item.title} className="rounded-sm border border-white/15 bg-white/8 p-5">
+                {item.icon}
+                <h3 className="mt-4 text-lg font-semibold">{item.title}</h3>
+                <p className="mt-3 text-sm leading-7 text-slate-300">{item.text}</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
