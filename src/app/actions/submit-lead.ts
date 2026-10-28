@@ -1,5 +1,6 @@
 "use server";
 
+import { validateLeasingEnquiry, validOptionalWorkEmail, validLeasingPhone, type LeasingFieldErrors } from "@/lib/commercial/leasingValidation";
 import { createServiceClient } from "@/lib/supabase/serviceClient";
 import { routeLeadByOwnership } from "@/services/crmLeadRoutingService";
 import { extractLeadAttribution } from "@/lib/crm/leadAttribution";
@@ -35,6 +36,7 @@ export interface SubmitLeadResponse {
   success: boolean;
   analyticsReceipt?: string; // Random acknowledgement; never a CRM ID or GA4 parameter.
   error?: string;
+  fieldErrors?: LeasingFieldErrors;
 }
 
 // Hardcoded Website source UUID — canonical FK to crm_lead_sources
@@ -93,6 +95,23 @@ function buildNotes(details: Record<string, unknown>): string | null {
  */
 export async function submitLead(formData: SubmitLeadData): Promise<SubmitLeadResponse> {
   try {
+    // Leasing-only validation leaves established residential and sales contracts unchanged.
+    if (formData.type === "CORPORATE_OFFICE_LEASING") {
+      const details = formData.details ?? {};
+      const errors: LeasingFieldErrors = {};
+      if (!formData.name?.trim()) errors.name = "Enter your name.";
+      if (!validLeasingPhone(formData.phone || "")) errors.phone = "Enter a mobile number with 10–15 digits.";
+      if (!validOptionalWorkEmail(formData.email || "")) errors.workEmail = "Enter a valid email address, or leave it blank.";
+      if (["corporate_office_leasing", "office_leasing_corridor"].includes(String(details.source_page_type))) {
+        Object.assign(errors, validateLeasingEnquiry({
+          name: formData.name || "", phone: formData.phone || "", workEmail: formData.email || "",
+          requiredArea: typeof details.required_area === "string" ? details.required_area : "",
+          locations: Array.isArray(details.preferred_locations) ? details.preferred_locations.filter((v): v is string => typeof v === "string") : [],
+        }));
+      }
+      if (Object.keys(errors).length) return { success: false, error: "Please check the highlighted fields.", fieldErrors: errors };
+    }
+
     if (!formData.name || !formData.phone) {
       return { success: false, error: "Name and phone number are required" };
     }
@@ -120,6 +139,7 @@ export async function submitLead(formData: SubmitLeadData): Promise<SubmitLeadRe
       formData.attribution_metadata ?? {},  // page/project context (project_name, source_type, etc.)
       attribution.attribution_metadata,     // UTMs, gclid, fbclid win over generic context
       { lead_type: formData.type },
+      formData.type === "CORPORATE_OFFICE_LEASING" ? { lead_category: "commercial" } : {},
       details.segment ? { segment: details.segment } : {},
       details.institution ? { institution: details.institution } : {},
       details.ticketSizeInrCrore ? { ticket_size_inr_crore: details.ticketSizeInrCrore } : {},
@@ -206,16 +226,16 @@ export async function submitLead(formData: SubmitLeadData): Promise<SubmitLeadRe
       .select("id")
       .single();
 
-    if (insertError) {
+    if (insertError || !inserted?.id) {
       console.error("crm_leads insert error:", {
-        message: insertError.message,
-        code: insertError.code,
-        details: insertError.details,
-        hint: insertError.hint,
+        message: insertError?.message,
+        code: insertError?.code,
+        details: insertError?.details,
+        hint: insertError?.hint,
       });
       return {
         success: false,
-        error: insertError.message || "Failed to submit. Please try again.",
+        error: insertError?.message || "Failed to submit. Please try again.",
       };
     }
 

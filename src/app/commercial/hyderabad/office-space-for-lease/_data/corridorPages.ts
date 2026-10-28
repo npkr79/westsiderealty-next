@@ -40,18 +40,18 @@ export const corridorPages: Record<CorridorPageKey, CorridorPageData> = {
     locationScope: "gachibowli_financial_district",
     title: "Office Space for Rent in Gachibowli & Financial District | Hyderabad",
     metaDescription:
-      "Compare office space for rent or lease in Gachibowli, Financial District and Nanakramguda. Share your area, fit-out, seats and move-in timeline for a curated shortlist.",
-    h1: "Office Space for Lease in Gachibowli and Financial District",
+      "Grade-A office leasing for 10,000+ sq ft in Gachibowli, Financial District and Nanakramguda. Compare floor plates, fit-out and lease terms with REMAX Westside.",
+    h1: "Office Space for Lease in Gachibowli & Financial District",
     eyebrow: "Gachibowli • Financial District • Nanakramguda",
     canonicalUrl: `${base}/gachibowli-financial-district`,
     heroLead:
-      "Use one requirement brief to compare corporate office options across the western Hyderabad business corridor where Gachibowli, Financial District and Nanakramguda often overlap in occupier decision-making.",
+      "Grade-A office leasing advisory for corporate occupiers seeking 10,000+ sq ft in Gachibowli, Financial District and Nanakramguda. RE/MAX Westside Realty helps GCCs and enterprise teams evaluate large floor plates, phased expansion and bare-shell, warm-shell or furnished options, subject to verification.",
     heroPoints: [
       "For GCC, IT/ITES, BFSI, consulting and headquarters-style requirements",
       "Useful when ORR access, institutional landlords and future expansion matter",
       "Shortlist around area, floor plate, fit-out, parking, timing and commercial structure",
     ],
-    primaryCta: "Share Gachibowli / Financial District Requirement",
+    primaryCta: "Find Office Space for Your Company",
     corridorLabel: "Gachibowli / Financial District",
     selectedLocations: ["Gachibowli", "Financial District", "Nanakramguda"],
     adjacentContext:
@@ -97,11 +97,11 @@ export const corridorPages: Record<CorridorPageKey, CorridorPageData> = {
     formatsIntro:
       "Companies here usually compare bare shell, warm shell and fitted options with different implications for capex, timeline, brand control and operational readiness.",
     requirementIntro:
-      "Small and mid-corporate requirements can be compared alongside larger mandates, but 50,000 sq ft and 100,000+ sq ft searches need deeper checks on contiguous area, parking and handover timing.",
+      "Our preferred conventional leasing brief starts at 10,000 sq ft. For 50,000–100,000+ sq ft, test contiguous floors, lift capacity, parking allocation and phased handover against both current occupancy and expansion plans.",
     requirementCards: [
       {
-        title: "Smaller corporate offices",
-        text: "Useful when a team needs a west Hyderabad business address, client accessibility and a fitted or warm-shell option without taking unnecessary area.",
+        title: "10,000–25,000 sq ft briefs",
+        text: "Start with a test-fit for workstations, meeting rooms and collaboration space. Compare usable area and loading before choosing between a full floor and a subdivided office.",
       },
       {
         title: "Growth-stage requirements",
@@ -113,10 +113,10 @@ export const corridorPages: Record<CorridorPageKey, CorridorPageData> = {
       },
     ],
     leaseCards: [
-      { title: "Rent and CAM", text: "Base rent should be read with maintenance charges, deposits, escalation, fit-out cost and what is actually included in the quoted commercial terms." },
-      { title: "Lock-in and flexibility", text: "The lease structure should match headcount certainty, expansion probability and the cost of moving again if the first office becomes too small." },
+      { title: "Rent and CAM", text: "Compare base rent, CAM, parking, utilities, applicable taxes, fit-out cost and escalation over the lease tenure. Treat the security deposit separately from recurring occupancy costs." },
+      { title: "Lock-in and flexibility", text: "Discuss rent commencement, fit-out access, lock-in, renewal and exit rights. Record deposit-return and restoration obligations and have the agreed terms reviewed before signing." },
       { title: "Fit-out responsibility", text: "Bare shell, warm shell and fitted spaces carry different timelines and handover risks, so the shortlist should compare usable readiness rather than labels alone." },
-      { title: "Operational checks", text: "Parking, lift capacity, visitor movement, cafeteria access, floor efficiency and building management affect daily workplace usability." },
+      { title: "Operational checks", text: "Check fire and life-safety documentation, power infrastructure, lift capacity, parking allocation and property management with the building team. Confirm the handover scope rather than relying on the Grade-A label." },
     ],
     nearbyCards: [
       { title: "Raidurg as a comparison", text: "Raidurg can be considered when metro access or a more central west-corridor position improves the commute pattern." },
@@ -158,22 +158,22 @@ export const corridorPages: Record<CorridorPageKey, CorridorPageData> = {
     locationScope: "hitec_city_madhapur",
     title: "Office Space for Rent in HITEC City & Madhapur | Hyderabad",
     metaDescription:
-      "Find office space for rent or lease in HITEC City and Madhapur. Compare business parks, metro access, fit-out options, floor plates and move-in timelines with Westside Realty.",
-    h1: "Office Space for Lease in HITEC City and Madhapur",
+      "Office space for rent in HITEC City and Madhapur for 10,000+ sq ft corporate requirements. Compare Grade-A buildings, fit-out and access with REMAX Westside.",
+    h1: "Office Space for Lease in HITEC City & Madhapur",
     eyebrow: "HITEC City • Hitech City • Madhapur",
     canonicalUrl: `${base}/hitec-city-madhapur`,
     heroLead:
-      "Use one corporate office brief to compare options in Hyderabad’s established technology-office ecosystem, where employee familiarity, access, amenities and business continuity often drive the decision.",
+      "Grade-A office leasing advisory for corporate occupiers seeking 10,000+ sq ft in HITEC City and Madhapur. RE/MAX Westside Realty helps technology and workplace teams compare employee access, floor efficiency and warm-shell, furnished or plug-and-play offices, subject to verification.",
     heroPoints: [
       "For teams that value mature office surroundings and technology-corridor familiarity",
       "Compare business parks, managed offices, fitted options and conventional leases",
       "Review access, building age, floor efficiency, parking and move-in readiness together",
     ],
-    primaryCta: "Share HITEC City / Madhapur Requirement",
+    primaryCta: "Find Office Space for Your Company",
     corridorLabel: "HITEC City / Madhapur",
     selectedLocations: ["HITEC City", "Madhapur"],
     adjacentContext:
-      "Raidurg and Kondapur can be reviewed as adjacent comparison points when access, commute or budget changes the shortlist, but this page is not positioned as a Raidurg or Kondapur landing page.",
+      "Raidurg and Kondapur can be reviewed as adjacent comparison points when access, commute or budget changes the shortlist, while keeping your main employee catchment and move-in deadline in view.",
     whyTitle: "Why companies choose the HITEC City and Madhapur office ecosystem.",
     whyIntro:
       "HITEC City and Madhapur work best when the business wants continuity in a familiar technology corridor, strong amenity depth and a workplace location that existing teams already understand.",
@@ -195,7 +195,7 @@ export const corridorPages: Record<CorridorPageKey, CorridorPageData> = {
         text: "Older, newer, fitted and managed-office options can all appear in the same search, so age, efficiency, parking and fit-out quality need disciplined comparison.",
       },
     ],
-    comparisonTitle: "HITEC City, Hitech City and Madhapur search intent",
+    comparisonTitle: "Comparing HITEC City and Madhapur for your team",
     comparisonIntro:
       "Companies often use these names interchangeably during the early search. Westside treats the requirement as one occupier decision first, then filters buildings by access, fit-out and commercial fit.",
     comparisonRows: [
@@ -215,7 +215,7 @@ export const corridorPages: Record<CorridorPageKey, CorridorPageData> = {
     formatsIntro:
       "This corridor can suit conventional leases, fitted handovers, plug-and-play spaces and managed-office discussions, but each option should be tested against operating cost and workplace fit.",
     requirementIntro:
-      "HITEC City and Madhapur are often relevant for small-to-mid corporate teams, product and services firms, expansion teams and companies that need a practical office move rather than a speculative future-location bet.",
+      "For 10,000–100,000+ sq ft corporate briefs, compare contiguous floors and expansion options early. Test-fit workstations, meeting rooms and collaboration areas; include parking and peak-hour access rather than using a universal area-per-employee assumption.",
     requirementCards: [
       {
         title: "Move-in focused teams",
@@ -232,13 +232,13 @@ export const corridorPages: Record<CorridorPageKey, CorridorPageData> = {
     ],
     leaseCards: [
       { title: "Access timing", text: "Peak-hour access, drop-off, parking and last-mile movement can materially change how a building works for employees and visitors." },
-      { title: "Building age and efficiency", text: "Older and newer assets should be compared for usable area, services, lifts, power backup, washrooms, air-conditioning and fit-out upgrade needs." },
+      { title: "Building age and efficiency", text: "Inspect usable floor area, services, lifts, power backup and fit-out upgrade needs. Verify fire and life-safety documentation and property management arrangements before relying on a Grade-A description." },
       { title: "Managed vs conventional", text: "Managed offices may reduce setup time, while conventional leases may give more control. The better option depends on team size, tenure and brand requirements." },
-      { title: "Commercial structure", text: "Rent, CAM, deposits, lock-in, escalation and included services should be compared as one cost picture instead of separate line items." },
+      { title: "Commercial structure", text: "Compare rent, CAM, parking, applicable taxes, fit-out costs and escalation across the full tenure. Negotiate rent commencement, fit-out period, lock-in, renewal, exit, deposit return and restoration responsibilities." },
     ],
     nearbyCards: [
       { title: "Raidurg as an access alternative", text: "Raidurg may be useful when metro or a central western-corridor position improves the search, but it should be compared against the same workplace brief." },
-      { title: "Kondapur as a practical comparison", text: "Kondapur can be considered when employee access or commercial fit supports it, without changing the target intent of the HITEC City / Madhapur search." },
+      { title: "Kondapur as a practical comparison", text: "Kondapur can be considered when employee access or commercial fit supports it, and checked against the same test-fit and move-in deadline." },
     ],
     formIntro:
       "Share your area, seats, timing, fit-out preference and location flexibility. The enquiry is tagged to the HITEC City / Madhapur corridor for the corporate leasing team.",
@@ -256,7 +256,7 @@ export const corridorPages: Record<CorridorPageKey, CorridorPageData> = {
       {
         question: "Should Madhapur be searched with HITEC City?",
         answer:
-          "Often yes. Madhapur overlaps with HITEC City in employee access, office ecosystem, amenities and search behavior, so separating the two into thin searches can miss practical options.",
+          "Often yes. Madhapur overlaps with HITEC City in employee access, office ecosystem, amenities and search behavior, so comparing both may reveal suitable options for the same workplace brief.",
       },
       {
         question: "Is this corridor better for furnished or managed office space?",

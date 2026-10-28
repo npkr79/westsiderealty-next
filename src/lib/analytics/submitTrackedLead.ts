@@ -8,7 +8,10 @@ import { withLeadTracking } from "./leadTracking";
 export type { LeadType } from "@/app/actions/submit-lead";
 
 export function submitLead(data: SubmitLeadData, formId: string) {
-  return withLeadTracking(() => saveLead(data), data, formId);
+  const payload = data.type === "CORPORATE_OFFICE_LEASING"
+    ? { ...data, attribution_metadata: { ...data.attribution_metadata, lead_category: "commercial", form_id: formId } }
+    : data;
+  return withLeadTracking(() => saveLead(payload), payload, formId);
 }
 
 export function submitGodrejLead(data: FormData) {

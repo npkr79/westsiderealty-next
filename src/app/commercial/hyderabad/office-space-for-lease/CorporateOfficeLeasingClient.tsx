@@ -1,20 +1,23 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CheckCircle2, MapPin } from "lucide-react";
 import { submitLead } from "@/lib/analytics/submitTrackedLead";
+import { validateLeasingEnquiry, type LeasingFieldErrors } from "@/lib/commercial/leasingValidation";
 import { trackCorporateLeasingEvent } from "@/lib/analytics/corporateLeasingTracking";
 
 const AREA_RANGES = [
-  "Under 10,000 sq ft",
   "10,000-25,000 sq ft",
   "25,000-50,000 sq ft",
   "50,000-100,000 sq ft",
   "100,000-250,000 sq ft",
   "250,000+ sq ft",
+  "Under 10,000 sq ft",
 ];
 
 const LOCATIONS = [
+  "Nanakramguda",
+  "Madhapur",
   "Financial District",
   "Gachibowli",
   "HITEC City",
@@ -52,7 +55,7 @@ const AREA_SELECTED_EVENT = "corporate-office-area-selected";
 const getPageUrl = () => (typeof window === "undefined" ? "/commercial/hyderabad/office-space-for-lease" : window.location.href);
 
 const scrollToRequirementForm = () => {
-  const scroll = () => document.getElementById("office-requirement")?.scrollIntoView({ behavior: "smooth", block: "center" });
+  const scroll = () => document.getElementById("office-requirement")?.scrollIntoView({ behavior: "smooth", block: "start" });
   scroll();
   window.requestAnimationFrame(scroll);
   window.setTimeout(scroll, 80);
@@ -108,7 +111,7 @@ export function RequirementSizeSelector() {
         <h2 className="mt-2 text-xl font-semibold text-white">How much space are you looking for?</h2>
       </div>
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-6">
-        {AREA_RANGES.map((range, index) => (
+        {AREA_RANGES.filter(range => range !== "Under 10,000 sq ft").map((range, index) => (
           <button
             key={range}
             type="button"
@@ -166,7 +169,19 @@ export function MarketCorridorSelector({
   );
 }
 
-export function CorporateOfficeLeasingForm() {
+export type LeasingCorridorContext = {
+  locationScope: "gachibowli_financial_district" | "hitec_city_madhapur";
+  canonicalUrl: string; corridorLabel: string; selectedLocations: string[]; slug: string; formIntro: string;
+};
+
+export function CorporateOfficeLeasingForm({ corridor }: { corridor?: LeasingCorridorContext } = {}) {
+  const context = useMemo(() => corridor ? {
+    page_path: new URL(corridor.canonicalUrl).pathname,
+    page_type: "office_leasing_corridor" as const,
+    commercial_intent: "office_lease" as const,
+    location_scope: corridor.locationScope,
+  } : {}, [corridor]);
+  const formId = corridor ? "office_leasing_corridor_client" : "corporate_office_leasing_client";
   const [form, setForm] = useState({
     name: "",
     companyName: "",
@@ -181,32 +196,48 @@ export function CorporateOfficeLeasingForm() {
     seats: "",
     notes: "",
   });
-  const [locations, setLocations] = useState<string[]>([]);
+  const [locations, setLocations] = useState<string[]>(corridor?.selectedLocations ?? []);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<LeasingFieldErrors>({});
+  const formRef = useRef<HTMLFormElement>(null);
+  const successRef = useRef<HTMLDivElement>(null);
+  const optionalRef = useRef<HTMLDetailsElement>(null);
+  useEffect(() => {
+    const first = Object.keys(fieldErrors)[0];
+    if (!first) return;
+    if (first === "workEmail" && optionalRef.current) optionalRef.current.open = true;
+    formRef.current?.querySelector<HTMLElement>(`[data-field="${first}"]`)?.focus();
+  }, [fieldErrors]);
+  useEffect(() => { if (submitted) successRef.current?.focus(); }, [submitted]);
+  const inputErrors = (field: keyof LeasingFieldErrors) => ({
+    "data-field": field,
+    "aria-invalid": Boolean(fieldErrors[field]),
+    "aria-describedby": fieldErrors[field] ? `leasing-${field}-error` : undefined,
+  });
   const openedTracked = useRef(false);
   const submissionInFlight = useRef(false);
   const submissionSucceeded = useRef(false);
   const selectedArea = useRef("");
   const selectedLocations = useRef<string[]>([]);
 
-  const trackArea = (areaBand: string) => {
+  const trackArea = useCallback((areaBand: string) => {
     if (!AREA_RANGES.includes(areaBand) || selectedArea.current === areaBand) return;
     selectedArea.current = areaBand;
-    trackCorporateLeasingEvent("corporate_leasing_area_selected", { area_band: areaBand });
-  };
+    trackCorporateLeasingEvent("corporate_leasing_area_selected", { ...context, area_band: areaBand });
+  }, [context]);
 
-  const trackLocation = (location: string) => {
+  const trackLocation = useCallback((location: string) => {
     if (!LOCATIONS.includes(location) || selectedLocations.current.includes(location)) return;
     selectedLocations.current = [...selectedLocations.current, location];
-    trackCorporateLeasingEvent("corporate_leasing_location_selected", { location_selection: location });
-  };
+    trackCorporateLeasingEvent("corporate_leasing_location_selected", { ...context, location_selection: location });
+  }, [context]);
 
   const trackOpened = () => {
     if (openedTracked.current) return;
     openedTracked.current = true;
-    trackCorporateLeasingEvent("corporate_leasing_form_start", {});
+    trackCorporateLeasingEvent("corporate_leasing_form_start", context);
   };
 
   const update = (field: keyof typeof form, value: string) => {
@@ -238,7 +269,7 @@ export function CorporateOfficeLeasingForm() {
       if (!(areaBand && AREA_RANGES.includes(areaBand)) && !(location && LOCATIONS.includes(location))) return;
       if (!openedTracked.current) {
         openedTracked.current = true;
-        trackCorporateLeasingEvent("corporate_leasing_form_start", {});
+        trackCorporateLeasingEvent("corporate_leasing_form_start", context);
       }
       if (areaBand && AREA_RANGES.includes(areaBand)) {
         trackArea(areaBand);
@@ -256,17 +287,16 @@ export function CorporateOfficeLeasingForm() {
 
     window.addEventListener(AREA_SELECTED_EVENT, handleFunnelSelection);
     return () => window.removeEventListener(AREA_SELECTED_EVENT, handleFunnelSelection);
-  }, []);
+  }, [context, trackArea, trackLocation]);
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (submissionInFlight.current || submissionSucceeded.current) return;
     setError("");
 
-    if (!form.name.trim() || !form.companyName.trim() || !form.phone.trim() || !form.workEmail.trim() || !form.requirementType || !form.requiredArea) {
-      setError("Please complete the required fields.");
-      return;
-    }
+    const errors = validateLeasingEnquiry({ ...form, locations });
+    setFieldErrors(errors);
+    if (Object.keys(errors).length) return;
 
     submissionInFlight.current = true;
     setSubmitting(true);
@@ -290,17 +320,20 @@ export function CorporateOfficeLeasingForm() {
       const result = await submitLead({
         name: form.name.trim(),
         phone: form.phone.trim(),
-        email: form.workEmail.trim(),
+        email: form.workEmail.trim() || null,
         type: "CORPORATE_OFFICE_LEASING",
         source_page: getPageUrl(),
         property_type: "Corporate Office Space",
         details: {
           source_type: "website",
-          source_name: "corporate_office_leasing",
-          source_page_type: "corporate_office_leasing",
+          source_name: corridor ? `office_leasing_corridor_${corridor.locationScope}` : "corporate_office_leasing",
+          source_page_type: corridor ? "office_leasing_corridor" : "corporate_office_leasing",
+          lead_category: "commercial",
+          form_id: formId,
+          ...(corridor ? { location_scope: corridor.locationScope, corridor_slug: corridor.slug, selected_locations: locations } : {}),
           intent: "commercial_lease",
           transaction_type: "lease",
-          requirement_type: form.requirementType,
+          requirement_type: form.requirementType || "Office Leasing",
           requirement_category: "corporate_office_leasing",
           city: "hyderabad",
           locality: locationPreference,
@@ -320,10 +353,13 @@ export function CorporateOfficeLeasingForm() {
           ...campaign,
         },
         attribution_metadata: {
-          source_page_type: "corporate_office_leasing",
+          source_page_type: corridor ? "office_leasing_corridor" : "corporate_office_leasing",
+          lead_category: "commercial",
+          form_id: formId,
+          ...(corridor ? { location_scope: corridor.locationScope, corridor_slug: corridor.slug, selected_locations: locations } : {}),
           intent: "commercial_lease",
           transaction_type: "lease",
-          requirement_type: form.requirementType,
+          requirement_type: form.requirementType || "Office Leasing",
           requirement_category: "corporate_office_leasing",
           city: "hyderabad",
           locality: locationPreference,
@@ -337,16 +373,17 @@ export function CorporateOfficeLeasingForm() {
           seats: form.seats.trim() || null,
           ...campaign,
         },
-      }, "corporate_office_leasing_client");
+      }, formId);
 
       if (!result.success) {
-        setError(result.error || "We could not submit this requirement. Please try again.");
+        setError("We could not submit this requirement. Your details are still here; please try again.");
+        if (result.fieldErrors) setFieldErrors(result.fieldErrors);
         return;
       }
 
       submissionSucceeded.current = true;
       setSubmitted(true);
-      trackCorporateLeasingEvent("corporate_leasing_form_submit_success", {});
+      trackCorporateLeasingEvent("corporate_leasing_form_submit_success", context);
     } catch (err) {
       console.error("[CorporateOfficeLeasingForm] submit failed:", err);
       setError("We could not submit this requirement. Please try again.");
@@ -358,7 +395,7 @@ export function CorporateOfficeLeasingForm() {
 
   if (submitted) {
     return (
-      <div className="rounded-sm border border-emerald-400/25 bg-emerald-500/10 p-8 text-center text-white">
+      <div ref={successRef} tabIndex={-1} role="status" className="rounded-sm border border-emerald-400/25 bg-emerald-500/10 p-8 text-center text-white">
         <CheckCircle2 className="mx-auto mb-4 h-10 w-10 text-emerald-300" />
         <h2 className="text-2xl font-semibold uppercase tracking-[0.08em]">Requirement Received</h2>
         <p className="mx-auto mt-3 max-w-xl text-sm leading-7 text-slate-300">
@@ -369,119 +406,61 @@ export function CorporateOfficeLeasingForm() {
   }
 
   return (
-    <form id="office-requirement" noValidate onSubmit={submit} className="scroll-mt-28 rounded-sm border border-white/10 bg-[#111111] p-5 shadow-2xl shadow-black/30 sm:p-7 lg:p-8">
-      <div className="mb-7">
+    <form ref={formRef} id="office-requirement" noValidate onSubmit={submit} aria-busy={submitting} className="scroll-mt-28 rounded-sm border border-white/10 bg-[#111111] p-5 shadow-2xl shadow-black/30 sm:p-7 lg:p-8">
+      <div className="mb-6">
         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#c8a96e]">Tell Us Your Office Requirement</p>
-        <h2 className="mt-3 text-2xl font-semibold text-white sm:text-3xl">Share one requirement. We&apos;ll evaluate suitable options.</h2>
-        <p className="mt-3 text-sm leading-7 text-slate-400">
-          Share your requirement once. Our Corporate Leasing team will evaluate suitable options across Hyderabad&apos;s Grade-A office market.
-        </p>
+        <h2 className="mt-3 text-2xl font-semibold text-white">{corridor ? `Find your office in ${corridor.corridorLabel}` : "Start with your area and preferred location"}</h2>
+        <p className="mt-3 text-sm leading-7 text-slate-400">Share the essentials. Our Corporate Leasing team will contact you to discuss suitable options. Company and email are optional.</p>
       </div>
-
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Name" required>
-          <input required value={form.name} onChange={(e) => update("name", e.target.value)} className="co-field" placeholder="Your name" />
+        <Field label="Name" required error={fieldErrors.name} field="name">
+          <input {...inputErrors("name")} required autoComplete="name" value={form.name} onChange={e => update("name", e.target.value)} className="co-field" placeholder="Your name" />
         </Field>
-        <Field label="Company Name" required>
-          <input required value={form.companyName} onChange={(e) => update("companyName", e.target.value)} className="co-field" placeholder="Company / organisation" />
+        <Field label="Mobile number" required error={fieldErrors.phone} field="phone">
+          <input {...inputErrors("phone")} required type="tel" inputMode="tel" autoComplete="tel" value={form.phone} onChange={e => update("phone", e.target.value)} className="co-field" placeholder="+91 XXXXX XXXXX" />
         </Field>
-        <Field label="Phone" required>
-          <input required type="tel" value={form.phone} onChange={(e) => update("phone", e.target.value)} className="co-field" placeholder="+91 XXXXX XXXXX" />
-        </Field>
-        <Field label="Work Email" required>
-          <input required type="email" value={form.workEmail} onChange={(e) => update("workEmail", e.target.value)} className="co-field" placeholder="name@company.com" />
-        </Field>
-      </div>
-
-      <div className="mt-4 grid gap-4 sm:grid-cols-2">
-        <Field label="Requirement Type" required>
-          <select required value={form.requirementType} onChange={(e) => update("requirementType", e.target.value)} className="co-field">
-            <option value="">Select requirement type</option>
-            {REQUIREMENT_TYPES.map((requirementType) => <option key={requirementType}>{requirementType}</option>)}
-          </select>
-        </Field>
-        <Field label="Current Office / Location">
-          <input value={form.currentOfficeLocation} onChange={(e) => update("currentOfficeLocation", e.target.value)} className="co-field" placeholder="Optional relocation / expansion context" />
-        </Field>
-      </div>
-
-      <div className="mt-4 grid gap-4 sm:grid-cols-2">
-        <Field label="Required Office Area" required>
-          <select required value={form.requiredArea} onChange={(e) => update("requiredArea", e.target.value)} className="co-field">
+        <Field label="Required office area" required error={fieldErrors.requiredArea} field="requiredArea">
+          <select {...inputErrors("requiredArea")} required value={form.requiredArea} onChange={e => update("requiredArea", e.target.value)} className="co-field">
             <option value="">Select area range</option>
-            {AREA_RANGES.map((range) => <option key={range}>{range}</option>)}
-          </select>
-        </Field>
-        <Field label="Move-In Timeline">
-          <select value={form.timeline} onChange={(e) => update("timeline", e.target.value)} className="co-field">
-            <option value="">Select timeline</option>
-            {TIMELINES.map((timeline) => <option key={timeline}>{timeline}</option>)}
+            {AREA_RANGES.map(range => <option key={range}>{range}</option>)}
           </select>
         </Field>
       </div>
-
-      <div className="mt-4">
-        <span className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Preferred Location</span>
+      <fieldset className="mt-4" aria-describedby={fieldErrors.locations ? "leasing-locations-error" : undefined}>
+        <legend className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">Preferred location * <span className="normal-case font-normal">(choose one or more)</span></legend>
         <div className="grid gap-2 sm:grid-cols-2">
-          {LOCATIONS.map((location) => (
-            <label key={location} className="flex min-h-11 cursor-pointer items-center gap-3 rounded-sm border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-slate-200 transition hover:border-[#c8a96e]/50">
-              <input
-                type="checkbox"
-                checked={locations.includes(location)}
-                onChange={() => toggleLocation(location)}
-                className="h-4 w-4 accent-[#c8a96e]"
-              />
-              <span>{location}</span>
+          {LOCATIONS.map((location, index) => (
+            <label key={location} className="flex min-h-11 cursor-pointer items-center gap-3 rounded-sm border border-white/10 px-3 py-2 text-sm text-slate-200">
+              <input {...(index === 0 ? inputErrors("locations") : {})} type="checkbox" checked={locations.includes(location)} onChange={() => toggleLocation(location)} className="h-4 w-4 accent-[#c8a96e]" />{location}
             </label>
           ))}
         </div>
-      </div>
-
-      <div className="mt-4 grid gap-4 sm:grid-cols-2">
-        <Field label="Fit-Out">
-          <select value={form.fitOut} onChange={(e) => update("fitOut", e.target.value)} className="co-field">
-            <option value="">Select fit-out preference</option>
-            {FIT_OUTS.map((fitOut) => <option key={fitOut}>{fitOut}</option>)}
-          </select>
-        </Field>
-        <Field label="Approx. Rent Budget">
-          <input value={form.rentBudget} onChange={(e) => update("rentBudget", e.target.value)} className="co-field" placeholder="Optional" />
-        </Field>
-      </div>
-
-      <div className="mt-4 grid gap-4 sm:grid-cols-[0.7fr_1.3fr]">
-        <Field label="Number of Seats">
-          <input value={form.seats} onChange={(e) => update("seats", e.target.value)} className="co-field" placeholder="Optional" />
-        </Field>
-        <Field label="Additional Requirement">
-          <textarea value={form.notes} onChange={(e) => update("notes", e.target.value)} className="co-field min-h-24 resize-y" placeholder="Any floor plate, parking, lease term or timing notes..." />
-        </Field>
-      </div>
-
-      {error && <p className="mt-4 text-sm text-red-300">{error}</p>}
-
-      <button
-        type="submit"
-        disabled={submitting}
-        className="mt-6 flex min-h-12 w-full items-center justify-center rounded-sm bg-[#c8a96e] px-5 py-3 text-xs font-semibold uppercase tracking-[0.16em] text-[#101010] transition hover:bg-[#d9bd82] disabled:cursor-not-allowed disabled:opacity-60"
-      >
+        {fieldErrors.locations && <p id="leasing-locations-error" className="mt-2 text-sm text-red-300">{fieldErrors.locations}</p>}
+      </fieldset>
+      <details ref={optionalRef} className="mt-5 rounded-sm border border-white/15 p-4">
+        <summary className="cursor-pointer text-sm font-semibold text-[#c8a96e]">Add company, timeline or other details (optional)</summary>
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <Field label="Company name"><input autoComplete="organization" value={form.companyName} onChange={e => update("companyName", e.target.value)} className="co-field" /></Field>
+          <Field label="Work email" error={fieldErrors.workEmail} field="workEmail"><input {...inputErrors("workEmail")} type="email" autoComplete="email" value={form.workEmail} onChange={e => update("workEmail", e.target.value)} className="co-field" placeholder="name@company.com (optional)" /></Field>
+          <Field label="Move-in timeline"><select value={form.timeline} onChange={e => update("timeline", e.target.value)} className="co-field"><option value="">Select timeline</option>{TIMELINES.map(v => <option key={v}>{v}</option>)}</select></Field>
+          <Field label="Fit-out preference"><select value={form.fitOut} onChange={e => update("fitOut", e.target.value)} className="co-field"><option value="">Select fit-out</option>{FIT_OUTS.map(v => <option key={v}>{v}</option>)}</select></Field>
+          <Field label="Requirement type"><select value={form.requirementType} onChange={e => update("requirementType", e.target.value)} className="co-field"><option value="">Select if known</option>{REQUIREMENT_TYPES.map(v => <option key={v}>{v}</option>)}</select></Field>
+          <Field label="Current office / location"><input value={form.currentOfficeLocation} onChange={e => update("currentOfficeLocation", e.target.value)} className="co-field" /></Field>
+          <Field label="Approx. rent budget"><input value={form.rentBudget} onChange={e => update("rentBudget", e.target.value)} className="co-field" /></Field>
+          <Field label="Number of seats"><input inputMode="numeric" value={form.seats} onChange={e => update("seats", e.target.value)} className="co-field" /></Field>
+        </div>
+        <div className="mt-4"><Field label="Additional requirements"><textarea value={form.notes} onChange={e => update("notes", e.target.value)} className="co-field min-h-24 resize-y" placeholder="Floor plate, parking, lease terms or other requirements" /></Field></div>
+      </details>
+      {Object.keys(fieldErrors).length > 0 && <p role="alert" className="mt-4 text-sm text-red-300">Please check the highlighted fields.</p>}
+      {error && <p role="alert" className="mt-4 text-sm text-red-300">{error}</p>}
+      <button type="submit" disabled={submitting} className="mt-5 flex min-h-12 w-full items-center justify-center rounded-sm bg-[#c8a96e] px-5 py-3 text-xs font-semibold uppercase tracking-[0.16em] text-[#101010] transition hover:bg-[#d9bd82] disabled:cursor-not-allowed disabled:opacity-60">
         {submitting ? "Submitting Requirement..." : "Get Matching Office Options"}
       </button>
-
-      <p className="mt-4 text-center text-xs leading-6 text-slate-500">
-        This is a corporate office requirement enquiry. Westside will not publish your company details.
-      </p>
+      <p className="mt-3 text-center text-xs leading-6 text-slate-400">Westside will use your details to respond to this enquiry. Your company details will not be published.</p>
     </form>
   );
 }
 
-function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
-  return (
-    <label className="block">
-      <span className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
-        {label}{required ? " *" : ""}
-      </span>
-      {children}
-    </label>
-  );
+function Field({ label, required, children, error, field }: { label: string; required?: boolean; children: React.ReactNode; error?: string; field?: string }) {
+  return <label className="block"><span className="mb-2 block text-xs font-semibold uppercase tracking-wider text-slate-400">{label}{required ? " *" : ""}</span>{children}{error && <span id={`leasing-${field}-error`} className="mt-2 block text-sm text-red-300">{error}</span>}</label>;
 }

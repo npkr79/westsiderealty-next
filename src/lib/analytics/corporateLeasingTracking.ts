@@ -13,6 +13,8 @@ const AREA_BANDS = {
 const LOCATIONS = {
   "Financial District": "financial_district",
   Gachibowli: "gachibowli",
+  Nanakramguda: "nanakramguda",
+  Madhapur: "madhapur",
   "HITEC City": "hitec_city",
   Raidurg: "raidurg",
   "Kokapet / Neopolis": "kokapet_neopolis",

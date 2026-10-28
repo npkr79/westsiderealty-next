@@ -83,7 +83,7 @@ const STATIC_NAV_ITEMS: NavItem[] = [
       { label: "Commercial Investments", href: "/commercial-investments" },
       { label: "Pre-Leased Mumbai", href: "/commercial/pre-leased-mumbai" },
     ],
-    cta: { label: "Share commercial requirement →", href: "/commercial#commercial-requirement" },
+    cta: { label: "Buy Commercial Property →", href: "/commercial#commercial-requirement" },
   },
   {
     label: "Insights",

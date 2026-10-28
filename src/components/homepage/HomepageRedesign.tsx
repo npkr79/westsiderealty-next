@@ -1003,6 +1003,13 @@ export default function HomepageRedesign() {
         </div>
       )}
 
+      <section aria-label="Office leasing" className="border-y border-slate-200 bg-slate-50 px-6 py-6">
+        <div className="mx-auto flex max-w-6xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div><h2 className="text-xl font-semibold text-slate-900">Looking for an office for your business?</h2><p className="mt-1 text-sm text-slate-600">Grade-A office leasing advisory in Hyderabad for corporate requirements of 10,000+ sq ft.</p></div>
+          <Link href="/commercial/hyderabad/office-space-for-lease" className="inline-flex min-h-12 items-center justify-center rounded-sm bg-[#b08a42] px-6 py-3 text-sm font-semibold text-white">Lease Office Space</Link>
+        </div>
+      </section>
+
       {/* ── Search results ──────────────────────────────────────── */}
       {(searchLoading || searchResults !== null || searchError) && (
         <section ref={searchResultsRef} style={{ background: C.bgWarm, borderTop: `1px solid ${C.border}`, padding: "40px 24px" }}>

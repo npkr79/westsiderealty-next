@@ -116,10 +116,11 @@ export default function CommercialLandingPage() {
             <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-700">
               Explore Grade-A office acquisitions, pre-leased commercial assets and investment opportunities through REMAX Westside Realty. We help investors and businesses evaluate commercial property purchases based on their capital, requirements and investment objectives.
             </p>
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
               <Link href="#commercial-opportunities" className="inline-flex min-h-12 items-center justify-center rounded-sm bg-[#1f5f8b] px-6 py-3 text-xs font-semibold uppercase tracking-[0.16em] text-white transition hover:bg-[#174b70]">
-                Explore Commercial Opportunities
+                Buy Commercial Property
               </Link>
+              <Link href="/commercial/hyderabad/office-space-for-lease#office-requirement" className="inline-flex min-h-12 items-center justify-center rounded-sm border border-slate-300 bg-white/80 px-6 py-3 text-xs font-semibold uppercase tracking-[0.16em] text-slate-950 transition hover:border-[#1f5f8b]">Lease Office Space</Link>
               <Link href="#commercial-requirement" className="inline-flex min-h-12 items-center justify-center rounded-sm border border-slate-300 bg-white/80 px-6 py-3 text-xs font-semibold uppercase tracking-[0.16em] text-slate-950 transition hover:border-[#1f5f8b] hover:text-[#1f5f8b]">
                 Discuss Your Investment Requirement
               </Link>
@@ -175,7 +176,7 @@ export default function CommercialLandingPage() {
                 <span key={corridor} className="rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700">{corridor}</span>
               ))}
             </div>
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
               <Link href="/commercial/hyderabad" className="inline-flex items-center gap-2 text-sm font-semibold text-[#1f5f8b]">
                 Hyderabad commercial hub <ArrowRight className="h-4 w-4" />
               </Link>

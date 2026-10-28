@@ -16,9 +16,9 @@ const canonicalUrl = "https://www.westsiderealty.in/commercial/hyderabad/office-
 export const revalidate = 3600;
 
 export const metadata: Metadata = {
-  title: "Office Space for Lease in Hyderabad | Grade-A Corporate Leasing | Westside Realty",
+  title: "Office Space for Lease in Hyderabad | Grade-A Offices | REMAX",
   description:
-    "Share one corporate office requirement in Hyderabad. Westside Realty evaluates suitable Grade-A office space options across key corridors and landlords.",
+    "Grade-A office leasing advisory in Hyderabad for 10,000+ sq ft requirements. Compare Financial District, Gachibowli and HITEC City with REMAX Westside Realty.",
   alternates: { canonical: canonicalUrl },
   keywords:
     "office space for lease in Hyderabad, commercial office space for lease Hyderabad, Grade A office space Hyderabad, corporate office leasing Hyderabad",
@@ -139,7 +139,7 @@ const marketSignals = [
 const leaseEvaluationFactors = [
   {
     title: "Usable vs chargeable area",
-    text: "Compare the usable area, carpet efficiency and common-area loading before treating two quoted areas as equivalent.",
+    text: "Plan workstations, meeting rooms, collaboration space and future headcount against a test-fit layout. Compare usable area with chargeable area and common-area loading; a fixed area-per-person ratio cannot replace a workplace brief.",
   },
   {
     title: "Contiguous floor availability",
@@ -151,11 +151,11 @@ const leaseEvaluationFactors = [
   },
   {
     title: "Rent, CAM and escalation structure",
-    text: "Review base rent, maintenance charges, deposits, escalation clauses and what is included in the quoted commercial terms.",
+    text: "Compare base rent, common area maintenance (CAM), parking, utilities, applicable taxes and fit-out costs over the proposed tenure. Separate refundable security deposit from recurring costs and model agreed escalation dates.",
   },
   {
     title: "Lease tenure and lock-in",
-    text: "Match the lock-in and renewal structure to business certainty, headcount plan and potential relocation risk.",
+    text: "Compare lock-in, renewal and exit terms with your growth plan. Record rent commencement, fit-out period, escalation, deposit return and restoration obligations in commercial discussions before legal review.",
   },
   {
     title: "Access, parking and employee commute",
@@ -163,7 +163,7 @@ const leaseEvaluationFactors = [
   },
   {
     title: "Possession and expansion timeline",
-    text: "Check readiness, fit-out period, statutory handovers and whether the building can support future growth.",
+    text: "Verify handover condition, fire and life-safety documentation, power and backup capacity, lifts and property management with the building team. Check fit-out access, possession dates and expansion options before committing.",
   },
 ];
 
@@ -258,7 +258,7 @@ export default function HyderabadOfficeLeasingPage() {
           color: #fff;
           min-height: 46px;
           padding: 11px 13px;
-          font-size: 14px;
+          font-size: 16px;
           outline: none;
         }
         .co-field::placeholder { color: rgba(148,163,184,0.8); }
@@ -272,28 +272,28 @@ export default function HyderabadOfficeLeasingPage() {
       <section className="relative isolate overflow-hidden">
         <Image
           src="https://images.unsplash.com/photo-1497366754035-f200968a6e72?w=1600&q=75&auto=format&fit=crop"
-          alt="Modern corporate office workspace in a Grade-A business district"
+          alt="Illustrative corporate office interior"
           fill
           priority
           sizes="100vw"
           className="absolute inset-0 -z-20 object-cover object-center"
         />
         <div className="absolute inset-0 -z-10 bg-[linear-gradient(90deg,rgba(8,8,8,0.94)_0%,rgba(8,8,8,0.82)_42%,rgba(8,8,8,0.36)_100%)]" />
-        <div className="mx-auto grid min-h-[calc(100vh-64px)] max-w-7xl items-end gap-10 px-5 py-16 sm:px-8 lg:grid-cols-[1.08fr_0.92fr] lg:px-10 lg:py-20">
+        <div className="mx-auto grid max-w-7xl items-end gap-10 px-5 py-12 sm:px-8 lg:grid-cols-[1.08fr_0.92fr] lg:px-10 lg:py-20">
           <div className="max-w-3xl pb-4">
             <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[#c8a96e]">Corporate Office Leasing · Hyderabad</p>
             <h1 className="mt-5 max-w-3xl text-4xl font-semibold leading-[1.06] text-white sm:text-5xl lg:text-6xl">
-              Find the Right Office for Your Business in Hyderabad
+              Grade-A Office Space for Lease in Hyderabad
             </h1>
             <p className="mt-6 max-w-2xl text-2xl font-semibold uppercase leading-tight tracking-[0.08em] text-[#f1d9a2] sm:text-3xl">
-              One Requirement. Multiple Grade-A Office Options.
+              For corporate occupiers seeking 10,000+ sq ft.
             </p>
-            <p className="mt-4 max-w-2xl text-base leading-8 text-slate-300 sm:text-lg">
-              Share your office requirement once. Westside evaluates suitable options across Hyderabad&apos;s Grade-A office market based on location, area, fit-out, commercial terms and move-in timeline.
+            <p className="mt-4 max-w-2xl text-base leading-7 text-slate-300 sm:text-lg">
+              RE/MAX Westside Realty helps GCCs, technology companies and workplace teams find office space for rent in Hyderabad. Compare bare-shell, warm-shell, furnished and plug-and-play options across key corridors, subject to current availability and building verification.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <CorporateOfficeLeasingCta label="Get Matching Office Options" />
-              <CorporateOfficeLeasingCta label="Discuss a Requirement" variant="secondary" />
+              <CorporateOfficeLeasingCta label="Find Office Space for Your Company" />
+              <CorporateOfficeLeasingCta label="Discuss Your Leasing Requirement" variant="secondary" />
             </div>
             <div className="mt-10 grid max-w-2xl gap-3 sm:grid-cols-3">
               {["One brief", "Market comparison", "Curated shortlist"].map((item) => (
@@ -303,7 +303,7 @@ export default function HyderabadOfficeLeasingPage() {
               ))}
             </div>
           </div>
-          <div className="block pb-4">
+          <div className="hidden pb-4 lg:block">
             <div className="border border-white/10 bg-black/45 p-6 backdrop-blur">
               <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Search-led leasing advisory</p>
               <div className="mt-5 grid gap-4 text-slate-100">
@@ -323,6 +323,12 @@ export default function HyderabadOfficeLeasingPage() {
               </p>
             </div>
           </div>
+        </div>
+      </section>
+
+      <section className="bg-[#080808] px-5 py-12 sm:px-8 lg:px-10 lg:py-14">
+        <div className="mx-auto max-w-4xl">
+          <CorporateOfficeLeasingForm />
         </div>
       </section>
 
@@ -440,11 +446,7 @@ export default function HyderabadOfficeLeasingPage() {
         </div>
       </section>
 
-      <section className="bg-[#080808] px-5 py-12 sm:px-8 lg:px-10 lg:py-14">
-        <div className="mx-auto max-w-4xl">
-          <CorporateOfficeLeasingForm />
-        </div>
-      </section>
+
 
       <section className="bg-[#0d0d0d] px-5 py-16 sm:px-8 lg:px-10 lg:py-20">
         <div className="mx-auto max-w-7xl">

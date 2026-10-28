@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { validOptionalWorkEmail } from "@/lib/commercial/leasingValidation";
 import { useRef, useState } from "react";
 import { CheckCircle2 } from "lucide-react";
 import { submitLead, type LeadType } from "@/lib/analytics/submitTrackedLead";
@@ -318,7 +319,7 @@ export function HubRequirementForm() {
       setSubmitted(true);
       trackCommercialPhase1Event("commercial_phase1_form_submit_success", {
         page_type: "commercial_hyderabad_hub",
-        commercial_intent: "commercial_hub",
+        commercial_intent: form.intent as CommercialIntent,
         location_scope: form.location || "hyderabad",
         requirement_type: "hub_router",
       });
@@ -583,15 +584,15 @@ export function ManagedOfficeRequirementForm() {
     if (inFlight.current || succeeded.current) return;
     setError("");
 
-    if (!form.name.trim() || !form.company.trim() || !form.phone.trim() || !form.email.trim() || !form.seats) {
-      setError("Please share your name, company, phone, work email and seat requirement.");
+    if (!form.name.trim() || !form.company.trim() || !form.phone.trim() || !form.seats) {
+      setError("Please share your name, company, phone and seat requirement.");
       return;
     }
     if (!phoneLooksValid(form.phone)) {
       setError("Please enter a valid phone number.");
       return;
     }
-    if (!isValidEmail(form.email)) {
+    if (!validOptionalWorkEmail(form.email)) {
       setError("Please enter a valid work email.");
       return;
     }
@@ -608,7 +609,7 @@ export function ManagedOfficeRequirementForm() {
       const result = await submitLead({
         name: form.name.trim(),
         phone: form.phone.trim(),
-        email: form.email.trim(),
+        email: form.email.trim() || null,
         type: "CORPORATE_OFFICE_LEASING",
         source_page: getPageUrl("/commercial/hyderabad/managed-office-space"),
         property_type: "Managed Office Space",
@@ -698,7 +699,7 @@ export function ManagedOfficeRequirementForm() {
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Phone" required><input className={fieldClass} type="tel" value={form.phone} onChange={(e) => update("phone", e.target.value)} placeholder="+91 XXXXX XXXXX" /></Field>
-            <Field label="Work Email" required><input className={fieldClass} type="email" value={form.email} onChange={(e) => update("email", e.target.value)} placeholder="name@company.com" /></Field>
+            <Field label="Work Email (optional)"><input className={fieldClass} type="email" value={form.email} onChange={(e) => update("email", e.target.value)} placeholder="name@company.com" /></Field>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Number of Seats" required><select className={fieldClass} value={form.seats} onChange={(e) => update("seats", e.target.value)}><option value="">Select seat band</option>{SEAT_BANDS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></Field>

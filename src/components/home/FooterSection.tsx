@@ -144,6 +144,7 @@ export default function FooterSection() {
                   Commercial Hyderabad
                 </Link>
               </li>
+              <li><Link href="/commercial/hyderabad/office-space-for-lease" className="hover:text-luxury-gold transition-colors">Lease Office Space</Link></li>
               <li>
                 <Link href="/commercial/hyderabad/managed-office-space" className="hover:text-luxury-gold transition-colors">
                   Managed Offices

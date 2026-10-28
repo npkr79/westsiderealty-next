@@ -66,6 +66,7 @@ export function OfficeLeasingCorridorPage({ page }: { page: CorridorPageData }) 
           background: rgba(255,255,255,0.045);
           color: #fff;
           min-height: 46px;
+          font-size: 16px;
           padding: 11px 13px;
           outline: none;
         }
@@ -74,7 +75,7 @@ export function OfficeLeasingCorridorPage({ page }: { page: CorridorPageData }) 
         .co-field option { background: #101010; color: #fff; }
       `}</style>
 
-      <section className="relative px-5 pb-16 pt-28 sm:px-8 lg:px-10 lg:pb-24 lg:pt-32">
+      <section className="relative px-5 pb-12 pt-16 sm:px-8 lg:px-10 lg:pb-24 lg:pt-32">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(200,169,110,0.16),transparent_34%),linear-gradient(135deg,rgba(255,255,255,0.06),transparent_38%)]" />
         <div className="relative mx-auto grid max-w-7xl gap-10 lg:grid-cols-[1.08fr_0.92fr] lg:items-end">
           <div>
@@ -84,18 +85,18 @@ export function OfficeLeasingCorridorPage({ page }: { page: CorridorPageData }) 
               <span>{page.eyebrow}</span>
             </div>
             <h1 className="max-w-5xl text-4xl font-semibold tracking-[-0.04em] text-white sm:text-5xl lg:text-7xl">{page.h1}</h1>
-            <p className="mt-6 max-w-3xl text-base leading-8 text-slate-300 sm:text-lg">{page.heroLead}</p>
+            <p className="mt-6 max-w-3xl text-base leading-7 text-slate-300 sm:text-lg">{page.heroLead}</p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
               <CorridorPrimaryCta corridor={page} label={page.primaryCta} />
               <Link
-                href={page.otherCorridor.href}
+                href="#office-requirement"
                 className="inline-flex min-h-12 items-center justify-center rounded-sm border border-white/20 px-6 py-3 text-xs font-semibold uppercase tracking-[0.16em] text-white transition hover:border-[#c8a96e] hover:text-[#c8a96e]"
               >
-                {page.otherCorridor.label}
+                Discuss Your Leasing Requirement
               </Link>
             </div>
           </div>
-          <div className="border border-white/10 bg-black/45 p-6 backdrop-blur">
+          <div className="hidden border border-white/10 bg-black/45 p-6 backdrop-blur lg:block">
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Requirement-led corridor search</p>
             <div className="mt-5 grid gap-4">
               {page.heroPoints.map((point, index) => (
@@ -106,6 +107,12 @@ export function OfficeLeasingCorridorPage({ page }: { page: CorridorPageData }) 
               ))}
             </div>
           </div>
+        </div>
+      </section>
+
+      <section className="bg-[#080808] px-5 py-12 sm:px-8 lg:px-10 lg:py-14">
+        <div className="mx-auto max-w-4xl">
+          <OfficeLeasingCorridorForm corridor={page} />
         </div>
       </section>
 
@@ -207,7 +214,7 @@ export function OfficeLeasingCorridorPage({ page }: { page: CorridorPageData }) 
         <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[1fr_1fr]">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#c8a96e]">Nearby Context</p>
-            <h2 className="mt-4 text-3xl font-semibold text-white sm:text-4xl">Keep adjacent corridors in the comparison, not in the keyword target.</h2>
+            <h2 className="mt-4 text-3xl font-semibold text-white sm:text-4xl">Compare nearby corridors against the same workplace brief.</h2>
             <p className="mt-4 text-sm leading-7 text-slate-400">{page.adjacentContext}</p>
             <div className="mt-6 rounded-sm border border-white/10 bg-[#111111] p-5">
               <h3 className="text-lg font-semibold text-white">{page.otherCorridor.label}</h3>
@@ -228,11 +235,6 @@ export function OfficeLeasingCorridorPage({ page }: { page: CorridorPageData }) 
         </div>
       </section>
 
-      <section className="bg-[#080808] px-5 py-12 sm:px-8 lg:px-10 lg:py-14">
-        <div className="mx-auto max-w-4xl">
-          <OfficeLeasingCorridorForm corridor={page} />
-        </div>
-      </section>
 
       <section className="bg-[#101010] px-5 py-16 sm:px-8 lg:px-10 lg:py-20">
         <div className="mx-auto max-w-4xl">
