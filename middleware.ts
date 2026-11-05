@@ -1,3 +1,4 @@
+import { isExcludedProjectPath } from "@/lib/projectExclusions";
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
@@ -35,6 +36,16 @@ const getRequiredRoleForPath = (pathname: string): CrmRole | null => {
 };
 
 export async function middleware(request: NextRequest) {
+  if (isExcludedProjectPath(request.nextUrl.pathname)) {
+    return new NextResponse("This project is no longer available.", {
+      status: 410,
+      headers: {
+        "Content-Type": "text/plain; charset=utf-8",
+        "X-Robots-Tag": "noindex, nofollow",
+        "Cache-Control": "public, max-age=0, s-maxage=86400",
+      },
+    });
+  }
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -158,5 +169,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/crm/:path*", "/dashboard/:path*", "/leads/:path*", "/pipeline/:path*", "/routing/:path*", "/tasks/:path*", "/whatsapp/:path*", "/journeys/:path*", "/settings/:path*", "/social/:path*", "/social"],
+  matcher: ["/:citySlug/projects/indus-amalfi-suites","/crm/:path*", "/dashboard/:path*", "/leads/:path*", "/pipeline/:path*", "/routing/:path*", "/tasks/:path*", "/whatsapp/:path*", "/journeys/:path*", "/settings/:path*", "/social/:path*", "/social"],
 };
